@@ -49,6 +49,7 @@ cargo run --release -p fcmaes-examples --bin gtop-examples -- \
 
 ## Documentation
 
+- [AI problem-solving context](ai-context.md)
 - [Getting started](docs/getting-started.md)
 - [Architecture and implementation boundaries](docs/architecture.md)
 - [Optimizer guide](docs/optimizers.md)

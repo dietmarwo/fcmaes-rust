@@ -8,6 +8,7 @@ configuration, workflows, and runnable examples.
 
 | Document | Read this for |
 |---|---|
+| [AI problem-solving context](../ai-context.md) | Selecting algorithms, parameters, budgets, encodings, and validation for a new user problem |
 | [Getting started](getting-started.md) | Building, testing, generating rustdoc, and running a first optimizer |
 | [Architecture](architecture.md) | Workspace layout, execution paths, concurrency, and scope |
 | [Optimizers](optimizers.md) | Pure-Rust optimizer APIs, defaults, one-shot operation, and ask/tell operation |
