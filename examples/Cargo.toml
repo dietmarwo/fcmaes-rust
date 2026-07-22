@@ -1,0 +1,78 @@
+[package]
+name = "fcmaes-examples"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+publish = false
+description = "Native Rust GTOP benchmarks and retry examples for fcmaes."
+
+[lib]
+name = "fcmaes_examples"
+
+[dependencies]
+fcmaes-core = { workspace = true }
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
+yahoo_finance_api = "4.1.1"
+xz2 = "0.1"
+
+[[bin]]
+name = "gtop-examples"
+path = "src/bin/examples.rs"
+
+[[bin]]
+name = "gtop-advexamples"
+path = "src/bin/advexamples.rs"
+
+[[bin]]
+name = "benchmark-gtop"
+path = "src/bin/benchmark_gtop.rs"
+
+[[bin]]
+name = "benchmark-biteopt-gtop"
+path = "src/bin/benchmark_biteopt_gtop.rs"
+
+[[bin]]
+name = "mazda-mo"
+path = "src/bin/mazda_mo.rs"
+
+[[bin]]
+name = "mazda-qd"
+path = "src/bin/mazda_qd.rs"
+
+[[bin]]
+name = "trading"
+path = "src/bin/trading.rs"
+
+[[bin]]
+name = "material-flow-planning"
+path = "src/bin/material_flow_planning.rs"
+
+[[bin]]
+name = "jobshop"
+path = "src/bin/jobshop.rs"
+
+[[bin]]
+name = "harvesting"
+path = "src/bin/harvesting.rs"
+
+[[bin]]
+name = "t-design"
+path = "src/bin/tdesign.rs"
+
+[[bin]]
+name = "scheduling"
+path = "src/bin/scheduling.rs"
+
+[[bin]]
+name = "damp"
+path = "src/bin/damp.rs"
+
+[[bin]]
+name = "f8"
+path = "src/bin/f8.rs"
+
+[[bin]]
+name = "lotka"
+path = "src/bin/lotka.rs"

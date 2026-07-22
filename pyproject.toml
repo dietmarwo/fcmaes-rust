@@ -1,0 +1,26 @@
+[build-system]
+requires = ["maturin>=1.7,<2"]
+build-backend = "maturin"
+
+[project]
+name = "fcmaes-rust"
+version = "0.1.0"
+description = "Optional Python bindings for the native fcmaes Rust port"
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+authors = [{ name = "Dietmar Wolz" }]
+dependencies = [
+    "numpy>=1.20",
+    "scipy>=1.8",
+]
+
+[project.optional-dependencies]
+test = ["pytest>=7"]
+
+[tool.maturin]
+manifest-path = "crates/fcmaes-py/Cargo.toml"
+module-name = "_fcmaes_ext"
+
+[tool.pytest.ini_options]
+testpaths = ["crates/fcmaes-py/python_tests"]

@@ -1,0 +1,19 @@
+[package]
+name = "fcmaes-py"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+description = "PyO3 bindings exposing fcmaes-core as the Python extension module `_fcmaes_ext`."
+
+[lib]
+name = "_fcmaes_ext"
+crate-type = ["cdylib"]
+doc = false
+
+[dependencies]
+fcmaes-core = { workspace = true }
+fcmaes-examples = { path = "../../examples" }
+pyo3 = { version = "0.23", features = ["extension-module"] }
+numpy = "0.23"

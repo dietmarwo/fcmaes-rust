@@ -1,0 +1,38 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+jobs:
+  rust:
+    name: Rust workspace
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: Swatinem/rust-cache@v2
+      - name: cargo fmt
+        run: cargo fmt --all -- --check
+      - name: cargo clippy
+        run: cargo clippy --workspace --all-targets -- -D warnings
+      - name: cargo test
+        run: cargo test --workspace
+      - name: Python binding tests
+        run: |
+          python -m venv .venv
+          .venv/bin/python -m pip install --upgrade pip
+          .venv/bin/python -m pip install "maturin[patchelf]>=1.7,<2" numpy scipy pytest
+          env -u CONDA_PREFIX VIRTUAL_ENV="$PWD/.venv" \
+            PATH="$PWD/.venv/bin:$PATH" \
+            .venv/bin/maturin develop --release \
+            --manifest-path crates/fcmaes-py/Cargo.toml
+          .venv/bin/python -m pytest crates/fcmaes-py/python_tests
+      - name: cargo doc
+        run: cargo doc --workspace --no-deps

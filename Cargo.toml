@@ -1,0 +1,21 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/fcmaes-core",
+    "crates/fcmaes-py",
+    "examples",
+]
+
+[profile.release]
+codegen-units = 1
+lto = "thin"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+authors = ["Dietmar Wolz"]
+repository = "https://github.com/dietmarwo/fcmaes-rust"
+
+[workspace.dependencies]
+fcmaes-core = { path = "crates/fcmaes-core" }
