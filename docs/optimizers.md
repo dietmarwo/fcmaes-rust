@@ -224,6 +224,12 @@ distance kernels. Seed parent solutions with `seed_uniform`, evaluate an
 initial population, then call `map_elites`; `diversify` uses niche improvement
 as the objective seen by CMA-ES.
 
+Expensive native objectives can implement `QdBatchFitness` and use
+`map_elites_batch` / `diversify_batch`. `Archive::update_evaluated` separates
+parallel evaluation from ordered archive mutation. The general
+`parallel_batch` helper uses the same cached, explicitly sized Rayon pools as
+population fitness evaluation.
+
 For two descriptor dimensions, `samples_per_niche = 0` selects a rectangular
 grid with O(1) niche lookup. Positive values select k-means CVT centers and a
 nearest-center scan; use that path when irregular Voronoi niches are required.

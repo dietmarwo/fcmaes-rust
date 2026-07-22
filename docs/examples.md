@@ -81,31 +81,32 @@ datasets when those optional files are present.
 ## Mazda factory design
 
 The Mazda benchmark has 222 discrete variables, five raw objectives, and 54
-constraints. The Rust adapter loads the published `fitness_MazdaMop_C` ABI
-from `libmazda.so`; decision decoding, constraint sign conversion, MODE, QD
-scalarization, archive management, and Pareto selection are Rust. The
-generated response-surface library and its decision table are external data
-and are not included in this repository. Supply both paths explicitly.
+constraints. The example crate embeds the discrete decision table, three mass
+regressions, and 42 radial-basis constraint surfaces. The evaluator,
+constraint sign conversion, MODE, QD scalarization, archive management, and
+Pareto selection all execute in Rust. Shared response-surface training matrices
+are stored and evaluated once per group, and no external model files are
+required. See the [Mazda data notice](../examples/data/MAZDA_NOTICE.md) for
+provenance and the benchmark's acknowledgement request.
 
 Run the constrained MO example:
 
 ```bash
 cargo run --release -p fcmaes-examples --bin mazda-mo -- \
-  --library /path/to/libmazda.so --decisions /path/to/mazda.py \
-  --evaluations 500000 --popsize 768 --seed 42
+  --evaluations 500000 --popsize 768 --workers 16 --seed 42
 ```
 
 Add `--de-update` to use MODE's DE population update; the default is NSGA-II.
 Progress reports the feasible offspring count, and final output lists up to 30
-feasible Pareto points as mass and common-parts count.
+feasible Pareto points as mass and common-parts count. Each MODE population is
+evaluated as an ordered parallel batch.
 
 Run CVT-MAP-Elites with the published descriptors and penalty:
 
 ```bash
 cargo run --release -p fcmaes-examples --bin mazda-qd -- \
-  --library /path/to/libmazda.so --decisions /path/to/mazda.py \
   --capacity 10000 --samples-per-niche 0 \
-  --generations 10000 --chunk-size 100 --seed 42
+  --generations 10000 --chunk-size 100 --workers 16 --seed 42
 ```
 
 Use `--iso-line` for the Iso+LineDD emitter or append
@@ -117,9 +118,14 @@ smaller archive for a CVT smoke test:
 
 ```bash
 cargo run --release -p fcmaes-examples --bin mazda-qd -- \
-  --library /path/to/libmazda.so --decisions /path/to/mazda.py \
   --capacity 64 --samples-per-niche 4 --generations 10 --chunk-size 16
 ```
+
+For both Mazda binaries, `--workers 1` is serial, a positive value requests
+exactly that many cached worker threads, and `--workers 0` uses available
+parallelism. MAP-Elites and Diversifier candidates are evaluated concurrently;
+archive updates are then applied in original candidate order, so changing the
+worker count does not change a seeded result.
 
 ## Trading strategy
 

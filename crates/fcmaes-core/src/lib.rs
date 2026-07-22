@@ -24,9 +24,10 @@ pub use cmaes::{AcmaResult, Cmaes, CmaesParams};
 pub use crfmnes::{Crfmnes, CrfmnesParams, CrfmnesResult};
 pub use da::{DaParams, DaResult, optimize_da};
 pub use de::{De, DeParams, DeResult};
-pub use fitness::{Fitness, NAN_REPLACEMENT, Objective};
+pub use fitness::{Fitness, NAN_REPLACEMENT, Objective, parallel_batch};
 pub use mapelites::{
-    Archive, DiversifierParams, MapElitesParams, QdFitness, diversify, map_elites,
+    Archive, DiversifierParams, MapElitesParams, QdBatchFitness, QdFitness, diversify,
+    diversify_batch, map_elites, map_elites_batch,
 };
 pub use mode::{Mode, ModeParams, ModeResult};
 pub use moretry::{

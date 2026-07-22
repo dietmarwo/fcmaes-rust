@@ -68,9 +68,9 @@ Three concurrency boundaries matter:
 
 1. `retry` and `advanced_retry` create a fixed Rayon pool per call. Workers
    atomically claim restart IDs and optimize outside the result-store lock.
-2. `Fitness::eval_population*` can evaluate one optimizer population in
-   parallel. `workers == 1` is serial, positive values request that many
-   threads, and non-positive values use the global Rayon pool.
+2. `Fitness::eval_population*` and `parallel_batch` can evaluate one optimizer
+   population in parallel. `workers == 1` is serial, positive values request
+   that many threads, and non-positive values use the global Rayon pool.
 3. Python objectives reacquire the GIL for each callback. Native scheduling
    and optimizer work can run concurrently, but cheap pure-Python objective
    bodies remain GIL-bound.
@@ -78,6 +78,11 @@ Three concurrency boundaries matter:
 Do not blindly use 16 retry workers and 16 population workers. That can create
 nested parallelism. The native GTOP drivers use retry-level parallelism and
 keep each DE→CMA optimizer serial.
+
+QD batch evaluation follows the same split: `map_elites_batch` and
+`diversify_batch` may evaluate a candidate population concurrently, while
+`Archive::update_evaluated` applies results serially in candidate order. This
+avoids archive locks and keeps seeded runs independent of worker scheduling.
 
 ## Optional PyO3 path
 
@@ -94,7 +99,7 @@ The following are implemented in Rust:
 - DE, active CMA-ES, CR-FM-NES, PGPE, Dual Annealing, and BiteOpt.
 - Basic and coordinated advanced retry.
 - Weighted multi-objective retry, MODE, CVT-MAP-Elites, and Diversifier.
-- GTOP objective functions and native GTOP, Mazda MO/QD, trading,
+- GTOP and Mazda objective functions and native GTOP, Mazda MO/QD, trading,
   material-flow, flexible job-shop/harvesting, spherical t-design,
   transfer-scheduling, damp-control, F-8, and Lotka-Volterra drivers.
 - Python bindings for the implemented optimizers, retry, MODE, QD, and GTOP.
@@ -103,5 +108,3 @@ The following are deliberately outside this Rust workspace:
 
 - MAP-Elites persistence, shared-memory statistics, and plotting orchestration.
 - Python package facades and integrations with SciPy, pygmo, or plotting tools.
-- The generated Mazda response-surface library, which remains an optional
-  external model consumed through its published ABI.

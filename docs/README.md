@@ -24,7 +24,7 @@ configuration, workflows, and runnable examples.
   BiteOpt, MODE, CVT-MAP-Elites, and the Diversifier.
 - Independent retry, coordinated advanced retry, and weighted
   multi-objective retry.
-- Native GTOP objectives and application drivers for Mazda model adapters,
+- Native GTOP and Mazda objectives plus application drivers for factory design,
   stock trading, material flow, flexible job-shop/harvesting, spherical
   t-design, transfer scheduling, damped control, F-8, and Lotka-Volterra.
 - An optional PyO3 extension crate. No Python facade package is bundled.

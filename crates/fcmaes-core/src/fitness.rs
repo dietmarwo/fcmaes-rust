@@ -87,6 +87,29 @@ fn worker_pool(workers: usize) -> Arc<ThreadPool> {
     }))
 }
 
+/// Evaluate an ordered batch, optionally in parallel.
+///
+/// `workers`: `1` runs serially, values above one use exactly that many cached
+/// Rayon worker threads, and values at or below zero use Rayon's global pool.
+/// Results retain input order.
+pub fn parallel_batch<T, R>(
+    items: &[T],
+    workers: i32,
+    evaluate: impl Fn(&T) -> R + Sync + Send,
+) -> Vec<R>
+where
+    T: Sync,
+    R: Send,
+{
+    if workers == 1 || items.len() <= 1 {
+        items.iter().map(evaluate).collect()
+    } else if workers <= 0 {
+        items.par_iter().map(evaluate).collect()
+    } else {
+        worker_pool(workers as usize).install(|| items.par_iter().map(evaluate).collect())
+    }
+}
+
 /// Bounds- and normalization-aware wrapper around the decision space.
 ///
 /// When `normalize` is enabled, optimizers work in normalized coordinates
@@ -384,13 +407,7 @@ impl Fitness {
             res
         };
 
-        let ys: Vec<Vec<f64>> = if workers == 1 || pop.len() <= 1 {
-            pop.iter().map(eval_one).collect()
-        } else if workers <= 0 {
-            pop.par_iter().map(eval_one).collect()
-        } else {
-            worker_pool(workers as usize).install(|| pop.par_iter().map(eval_one).collect())
-        };
+        let ys = parallel_batch(pop, workers, eval_one);
 
         self.eval_counter += pop.len() as u64;
         ys
@@ -413,13 +430,7 @@ impl Fitness {
             }
         };
 
-        let ys = if workers == 1 || pop.len() <= 1 {
-            pop.iter().map(eval_one).collect()
-        } else if workers <= 0 {
-            pop.par_iter().map(eval_one).collect()
-        } else {
-            worker_pool(workers as usize).install(|| pop.par_iter().map(eval_one).collect())
-        };
+        let ys = parallel_batch(pop, workers, eval_one);
         self.eval_counter += pop.len() as u64;
         ys
     }
@@ -582,6 +593,14 @@ mod tests {
         let parallel = f.eval_population_scalar(&pop, &obj, 4);
         approx(&serial, &parallel);
         assert_eq!(f.evaluations(), 2 * pop.len() as u64);
+        let inputs: Vec<i32> = (0..64).collect();
+        let expected: Vec<i32> = inputs.iter().map(|value| value * value).collect();
+        for workers in [1, 0, 4] {
+            assert_eq!(
+                parallel_batch(&inputs, workers, |value| value * value),
+                expected
+            );
+        }
     }
 
     struct MultiObjective;

@@ -2,43 +2,39 @@
 
 use std::env;
 use std::error::Error;
-use std::path::PathBuf;
 
-use fcmaes_core::{Fitness, Mode, ModeParams, pareto_indices};
+use fcmaes_core::{Fitness, Mode, ModeParams, parallel_batch, pareto_indices};
 use fcmaes_examples::mazda::{
     MAZDA_CONSTRAINTS, MAZDA_DIM, MAZDA_OBJECTIVES, MAZDA_VALUE_WIDTH, MazdaDecisionSpace,
     MazdaEvaluator, is_feasible,
 };
 
-const DEFAULT_LIBRARY: &str = "mazda/mazda_cpp/Mazda_CdMOBP/src/libmazda.so";
-const DEFAULT_DECISIONS: &str = "mazda/mazda_cpp/Mazda_CdMOBP/src/mazda.py";
-
 struct Args {
-    library: PathBuf,
-    decisions: PathBuf,
     evaluations: usize,
     popsize: usize,
+    workers: i32,
     seed: u64,
     nsga_update: bool,
 }
 
 impl Args {
     fn parse() -> Result<Self, String> {
+        Self::from_args(env::args().skip(1))
+    }
+
+    fn from_args(mut args: impl Iterator<Item = String>) -> Result<Self, String> {
         let mut parsed = Self {
-            library: DEFAULT_LIBRARY.into(),
-            decisions: DEFAULT_DECISIONS.into(),
             evaluations: 100_000,
             popsize: 256,
+            workers: 1,
             seed: 42,
             nsga_update: true,
         };
-        let mut args = env::args().skip(1);
         while let Some(argument) = args.next() {
             match argument.as_str() {
-                "--library" => parsed.library = next_value(&mut args, "--library")?.into(),
-                "--decisions" => parsed.decisions = next_value(&mut args, "--decisions")?.into(),
                 "--evaluations" => parsed.evaluations = parse_value(&mut args, "--evaluations")?,
                 "--popsize" => parsed.popsize = parse_value(&mut args, "--popsize")?,
+                "--workers" => parsed.workers = parse_value(&mut args, "--workers")?,
                 "--seed" => parsed.seed = parse_value(&mut args, "--seed")?,
                 "--de-update" => parsed.nsga_update = false,
                 "-h" | "--help" => {
@@ -50,6 +46,9 @@ impl Args {
         }
         if parsed.popsize < 4 {
             return Err("--popsize must be at least four".to_string());
+        }
+        if parsed.workers < 0 {
+            return Err("--workers must be non-negative".to_string());
         }
         Ok(parsed)
     }
@@ -73,10 +72,9 @@ fn print_help() {
     println!(
         "Mazda multi-objective MODE example\n\
          \nUsage: cargo run --release -p fcmaes-examples --bin mazda-mo -- [OPTIONS]\n\
-         \n  --library PATH       Mazda libmazda.so ({DEFAULT_LIBRARY})\n\
-         \n  --decisions PATH     Python sample containing decision_x ({DEFAULT_DECISIONS})\n\
          \n  --evaluations N      Evaluation budget (100000)\n\
          \n  --popsize N          MODE population size (256)\n\
+         \n  --workers N          Evaluation threads; 0 uses available parallelism (1)\n\
          \n  --seed N             RNG seed (42)\n\
          \n  --de-update           Use MODE's DE update instead of NSGA-II"
     );
@@ -84,8 +82,8 @@ fn print_help() {
 
 fn main() -> Result<(), Box<dyn Error>> {
     let args = Args::parse()?;
-    let space = MazdaDecisionSpace::from_python_sample(&args.decisions)?;
-    let evaluator = MazdaEvaluator::load(&args.library)?;
+    let space = MazdaDecisionSpace::new()?;
+    let evaluator = MazdaEvaluator::new()?;
     let lower = space.lower();
     let upper = space.upper();
     let fitness = Fitness::bounded(MAZDA_DIM, MAZDA_VALUE_WIDTH, &lower, &upper);
@@ -102,15 +100,18 @@ fn main() -> Result<(), Box<dyn Error>> {
         Some(vec![true; MAZDA_DIM]),
         &params,
     )?;
+    eprintln!(
+        "Mazda MODE configuration: workers={} popsize={} budget={}",
+        args.workers, args.popsize, args.evaluations
+    );
 
     let generations = args.evaluations.div_ceil(args.popsize);
     let mut evaluations = 0usize;
     for generation in 0..generations {
         let xs = mode.ask();
-        let ys: Vec<Vec<f64>> = xs
-            .iter()
-            .map(|x| evaluator.evaluate_indices(&space, x))
-            .collect::<Result<_, _>>()?;
+        let evaluated =
+            parallel_batch(&xs, args.workers, |x| evaluator.evaluate_indices(&space, x));
+        let ys: Vec<Vec<f64>> = evaluated.into_iter().collect::<Result<_, _>>()?;
         evaluations += ys.len();
         mode.tell(&ys);
         if generation == 0 || (generation + 1) % 25 == 0 || generation + 1 == generations {
@@ -135,10 +136,11 @@ fn main() -> Result<(), Box<dyn Error>> {
     let front = pareto_indices(&feasible_values, MAZDA_OBJECTIVES)?;
 
     println!(
-        "Mazda MODE: dim={} objectives={} constraints={} evaluations={} feasible={} pareto={}",
+        "Mazda MODE: dim={} objectives={} constraints={} workers={} evaluations={} feasible={} pareto={}",
         space.dim(),
         MAZDA_OBJECTIVES,
         MAZDA_CONSTRAINTS,
+        args.workers,
         evaluations,
         feasible.len(),
         front.len()
@@ -164,4 +166,27 @@ fn main() -> Result<(), Box<dyn Error>> {
         println!("no feasible population member; least max violation={least_violation:.6}");
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn args(values: &[&str]) -> std::vec::IntoIter<String> {
+        values
+            .iter()
+            .map(|value| (*value).to_string())
+            .collect::<Vec<_>>()
+            .into_iter()
+    }
+
+    #[test]
+    fn parses_worker_count_and_rejects_negative_values() {
+        assert_eq!(Args::from_args(args(&[])).unwrap().workers, 1);
+        assert_eq!(
+            Args::from_args(args(&["--workers", "16"])).unwrap().workers,
+            16
+        );
+        assert!(Args::from_args(args(&["--workers", "-1"])).is_err());
+    }
 }

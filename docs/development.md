@@ -42,7 +42,7 @@ Run `git diff --check` before handing off changes.
 | GTOP names and bounds | `examples/src/problems.rs` |
 | CLI and DE→CMA runner | `examples/src/runner.rs` |
 | Native binary entry points | `examples/src/bin/` |
-| Mazda adapter and objectives | `examples/src/mazda.rs` |
+| Native Mazda evaluator and objectives | `examples/src/mazda.rs`, `examples/src/mazda_model.rs` |
 | Trading model and Yahoo cache | `examples/src/trading.rs` |
 | Factory material-flow objective | `examples/src/material_flow_planning.rs` |
 | Job-shop and harvesting objectives | `examples/src/{jobshop,harvesting}.rs` |

@@ -13,8 +13,9 @@
 //! it drives an ask/tell optimizer (here Rust CMA-ES) whose objective is the
 //! per-niche *improvement*, so the search fills and improves niches.
 //!
-//! Serial core (the Python original parallelizes with multiprocessing + shared
-//! memory); parallelism/logging/persistence stay in the Python orchestration.
+//! Archive mutation remains serial and deterministic. Objective evaluation can
+//! be supplied either point-by-point through [`QdFitness`] or in parallel
+//! batches through [`QdBatchFitness`].
 
 use crate::cmaes::{Cmaes, CmaesParams};
 use crate::fitness::Fitness;
@@ -32,6 +33,31 @@ where
 {
     fn eval(&mut self, x: &[f64]) -> (f64, Vec<f64>) {
         self(x)
+    }
+}
+
+/// Batch quality-diversity fitness. Implementations may evaluate `xs` in
+/// parallel, but must return one result per input in the same order.
+pub trait QdBatchFitness {
+    fn eval_batch(&mut self, xs: &[Vec<f64>]) -> Vec<(f64, Vec<f64>)>;
+}
+
+impl<F> QdBatchFitness for F
+where
+    F: FnMut(&[Vec<f64>]) -> Vec<(f64, Vec<f64>)>,
+{
+    fn eval_batch(&mut self, xs: &[Vec<f64>]) -> Vec<(f64, Vec<f64>)> {
+        self(xs)
+    }
+}
+
+struct SerialQdBatchFitness<'a> {
+    fitness: &'a mut dyn QdFitness,
+}
+
+impl QdBatchFitness for SerialQdBatchFitness<'_> {
+    fn eval_batch(&mut self, xs: &[Vec<f64>]) -> Vec<(f64, Vec<f64>)> {
+        xs.iter().map(|x| self.fitness.eval(x)).collect()
     }
 }
 
@@ -344,10 +370,25 @@ impl Archive {
     /// where `improvement = fitness - niche's previous fitness` (negative is an
     /// improvement — the objective the Diversifier's optimizer minimizes).
     pub fn update(&mut self, xs: &[Vec<f64>], fitness: &mut dyn QdFitness) -> (Vec<f64>, Vec<f64>) {
+        let evaluations: Vec<(f64, Vec<f64>)> = xs.iter().map(|x| fitness.eval(x)).collect();
+        self.update_evaluated(xs, &evaluations)
+            .expect("serial QD evaluation preserves batch length")
+    }
+
+    /// Apply already evaluated `(fitness, descriptor)` values in input order.
+    /// Keeping this step separate lets callers parallelize expensive objective
+    /// functions without concurrently mutating the archive.
+    pub fn update_evaluated(
+        &mut self,
+        xs: &[Vec<f64>],
+        evaluations: &[(f64, Vec<f64>)],
+    ) -> Result<(Vec<f64>, Vec<f64>), &'static str> {
+        if xs.len() != evaluations.len() {
+            return Err("QD evaluation batch length must match candidate batch length");
+        }
         let mut improvements = Vec::with_capacity(xs.len());
         let mut real_ys = Vec::with_capacity(xs.len());
-        for x in xs {
-            let (y, desc) = fitness.eval(x);
+        for (x, (y, desc)) in xs.iter().zip(evaluations) {
             if x.len() != self.dim
                 || desc.len() != self.qd_dim
                 || !y.is_finite()
@@ -357,14 +398,25 @@ impl Archive {
                 real_ys.push(f64::INFINITY);
                 continue;
             }
-            let niche = self.index_of_niche(&desc);
+            let niche = self.index_of_niche(desc);
             let oldy = self.ys[niche];
-            let improvement = if oldy.is_infinite() { y } else { y - oldy };
-            self.set(niche, y, &desc, x);
+            let improvement = if oldy.is_infinite() { *y } else { *y - oldy };
+            self.set(niche, *y, desc, x);
             improvements.push(improvement);
-            real_ys.push(y);
+            real_ys.push(*y);
         }
-        (improvements, real_ys)
+        Ok((improvements, real_ys))
+    }
+
+    /// Evaluate and apply a complete batch. Evaluation may be parallel inside
+    /// `fitness`; archive updates are deterministic and retain input order.
+    pub fn update_batch(
+        &mut self,
+        xs: &[Vec<f64>],
+        fitness: &mut dyn QdBatchFitness,
+    ) -> Result<(Vec<f64>, Vec<f64>), &'static str> {
+        let evaluations = fitness.eval_batch(xs);
+        self.update_evaluated(xs, &evaluations)
     }
 
     /// Re-sort niche indices ascending by fitness.
@@ -594,6 +646,22 @@ pub fn map_elites(
     p: &MapElitesParams,
     rng: &mut Rng,
 ) {
+    let mut batch_fitness = SerialQdBatchFitness { fitness };
+    map_elites_batch(archive, &mut batch_fitness, lower, upper, p, rng)
+        .expect("serial QD evaluation preserves batch length");
+}
+
+/// Batch-evaluation variant of [`map_elites`]. Candidate generation and
+/// archive updates remain deterministic; `fitness` controls evaluation
+/// parallelism.
+pub fn map_elites_batch(
+    archive: &mut Archive,
+    fitness: &mut dyn QdBatchFitness,
+    lower: &[f64],
+    upper: &[f64],
+    p: &MapElitesParams,
+    rng: &mut Rng,
+) -> Result<(), &'static str> {
     let mut select_n = archive.capacity();
     for _ in 0..p.generations {
         let xs = if p.use_sbx {
@@ -604,24 +672,25 @@ pub fn map_elites(
             let x2 = archive.random_xs(select_n, p.chunk_size, rng);
             iso_dd(&x1, &x2, lower, upper, rng, p.iso_sigma, p.line_sigma)
         };
-        archive.update(&xs, fitness);
+        archive.update_batch(&xs, fitness)?;
         archive.argsort();
         select_n = archive.occupied().max(1);
     }
     for _ in 0..p.cma_generations {
-        cma_emitter(archive, fitness, lower, upper, rng);
+        cma_emitter_batch(archive, fitness, lower, upper, rng)?;
     }
+    Ok(())
 }
 
 /// One CMA-ES emitter run: seed CMA-ES at a random good niche and drive it by
 /// per-niche improvement (the Python `optimize_cma_`).
-fn cma_emitter(
+fn cma_emitter_batch(
     archive: &mut Archive,
-    fitness: &mut dyn QdFitness,
+    fitness: &mut dyn QdBatchFitness,
     lower: &[f64],
     upper: &[f64],
     rng: &mut Rng,
-) {
+) -> Result<(), &'static str> {
     let best_n = 100.min(archive.capacity());
     let (x0, _) = archive.random_x_one(best_n, rng);
     let sigma = {
@@ -642,7 +711,7 @@ fn cma_emitter(
     let mut old_ys: Option<Vec<f64>> = None;
     for iter in 0..100 {
         let xs = es.ask();
-        let (improvement, _real) = archive.update(&xs, fitness);
+        let (improvement, _real) = archive.update_batch(&xs, fitness)?;
         let mut sorted = improvement.clone();
         sorted.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
         if let Some(oy) = &old_ys
@@ -658,6 +727,7 @@ fn cma_emitter(
         }
         old_ys = Some(sorted);
     }
+    Ok(())
 }
 
 /// Diversifier parameters.
@@ -689,6 +759,21 @@ pub fn diversify(
     p: &DiversifierParams,
     rng: &mut Rng,
 ) -> (Vec<f64>, f64) {
+    let mut batch_fitness = SerialQdBatchFitness { fitness };
+    diversify_batch(archive, &mut batch_fitness, lower, upper, p, rng)
+        .expect("serial QD evaluation preserves batch length")
+}
+
+/// Batch-evaluation variant of [`diversify`]. CMA-ES asks and tells remain
+/// serial while each requested population can be evaluated concurrently.
+pub fn diversify_batch(
+    archive: &mut Archive,
+    fitness: &mut dyn QdBatchFitness,
+    lower: &[f64],
+    upper: &[f64],
+    p: &DiversifierParams,
+    rng: &mut Rng,
+) -> Result<(Vec<f64>, f64), &'static str> {
     let mut best_x = vec![0.0; archive.dim()];
     let mut best_y = f64::INFINITY;
     let mut evals: u64 = 0;
@@ -713,7 +798,7 @@ pub fn diversify(
         let mut old_ys: Option<Vec<f64>> = None;
         for iter in 0..max_iters as i32 {
             let xs = es.ask();
-            let (improvement, real_ys) = archive.update(&xs, fitness);
+            let (improvement, real_ys) = archive.update_batch(&xs, fitness)?;
             evals += xs.len() as u64;
             // track best real solution
             for (x, &ry) in xs.iter().zip(&real_ys) {
@@ -739,7 +824,7 @@ pub fn diversify(
         }
         archive.argsort();
     }
-    (best_x, best_y)
+    Ok((best_x, best_y))
 }
 
 #[cfg(test)]
@@ -803,6 +888,61 @@ mod tests {
         map_elites(&mut archive, &mut qd, &lower, &upper, &params, &mut rng);
         assert!(archive.occupied() > 20, "occupied={}", archive.occupied());
         assert!(archive.best_y() < 0.5, "best_y={}", archive.best_y());
+    }
+
+    #[test]
+    fn evaluated_batches_match_serial_updates_and_validate_lengths() {
+        let mut rng_a = Rng::new(7);
+        let mut rng_b = Rng::new(7);
+        let mut serial = Archive::new(2, &[-2.0, -2.0], &[2.0, 2.0], 16, 0, &mut rng_a);
+        let mut batch = Archive::new(2, &[-2.0, -2.0], &[2.0, 2.0], 16, 0, &mut rng_b);
+        let xs = vec![vec![-1.0, 0.5], vec![0.25, -0.75], vec![1.0, 1.0]];
+        let expected = serial.update(&xs, &mut qd);
+        let evaluations: Vec<_> = xs.iter().map(|x| qd(x)).collect();
+        let actual = batch.update_evaluated(&xs, &evaluations).unwrap();
+        assert_eq!(actual, expected);
+        assert_eq!(batch.ys(), serial.ys());
+        assert_eq!(batch.descriptors(), serial.descriptors());
+        assert!(batch.update_evaluated(&xs, &evaluations[..2]).is_err());
+    }
+
+    #[test]
+    fn batch_map_elites_preserves_serial_results() {
+        let lower = vec![-2.0; 4];
+        let upper = vec![2.0; 4];
+        let mut rng_a = Rng::new(19);
+        let mut rng_b = Rng::new(19);
+        let mut serial = Archive::new(4, &[-2.0, -2.0], &[2.0, 2.0], 32, 0, &mut rng_a);
+        let mut batch = Archive::new(4, &[-2.0, -2.0], &[2.0, 2.0], 32, 0, &mut rng_b);
+        serial.seed_uniform(&lower, &upper, &mut rng_a);
+        batch.seed_uniform(&lower, &upper, &mut rng_b);
+        let initial = serial.xs().to_vec();
+        let initial_evaluations: Vec<_> = initial.iter().map(|x| qd(x)).collect();
+        serial.update(&initial, &mut qd);
+        batch
+            .update_evaluated(&initial, &initial_evaluations)
+            .unwrap();
+        serial.argsort();
+        batch.argsort();
+        let params = MapElitesParams {
+            generations: 10,
+            chunk_size: 8,
+            ..Default::default()
+        };
+        map_elites(&mut serial, &mut qd, &lower, &upper, &params, &mut rng_a);
+        let mut batch_qd = |xs: &[Vec<f64>]| xs.iter().map(|x| qd(x)).collect();
+        map_elites_batch(
+            &mut batch,
+            &mut batch_qd,
+            &lower,
+            &upper,
+            &params,
+            &mut rng_b,
+        )
+        .unwrap();
+        assert_eq!(batch.ys(), serial.ys());
+        assert_eq!(batch.xs(), serial.xs());
+        assert_eq!(batch.descriptors(), serial.descriptors());
     }
 
     #[test]

@@ -3,9 +3,9 @@
 `fcmaes-rust` is a native Rust port of the gradient-free optimization
 algorithms and selected application examples from fcmaes. The repository is a
 standalone Cargo workspace: optimizer numerics, retry coordination, GTOP
-models, and most example objective functions execute entirely in Rust. The
-Mazda examples are the one deliberate exception: they call an optional
-external response-surface model through its published C ABI.
+models, and example objective functions execute entirely in Rust. This now
+includes the Mazda mass and constraint response surfaces: their compact model
+data is embedded in the example crate and evaluated by native Rust code.
 
 ## Workspace
 
@@ -21,7 +21,7 @@ Diversifier, independent retry, coordinated retry, and weighted
 multi-objective retry.
 
 The example crate includes GTOP mission optimization, Mazda factory-design
-adapters, stock-strategy optimization, material-flow planning, flexible
+objectives, stock-strategy optimization, material-flow planning, flexible
 job-shop and harvesting, spherical t-design, transfer scheduling, damped
 control, F-8 aircraft control, and Lotka-Volterra control.
 
@@ -64,13 +64,18 @@ Generate the complete API reference with:
 cargo doc --workspace --no-deps --open
 ```
 
-## External data and models
+## Data-backed examples
 
-Most examples are self-contained. The trading example includes an offline
-adjusted-close cache and can optionally refresh it through Yahoo Finance. The
-Mazda examples are Rust optimizers around the published Mazda model ABI; the
-generated model library and decision table are not bundled and must be passed
-with `--library` and `--decisions`.
+The examples are self-contained by default. The trading example includes an
+offline adjusted-close cache and can optionally refresh it through Yahoo
+Finance. The Mazda decision table and compact response-surface data are bundled
+under `examples/data/`; neither Mazda binary accepts or needs an external model
+path. See the [Mazda data notice](examples/data/MAZDA_NOTICE.md) for provenance
+and the benchmark's acknowledgement request.
+
+Both Mazda drivers accept `--workers N` for ordered parallel objective batches;
+use `--workers 16` for sixteen evaluation threads or `--workers 0` to select
+available parallelism.
 
 This public workspace intentionally contains only the Rust port and its
 related documentation, native examples, benchmark results, and optional Rust
@@ -79,4 +84,6 @@ not part of this repository.
 
 ## License
 
-MIT. See [LICENSE](LICENSE).
+The Rust source and documentation are MIT licensed; see [LICENSE](LICENSE).
+The embedded Mazda benchmark data retains its recorded provenance and
+acknowledgement request; see [the Mazda data notice](examples/data/MAZDA_NOTICE.md).

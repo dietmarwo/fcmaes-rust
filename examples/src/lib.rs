@@ -10,6 +10,7 @@ pub mod jobshop;
 pub mod lotka;
 pub mod material_flow_planning;
 pub mod mazda;
+mod mazda_model;
 pub mod problems;
 pub mod runner;
 pub mod scheduling;
