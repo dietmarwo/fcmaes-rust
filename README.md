@@ -57,8 +57,9 @@ multi-objective retry.
 
 The example crate includes GTOP mission optimization, Mazda factory-design
 objectives, stock-strategy optimization, material-flow planning, flexible
-job-shop and harvesting, spherical t-design, transfer scheduling, damped
-control, F-8 aircraft control, and Lotka-Volterra control.
+job-shop and harvesting, multi-UAV task assignment, spherical t-design,
+transfer scheduling, damped control, F-8 aircraft control, and
+Lotka-Volterra control.
 
 ## Quick start
 

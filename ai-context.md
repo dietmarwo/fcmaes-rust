@@ -265,8 +265,8 @@ Use these conventions consistently:
 - Encode a categorical variable as an index into a fixed list. Do not treat
   the numerical distance between unrelated categories as physically real.
 - Repair permutations, schedules, and mutually exclusive choices
-  deterministically. See the job-shop, scheduling, harvesting, and Mazda
-  examples for decoding patterns.
+  deterministically. See the job-shop, scheduling, harvesting, multi-UAV, and
+  Mazda examples for decoding patterns.
 
 If a scalar penalty dominates everywhere, normalize the base objective and
 constraint residuals before tuning `rho`. If it is too small, infeasible points
@@ -580,6 +580,8 @@ Before declaring success, the AI should:
 - `examples/src/runner.rs`: canonical DE-to-CMA retry integration.
 - `examples/src/bin/mazda_mo.rs`: parallel constrained MODE driver.
 - `examples/src/bin/mazda_qd.rs`: parallel MAP-Elites/Diversifier driver.
+- `examples/src/uav.rs`: random-key decoding for mixed assignment, ordering,
+  scalar, and multi-objective optimization.
 - Generated rustdoc: `cargo doc --workspace --no-deps --open`.
 
 When code and this guide disagree, treat the current public Rust API and tests

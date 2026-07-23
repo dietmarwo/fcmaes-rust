@@ -14,6 +14,7 @@ The `fcmaes-examples` crate provides:
 | `mazda-qd` | CVT-MAP-Elites, optional Diversifier | Mazda behavior archive |
 | `trading` | MODE and CVT-MAP-Elites | Four-stock EMA/SMA strategy search |
 | `material-flow-planning` | BiteOpt | Native 24-hour factory simulation and throughput measurement |
+| `uav-task-assignment` | BiteOpt retry and MODE | Single- and multi-objective extended team-orienteering benchmark |
 | `jobshop` | BiteOpt | Flexible job-shop objective; optional Brandimarte `.fjs` input |
 | `harvesting` | BiteOpt | Job-shop with bounded machine deployment windows |
 | `t-design` | BiteOpt | Weighted spherical t-design using native harmonics |
@@ -27,8 +28,8 @@ category.
 
 ## Native objective ports
 
-Seven application families have native Rust objective implementations.
-Every binary accepts `--evals`, `--batch`, and `--seed`; the defaults are
+Seven compact application families have native Rust objective implementations.
+Each binary accepts `--evals`, `--batch`, and `--seed`; the defaults are
 20,000, 16, and 42. These small commands are useful smoke tests:
 
 ```bash
@@ -173,6 +174,52 @@ the native BiteOpt implementation with a fixed seed, ask/tell batch size, and
 semantic drift immediately visible. `OBJECTIVE` and `OPTIMIZE` lines report
 separate wall times and throughput. Override the workloads with
 `--benchmark-evaluations` and `--optimize-evaluations`.
+
+## Multi-UAV task assignment
+
+The `uav-task-assignment` binary ports the enhanced
+Multi-UAV-Task-Assignment-Benchmark's extended team-orienteering objective.
+It generates the published small (5 UAVs/30 targets), medium (10/60), and
+large (15/90) distributions without external files. The decision vector uses
+`vehicles - 1` route-separator keys plus one random key per target, ensuring
+that each target appears exactly once in the decoded visit order.
+
+The default command runs both formulations on the small preset:
+
+```bash
+cargo run --release -p fcmaes-examples --bin uav-task-assignment
+```
+
+- Single-objective mode maximizes collected reward with independent BiteOpt
+  retries. `--evaluations` is the budget per retry and `--workers` controls
+  outer retry parallelism.
+- Multi-objective mode uses one coordinated MODE population to minimize
+  negative reward, maximum arrival time, and the benchmark energy proxy.
+  `--mo-evaluations` is its total requested budget and the same `--workers`
+  value controls ordered population evaluation.
+
+A quick four-worker smoke run is:
+
+```bash
+cargo run --release -p fcmaes-examples --bin uav-task-assignment -- \
+  --mode both --evaluations 2000 --retries 4 \
+  --mo-evaluations 2048 --popsize 64 --workers 4 --seed 65
+```
+
+Use `--size medium` or `--size large`, or override `--vehicles`, `--targets`,
+and `--map-size` independently. A 16-worker single-objective run matching the
+benchmark's two retries per worker and small per-retry budget is:
+
+```bash
+cargo run --release -p fcmaes-examples --bin uav-task-assignment -- \
+  --size small --mode single --workers 16 --retries 32 \
+  --evaluations 2000000 --depth 2 --seed 65
+```
+
+The native evaluator retains the enhanced benchmark's strict arrival-horizon
+test and travel-energy formula. Rust seeds use PCG and therefore do not create
+the same instances as Python's Mersenne Twister. See the
+[provenance and compatibility notice](../examples/data/UAV_NOTICE.md).
 
 ## Problem catalog
 

@@ -76,3 +76,7 @@ path = "src/bin/f8.rs"
 [[bin]]
 name = "lotka"
 path = "src/bin/lotka.rs"
+
+[[bin]]
+name = "uav-task-assignment"
+path = "src/bin/uav_task_assignment.rs"

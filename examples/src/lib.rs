@@ -16,3 +16,4 @@ pub mod runner;
 pub mod scheduling;
 pub mod tdesign;
 pub mod trading;
+pub mod uav;
