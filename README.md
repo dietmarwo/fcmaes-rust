@@ -105,6 +105,25 @@ Generate the complete API reference with:
 cargo doc --workspace --no-deps --open
 ```
 
+## Optimizer comparison
+
+The reproducible [GTOP optimizer comparison](benchmarks/optimizer-comparison/comparison.md)
+uses 100 experiments per problem and a common 240,000-evaluation cap. fcmaes
+has the best mean optimum on six of seven problems and the lowest mean wall
+time on five of seven. The exception in mean solution quality is Tandem, where
+the adaptive BIPOP-CMA-ES restart strategy leads the equal-budget table but
+does not reach the `-1493` target.
+
+In the pre-registered Tandem stress test, BIPOP-CMA-ES reached 0/1,000 targets:
+its best result was -1410.050665 after 9,466,290,846 actual evaluations. In
+contrast, fcmaes coordinated DE→CMA retry reached the target in 85/100
+experiments with a mean of 230,727,025 evaluations. These are separate budget
+regimes: the first comparison is equal-budget, while the latter result
+demonstrates the benefit of adaptive retry coordination on a hard problem.
+The original Python/C++ fcmaes performance table reports a similar 81/100
+Tandem success rate; the linked report records both results and their exact
+parallel execution models.
+
 ## Data-backed examples
 
 The examples are self-contained by default. The trading example includes an
@@ -112,7 +131,9 @@ offline adjusted-close cache and can optionally refresh it through Yahoo
 Finance. The Mazda decision table and compact response-surface data are bundled
 under `examples/data/`; neither Mazda binary accepts or needs an external model
 path. See the [Mazda data notice](examples/data/MAZDA_NOTICE.md) for provenance
-and the benchmark's acknowledgement request.
+and the benchmark's acknowledgement request. The
+[Multi-UAV data and compatibility notice](examples/data/UAV_NOTICE.md)
+documents the native task-assignment port and its source benchmark.
 
 Both Mazda drivers accept `--workers N` for ordered parallel objective batches;
 use `--workers 16` for sixteen evaluation threads or `--workers 0` to select

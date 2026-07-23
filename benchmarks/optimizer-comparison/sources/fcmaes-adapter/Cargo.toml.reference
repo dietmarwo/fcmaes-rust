@@ -1,0 +1,11 @@
+[package]
+name = "fcmaes-benchmark-adapter"
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+publish = false
+
+[dependencies]
+fcmaes-core = { path = "__FCMAES_CORE__" }
+gtop-benchmark-common = { path = "../common" }
+

@@ -1,0 +1,12 @@
+[package]
+name = "genetic-algorithms-benchmark-adapter"
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+publish = false
+
+[dependencies]
+genetic_algorithms = "=3.0.0"
+gtop-benchmark-common = { path = "../common" }
+rand = "=0.9.2"
+

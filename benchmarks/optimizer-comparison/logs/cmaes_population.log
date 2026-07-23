@@ -1,0 +1,77 @@
+start library=cmaes algorithm=CMA-ES mode=parallel-population problem=Cassini1 runs=100 workers=24 budget=240000
+progress library=cmaes problem=Cassini1 completed=10/100 best=17.267235047 wall_ms=19.037
+progress library=cmaes problem=Cassini1 completed=20/100 best=16.711469743 wall_ms=26.284
+progress library=cmaes problem=Cassini1 completed=30/100 best=17.267222518 wall_ms=23.325
+progress library=cmaes problem=Cassini1 completed=40/100 best=16.711437975 wall_ms=31.740
+progress library=cmaes problem=Cassini1 completed=50/100 best=12.528562315 wall_ms=27.467
+progress library=cmaes problem=Cassini1 completed=60/100 best=16.711468646 wall_ms=23.053
+progress library=cmaes problem=Cassini1 completed=70/100 best=12.528524855 wall_ms=21.994
+progress library=cmaes problem=Cassini1 completed=80/100 best=16.711433044 wall_ms=27.076
+progress library=cmaes problem=Cassini1 completed=90/100 best=13.807106174 wall_ms=22.762
+progress library=cmaes problem=Cassini1 completed=100/100 best=12.528450254 wall_ms=18.598
+start library=cmaes algorithm=CMA-ES mode=parallel-population problem=Cassini2 runs=100 workers=24 budget=240000
+progress library=cmaes problem=Cassini2 completed=10/100 best=19.309103163 wall_ms=457.305
+progress library=cmaes problem=Cassini2 completed=20/100 best=18.949237452 wall_ms=287.745
+progress library=cmaes problem=Cassini2 completed=30/100 best=24.262977858 wall_ms=367.700
+progress library=cmaes problem=Cassini2 completed=40/100 best=20.261837645 wall_ms=413.471
+progress library=cmaes problem=Cassini2 completed=50/100 best=14.250962114 wall_ms=708.806
+progress library=cmaes problem=Cassini2 completed=60/100 best=17.806821873 wall_ms=542.391
+progress library=cmaes problem=Cassini2 completed=70/100 best=19.017573570 wall_ms=395.733
+progress library=cmaes problem=Cassini2 completed=80/100 best=21.523242188 wall_ms=447.507
+progress library=cmaes problem=Cassini2 completed=90/100 best=17.062672567 wall_ms=468.714
+progress library=cmaes problem=Cassini2 completed=100/100 best=29.331189497 wall_ms=588.322
+start library=cmaes algorithm=CMA-ES mode=parallel-population problem=Gtoc1 runs=100 workers=24 budget=240000
+progress library=cmaes problem=Gtoc1 completed=10/100 best=-553398.072348601 wall_ms=40.904
+progress library=cmaes problem=Gtoc1 completed=20/100 best=-401975.444739296 wall_ms=37.964
+progress library=cmaes problem=Gtoc1 completed=30/100 best=-854973.775550457 wall_ms=43.828
+progress library=cmaes problem=Gtoc1 completed=40/100 best=-408531.935800263 wall_ms=12.652
+progress library=cmaes problem=Gtoc1 completed=50/100 best=-902699.239474471 wall_ms=26.397
+progress library=cmaes problem=Gtoc1 completed=60/100 best=-1186563.404610232 wall_ms=29.458
+progress library=cmaes problem=Gtoc1 completed=70/100 best=-597171.020092141 wall_ms=28.977
+progress library=cmaes problem=Gtoc1 completed=80/100 best=-132904.880720172 wall_ms=27.302
+progress library=cmaes problem=Gtoc1 completed=90/100 best=-913483.102440678 wall_ms=47.282
+progress library=cmaes problem=Gtoc1 completed=100/100 best=-941688.650746974 wall_ms=28.462
+start library=cmaes algorithm=CMA-ES mode=parallel-population problem=Messenger runs=100 workers=24 budget=240000
+progress library=cmaes problem=Messenger completed=10/100 best=15.687488312 wall_ms=329.115
+progress library=cmaes problem=Messenger completed=20/100 best=17.097751963 wall_ms=315.856
+progress library=cmaes problem=Messenger completed=30/100 best=12.759731990 wall_ms=154.182
+progress library=cmaes problem=Messenger completed=40/100 best=17.602798241 wall_ms=399.412
+progress library=cmaes problem=Messenger completed=50/100 best=20.189260274 wall_ms=263.429
+progress library=cmaes problem=Messenger completed=60/100 best=12.612621854 wall_ms=110.113
+progress library=cmaes problem=Messenger completed=70/100 best=16.381066321 wall_ms=431.292
+progress library=cmaes problem=Messenger completed=80/100 best=13.378684903 wall_ms=244.123
+progress library=cmaes problem=Messenger completed=90/100 best=12.322079165 wall_ms=259.618
+progress library=cmaes problem=Messenger completed=100/100 best=10.531587540 wall_ms=268.119
+start library=cmaes algorithm=CMA-ES mode=parallel-population problem=Rosetta runs=100 workers=24 budget=240000
+progress library=cmaes problem=Rosetta completed=10/100 best=2.032658711 wall_ms=362.601
+progress library=cmaes problem=Rosetta completed=20/100 best=4.474924714 wall_ms=272.034
+progress library=cmaes problem=Rosetta completed=30/100 best=2.638520095 wall_ms=635.830
+progress library=cmaes problem=Rosetta completed=40/100 best=7.103630157 wall_ms=406.711
+progress library=cmaes problem=Rosetta completed=50/100 best=1.891856163 wall_ms=520.833
+progress library=cmaes problem=Rosetta completed=60/100 best=3.282032421 wall_ms=423.986
+progress library=cmaes problem=Rosetta completed=70/100 best=8.145253252 wall_ms=474.870
+progress library=cmaes problem=Rosetta completed=80/100 best=2.643750312 wall_ms=527.997
+progress library=cmaes problem=Rosetta completed=90/100 best=4.459513178 wall_ms=503.587
+progress library=cmaes problem=Rosetta completed=100/100 best=4.710847491 wall_ms=575.578
+start library=cmaes algorithm=CMA-ES mode=parallel-population problem=Tandem runs=100 workers=24 budget=240000
+progress library=cmaes problem=Tandem completed=10/100 best=-679.427427804 wall_ms=255.097
+progress library=cmaes problem=Tandem completed=20/100 best=-99.333511661 wall_ms=216.195
+progress library=cmaes problem=Tandem completed=30/100 best=-169.034471705 wall_ms=131.176
+progress library=cmaes problem=Tandem completed=40/100 best=-189.325246788 wall_ms=165.209
+progress library=cmaes problem=Tandem completed=50/100 best=-98.290482940 wall_ms=307.466
+progress library=cmaes problem=Tandem completed=60/100 best=-77.652387134 wall_ms=268.232
+progress library=cmaes problem=Tandem completed=70/100 best=-100.372427843 wall_ms=353.357
+progress library=cmaes problem=Tandem completed=80/100 best=-674.115154493 wall_ms=317.129
+progress library=cmaes problem=Tandem completed=90/100 best=-428.007283799 wall_ms=180.814
+progress library=cmaes problem=Tandem completed=100/100 best=-107.314783110 wall_ms=186.480
+start library=cmaes algorithm=CMA-ES mode=parallel-population problem=Sagas runs=100 workers=24 budget=240000
+progress library=cmaes problem=Sagas completed=10/100 best=236.546070077 wall_ms=106.699
+progress library=cmaes problem=Sagas completed=20/100 best=230.745900515 wall_ms=99.353
+progress library=cmaes problem=Sagas completed=30/100 best=234.938757107 wall_ms=91.198
+progress library=cmaes problem=Sagas completed=40/100 best=231.366993998 wall_ms=144.944
+progress library=cmaes problem=Sagas completed=50/100 best=234.938756049 wall_ms=61.914
+progress library=cmaes problem=Sagas completed=60/100 best=234.944390353 wall_ms=87.669
+progress library=cmaes problem=Sagas completed=70/100 best=236.546062565 wall_ms=79.071
+progress library=cmaes problem=Sagas completed=80/100 best=236.566869468 wall_ms=33.154
+progress library=cmaes problem=Sagas completed=90/100 best=228.681018453 wall_ms=103.784
+progress library=cmaes problem=Sagas completed=100/100 best=284.952621079 wall_ms=52.078

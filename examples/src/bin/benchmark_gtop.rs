@@ -4,7 +4,7 @@ use std::path::PathBuf;
 use std::time::Instant;
 
 use fcmaes_examples::benchmark_gtop::{
-    RunRecord, render_adoc, run_seed, selected_cases, summarize,
+    RunRecord, render_markdown, run_seed, selected_cases, summarize,
 };
 use fcmaes_examples::runner::{Cli, run_advanced};
 
@@ -53,7 +53,7 @@ impl BenchmarkCli {
       --problem NAME           run one benchmark problem\n\
       --include-slow           include Tandem and Messenger Full\n\
       --raw-output PATH        write one TSV row after every experiment\n\
-      --table-output PATH      update the AsciiDoc table after every problem\n\
+      --table-output PATH      update the Markdown table after every problem\n\
       --help                   show this help";
 
     fn from_env() -> Result<Option<Self>, String> {
@@ -234,11 +234,11 @@ fn main() {
         }
         summaries.push(summarize(case, &records));
         if let Some(path) = cli.table_output.as_ref() {
-            std::fs::write(path, render_adoc(&summaries))
+            std::fs::write(path, render_markdown(&summaries))
                 .unwrap_or_else(|error| panic!("failed to write {}: {error}", path.display()));
         }
     }
-    let table = render_adoc(&summaries);
+    let table = render_markdown(&summaries);
     println!("\n{table}");
 }
 
@@ -269,7 +269,7 @@ mod tests {
             "--raw-output",
             "raw.tsv",
             "--table-output",
-            "table.adoc",
+            "table.md",
         ])
         .unwrap()
         .unwrap();
@@ -283,7 +283,7 @@ mod tests {
         assert_eq!(cli.problem.as_deref(), Some("sagas"));
         assert!(cli.include_slow);
         assert_eq!(cli.raw_output, Some(PathBuf::from("raw.tsv")));
-        assert_eq!(cli.table_output, Some(PathBuf::from("table.adoc")));
+        assert_eq!(cli.table_output, Some(PathBuf::from("table.md")));
     }
 
     #[test]

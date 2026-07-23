@@ -1,0 +1,77 @@
+start library=genetic_algorithms algorithm=L-SHADE mode=native-serial problem=Cassini1 runs=100 workers=24 budget=240000
+progress library=genetic_algorithms problem=Cassini1 completed=10/100 best=6.531240502 wall_ms=913.166
+progress library=genetic_algorithms problem=Cassini1 completed=20/100 best=6.077860321 wall_ms=919.653
+progress library=genetic_algorithms problem=Cassini1 completed=30/100 best=6.253114554 wall_ms=911.614
+progress library=genetic_algorithms problem=Cassini1 completed=40/100 best=6.463680616 wall_ms=911.296
+progress library=genetic_algorithms problem=Cassini1 completed=50/100 best=7.393270050 wall_ms=910.803
+progress library=genetic_algorithms problem=Cassini1 completed=60/100 best=6.054686337 wall_ms=909.121
+progress library=genetic_algorithms problem=Cassini1 completed=70/100 best=5.701422530 wall_ms=909.525
+progress library=genetic_algorithms problem=Cassini1 completed=80/100 best=6.206523549 wall_ms=907.011
+progress library=genetic_algorithms problem=Cassini1 completed=90/100 best=7.274037764 wall_ms=900.980
+progress library=genetic_algorithms problem=Cassini1 completed=100/100 best=6.183366918 wall_ms=906.457
+start library=genetic_algorithms algorithm=L-SHADE mode=native-serial problem=Cassini2 runs=100 workers=24 budget=240000
+progress library=genetic_algorithms problem=Cassini2 completed=10/100 best=12.021538372 wall_ms=1228.385
+progress library=genetic_algorithms problem=Cassini2 completed=20/100 best=15.753773452 wall_ms=1251.935
+progress library=genetic_algorithms problem=Cassini2 completed=30/100 best=16.367408549 wall_ms=1252.710
+progress library=genetic_algorithms problem=Cassini2 completed=40/100 best=16.121563265 wall_ms=1255.456
+progress library=genetic_algorithms problem=Cassini2 completed=50/100 best=11.740886326 wall_ms=1277.399
+progress library=genetic_algorithms problem=Cassini2 completed=60/100 best=15.636830013 wall_ms=1240.479
+progress library=genetic_algorithms problem=Cassini2 completed=70/100 best=14.584141912 wall_ms=1227.547
+progress library=genetic_algorithms problem=Cassini2 completed=80/100 best=16.287664084 wall_ms=1244.059
+progress library=genetic_algorithms problem=Cassini2 completed=90/100 best=17.155579652 wall_ms=1262.163
+progress library=genetic_algorithms problem=Cassini2 completed=100/100 best=16.824905643 wall_ms=1217.284
+start library=genetic_algorithms algorithm=L-SHADE mode=native-serial problem=Gtoc1 runs=100 workers=24 budget=240000
+progress library=genetic_algorithms problem=Gtoc1 completed=10/100 best=-765074.733407094 wall_ms=1303.862
+progress library=genetic_algorithms problem=Gtoc1 completed=20/100 best=-1046064.235735989 wall_ms=1308.112
+progress library=genetic_algorithms problem=Gtoc1 completed=30/100 best=-773820.497284663 wall_ms=1311.823
+progress library=genetic_algorithms problem=Gtoc1 completed=40/100 best=-870806.100535550 wall_ms=1311.098
+progress library=genetic_algorithms problem=Gtoc1 completed=50/100 best=-989912.188680373 wall_ms=1297.810
+progress library=genetic_algorithms problem=Gtoc1 completed=60/100 best=-752783.184799628 wall_ms=1310.343
+progress library=genetic_algorithms problem=Gtoc1 completed=70/100 best=-838575.416066905 wall_ms=1299.420
+progress library=genetic_algorithms problem=Gtoc1 completed=80/100 best=-809381.936099045 wall_ms=1306.975
+progress library=genetic_algorithms problem=Gtoc1 completed=90/100 best=-777341.007568053 wall_ms=1307.503
+progress library=genetic_algorithms problem=Gtoc1 completed=100/100 best=-1010255.634518064 wall_ms=1297.487
+start library=genetic_algorithms algorithm=L-SHADE mode=native-serial problem=Messenger runs=100 workers=24 budget=240000
+progress library=genetic_algorithms problem=Messenger completed=10/100 best=11.547345299 wall_ms=980.805
+progress library=genetic_algorithms problem=Messenger completed=20/100 best=14.254435292 wall_ms=969.836
+progress library=genetic_algorithms problem=Messenger completed=30/100 best=15.320886371 wall_ms=965.380
+progress library=genetic_algorithms problem=Messenger completed=40/100 best=14.847049466 wall_ms=983.378
+progress library=genetic_algorithms problem=Messenger completed=50/100 best=14.415851737 wall_ms=980.356
+progress library=genetic_algorithms problem=Messenger completed=60/100 best=14.598949865 wall_ms=977.858
+progress library=genetic_algorithms problem=Messenger completed=70/100 best=14.257754561 wall_ms=973.726
+progress library=genetic_algorithms problem=Messenger completed=80/100 best=14.108964183 wall_ms=972.341
+progress library=genetic_algorithms problem=Messenger completed=90/100 best=16.205796919 wall_ms=971.379
+progress library=genetic_algorithms problem=Messenger completed=100/100 best=13.452812781 wall_ms=968.999
+start library=genetic_algorithms algorithm=L-SHADE mode=native-serial problem=Rosetta runs=100 workers=24 budget=240000
+progress library=genetic_algorithms problem=Rosetta completed=10/100 best=6.227180536 wall_ms=1208.503
+progress library=genetic_algorithms problem=Rosetta completed=20/100 best=6.506827325 wall_ms=1203.392
+progress library=genetic_algorithms problem=Rosetta completed=30/100 best=6.346703439 wall_ms=1220.014
+progress library=genetic_algorithms problem=Rosetta completed=40/100 best=7.324667706 wall_ms=1223.742
+progress library=genetic_algorithms problem=Rosetta completed=50/100 best=7.143057213 wall_ms=1231.103
+progress library=genetic_algorithms problem=Rosetta completed=60/100 best=8.517783602 wall_ms=1188.625
+progress library=genetic_algorithms problem=Rosetta completed=70/100 best=8.537948026 wall_ms=1217.132
+progress library=genetic_algorithms problem=Rosetta completed=80/100 best=7.661279999 wall_ms=1223.027
+progress library=genetic_algorithms problem=Rosetta completed=90/100 best=5.160124422 wall_ms=1210.172
+progress library=genetic_algorithms problem=Rosetta completed=100/100 best=7.393973592 wall_ms=1225.186
+start library=genetic_algorithms algorithm=L-SHADE mode=native-serial problem=Tandem runs=100 workers=24 budget=240000
+progress library=genetic_algorithms problem=Tandem completed=10/100 best=-60.553753636 wall_ms=1039.917
+progress library=genetic_algorithms problem=Tandem completed=20/100 best=-121.186050373 wall_ms=1058.296
+progress library=genetic_algorithms problem=Tandem completed=30/100 best=-140.422903659 wall_ms=1061.051
+progress library=genetic_algorithms problem=Tandem completed=40/100 best=-122.256461525 wall_ms=1057.782
+progress library=genetic_algorithms problem=Tandem completed=50/100 best=-88.809491920 wall_ms=1053.017
+progress library=genetic_algorithms problem=Tandem completed=60/100 best=-62.789975851 wall_ms=1045.460
+progress library=genetic_algorithms problem=Tandem completed=70/100 best=-160.121071341 wall_ms=1058.857
+progress library=genetic_algorithms problem=Tandem completed=80/100 best=-78.236475020 wall_ms=1051.134
+progress library=genetic_algorithms problem=Tandem completed=90/100 best=-100.434388253 wall_ms=1038.889
+progress library=genetic_algorithms problem=Tandem completed=100/100 best=-70.327673406 wall_ms=1053.881
+start library=genetic_algorithms algorithm=L-SHADE mode=native-serial problem=Sagas runs=100 workers=24 budget=240000
+progress library=genetic_algorithms problem=Sagas completed=10/100 best=125.680682173 wall_ms=552.861
+progress library=genetic_algorithms problem=Sagas completed=20/100 best=186.926177787 wall_ms=552.689
+progress library=genetic_algorithms problem=Sagas completed=30/100 best=113.968227185 wall_ms=558.897
+progress library=genetic_algorithms problem=Sagas completed=40/100 best=85.722326913 wall_ms=551.970
+progress library=genetic_algorithms problem=Sagas completed=50/100 best=179.824430249 wall_ms=554.400
+progress library=genetic_algorithms problem=Sagas completed=60/100 best=164.396552359 wall_ms=560.476
+progress library=genetic_algorithms problem=Sagas completed=70/100 best=167.138772013 wall_ms=561.464
+progress library=genetic_algorithms problem=Sagas completed=80/100 best=117.482292637 wall_ms=557.976
+progress library=genetic_algorithms problem=Sagas completed=90/100 best=92.365268543 wall_ms=562.126
+progress library=genetic_algorithms problem=Sagas completed=100/100 best=170.443362150 wall_ms=551.014

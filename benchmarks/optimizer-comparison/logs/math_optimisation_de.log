@@ -1,0 +1,77 @@
+start library=math-optimisation algorithm=DE/best/1/bin mode=parallel-population problem=Cassini1 runs=100 workers=24 budget=240000
+progress library=math-optimisation problem=Cassini1 completed=10/100 best=11.288429192 wall_ms=153.479
+progress library=math-optimisation problem=Cassini1 completed=20/100 best=5.303421161 wall_ms=156.699
+progress library=math-optimisation problem=Cassini1 completed=30/100 best=5.303420322 wall_ms=150.047
+progress library=math-optimisation problem=Cassini1 completed=40/100 best=12.528511028 wall_ms=152.649
+progress library=math-optimisation problem=Cassini1 completed=50/100 best=5.304977481 wall_ms=154.133
+progress library=math-optimisation problem=Cassini1 completed=60/100 best=13.336695527 wall_ms=156.440
+progress library=math-optimisation problem=Cassini1 completed=70/100 best=12.528362326 wall_ms=151.292
+progress library=math-optimisation problem=Cassini1 completed=80/100 best=10.996522742 wall_ms=154.535
+progress library=math-optimisation problem=Cassini1 completed=90/100 best=14.706396971 wall_ms=155.292
+progress library=math-optimisation problem=Cassini1 completed=100/100 best=11.031951342 wall_ms=154.682
+start library=math-optimisation algorithm=DE/best/1/bin mode=parallel-population problem=Cassini2 runs=100 workers=24 budget=240000
+progress library=math-optimisation problem=Cassini2 completed=10/100 best=20.155384703 wall_ms=131.591
+progress library=math-optimisation problem=Cassini2 completed=20/100 best=15.709220462 wall_ms=131.789
+progress library=math-optimisation problem=Cassini2 completed=30/100 best=11.435742647 wall_ms=133.845
+progress library=math-optimisation problem=Cassini2 completed=40/100 best=20.793211695 wall_ms=134.649
+progress library=math-optimisation problem=Cassini2 completed=50/100 best=24.625120135 wall_ms=140.062
+progress library=math-optimisation problem=Cassini2 completed=60/100 best=22.785508435 wall_ms=132.308
+progress library=math-optimisation problem=Cassini2 completed=70/100 best=17.469149811 wall_ms=130.565
+progress library=math-optimisation problem=Cassini2 completed=80/100 best=16.708345074 wall_ms=128.064
+progress library=math-optimisation problem=Cassini2 completed=90/100 best=20.531232255 wall_ms=128.776
+progress library=math-optimisation problem=Cassini2 completed=100/100 best=14.061117744 wall_ms=128.406
+start library=math-optimisation algorithm=DE/best/1/bin mode=parallel-population problem=Gtoc1 runs=100 workers=24 budget=240000
+progress library=math-optimisation problem=Gtoc1 completed=10/100 best=-519448.003709472 wall_ms=155.138
+progress library=math-optimisation problem=Gtoc1 completed=20/100 best=-442597.141759537 wall_ms=151.896
+progress library=math-optimisation problem=Gtoc1 completed=30/100 best=-777149.388728722 wall_ms=150.528
+progress library=math-optimisation problem=Gtoc1 completed=40/100 best=-62222.944215152 wall_ms=157.050
+progress library=math-optimisation problem=Gtoc1 completed=50/100 best=-889377.592897886 wall_ms=146.570
+progress library=math-optimisation problem=Gtoc1 completed=60/100 best=-814129.654867780 wall_ms=152.789
+progress library=math-optimisation problem=Gtoc1 completed=70/100 best=-901171.848728117 wall_ms=147.434
+progress library=math-optimisation problem=Gtoc1 completed=80/100 best=-630786.484491555 wall_ms=148.756
+progress library=math-optimisation problem=Gtoc1 completed=90/100 best=-41774.555989888 wall_ms=161.717
+progress library=math-optimisation problem=Gtoc1 completed=100/100 best=-48672.130539499 wall_ms=148.814
+start library=math-optimisation algorithm=DE/best/1/bin mode=parallel-population problem=Messenger runs=100 workers=24 budget=240000
+progress library=math-optimisation problem=Messenger completed=10/100 best=17.697146695 wall_ms=134.897
+progress library=math-optimisation problem=Messenger completed=20/100 best=12.316728111 wall_ms=132.564
+progress library=math-optimisation problem=Messenger completed=30/100 best=10.941045753 wall_ms=132.903
+progress library=math-optimisation problem=Messenger completed=40/100 best=13.447084269 wall_ms=134.772
+progress library=math-optimisation problem=Messenger completed=50/100 best=17.067019879 wall_ms=135.551
+progress library=math-optimisation problem=Messenger completed=60/100 best=13.511688150 wall_ms=136.308
+progress library=math-optimisation problem=Messenger completed=70/100 best=12.767269591 wall_ms=129.548
+progress library=math-optimisation problem=Messenger completed=80/100 best=13.828262152 wall_ms=138.404
+progress library=math-optimisation problem=Messenger completed=90/100 best=12.596115510 wall_ms=136.308
+progress library=math-optimisation problem=Messenger completed=100/100 best=13.857054784 wall_ms=135.758
+start library=math-optimisation algorithm=DE/best/1/bin mode=parallel-population problem=Rosetta runs=100 workers=24 budget=240000
+progress library=math-optimisation problem=Rosetta completed=10/100 best=7.550112074 wall_ms=136.869
+progress library=math-optimisation problem=Rosetta completed=20/100 best=10.048078895 wall_ms=137.453
+progress library=math-optimisation problem=Rosetta completed=30/100 best=12.427365094 wall_ms=136.242
+progress library=math-optimisation problem=Rosetta completed=40/100 best=5.679485691 wall_ms=135.410
+progress library=math-optimisation problem=Rosetta completed=50/100 best=7.405317735 wall_ms=143.690
+progress library=math-optimisation problem=Rosetta completed=60/100 best=7.560256735 wall_ms=136.808
+progress library=math-optimisation problem=Rosetta completed=70/100 best=2.600479660 wall_ms=135.482
+progress library=math-optimisation problem=Rosetta completed=80/100 best=6.842439940 wall_ms=139.143
+progress library=math-optimisation problem=Rosetta completed=90/100 best=5.352447551 wall_ms=133.655
+progress library=math-optimisation problem=Rosetta completed=100/100 best=12.755644318 wall_ms=135.519
+start library=math-optimisation algorithm=DE/best/1/bin mode=parallel-population problem=Tandem runs=100 workers=24 budget=240000
+progress library=math-optimisation problem=Tandem completed=10/100 best=-56.348238812 wall_ms=134.560
+progress library=math-optimisation problem=Tandem completed=20/100 best=-49.665523915 wall_ms=133.020
+progress library=math-optimisation problem=Tandem completed=30/100 best=-58.923106905 wall_ms=135.685
+progress library=math-optimisation problem=Tandem completed=40/100 best=-81.857178232 wall_ms=135.621
+progress library=math-optimisation problem=Tandem completed=50/100 best=-74.581887425 wall_ms=139.717
+progress library=math-optimisation problem=Tandem completed=60/100 best=-412.905563115 wall_ms=135.310
+progress library=math-optimisation problem=Tandem completed=70/100 best=-1019.477686669 wall_ms=139.098
+progress library=math-optimisation problem=Tandem completed=80/100 best=-10.266842195 wall_ms=136.491
+progress library=math-optimisation problem=Tandem completed=90/100 best=-15.883131322 wall_ms=137.401
+progress library=math-optimisation problem=Tandem completed=100/100 best=-96.067040532 wall_ms=133.003
+start library=math-optimisation algorithm=DE/best/1/bin mode=parallel-population problem=Sagas runs=100 workers=24 budget=240000
+progress library=math-optimisation problem=Sagas completed=10/100 best=230.729895391 wall_ms=104.060
+progress library=math-optimisation problem=Sagas completed=20/100 best=229.565453653 wall_ms=97.258
+progress library=math-optimisation problem=Sagas completed=30/100 best=230.732459666 wall_ms=98.471
+progress library=math-optimisation problem=Sagas completed=40/100 best=229.551976084 wall_ms=98.811
+progress library=math-optimisation problem=Sagas completed=50/100 best=230.522164760 wall_ms=99.042
+progress library=math-optimisation problem=Sagas completed=60/100 best=230.456674590 wall_ms=103.609
+progress library=math-optimisation problem=Sagas completed=70/100 best=228.185272948 wall_ms=103.509
+progress library=math-optimisation problem=Sagas completed=80/100 best=229.551993922 wall_ms=96.193
+progress library=math-optimisation problem=Sagas completed=90/100 best=227.597973363 wall_ms=103.159
+progress library=math-optimisation problem=Sagas completed=100/100 best=225.072233809 wall_ms=96.950

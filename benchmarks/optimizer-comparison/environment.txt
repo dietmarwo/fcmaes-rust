@@ -1,0 +1,9 @@
+Recorded: 2026-07-23
+Host OS: Linux 6.8.0-136-generic x86_64
+CPU: AMD Ryzen 9 9950X 16-Core Processor
+Topology: 1 socket, 16 physical cores, 2 threads per core, 32 logical CPUs
+Rust compiler: rustc 1.97.1 (8bab26f4f 2026-07-14)
+Cargo: cargo 1.97.1 (c980f4866 2026-06-30)
+Build profile: release
+Primary comparison: at most 24 evaluation workers
+Tandem stress: 24 concurrent single-threaded optimizer processes

@@ -1,0 +1,10 @@
+[package]
+name = "gtop-benchmark-common"
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+publish = false
+
+[lib]
+name = "gtop_benchmark_common"
+

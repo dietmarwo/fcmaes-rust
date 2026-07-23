@@ -1,0 +1,14 @@
+[workspace]
+resolver = "2"
+members = [
+    "common",
+    "fcmaes-adapter",
+    "cmaes-adapter",
+    "genetic-algorithms-adapter",
+    "math-optimisation-adapter",
+    "argmin-adapter",
+]
+
+[profile.release]
+codegen-units = 1
+lto = "thin"

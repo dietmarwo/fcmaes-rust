@@ -219,21 +219,20 @@ pub fn summarize(case: &BenchmarkCase, records: &[RunRecord]) -> ProblemSummary 
     }
 }
 
-/// Render a compact AsciiDoc result table.
-pub fn render_adoc(summaries: &[ProblemSummary]) -> String {
-    render_adoc_with_title(
+/// Render a compact Markdown result table.
+pub fn render_markdown(summaries: &[ProblemSummary]) -> String {
+    render_markdown_with_title(
         "GTOP coordinated retry results for stopVal = 1.005*absolute_best (Rust)",
         summaries,
     )
 }
 
-/// Render a tutorial-style result table with a caller-supplied title.
-pub fn render_adoc_with_title(title: &str, summaries: &[ProblemSummary]) -> String {
+/// Render a Markdown result table with a caller-supplied title.
+pub fn render_markdown_with_title(title: &str, summaries: &[ProblemSummary]) -> String {
     let mut output = format!(
-        ".{title}\n\
-         [width=\"80%\",cols=\"3,^2,^2,^2,^2,^2,^2\",options=\"header\"]\n\
-         |=========================================================\n\
-         |problem |runs |absolute best |stopVal |success rate |mean time |sdev time\n"
+        "## {title}\n\n\
+         | Problem | Runs | Absolute best | Stop value | Success rate | Mean time | Sdev time |\n\
+         |---|---:|---:|---:|---:|---:|---:|\n"
     );
     for summary in summaries {
         let success_rate = if summary.runs == 0 {
@@ -243,7 +242,7 @@ pub fn render_adoc_with_title(title: &str, summaries: &[ProblemSummary]) -> Stri
         };
         writeln!(
             output,
-            "|{} |{} |{} |{} |{:.0}% |{:.2}s |{:.2}s",
+            "| {} | {} | {} | {} | {:.0}% | {:.2}s | {:.2}s |",
             summary.problem,
             summary.runs,
             summary.absolute_best_label,
@@ -254,7 +253,6 @@ pub fn render_adoc_with_title(title: &str, summaries: &[ProblemSummary]) -> Stri
         )
         .expect("writing to a String cannot fail");
     }
-    output.push_str("|=========================================================\n");
     output
 }
 
@@ -306,9 +304,9 @@ mod tests {
             mean_seconds: 0.125,
             sdev_seconds: 0.025,
         };
-        let table = render_adoc(&[summary]);
+        let table = render_markdown(&[summary]);
         assert!(table.contains("GTOP coordinated retry results"));
-        assert!(table.contains("|Cassini1 |100 |4.9307 |4.95535 |99% |0.12s |0.03s"));
+        assert!(table.contains("| Cassini1 | 100 | 4.9307 | 4.95535 | 99% | 0.12s | 0.03s |"));
     }
 
     #[test]

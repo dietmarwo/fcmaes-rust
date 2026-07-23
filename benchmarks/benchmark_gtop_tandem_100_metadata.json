@@ -1,0 +1,15 @@
+{
+  "diversity_checkpoint_interval": 100,
+  "exact_configured_evaluation_ceiling_per_experiment": 765000000,
+  "fresh_runs_in_invocation": 100,
+  "initial_evaluations_per_retry": 1500,
+  "invocation_wall_seconds": 4020.875322809996,
+  "max_evaluation_factor": 50.0,
+  "optimizer_sequence": "40% Differential Evolution, 60% active CMA-ES",
+  "problem": "Tandem",
+  "raw_output": "benchmark_gtop_tandem_100_raw.tsv",
+  "retry_cap": 20000,
+  "root_seed": 1,
+  "runs": 100,
+  "workers": 32
+}

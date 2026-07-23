@@ -1,0 +1,12 @@
+[package]
+name = "argmin-benchmark-adapter"
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+publish = false
+
+[dependencies]
+argmin = { version = "=0.11.0", features = ["rayon"] }
+argmin-math = { version = "=0.5.1", features = ["vec"] }
+gtop-benchmark-common = { path = "../common" }
+rand = "=0.9.2"

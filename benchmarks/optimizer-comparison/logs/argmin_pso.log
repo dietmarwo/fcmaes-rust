@@ -1,0 +1,77 @@
+start library=argmin algorithm=PSO mode=parallel-population problem=Cassini1 runs=100 workers=24 budget=240000
+progress library=argmin problem=Cassini1 completed=10/100 best=11.608275764 wall_ms=272.988
+progress library=argmin problem=Cassini1 completed=20/100 best=12.608413569 wall_ms=274.061
+progress library=argmin problem=Cassini1 completed=30/100 best=16.653522641 wall_ms=267.593
+progress library=argmin problem=Cassini1 completed=40/100 best=14.173422603 wall_ms=245.693
+progress library=argmin problem=Cassini1 completed=50/100 best=14.747230547 wall_ms=253.150
+progress library=argmin problem=Cassini1 completed=60/100 best=11.038146839 wall_ms=254.351
+progress library=argmin problem=Cassini1 completed=70/100 best=27.142241190 wall_ms=249.076
+progress library=argmin problem=Cassini1 completed=80/100 best=15.731706429 wall_ms=252.312
+progress library=argmin problem=Cassini1 completed=90/100 best=13.307694858 wall_ms=257.106
+progress library=argmin problem=Cassini1 completed=100/100 best=11.059860840 wall_ms=266.976
+start library=argmin algorithm=PSO mode=parallel-population problem=Cassini2 runs=100 workers=24 budget=240000
+progress library=argmin problem=Cassini2 completed=10/100 best=25.305592526 wall_ms=348.739
+progress library=argmin problem=Cassini2 completed=20/100 best=27.845424232 wall_ms=374.733
+progress library=argmin problem=Cassini2 completed=30/100 best=41.016159949 wall_ms=329.903
+progress library=argmin problem=Cassini2 completed=40/100 best=27.651909203 wall_ms=352.705
+progress library=argmin problem=Cassini2 completed=50/100 best=27.446934111 wall_ms=363.333
+progress library=argmin problem=Cassini2 completed=60/100 best=27.829699730 wall_ms=356.802
+progress library=argmin problem=Cassini2 completed=70/100 best=21.574457150 wall_ms=366.675
+progress library=argmin problem=Cassini2 completed=80/100 best=20.272237104 wall_ms=361.997
+progress library=argmin problem=Cassini2 completed=90/100 best=19.957963840 wall_ms=355.745
+progress library=argmin problem=Cassini2 completed=100/100 best=28.915486186 wall_ms=338.029
+start library=argmin algorithm=PSO mode=parallel-population problem=Gtoc1 runs=100 workers=24 budget=240000
+progress library=argmin problem=Gtoc1 completed=10/100 best=-476849.652760432 wall_ms=289.790
+progress library=argmin problem=Gtoc1 completed=20/100 best=-497298.476096001 wall_ms=298.707
+progress library=argmin problem=Gtoc1 completed=30/100 best=-279738.331403951 wall_ms=302.926
+progress library=argmin problem=Gtoc1 completed=40/100 best=-898354.011129496 wall_ms=305.961
+progress library=argmin problem=Gtoc1 completed=50/100 best=-722523.205941903 wall_ms=287.108
+progress library=argmin problem=Gtoc1 completed=60/100 best=-711255.481051120 wall_ms=303.035
+progress library=argmin problem=Gtoc1 completed=70/100 best=-460607.566763147 wall_ms=284.833
+progress library=argmin problem=Gtoc1 completed=80/100 best=-50244.427075169 wall_ms=287.793
+progress library=argmin problem=Gtoc1 completed=90/100 best=-412270.528076079 wall_ms=293.796
+progress library=argmin problem=Gtoc1 completed=100/100 best=-1138199.820358492 wall_ms=305.275
+start library=argmin algorithm=PSO mode=parallel-population problem=Messenger runs=100 workers=24 budget=240000
+progress library=argmin problem=Messenger completed=10/100 best=21.801110660 wall_ms=331.526
+progress library=argmin problem=Messenger completed=20/100 best=19.934210756 wall_ms=331.935
+progress library=argmin problem=Messenger completed=30/100 best=12.042428038 wall_ms=359.095
+progress library=argmin problem=Messenger completed=40/100 best=15.575897507 wall_ms=321.616
+progress library=argmin problem=Messenger completed=50/100 best=13.010109914 wall_ms=340.926
+progress library=argmin problem=Messenger completed=60/100 best=15.445941147 wall_ms=316.775
+progress library=argmin problem=Messenger completed=70/100 best=24.836281407 wall_ms=321.140
+progress library=argmin problem=Messenger completed=80/100 best=20.823063149 wall_ms=333.118
+progress library=argmin problem=Messenger completed=90/100 best=16.598884814 wall_ms=360.689
+progress library=argmin problem=Messenger completed=100/100 best=17.095589915 wall_ms=355.320
+start library=argmin algorithm=PSO mode=parallel-population problem=Rosetta runs=100 workers=24 budget=240000
+progress library=argmin problem=Rosetta completed=10/100 best=15.894455676 wall_ms=371.324
+progress library=argmin problem=Rosetta completed=20/100 best=17.249864028 wall_ms=376.467
+progress library=argmin problem=Rosetta completed=30/100 best=14.735421416 wall_ms=355.313
+progress library=argmin problem=Rosetta completed=40/100 best=12.661706006 wall_ms=356.653
+progress library=argmin problem=Rosetta completed=50/100 best=13.032314188 wall_ms=375.934
+progress library=argmin problem=Rosetta completed=60/100 best=13.293847895 wall_ms=376.014
+progress library=argmin problem=Rosetta completed=70/100 best=24.566606039 wall_ms=343.032
+progress library=argmin problem=Rosetta completed=80/100 best=21.403952213 wall_ms=379.295
+progress library=argmin problem=Rosetta completed=90/100 best=9.672940838 wall_ms=390.647
+progress library=argmin problem=Rosetta completed=100/100 best=14.191916212 wall_ms=387.438
+start library=argmin algorithm=PSO mode=parallel-population problem=Tandem runs=100 workers=24 budget=240000
+progress library=argmin problem=Tandem completed=10/100 best=-14.256170374 wall_ms=339.812
+progress library=argmin problem=Tandem completed=20/100 best=-6.068990312 wall_ms=341.002
+progress library=argmin problem=Tandem completed=30/100 best=-7.394524925 wall_ms=348.328
+progress library=argmin problem=Tandem completed=40/100 best=-7.191142399 wall_ms=343.211
+progress library=argmin problem=Tandem completed=50/100 best=-7.007993600 wall_ms=336.295
+progress library=argmin problem=Tandem completed=60/100 best=-21.523513876 wall_ms=354.278
+progress library=argmin problem=Tandem completed=70/100 best=-379.507283995 wall_ms=336.154
+progress library=argmin problem=Tandem completed=80/100 best=-240.106335149 wall_ms=324.732
+progress library=argmin problem=Tandem completed=90/100 best=-8.945591431 wall_ms=350.294
+progress library=argmin problem=Tandem completed=100/100 best=-27.533415837 wall_ms=333.052
+start library=argmin algorithm=PSO mode=parallel-population problem=Sagas runs=100 workers=24 budget=240000
+progress library=argmin problem=Sagas completed=10/100 best=295.570190132 wall_ms=238.237
+progress library=argmin problem=Sagas completed=20/100 best=227.597461490 wall_ms=250.714
+progress library=argmin problem=Sagas completed=30/100 best=225.072254890 wall_ms=251.533
+progress library=argmin problem=Sagas completed=40/100 best=228.198956196 wall_ms=246.836
+progress library=argmin problem=Sagas completed=50/100 best=232.552884338 wall_ms=251.861
+progress library=argmin problem=Sagas completed=60/100 best=230.468220277 wall_ms=239.947
+progress library=argmin problem=Sagas completed=70/100 best=225.072257850 wall_ms=258.745
+progress library=argmin problem=Sagas completed=80/100 best=142.181690865 wall_ms=264.113
+progress library=argmin problem=Sagas completed=90/100 best=227.310440933 wall_ms=270.192
+progress library=argmin problem=Sagas completed=100/100 best=228.198966879 wall_ms=256.453

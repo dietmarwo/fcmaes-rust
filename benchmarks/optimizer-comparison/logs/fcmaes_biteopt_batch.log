@@ -1,0 +1,77 @@
+start library=fcmaes algorithm=BiteOpt mode=ask-tell-batch problem=Cassini1 runs=100 workers=24 budget=240000
+progress library=fcmaes problem=Cassini1 completed=10/100 best=10.996728177 wall_ms=320.224
+progress library=fcmaes problem=Cassini1 completed=20/100 best=4.954750283 wall_ms=188.893
+progress library=fcmaes problem=Cassini1 completed=30/100 best=10.996485203 wall_ms=341.554
+progress library=fcmaes problem=Cassini1 completed=40/100 best=13.148614196 wall_ms=348.952
+progress library=fcmaes problem=Cassini1 completed=50/100 best=11.031953022 wall_ms=343.431
+progress library=fcmaes problem=Cassini1 completed=60/100 best=14.707318318 wall_ms=347.040
+progress library=fcmaes problem=Cassini1 completed=70/100 best=7.905128272 wall_ms=342.561
+progress library=fcmaes problem=Cassini1 completed=80/100 best=11.031956166 wall_ms=373.423
+progress library=fcmaes problem=Cassini1 completed=90/100 best=5.303421503 wall_ms=343.191
+progress library=fcmaes problem=Cassini1 completed=100/100 best=14.711251690 wall_ms=343.205
+start library=fcmaes algorithm=BiteOpt mode=ask-tell-batch problem=Cassini2 runs=100 workers=24 budget=240000
+progress library=fcmaes problem=Cassini2 completed=10/100 best=22.418565329 wall_ms=597.583
+progress library=fcmaes problem=Cassini2 completed=20/100 best=23.503232042 wall_ms=586.885
+progress library=fcmaes problem=Cassini2 completed=30/100 best=25.456862565 wall_ms=592.426
+progress library=fcmaes problem=Cassini2 completed=40/100 best=22.149397154 wall_ms=618.945
+progress library=fcmaes problem=Cassini2 completed=50/100 best=20.123130565 wall_ms=571.902
+progress library=fcmaes problem=Cassini2 completed=60/100 best=14.290142367 wall_ms=589.891
+progress library=fcmaes problem=Cassini2 completed=70/100 best=21.022377758 wall_ms=581.402
+progress library=fcmaes problem=Cassini2 completed=80/100 best=17.803919166 wall_ms=615.456
+progress library=fcmaes problem=Cassini2 completed=90/100 best=20.753238310 wall_ms=568.221
+progress library=fcmaes problem=Cassini2 completed=100/100 best=21.950547887 wall_ms=597.189
+start library=fcmaes algorithm=BiteOpt mode=ask-tell-batch problem=Gtoc1 runs=100 workers=24 budget=240000
+progress library=fcmaes problem=Gtoc1 completed=10/100 best=-472206.778805547 wall_ms=391.220
+progress library=fcmaes problem=Gtoc1 completed=20/100 best=-649720.868934062 wall_ms=393.458
+progress library=fcmaes problem=Gtoc1 completed=30/100 best=-795894.142276604 wall_ms=423.688
+progress library=fcmaes problem=Gtoc1 completed=40/100 best=-848945.926703795 wall_ms=416.555
+progress library=fcmaes problem=Gtoc1 completed=50/100 best=-54477.582255241 wall_ms=391.857
+progress library=fcmaes problem=Gtoc1 completed=60/100 best=-762028.327813442 wall_ms=392.651
+progress library=fcmaes problem=Gtoc1 completed=70/100 best=-467491.742862745 wall_ms=384.267
+progress library=fcmaes problem=Gtoc1 completed=80/100 best=-67912.687028775 wall_ms=396.084
+progress library=fcmaes problem=Gtoc1 completed=90/100 best=-876840.017216917 wall_ms=405.922
+progress library=fcmaes problem=Gtoc1 completed=100/100 best=-57412.821985011 wall_ms=390.028
+start library=fcmaes algorithm=BiteOpt mode=ask-tell-batch problem=Messenger runs=100 workers=24 budget=240000
+progress library=fcmaes problem=Messenger completed=10/100 best=12.307259903 wall_ms=570.589
+progress library=fcmaes problem=Messenger completed=20/100 best=11.990211546 wall_ms=489.532
+progress library=fcmaes problem=Messenger completed=30/100 best=12.361649201 wall_ms=536.892
+progress library=fcmaes problem=Messenger completed=40/100 best=12.417772147 wall_ms=558.542
+progress library=fcmaes problem=Messenger completed=50/100 best=15.295345382 wall_ms=542.517
+progress library=fcmaes problem=Messenger completed=60/100 best=16.405588473 wall_ms=518.207
+progress library=fcmaes problem=Messenger completed=70/100 best=14.234723945 wall_ms=531.073
+progress library=fcmaes problem=Messenger completed=80/100 best=13.471100518 wall_ms=523.166
+progress library=fcmaes problem=Messenger completed=90/100 best=16.819879062 wall_ms=585.946
+progress library=fcmaes problem=Messenger completed=100/100 best=12.219974634 wall_ms=549.202
+start library=fcmaes algorithm=BiteOpt mode=ask-tell-batch problem=Rosetta runs=100 workers=24 budget=240000
+progress library=fcmaes problem=Rosetta completed=10/100 best=3.394890631 wall_ms=613.228
+progress library=fcmaes problem=Rosetta completed=20/100 best=8.595510452 wall_ms=595.359
+progress library=fcmaes problem=Rosetta completed=30/100 best=6.564702663 wall_ms=598.127
+progress library=fcmaes problem=Rosetta completed=40/100 best=1.846952415 wall_ms=584.118
+progress library=fcmaes problem=Rosetta completed=50/100 best=3.406943150 wall_ms=630.327
+progress library=fcmaes problem=Rosetta completed=60/100 best=6.320709545 wall_ms=580.468
+progress library=fcmaes problem=Rosetta completed=70/100 best=6.398165914 wall_ms=574.612
+progress library=fcmaes problem=Rosetta completed=80/100 best=2.032495982 wall_ms=610.606
+progress library=fcmaes problem=Rosetta completed=90/100 best=3.520752422 wall_ms=623.941
+progress library=fcmaes problem=Rosetta completed=100/100 best=4.839321339 wall_ms=598.967
+start library=fcmaes algorithm=BiteOpt mode=ask-tell-batch problem=Tandem runs=100 workers=24 budget=240000
+progress library=fcmaes problem=Tandem completed=10/100 best=-449.327814102 wall_ms=568.448
+progress library=fcmaes problem=Tandem completed=20/100 best=-464.579825784 wall_ms=552.965
+progress library=fcmaes problem=Tandem completed=30/100 best=-114.863000194 wall_ms=578.212
+progress library=fcmaes problem=Tandem completed=40/100 best=-344.541229229 wall_ms=584.391
+progress library=fcmaes problem=Tandem completed=50/100 best=-184.044215652 wall_ms=586.406
+progress library=fcmaes problem=Tandem completed=60/100 best=-4.680837035 wall_ms=658.693
+progress library=fcmaes problem=Tandem completed=70/100 best=-441.723107432 wall_ms=606.603
+progress library=fcmaes problem=Tandem completed=80/100 best=-619.806046812 wall_ms=565.621
+progress library=fcmaes problem=Tandem completed=90/100 best=-36.061413456 wall_ms=558.957
+progress library=fcmaes problem=Tandem completed=100/100 best=-397.914092121 wall_ms=567.133
+start library=fcmaes algorithm=BiteOpt mode=ask-tell-batch problem=Sagas runs=100 workers=24 budget=240000
+progress library=fcmaes problem=Sagas completed=10/100 best=225.059027007 wall_ms=415.346
+progress library=fcmaes problem=Sagas completed=20/100 best=225.058955851 wall_ms=416.746
+progress library=fcmaes problem=Sagas completed=30/100 best=65.603847514 wall_ms=409.896
+progress library=fcmaes problem=Sagas completed=40/100 best=225.058940616 wall_ms=418.685
+progress library=fcmaes problem=Sagas completed=50/100 best=225.058924874 wall_ms=377.223
+progress library=fcmaes problem=Sagas completed=60/100 best=225.058948152 wall_ms=413.974
+progress library=fcmaes problem=Sagas completed=70/100 best=225.058965921 wall_ms=422.914
+progress library=fcmaes problem=Sagas completed=80/100 best=225.058978990 wall_ms=430.393
+progress library=fcmaes problem=Sagas completed=90/100 best=225.058939195 wall_ms=400.403
+progress library=fcmaes problem=Sagas completed=100/100 best=225.058939051 wall_ms=415.258

@@ -61,16 +61,15 @@ fn summarize_results(case: &BenchmarkCase, records: &[RunRecord]) -> BenchmarkSu
     }
 }
 
-fn render_adoc(algorithm: Algorithm, summaries: &[BenchmarkSummary]) -> String {
+fn render_markdown(algorithm: Algorithm, summaries: &[BenchmarkSummary]) -> String {
     let table_title = format!(
         "GTOP {} retry results for stopVal = 1.005*absolute_best (Rust)",
         algorithm.label()
     );
     let mut output = format!(
-        ".{table_title}\n\
-         [width=\"100%\",cols=\"3,^2,^2,^2,^2,^2,^2,^2,^2\",options=\"header\"]\n\
-         |=========================================================\n\
-         |problem |runs |absolute best |stopVal |success rate |mean optimum |sdev optimum |mean time |sdev time\n"
+        "## {table_title}\n\n\
+         | Problem | Runs | Absolute best | Stop value | Success rate | Mean optimum | Sdev optimum | Mean time | Sdev time |\n\
+         |---|---:|---:|---:|---:|---:|---:|---:|---:|\n"
     );
     for summary in summaries {
         let base = &summary.base;
@@ -81,7 +80,7 @@ fn render_adoc(algorithm: Algorithm, summaries: &[BenchmarkSummary]) -> String {
         };
         writeln!(
             output,
-            "|{} |{} |{} |{} |{:.0}% |{:.6} |{:.6} |{:.2}s |{:.2}s",
+            "| {} | {} | {} | {} | {:.0}% | {:.6} | {:.6} | {:.2}s | {:.2}s |",
             base.problem,
             base.runs,
             base.absolute_best_label,
@@ -94,7 +93,6 @@ fn render_adoc(algorithm: Algorithm, summaries: &[BenchmarkSummary]) -> String {
         )
         .expect("writing to a String cannot fail");
     }
-    output.push_str("|=========================================================\n");
     output
 }
 
@@ -140,7 +138,7 @@ impl BenchmarkCli {
       --problem NAME           run one included benchmark problem\n\
       --progress-interval N    live interval inside each experiment\n\
       --raw-output PATH        write one TSV row after every experiment\n\
-      --table-output PATH      update the AsciiDoc table after every problem\n\
+      --table-output PATH      update the Markdown table after every problem\n\
       --help                   show this help\n\
 \n\
 Messenger Full is always excluded; Tandem is included by default.";
@@ -316,11 +314,11 @@ fn main() {
         }
         summaries.push(summarize_results(case, &records));
         if let Some(path) = cli.table_output.as_ref() {
-            std::fs::write(path, render_adoc(cli.algorithm, &summaries))
+            std::fs::write(path, render_markdown(cli.algorithm, &summaries))
                 .unwrap_or_else(|error| panic!("failed to write {}: {error}", path.display()));
         }
     }
-    println!("\n{}", render_adoc(cli.algorithm, &summaries));
+    println!("\n{}", render_markdown(cli.algorithm, &summaries));
 }
 
 #[cfg(test)]
@@ -359,7 +357,7 @@ mod tests {
             "--raw-output",
             "raw.tsv",
             "--table-output",
-            "table.adoc",
+            "table.md",
         ])
         .unwrap()
         .unwrap();
@@ -372,7 +370,7 @@ mod tests {
         assert_eq!(cli.problem.as_deref(), Some("tandem"));
         assert_eq!(cli.progress_interval, 0.5);
         assert_eq!(cli.raw_output, Some(PathBuf::from("raw.tsv")));
-        assert_eq!(cli.table_output, Some(PathBuf::from("table.adoc")));
+        assert_eq!(cli.table_output, Some(PathBuf::from("table.md")));
 
         assert!(BenchmarkCli::from_args(["--help"]).unwrap().is_none());
         assert!(BenchmarkCli::from_args(["--workers", "0"]).is_err());
@@ -408,9 +406,12 @@ mod tests {
         assert!((summary.mean_optimum - 4.975).abs() < 1.0e-12);
         assert!((summary.sdev_optimum - 0.025).abs() < 1.0e-12);
         assert!(
-            render_adoc(Algorithm::Biteopt, std::slice::from_ref(&summary))
-                .contains("|Cassini1 |2 |4.9307 |4.95535 |50% |4.975000 |0.025000 |2.00s |1.00s")
+            render_markdown(Algorithm::Biteopt, std::slice::from_ref(&summary)).contains(
+                "| Cassini1 | 2 | 4.9307 | 4.95535 | 50% | 4.975000 | 0.025000 | 2.00s | 1.00s |"
+            )
         );
-        assert!(render_adoc(Algorithm::DeCma, &[summary]).contains("GTOP DE-CMA retry results"));
+        assert!(
+            render_markdown(Algorithm::DeCma, &[summary]).contains("GTOP DE-CMA retry results")
+        );
     }
 }

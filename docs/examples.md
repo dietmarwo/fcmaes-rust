@@ -342,19 +342,23 @@ observed so far.
 ## Benchmarks
 
 `benchmark-gtop` runs independent coordinated-retry experiments and emits both
-raw samples and an AsciiDoc summary table. Its default problem set excludes
+raw samples and a Markdown summary table. Its default problem set excludes
 the long-running Tandem and Messenger Full cases:
 
 ```bash
 cargo run --release -p fcmaes-examples --bin benchmark-gtop -- \
   --runs 100 --workers 32 --seed 1 \
-  --raw-output benchmarks/benchmark_gtop_100_raw.tsv \
-  --table-output benchmarks/benchmark_gtop_100.adoc
+  --raw-output benchmarks/benchmark_gtop_100_raw.tsv
 ```
 
 Pass `--include-slow` to include both slow cases, or `--problem NAME` to run a
 single case, including a slow one. The recorded 100-run measurement and its
 methodology are in [the benchmark report](../benchmarks/benchmark_gtop.md).
+The repository's recorded Tandem sample was produced resumably with:
+
+```bash
+python3 benchmarks/run_coordinated_tandem.py
+```
 
 `benchmark-biteopt-gtop` uses basic retry, includes Tandem, and excludes only
 Messenger Full. Its defaults are 100 experiments, 24 workers, 24 retries, and
@@ -364,8 +368,7 @@ Messenger Full. Its defaults are 100 experiments, 24 workers, 24 retries, and
 cargo run --release -p fcmaes-examples --bin benchmark-biteopt-gtop -- \
   --algo biteopt --runs 100 --workers 24 --retries 24 \
   --evaluations 10000 --seed 1 \
-  --raw-output benchmarks/benchmark_biteopt_gtop_rust_100_raw.tsv \
-  --table-output benchmarks/benchmark_biteopt_gtop_rust_100.adoc
+  --raw-output benchmarks/benchmark_biteopt_gtop_rust_100_raw.tsv
 ```
 
 Use `--algo de_cma` for the two-stage optimizer with a fixed 4,000/6,000
@@ -375,11 +378,15 @@ DE/CMA evaluation split:
 cargo run --release -p fcmaes-examples --bin benchmark-biteopt-gtop -- \
   --algo de_cma --runs 100 --workers 24 --retries 24 \
   --evaluations 10000 --seed 1 \
-  --raw-output benchmarks/benchmark_de_cma_gtop_rust_100_raw.tsv \
-  --table-output benchmarks/benchmark_de_cma_gtop_rust_100.adoc
+  --raw-output benchmarks/benchmark_de_cma_gtop_rust_100_raw.tsv
 ```
 
 Both tables report success rate, wall-time statistics, and the mean and
 population standard deviation of the final optimum across all runs. See the
 [native benchmark index](../benchmarks/README.md) for recorded output and
 reproduction notes.
+
+The [optimizer comparison](../benchmarks/optimizer-comparison/comparison.md)
+uses dependency-isolated adapter crates to compare fcmaes with `cmaes`,
+`genetic_algorithms`, `math-optimisation`, and `argmin`. None of those
+alternative crates is added to the public Cargo workspace.

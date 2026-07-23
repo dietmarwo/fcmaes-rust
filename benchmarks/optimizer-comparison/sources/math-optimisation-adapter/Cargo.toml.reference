@@ -1,0 +1,11 @@
+[package]
+name = "math-optimisation-benchmark-adapter"
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+publish = false
+
+[dependencies]
+gtop-benchmark-common = { path = "../common" }
+math-optimisation = "=0.5.10"
+

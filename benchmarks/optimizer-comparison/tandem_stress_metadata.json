@@ -1,0 +1,24 @@
+{
+  "candidate_mean_optima": {
+    "argmin/PSO/parallel-population": -53.16650185897213,
+    "cmaes/BIPOP-CMA-ES/parallel-bipop": -495.3883254426004,
+    "cmaes/CMA-ES/parallel-population": -289.54680575074667,
+    "genetic_algorithms/L-SHADE/native-serial": -139.86469795969867,
+    "math-optimisation/DE/best/1/bin/parallel-population": -157.39846450643512
+  },
+  "configured_total_evaluations": 10000000000,
+  "evaluations_per_retry": 10000000,
+  "invocation_wall_seconds": 2236.023556125001,
+  "optimizer_threads_per_retry": 1,
+  "raw_output": "raw/tandem_stress_cmaes_bipop_cma_es_parallel_bipop.tsv",
+  "retry_workers": 24,
+  "root_seed": 1,
+  "runs": 1000,
+  "selected": {
+    "algorithm": "BIPOP-CMA-ES",
+    "library": "cmaes",
+    "parallel_mode_in_selection_run": "parallel-bipop"
+  },
+  "selection_rule": "lowest mean final Tandem optimum in the 100-run comparison",
+  "stress_parallelism": "independent optimizer processes"
+}
