@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/images/logo.gif" alt="fcmaes-rust logo">
+  <img src="docs/images/fcmaes-rust.png" alt="fcmaes-rust logo">
 </p>
 
 # fcmaes-rust
