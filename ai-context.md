@@ -6,10 +6,12 @@ optimizer is universally best. Use the problem structure, evaluation cost, and
 the user's desired output to choose a small set of defensible candidates, then
 compare them under the same evaluation budget.
 
-The repository is a Rust 2024 Cargo workspace. `fcmaes-core` contains the
-optimizers and coordination logic; `examples` contains native objective
+The repository is a Rust 2024 Cargo workspace. `fcmaes-core` is a 100% native
+Rust optimizer implementation; it does not wrap, link, load, or invoke the
+original fast-cma-es C++ backend. `examples` contains native Rust objective
 functions and executable applications; `fcmaes-py` is an optional low-level
-PyO3 extension. All optimizers minimize.
+PyO3 extension exposing the Rust core, not an alternative implementation.
+All optimizers minimize.
 
 ## Required workflow for the AI
 

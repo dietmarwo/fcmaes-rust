@@ -1,11 +1,46 @@
 # fcmaes-rust
 
-`fcmaes-rust` is a native Rust port of the gradient-free optimization
-algorithms and selected application examples from fcmaes. The repository is a
-standalone Cargo workspace: optimizer numerics, retry coordination, GTOP
-models, and example objective functions execute entirely in Rust. This now
-includes the Mazda mass and constraint response surfaces: their compact model
-data is embedded in the example crate and evaluated by native Rust code.
+![Pure Rust optimizer core](https://img.shields.io/badge/optimizer%20core-100%25%20Rust-brightgreen)
+![No C++ backend](https://img.shields.io/badge/C%2B%2B%20backend-none-brightgreen)
+
+`fcmaes-rust` is a native Rust implementation of fast, parallel,
+gradient-free optimization algorithms and selected fcmaes application
+examples. The optimizer implementation in `fcmaes-core` is 100% Rust: it does
+not compile, link, load, or call the original fast-cma-es C++ implementation.
+Optimizer numerics, retry coordination, random-number generation, fitness
+evaluation, and parallel execution all run in Rust.
+
+In this project, “port” means that algorithms were translated, reimplemented,
+and tested in Rust. It does not mean an FFI wrapper around the old C++ code;
+C++ references in comments record provenance and behavioral comparisons only.
+
+The repository is a standalone Cargo workspace. GTOP models and example
+objective functions also execute in Rust. This includes the Mazda mass and
+constraint response surfaces: their compact model data is embedded in the
+example crate and evaluated by native Rust code.
+
+## Implementation facts
+
+| Feature | Implementation |
+|---|---|
+| Optimizer core | 100% native Rust in `fcmaes-core` |
+| Legacy C++ optimization backend | None; no C++ library is compiled, linked, loaded, or invoked |
+| Core build | Standard Cargo build; no project `build.rs`, CMake, or C/C++ compiler |
+| Parallelism | Native multithreading with Rayon plus independent retry workers |
+| Objective functions | Native Rust closures and batch evaluators |
+| Python integration | Optional PyO3 extension that exposes the Rust core; Python is not an optimizer backend |
+
+To build only the reusable optimizer library, a Rust toolchain is sufficient:
+
+```bash
+cargo build --release -p fcmaes-core
+```
+
+This statement deliberately applies to the optimizer core. Building every
+optional workspace component can additionally require Python for `fcmaes-py`
+and native tooling pulled in by data-compression or network dependencies used
+by examples. Those integrations do not contain or restore the historical C++
+optimizer backend.
 
 ## Workspace
 

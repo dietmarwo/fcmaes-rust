@@ -1,5 +1,10 @@
 # Architecture
 
+The optimization engine is implemented entirely in Rust. `fcmaes-core` does
+not compile, link, load, or invoke the historical fast-cma-es C++ backend.
+References to C++ in source comments document behavioral provenance and parity;
+they do not identify a runtime or build dependency.
+
 ## Workspace
 
 ```mermaid
