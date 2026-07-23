@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/images/logo.gif" alt="fcmaes-rust logo">
+</p>
+
 # fcmaes-rust
 
 ![Pure Rust optimizer core](https://img.shields.io/badge/optimizer%20core-100%25%20Rust-brightgreen)
