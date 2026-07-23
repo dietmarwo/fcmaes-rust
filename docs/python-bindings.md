@@ -24,6 +24,21 @@ env -u CONDA_PREFIX VIRTUAL_ENV="$PWD/.venv" \
 The extension functions return low-level tuples or dictionaries. Downstream
 packages can wrap these in their preferred public result types.
 
+## Runnable Python example
+
+[`examples/python/test_cma.py`](../examples/python/test_cma.py) adapts the
+Rosenbrock tests from the original `fcmaes.testfun` and `fcmaes.test_cma`
+modules. It demonstrates both the one-shot `optimize_acma` function and the
+`ACMA` ask/tell class:
+
+```bash
+.venv/bin/python examples/python/test_cma.py
+.venv/bin/python -m pytest examples/python/test_cma.py
+```
+
+The objective monitor verifies that the result returned by Rust matches the
+best point observed by Python and that the evaluation counts agree.
+
 ## Optimizer surface
 
 | Algorithm | One-shot function | Stateful class |

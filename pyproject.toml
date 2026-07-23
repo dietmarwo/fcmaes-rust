@@ -23,4 +23,7 @@ manifest-path = "crates/fcmaes-py/Cargo.toml"
 module-name = "_fcmaes_ext"
 
 [tool.pytest.ini_options]
-testpaths = ["crates/fcmaes-py/python_tests"]
+testpaths = [
+    "crates/fcmaes-py/python_tests",
+    "examples/python",
+]

@@ -19,7 +19,7 @@ env -u CONDA_PREFIX VIRTUAL_ENV="$PWD/.venv" \
   PATH="$PWD/.venv/bin:$PATH" \
   .venv/bin/maturin develop --release \
   --manifest-path crates/fcmaes-py/Cargo.toml
-.venv/bin/python -m pytest crates/fcmaes-py/python_tests
+.venv/bin/python -m pytest
 ```
 
 SciPy is needed only by the retry binding tests, where the extension constructs

@@ -390,3 +390,15 @@ The [optimizer comparison](../benchmarks/optimizer-comparison/comparison.md)
 uses dependency-isolated adapter crates to compare fcmaes with `cmaes`,
 `genetic_algorithms`, `math-optimisation`, and `argmin`. None of those
 alternative crates is added to the public Cargo workspace.
+
+## Python-wrapper example
+
+The optional PyO3 extension has a runnable
+[active CMA-ES example](../examples/python/test_cma.py) adapted from the
+original `fcmaes.testfun` and `fcmaes.test_cma` tests. After installing the
+extension with Maturin, run it directly or through pytest:
+
+```bash
+.venv/bin/python examples/python/test_cma.py
+.venv/bin/python -m pytest examples/python/test_cma.py
+```

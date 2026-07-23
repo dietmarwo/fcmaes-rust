@@ -87,6 +87,14 @@ cargo run --release -p fcmaes-examples --bin gtop-examples -- \
   --problem cassini1 --retries 16 --evaluations 5000 --workers 16 --seed 1
 ```
 
+After installing the optional PyO3 extension as described in the
+[Python bindings guide](docs/python-bindings.md), run its active CMA-ES
+example with:
+
+```bash
+.venv/bin/python examples/python/test_cma.py
+```
+
 ## Documentation
 
 - [AI problem-solving context](ai-context.md)
