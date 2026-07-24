@@ -1,0 +1,75 @@
+{
+  "actual_evaluations": 4096,
+  "artifacts": {
+    "access_windows": "access_windows.csv",
+    "convergence": "convergence.csv",
+    "design": "design.csv",
+    "qd_archive": "qd_archive.csv",
+    "report": "report.html",
+    "stations": "stations.csv"
+  },
+  "command": "target/release/brahe-constellation --mode qd --workers 24 --parallel outer --qd-evaluations 4096 --qd-capacity 400 --qd-chunk-size 128 --seed 43 --output results/publication/qd-seed-43",
+  "convergence_metrics": [
+    "coverage",
+    "qd_score",
+    "best_quality",
+    "invalid_fraction"
+  ],
+  "descriptors": [
+    {
+      "bounds": [
+        450.0,
+        900.0
+      ],
+      "column": "descriptor_altitude_km",
+      "label": "Shared altitude",
+      "unit": "km"
+    },
+    {
+      "bounds": [
+        0.0,
+        1.0
+      ],
+      "column": "descriptor_plane_spread",
+      "label": "Circular RAAN spread"
+    }
+  ],
+  "elapsed_seconds": 31.674845877,
+  "formulation": "qd",
+  "qd": {
+    "best_quality": 4.1923545558822575,
+    "capacity": 400,
+    "chunk_size": 128,
+    "clipped_descriptors": 0,
+    "coverage": 0.9925,
+    "grid_shape": [
+      20,
+      20
+    ],
+    "invalid_evaluations": 82,
+    "occupied": 397,
+    "qd_score": 57.116250346808535,
+    "quality_label": "Feasible constellation score (lower is better)",
+    "quality_train_column": "quality_train"
+  },
+  "requested_evaluations": 4096,
+  "schema_version": 1,
+  "seed": 43,
+  "simulation": {
+    "access_step_seconds": 60.0,
+    "horizon_hours": 24.0,
+    "minimum_pass_seconds": 180.0,
+    "provider": "ksat",
+    "stations": [
+      "Svalbard",
+      "Fairbanks",
+      "Singapore",
+      "Hartebeesthoek",
+      "Cordoba",
+      "Troll"
+    ]
+  },
+  "strategy": "outer-fcmaes",
+  "tutorial": "brahe-constellation",
+  "workers": 24
+}

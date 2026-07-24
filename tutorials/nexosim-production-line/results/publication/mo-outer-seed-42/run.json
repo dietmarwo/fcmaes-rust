@@ -1,0 +1,47 @@
+{
+  "actual_evaluations": 512,
+  "artifacts": {
+    "convergence": "convergence.csv",
+    "pareto": "pareto.csv"
+  },
+  "command": "target/release/nexosim-production-line --mode mo --strategy outer --workers 16 --evaluations 512 --popsize 32 --replications 4 --horizon 240 --seed 42 --output results/publication/mo-outer-seed-42 --front-limit 3",
+  "convergence_metrics": [
+    "best_quality"
+  ],
+  "descriptors": [],
+  "elapsed_seconds": 0.085299375,
+  "formulation": "mo",
+  "objectives": [
+    {
+      "column": "objective_negative_throughput",
+      "display_sign": -1,
+      "label": "Throughput",
+      "unit": "orders/hour"
+    },
+    {
+      "column": "objective_mean_lead_time",
+      "label": "Mean lead time",
+      "unit": "minutes"
+    },
+    {
+      "column": "objective_mean_wip",
+      "label": "Mean WIP",
+      "unit": "orders"
+    },
+    {
+      "column": "objective_cost_rate",
+      "label": "Energy/staff cost rate"
+    }
+  ],
+  "requested_evaluations": 512,
+  "schema_version": 1,
+  "seed": 11562461410679940101,
+  "simulation": {
+    "horizon_minutes": 240.0,
+    "replications": 4
+  },
+  "simulation_seed_root": 42,
+  "strategy": "outer-fcmaes",
+  "tutorial": "nexosim-production-line",
+  "workers": 16
+}

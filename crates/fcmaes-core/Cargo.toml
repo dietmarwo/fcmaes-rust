@@ -2,10 +2,26 @@
 name = "fcmaes-core"
 version.workspace = true
 edition.workspace = true
+rust-version.workspace = true
 license.workspace = true
 authors.workspace = true
 repository.workspace = true
-description = "Pure-Rust core of the fcmaes optimization library."
+description = "Fast, parallel, gradient-free optimization algorithms implemented in pure Rust."
+readme = "README.md"
+documentation = "https://docs.rs/fcmaes-core"
+homepage = "https://github.com/dietmarwo/fcmaes-rust"
+keywords = [
+    "optimization",
+    "black-box",
+    "cma-es",
+    "evolutionary",
+    "multi-objective",
+]
+categories = [
+    "algorithms",
+    "mathematics",
+]
+publish = ["crates-io"]
 
 [lib]
 name = "fcmaes_core"

@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1120" height="440" viewBox="0 0 1120 440" role="img" aria-labelledby="title desc">
+  <title id="title">NeXosim production line and parallel ownership</title>
+  <desc id="desc">Orders pass through two machines, a finite buffer and inspection, with rework. The lower lanes contrast outer candidate parallelism and inner simulation parallelism.</desc>
+  <defs><marker id="a" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0 0L10 4L0 8Z" fill="#355c7d"/></marker><style>.b{fill:#f5f8fb;stroke:#355c7d;stroke-width:2}.g{fill:#e4f4ef;stroke:#16817a;stroke-width:2}.t{font:700 18px system-ui;fill:#17324d}.s{font:13px system-ui;fill:#526779}.l{stroke:#355c7d;stroke-width:2;fill:none;marker-end:url(#a)}</style></defs>
+  <text class="t" x="35" y="34">Stochastic production-line digital twin</text>
+  <rect class="b" x="35" y="72" width="130" height="68" rx="10"/><text class="t" x="100" y="113" text-anchor="middle">Source</text>
+  <rect class="g" x="215" y="72" width="150" height="68" rx="10"/><text class="t" x="290" y="102" text-anchor="middle">Machine A</text><text class="s" x="290" y="124" text-anchor="middle">fail / repair / PM</text>
+  <rect class="b" x="415" y="72" width="145" height="68" rx="10"/><text class="t" x="487" y="102" text-anchor="middle">Finite buffer</text><text class="s" x="487" y="124" text-anchor="middle">overflow loss</text>
+  <rect class="g" x="610" y="72" width="150" height="68" rx="10"/><text class="t" x="685" y="102" text-anchor="middle">Machine B</text><text class="s" x="685" y="124" text-anchor="middle">fail / repair / PM</text>
+  <rect class="b" x="810" y="72" width="130" height="68" rx="10"/><text class="t" x="875" y="113" text-anchor="middle">Inspect</text>
+  <rect class="b" x="990" y="45" width="100" height="48" rx="10"/><text class="t" x="1040" y="76" text-anchor="middle">Ship</text>
+  <rect class="b" x="990" y="120" width="100" height="48" rx="10"/><text class="t" x="1040" y="151" text-anchor="middle">Scrap</text>
+  <path class="l" d="M165 106H215"/><path class="l" d="M365 106H415"/><path class="l" d="M560 106H610"/><path class="l" d="M760 106H810"/><path class="l" d="M940 88L990 70"/><path class="l" d="M940 124L990 144"/><path class="l" d="M875 140V205H685V140"/>
+  <text class="t" x="35" y="255">Benchmark one owner of parallelism at a time</text>
+  <rect class="g" x="35" y="285" width="500" height="112" rx="12"/><text class="t" x="285" y="318" text-anchor="middle">Mode A · fcmaes outer pool</text><text class="s" x="285" y="345" text-anchor="middle">N candidates × serial NeXosim replications</text><text class="s" x="285" y="372" text-anchor="middle">best for this compact, replication-heavy model</text>
+  <rect class="b" x="585" y="285" width="500" height="112" rx="12"/><text class="t" x="835" y="318" text-anchor="middle">Mode B · NeXosim inner pool</text><text class="s" x="835" y="345" text-anchor="middle">one candidate × N executor threads</text><text class="s" x="835" y="372" text-anchor="middle">may suit a much larger simultaneous event bench</text>
+</svg>

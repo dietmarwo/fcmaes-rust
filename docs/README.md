@@ -29,7 +29,8 @@ configuration, workflows, and runnable examples.
   stock trading, material flow, flexible job-shop/harvesting, multi-UAV task
   assignment, spherical t-design, transfer scheduling, damped control, F-8,
   and Lotka-Volterra.
-- An optional PyO3 extension crate. No Python facade package is bundled.
+- An optional PyO3 extension distributed through the `fcmaes_rust` Python
+  facade.
 
 ## Fast path
 

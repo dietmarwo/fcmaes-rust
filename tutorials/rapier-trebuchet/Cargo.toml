@@ -1,0 +1,24 @@
+[package]
+name = "rapier-trebuchet"
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+publish = false
+description = "Experimental fcmaes-rust optimization of a Rapier 2D trebuchet"
+
+# Standalone tutorial workspace: keep simulator dependencies out of the root workspace.
+[workspace]
+
+[dependencies]
+fcmaes-core = { path = "../../crates/fcmaes-core" }
+rapier2d-f64 = { version = "0.34.0", default-features = false, features = [
+    "dim2",
+    "f64",
+    "std",
+    "enhanced-determinism",
+] }
+serde_json = "1"
+
+[profile.release]
+codegen-units = 1
+lto = "thin"

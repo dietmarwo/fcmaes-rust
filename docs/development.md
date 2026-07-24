@@ -10,6 +10,14 @@ cargo clippy --workspace --all-targets -- -D warnings
 cargo test --workspace
 ```
 
+Check the declared minimum supported Rust version separately. The locked
+workspace must compile with Rust 1.88:
+
+```bash
+rustup toolchain install 1.88.0
+cargo +1.88.0 check --workspace --locked
+```
+
 Exercise the optional PyO3 API through an installed extension:
 
 ```bash
@@ -25,6 +33,10 @@ env -u CONDA_PREFIX VIRTUAL_ENV="$PWD/.venv" \
 SciPy is needed only by the retry binding tests, where the extension constructs
 the public `scipy.optimize.Bounds` object passed to an optimizer callback.
 
+Before a registry release, also run the package and clean-install checks in
+[`RELEASING.md`](../RELEASING.md). The Python version is derived from the
+workspace package version rather than duplicated in `pyproject.toml`.
+
 Run `git diff --check` before handing off changes.
 
 ## Source map
@@ -38,7 +50,7 @@ Run `git diff --check` before handing off changes.
 | Quality diversity | `crates/fcmaes-core/src/mapelites.rs` |
 | Python registration | `crates/fcmaes-py/src/lib.rs` |
 | Optional PyO3 surface | `crates/fcmaes-py/src/` |
-| GTOP implementation | `examples/src/gtop.rs` |
+| GTOP implementation | `crates/fcmaes-gtop/src/lib.rs` |
 | GTOP names and bounds | `examples/src/problems.rs` |
 | CLI and DE→CMA runner | `examples/src/runner.rs` |
 | Native binary entry points | `examples/src/bin/` |

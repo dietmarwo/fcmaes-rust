@@ -17,7 +17,7 @@ from dataclasses import dataclass
 import numpy as np
 from numpy.typing import NDArray
 
-import _fcmaes_ext as fcmaes
+from fcmaes_rust import native as fcmaes
 
 try:
     from .testfun import ObjectiveMonitor, rosen

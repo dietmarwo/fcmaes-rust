@@ -1,6 +1,6 @@
 //! PyO3 bindings for the native GTOP benchmark crate.
 
-use fcmaes_examples::gtop;
+use fcmaes_gtop as gtop;
 use numpy::PyReadonlyArray1;
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;

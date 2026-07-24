@@ -1,7 +1,8 @@
 //! PyO3 bindings for fcmaes.
 //!
 //! The extension exposes optimizer, retry, and GTOP bindings through the
-//! existing `fcmaes._fcmaes_ext` import path.
+//! private `fcmaes_rust._fcmaes_ext` module. The public Python facade lives
+//! in `python/fcmaes_rust/__init__.py`.
 
 use numpy::PyReadonlyArray1;
 use pyo3::prelude::*;

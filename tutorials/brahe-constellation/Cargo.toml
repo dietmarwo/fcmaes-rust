@@ -1,0 +1,20 @@
+[package]
+name = "brahe-constellation"
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+publish = false
+description = "Experimental constellation access optimization with Brahe and fcmaes-rust"
+
+# Standalone tutorial workspace: keep simulator dependencies out of the root workspace.
+[workspace]
+
+[dependencies]
+brahe = "1.7.0"
+fcmaes-core = { path = "../../crates/fcmaes-core" }
+nalgebra = "0.35"
+serde_json = "1"
+
+[profile.release]
+codegen-units = 1
+lto = "thin"

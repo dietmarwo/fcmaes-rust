@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1120" height="430" viewBox="0 0 1120 430" role="img" aria-labelledby="title desc">
+  <title id="title">Rapier trebuchet simulation-optimization architecture</title>
+  <desc id="desc">Scalar retry, MODE, and MAP-Elites generate designs. A bounded worker pool evaluates independent deterministic Rapier worlds. Results become a best design, Pareto front, or behavior archive.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <path d="M0,0 L10,3.5 L0,7 Z" fill="#455a64"/>
+    </marker>
+    <style>
+      .box{rx:12;stroke-width:2}.label{font:600 18px system-ui,sans-serif;fill:#102027}.small{font:15px system-ui,sans-serif;fill:#263238}.arrow{stroke:#455a64;stroke-width:2.5;fill:none;marker-end:url(#arrow)}
+    </style>
+  </defs>
+  <rect width="1120" height="430" fill="#fafafa"/>
+  <text x="35" y="38" class="label">Search formulation</text>
+  <rect x="35" y="65" width="205" height="65" class="box" fill="#e3f2fd" stroke="#0072b2"/>
+  <text x="137" y="93" text-anchor="middle" class="label">BiteOpt retry</text>
+  <text x="137" y="116" text-anchor="middle" class="small">one selected design</text>
+  <rect x="35" y="163" width="205" height="65" class="box" fill="#e8f5e9" stroke="#009e73"/>
+  <text x="137" y="191" text-anchor="middle" class="label">MODE</text>
+  <text x="137" y="214" text-anchor="middle" class="small">objective-space front</text>
+  <rect x="35" y="261" width="205" height="65" class="box" fill="#fff3e0" stroke="#d55e00"/>
+  <text x="137" y="289" text-anchor="middle" class="label">MAP-Elites</text>
+  <text x="137" y="312" text-anchor="middle" class="small">behavior repertoire</text>
+
+  <path d="M240 98 H330" class="arrow"/><path d="M240 196 H330" class="arrow"/><path d="M240 294 H330" class="arrow"/>
+  <rect x="330" y="70" width="230" height="250" class="box" fill="#eceff1" stroke="#546e7a"/>
+  <text x="445" y="105" text-anchor="middle" class="label">fcmaes worker pool</text>
+  <rect x="365" y="130" width="160" height="38" class="box" fill="#fff" stroke="#90a4ae"/>
+  <rect x="365" y="182" width="160" height="38" class="box" fill="#fff" stroke="#90a4ae"/>
+  <rect x="365" y="234" width="160" height="38" class="box" fill="#fff" stroke="#90a4ae"/>
+  <text x="445" y="155" text-anchor="middle" class="small">candidate 1</text>
+  <text x="445" y="207" text-anchor="middle" class="small">candidate 2</text>
+  <text x="445" y="259" text-anchor="middle" class="small">candidate N</text>
+  <text x="445" y="298" text-anchor="middle" class="small">one bounded thread pool</text>
+
+  <path d="M560 195 H650" class="arrow"/>
+  <rect x="650" y="70" width="225" height="250" class="box" fill="#f3e5f5" stroke="#8e44ad"/>
+  <text x="762" y="105" text-anchor="middle" class="label">Independent Rapier world</text>
+  <text x="762" y="139" text-anchor="middle" class="small">decode 8 controls</text>
+  <text x="762" y="169" text-anchor="middle" class="small">build bodies and joints</text>
+  <text x="762" y="199" text-anchor="middle" class="small">advance deterministic physics</text>
+  <text x="762" y="229" text-anchor="middle" class="small">release and detect landing</text>
+  <text x="762" y="259" text-anchor="middle" class="small">measure error, energy, load</text>
+  <text x="762" y="289" text-anchor="middle" class="small">apex + release time for QD</text>
+
+  <path d="M875 195 H955" class="arrow"/>
+  <rect x="955" y="102" width="135" height="186" class="box" fill="#fffde7" stroke="#f0b429"/>
+  <text x="1022" y="138" text-anchor="middle" class="label">Result</text>
+  <text x="1022" y="174" text-anchor="middle" class="small">incumbent</text>
+  <text x="1022" y="204" text-anchor="middle" class="small">Pareto set</text>
+  <text x="1022" y="234" text-anchor="middle" class="small">QD archive</text>
+  <text x="1022" y="264" text-anchor="middle" class="small">CSV + JSON</text>
+
+  <text x="560" y="385" text-anchor="middle" class="small">Rapier's optional internal parallelism stays disabled; fcmaes owns candidate-level parallelism.</text>
+</svg>

@@ -1,0 +1,21 @@
+{
+  "actual_evaluations": 480000,
+  "artifacts": {
+    "convergence": "convergence.csv",
+    "replay": "replay.html",
+    "trajectory": "trajectory.csv"
+  },
+  "command": "target/release/rapier-trebuchet --mode single --workers 24 --target 35 --evaluations 20000 --retries 24 --depth 6 --seed 42 --output results/publication/scalar-seed-42",
+  "convergence_metrics": [
+    "best_quality"
+  ],
+  "descriptors": [],
+  "elapsed_seconds": 28.968741784,
+  "formulation": "scalar",
+  "objectives": [],
+  "requested_evaluations": 480000,
+  "schema_version": 1,
+  "seed": 42,
+  "tutorial": "rapier-trebuchet",
+  "workers": 24
+}

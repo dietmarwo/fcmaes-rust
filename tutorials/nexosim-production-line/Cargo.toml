@@ -1,0 +1,20 @@
+[package]
+name = "nexosim-production-line"
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+publish = false
+description = "Experimental fcmaes-rust MODE optimization of a NeXosim production-line digital twin"
+
+# Standalone tutorial workspace: keep simulator dependencies out of the root workspace.
+[workspace]
+
+[dependencies]
+fcmaes-core = { path = "../../crates/fcmaes-core" }
+nexosim = "1.0.0"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[profile.release]
+codegen-units = 1
+lto = "thin"

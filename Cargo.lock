@@ -283,7 +283,7 @@ checksum = "91622ff5e7162018101f2fea40d6ebf4a78bbe5a49736a2020649edf9693679e"
 
 [[package]]
 name = "fcmaes-core"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "libm",
  "nalgebra",
@@ -295,20 +295,25 @@ dependencies = [
 
 [[package]]
 name = "fcmaes-examples"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "fcmaes-core",
+ "fcmaes-gtop",
  "tokio",
  "xz2",
  "yahoo_finance_api",
 ]
 
 [[package]]
+name = "fcmaes-gtop"
+version = "0.1.1"
+
+[[package]]
 name = "fcmaes-py"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "fcmaes-core",
- "fcmaes-examples",
+ "fcmaes-gtop",
  "numpy",
  "pyo3",
 ]

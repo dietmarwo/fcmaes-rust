@@ -1,0 +1,66 @@
+{
+  "actual_evaluations": 200192,
+  "artifacts": {
+    "convergence": "convergence.csv",
+    "qd_archive": "qd_archive.csv",
+    "replay": "replay.html",
+    "representatives": "representatives.csv",
+    "trajectory": "trajectory.csv"
+  },
+  "command": "target/release/rapier-trebuchet --mode qd --workers 24 --qd-evaluations 200000 --qd-capacity 400 --qd-chunk-size 256 --seed 44 --output results/publication/qd-seed-44",
+  "convergence_metrics": [
+    "coverage",
+    "qd_score",
+    "best_quality",
+    "invalid_fraction"
+  ],
+  "descriptors": [
+    {
+      "bounds": [
+        0.0,
+        60.0
+      ],
+      "column": "descriptor_apex_height",
+      "label": "Trajectory apex",
+      "unit": "m"
+    },
+    {
+      "bounds": [
+        0.0,
+        8.0
+      ],
+      "column": "descriptor_release_time",
+      "label": "Release time",
+      "unit": "s"
+    }
+  ],
+  "elapsed_seconds": 12.040849706,
+  "formulation": "qd",
+  "qd": {
+    "best_quality": 0.03956724495959012,
+    "capacity": 400,
+    "chunk_size": 256,
+    "clipped_descriptors": 31,
+    "coverage": 0.4225,
+    "grid_shape": [
+      20,
+      20
+    ],
+    "invalid_evaluations": 55270,
+    "occupied": 169,
+    "qd_score": 979.9965162432312,
+    "quality_label": "Balanced throw quality (lower is better)",
+    "quality_train_column": "quality_train"
+  },
+  "requested_evaluations": 200000,
+  "schema_version": 1,
+  "seed": 44,
+  "simulation": {
+    "deterministic": true,
+    "target_position_m": 35.0,
+    "training_seeds": [],
+    "validation_seeds": []
+  },
+  "tutorial": "rapier-trebuchet",
+  "workers": 24
+}

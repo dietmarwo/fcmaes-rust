@@ -1139,16 +1139,10 @@ impl NMSeqOpt {
     }
 
     fn optimize(&mut self, rnd: &mut BiteRnd, obj: &dyn Objective) -> ParStep {
-        #[allow(unused_assignments)]
-        let mut out_cost = 0.0;
-        let mut out_values = vec![0.0; self.n];
-
         if self.do_init_evals {
             let xp = self.x[self.cur_pop_pos].clone();
-            let (c, v) = self.eval(rnd, &xp, obj);
-            self.y[self.cur_pop_pos] = c;
-            out_cost = c;
-            out_values = v;
+            let (out_cost, out_values) = self.eval(rnd, &xp, obj);
+            self.y[self.cur_pop_pos] = out_cost;
             if self.y[self.cur_pop_pos] < self.y[self.xlo] {
                 self.xlo = self.cur_pop_pos;
             }
@@ -1164,6 +1158,8 @@ impl NMSeqOpt {
             };
         }
 
+        let out_cost;
+        let out_values;
         self.stall_count += 1;
         let sn = 0.5 * self.param_count_i.sqrt();
         let alpha = 1.0;

@@ -1,4 +1,5 @@
-//! ESA GTOP space-mission benchmark functions.
+//! ESA GTOP space-mission benchmark functions used by the native examples
+//! and optional Python bindings.
 //!
 //! This is a safe Rust translation of `_fcmaescpp/gtop.cpp`. The public
 //! functions keep the original decision-vector layouts and sanitize invalid

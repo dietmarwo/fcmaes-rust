@@ -1,0 +1,70 @@
+{
+  "actual_evaluations": 100096,
+  "artifacts": {
+    "convergence": "convergence.csv",
+    "qd_archive": "qd_archive.csv"
+  },
+  "command": "target/release/nexosim-production-line --mode qd --workers 24 --replications 4 --validation-replications 8 --horizon 240 --qd-evaluations 100000 --qd-capacity 400 --qd-chunk-size 256 --seed 42 --output results/publication/qd-seed-42",
+  "convergence_metrics": [
+    "coverage",
+    "qd_score",
+    "best_quality",
+    "invalid_fraction"
+  ],
+  "descriptors": [
+    {
+      "bounds": [
+        0.0,
+        100.0
+      ],
+      "column": "descriptor_throughput_per_hour",
+      "label": "Achieved throughput",
+      "unit": "orders/hour"
+    },
+    {
+      "bounds": [
+        0.0,
+        200.0
+      ],
+      "column": "descriptor_mean_wip",
+      "label": "Mean WIP",
+      "unit": "orders"
+    }
+  ],
+  "elapsed_seconds": 9.978202466,
+  "formulation": "qd",
+  "qd": {
+    "best_quality": 18.886870447893592,
+    "capacity": 400,
+    "chunk_size": 256,
+    "clipped_descriptors": 0,
+    "coverage": 0.33,
+    "grid_shape": [
+      20,
+      20
+    ],
+    "invalid_evaluations": 0,
+    "occupied": 132,
+    "qd_score": 5.082907025304464,
+    "quality_label": "Lead-time/cost/loss quality (lower is better)",
+    "quality_train_column": "quality_train",
+    "quality_validation_column": "quality_validation",
+    "validation_evaluations": 132,
+    "validation_same_niche_fraction": 0.2878787878787879
+  },
+  "requested_evaluations": 100000,
+  "root_seed": 42,
+  "schema_version": 1,
+  "seed": 2611923443488327929,
+  "simulation": {
+    "horizon_minutes": 240.0,
+    "replications": 4,
+    "validation_replications": 8
+  },
+  "simulation_seed_root": 42,
+  "strategy": "outer-fcmaes",
+  "tutorial": "nexosim-production-line",
+  "validation_elapsed_seconds": 0.026622652,
+  "validation_seed_root": 7640891576956012835,
+  "workers": 24
+}

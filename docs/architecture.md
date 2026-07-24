@@ -12,23 +12,26 @@ flowchart LR
     R[Rust application] --> C[fcmaes-core]
     E[Native example and benchmark binaries] --> X[fcmaes-examples]
     X --> C
+    X --> G[fcmaes-gtop]
     P[Embedding Python package] --> B[fcmaes-py / PyO3]
     B --> C
-    B --> X
+    B --> G
 ```
 
-The workspace has three crates:
+The workspace has four crates:
 
 | Crate | Responsibility |
 |---|---|
 | `crates/fcmaes-core` | Pure-Rust fitness layer, RNG, optimizers, and retry coordinators |
-| `crates/fcmaes-py` | Optional PyO3 extension module named `_fcmaes_ext` |
+| `crates/fcmaes-gtop` | Internal dependency-free GTOP objective library shared by examples and Python |
+| `crates/fcmaes-py` | Optional PyO3 module packaged as `fcmaes_rust._fcmaes_ext` |
 | `examples` (`fcmaes-examples`) | Native GTOP and application objectives, data adapters, optimizer runners, and binaries |
 
-`fcmaes-core` does not depend on Python or the examples crate. The bindings
-depend on both because they expose optimizer and GTOP functions. Native Rust
-applications can depend only on `fcmaes-core` unless they need the GTOP
-catalog.
+`fcmaes-core` does not depend on Python, GTOP, or the examples crate. The
+bindings depend only on the core and focused GTOP crates; application
+examples, networking dependencies, and large example data are excluded from
+the Python package. Native Rust applications can depend only on `fcmaes-core`
+unless they need the internal GTOP catalog.
 
 ## Core module map
 
@@ -93,9 +96,10 @@ avoids archive locks and keeps seeded runs independent of worker scheduling.
 
 The `fcmaes-py` crate exposes optimizer functions, ask/tell classes, retry,
 MODE, QD, and GTOP functions. Native optimizer loops release the GIL and
-reacquire it only for Python objective callbacks. It is an embedding surface,
-not a bundled Python facade or distribution; downstream packages decide how to
-convert bounds, package results, persist archives, and expose plotting.
+reacquire it only for Python objective callbacks. Maturin packages the
+extension behind the `fcmaes_rust` facade. The facade deliberately retains
+the extension's low-level tuples, dictionaries, and NumPy arrays; persistence,
+plotting, and higher-level result adapters remain downstream concerns.
 
 ## Current boundaries
 

@@ -662,8 +662,26 @@ pub fn map_elites_batch(
     p: &MapElitesParams,
     rng: &mut Rng,
 ) -> Result<(), &'static str> {
+    map_elites_batch_with_progress(archive, fitness, lower, upper, p, rng, &mut |_, _| {})
+}
+
+/// Batch MAP-Elites with an ordered callback after every archive update.
+///
+/// The callback runs after the evaluated generation has been committed and
+/// sorted. It is intended for convergence logging and must not mutate the
+/// archive. The generation index is one-based and continues through optional
+/// CMA-emitter generations.
+pub fn map_elites_batch_with_progress(
+    archive: &mut Archive,
+    fitness: &mut dyn QdBatchFitness,
+    lower: &[f64],
+    upper: &[f64],
+    p: &MapElitesParams,
+    rng: &mut Rng,
+    progress: &mut dyn FnMut(usize, &Archive),
+) -> Result<(), &'static str> {
     let mut select_n = archive.capacity();
-    for _ in 0..p.generations {
+    for generation in 0..p.generations {
         let xs = if p.use_sbx {
             let pop = archive.random_xs(select_n, p.chunk_size, rng);
             variation(&pop, lower, upper, rng, p.dis_c, p.dis_m)
@@ -675,9 +693,12 @@ pub fn map_elites_batch(
         archive.update_batch(&xs, fitness)?;
         archive.argsort();
         select_n = archive.occupied().max(1);
+        progress(generation + 1, archive);
     }
-    for _ in 0..p.cma_generations {
+    for generation in 0..p.cma_generations {
         cma_emitter_batch(archive, fitness, lower, upper, rng)?;
+        archive.argsort();
+        progress(p.generations + generation + 1, archive);
     }
     Ok(())
 }
@@ -943,6 +964,44 @@ mod tests {
         assert_eq!(batch.ys(), serial.ys());
         assert_eq!(batch.xs(), serial.xs());
         assert_eq!(batch.descriptors(), serial.descriptors());
+    }
+
+    #[test]
+    fn batch_progress_callback_is_ordered_and_observes_committed_updates() {
+        let lower = vec![-2.0; 4];
+        let upper = vec![2.0; 4];
+        let mut rng = Rng::new(23);
+        let mut archive = Archive::new(4, &[-2.0, -2.0], &[2.0, 2.0], 16, 0, &mut rng);
+        archive.seed_uniform(&lower, &upper, &mut rng);
+        let params = MapElitesParams {
+            generations: 5,
+            chunk_size: 8,
+            ..Default::default()
+        };
+        let mut observed = Vec::new();
+        let mut batch_qd = |xs: &[Vec<f64>]| xs.iter().map(|x| qd(x)).collect();
+        map_elites_batch_with_progress(
+            &mut archive,
+            &mut batch_qd,
+            &lower,
+            &upper,
+            &params,
+            &mut rng,
+            &mut |generation, committed| {
+                observed.push((generation, committed.occupied(), committed.best_y()));
+            },
+        )
+        .unwrap();
+        assert_eq!(
+            observed.iter().map(|sample| sample.0).collect::<Vec<_>>(),
+            vec![1, 2, 3, 4, 5]
+        );
+        assert!(
+            observed
+                .iter()
+                .all(|(_, occupied, best)| *occupied > 0 && best.is_finite())
+        );
+        assert!(observed.windows(2).all(|pair| pair[1].2 <= pair[0].2));
     }
 
     #[test]

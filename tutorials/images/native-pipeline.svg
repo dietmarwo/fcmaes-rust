@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1120" height="420" viewBox="0 0 1120 420" role="img" aria-labelledby="title desc">
+  <title id="title">Native Rust simulation-optimization pipeline</title>
+  <desc id="desc">Candidate designs are evaluated concurrently in isolated Rust simulators, then supplied to scalar retry, MODE, or MAP-Elites.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0 0L10 4L0 8Z" fill="#355c7d"/></marker>
+    <style>.box{fill:#f5f8fb;stroke:#355c7d;stroke-width:2}.accent{fill:#e4f4ef;stroke:#16817a;stroke-width:2}.title{font:700 20px system-ui;fill:#17324d}.text{font:15px system-ui;fill:#17324d}.small{font:13px system-ui;fill:#526779}.line{stroke:#355c7d;stroke-width:2;fill:none;marker-end:url(#arrow)}</style>
+  </defs>
+  <text class="title" x="40" y="38">One native objective path, many independent candidates</text>
+  <rect class="box" x="40" y="85" width="170" height="90" rx="12"/><text class="title" x="125" y="120" text-anchor="middle">Candidate x</text><text class="small" x="125" y="148" text-anchor="middle">continuous + discrete</text>
+  <rect class="box" x="275" y="85" width="180" height="90" rx="12"/><text class="title" x="365" y="120" text-anchor="middle">Decode</text><text class="small" x="365" y="148" text-anchor="middle">bounds and categories</text>
+  <rect class="accent" x="520" y="65" width="210" height="130" rx="12"/><text class="title" x="625" y="112" text-anchor="middle">Rust simulator</text><text class="small" x="625" y="140" text-anchor="middle">isolated state · fixed seeds</text><text class="small" x="625" y="164" text-anchor="middle">no Python callback</text>
+  <rect class="box" x="795" y="85" width="260" height="90" rx="12"/><text class="title" x="925" y="120" text-anchor="middle">Objectives + constraints</text><text class="small" x="925" y="148" text-anchor="middle">and optional QD descriptors</text>
+  <path class="line" d="M210 130H275"/><path class="line" d="M455 130H520"/><path class="line" d="M730 130H795"/>
+  <rect class="box" x="85" y="275" width="250" height="85" rx="12"/><text class="title" x="210" y="310" text-anchor="middle">Scalar retry</text><text class="small" x="210" y="337" text-anchor="middle">one deployable design</text>
+  <rect class="box" x="435" y="275" width="250" height="85" rx="12"/><text class="title" x="560" y="310" text-anchor="middle">MODE</text><text class="small" x="560" y="337" text-anchor="middle">nondominated objective trade-offs</text>
+  <rect class="box" x="785" y="275" width="250" height="85" rx="12"/><text class="title" x="910" y="310" text-anchor="middle">MAP-Elites</text><text class="small" x="910" y="337" text-anchor="middle">best design per behavior niche</text>
+  <path class="line" d="M925 175V225H210V275"/><path class="line" d="M925 225H560V275"/><path class="line" d="M925 225H910V275"/>
+  <text class="small" x="40" y="400">fcmaes owns the bounded worker pool unless a tutorial explicitly benchmarks simulator-internal parallelism.</text>
+</svg>

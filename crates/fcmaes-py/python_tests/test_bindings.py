@@ -1,11 +1,14 @@
-"""Integration tests for the public ``_fcmaes_ext`` PyO3 module."""
+"""Integration tests for the installed ``fcmaes_rust`` distribution."""
 
 from importlib.metadata import version
 
 import numpy as np
 import pytest
 
-import _fcmaes_ext as ext
+import fcmaes_rust
+
+
+ext = fcmaes_rust.native
 
 
 EMPTY_FLOAT = np.empty(0, dtype=np.float64)
@@ -25,6 +28,11 @@ def test_module_metadata_and_numpy_probe():
     assert info["nanobind"] is False
     assert info["core_version"] == info["binding_version"]
     assert info["binding_version"] == version("fcmaes-rust")
+    assert fcmaes_rust.__version__ == info["binding_version"]
+    assert fcmaes_rust.phase1_build_info is ext.phase1_build_info
+    assert fcmaes_rust.optimize_de is ext.optimize_de
+    assert fcmaes_rust.DE is ext.DE
+    assert "native" in fcmaes_rust.__all__
 
     values = np.ascontiguousarray([1.0, -2.0, 3.5], dtype=np.float64)
     assert ext._phase1_probe_sum(values) == pytest.approx(2.5)

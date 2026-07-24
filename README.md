@@ -6,6 +6,9 @@
 
 ![Pure Rust optimizer core](https://img.shields.io/badge/optimizer%20core-100%25%20Rust-brightgreen)
 ![No C++ backend](https://img.shields.io/badge/C%2B%2B%20backend-none-brightgreen)
+[![crates.io](https://img.shields.io/crates/v/fcmaes-core.svg)](https://crates.io/crates/fcmaes-core)
+[![docs.rs](https://docs.rs/fcmaes-core/badge.svg)](https://docs.rs/fcmaes-core)
+[![PyPI](https://img.shields.io/pypi/v/fcmaes-rust.svg)](https://pypi.org/project/fcmaes-rust/)
 
 `fcmaes-rust` is a native Rust implementation of fast, parallel,
 gradient-free optimization algorithms and selected fcmaes application
@@ -51,8 +54,31 @@ optimizer backend.
 | Crate | Purpose |
 |---|---|
 | `fcmaes-core` | Optimizers, fitness handling, RNG, retry, multi-objective optimization, and quality diversity |
+| `fcmaes-gtop` | Internal native GTOP objective library shared by the examples and Python package |
 | `examples` (`fcmaes-examples`) | Native GTOP problems, application objectives, benchmarks, and executable examples |
 | `fcmaes-py` | Optional PyO3 extension for embedding the Rust implementation in a Python package |
+| `tutorials/*` | Standalone simulation-optimization workspaces using NeXosim, Rapier, ReBop, Brahe, and RustPower |
+
+Only two registry artifacts are published: `fcmaes-core` on crates.io and the
+`fcmaes-rust` binding distribution on PyPI. `fcmaes-gtop` is an internal
+source dependency marked `publish = false`; `examples/` and `tutorials/` are
+available only from this GitHub repository and are not included in either
+registry package.
+
+The simulator tutorials are intentionally not root workspace members. Each
+keeps its large, application-specific dependencies and lockfile isolated; run
+its Cargo commands from that tutorial directory.
+
+All five retain multi-objective optimization. MAP-Elites campaigns are
+implemented and recorded for NeXosim, Rapier, ReBop and Brahe. RustPower
+includes a reproducible 100k-evaluation QD go/no-go pilot, but its proposed
+descriptors produced only 4% coverage and one battery-location category, so
+the tutorial explicitly retains MODE as the informative result instead of
+promoting a weak archive. The [tutorial index](tutorials/README.md) includes
+commands, figures, validation results and the common result schema. Compact
+canonical `run.json`/CSV result directories are version-controlled with the
+generated SVGs so raw-evidence links and deterministic rendering work from a
+clean clone.
 
 Implemented algorithms include Differential Evolution, active CMA-ES,
 CR-FM-NES, PGPE, Dual Annealing, BiteOpt, MODE, CVT-MAP-Elites, the
@@ -67,11 +93,31 @@ Lotka-Volterra control.
 
 ## Quick start
 
-Install a current stable Rust toolchain, then run from this directory:
+Install Rust 1.88 or newer, then run from this directory. Rust 1.88 is the
+tested minimum for the edition-2024 source and current locked dependency set;
+the CI workflow checks it explicitly.
 
 ```bash
 cargo test --workspace
 cargo build --release --workspace
+```
+
+After the registry release, downstream Rust and Python users install the
+published packages with:
+
+```bash
+cargo add fcmaes-core
+python -m pip install fcmaes-rust
+```
+
+The Python distribution imports as `fcmaes_rust`; its optimizer backend is
+the same native Rust implementation:
+
+```python
+import fcmaes_rust
+
+print(fcmaes_rust.__version__)
+print(fcmaes_rust.phase1_build_info())
 ```
 
 Run a small native optimization:
@@ -103,7 +149,10 @@ example with:
 - [Optimizer guide](docs/optimizers.md)
 - [Retry and multi-objective retry](docs/retry.md)
 - [Native examples and benchmarks](docs/examples.md)
+- [Native Rust simulator optimization tutorials](tutorials/README.md)
 - [Optional PyO3 bindings](docs/python-bindings.md)
+- [Release history](CHANGELOG.md)
+- [Publishing checklist](RELEASING.md)
 - [Development and testing](docs/development.md)
 - [Recorded native benchmark results](benchmarks/README.md)
 

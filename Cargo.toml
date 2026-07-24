@@ -2,6 +2,7 @@
 resolver = "2"
 members = [
     "crates/fcmaes-core",
+    "crates/fcmaes-gtop",
     "crates/fcmaes-py",
     "examples",
 ]
@@ -11,11 +12,13 @@ codegen-units = 1
 lto = "thin"
 
 [workspace.package]
-version = "0.1.0"
+version = "0.1.1"
 edition = "2024"
+rust-version = "1.88"
 license = "MIT"
 authors = ["Dietmar Wolz"]
 repository = "https://github.com/dietmarwo/fcmaes-rust"
 
 [workspace.dependencies]
 fcmaes-core = { path = "crates/fcmaes-core" }
+fcmaes-gtop = { path = "crates/fcmaes-gtop" }

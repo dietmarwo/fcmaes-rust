@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "fcmaes-tutorial-plots"
+version = "0.1.0"
+description = "Reproducible Matplotlib figures for the fcmaes-rust simulator tutorials"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+dependencies = [
+    "numpy>=1.20",
+    "matplotlib>=3.6",
+]
+
+[project.optional-dependencies]
+test = ["pytest>=7"]
+
+[project.scripts]
+fcmaes-tutorial-plots = "fcmaes_tutorial_plots.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["fcmaes_tutorial_plots*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

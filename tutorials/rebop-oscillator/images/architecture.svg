@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1120" height="430" viewBox="0 0 1120 430" role="img" aria-labelledby="title desc">
+  <title id="title">Robust stochastic oscillator optimization</title>
+  <desc id="desc">Log kinetic rates drive repeated stochastic paths, whose oscillation metrics feed MODE and a period-amplitude MAP-Elites archive with disjoint validation seeds.</desc>
+  <defs><marker id="a" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0 0L10 4L0 8Z" fill="#355c7d"/></marker><style>.b{fill:#f5f8fb;stroke:#355c7d;stroke-width:2}.g{fill:#e4f4ef;stroke:#16817a;stroke-width:2}.t{font:700 18px system-ui;fill:#17324d}.s{font:13px system-ui;fill:#526779}.l{stroke:#355c7d;stroke-width:2;fill:none;marker-end:url(#a)}</style></defs>
+  <text class="t" x="35" y="35">Common-random-number search, disjoint stochastic validation</text>
+  <rect class="b" x="35" y="82" width="175" height="92" rx="12"/><text class="t" x="122" y="116" text-anchor="middle">15 log rates</text><text class="s" x="122" y="144" text-anchor="middle">candidate kinetic design</text>
+  <rect class="g" x="270" y="62" width="235" height="132" rx="12"/><text class="t" x="387" y="100" text-anchor="middle">ReBop paths</text><path d="M300 150C320 90 345 185 370 122S420 175 447 105S475 155 485 120" fill="none" stroke="#16817a" stroke-width="3"/><text class="s" x="387" y="180" text-anchor="middle">fixed training seed set</text>
+  <rect class="b" x="565" y="82" width="215" height="92" rx="12"/><text class="t" x="672" y="112" text-anchor="middle">Signal metrics</text><text class="s" x="672" y="137" text-anchor="middle">period · amplitude · spectrum</text><text class="s" x="672" y="158" text-anchor="middle">fragility · molecule cost</text>
+  <rect class="b" x="840" y="52" width="235" height="68" rx="12"/><text class="t" x="957" y="82" text-anchor="middle">MODE Pareto front</text><text class="s" x="957" y="104" text-anchor="middle">three explicit objectives</text>
+  <rect class="b" x="840" y="140" width="235" height="68" rx="12"/><text class="t" x="957" y="170" text-anchor="middle">MAP-Elites</text><text class="s" x="957" y="192" text-anchor="middle">period × amplitude niches</text>
+  <path class="l" d="M210 128H270"/><path class="l" d="M505 128H565"/><path class="l" d="M780 108L840 86"/><path class="l" d="M780 148L840 174"/>
+  <rect class="g" x="270" y="285" width="235" height="100" rx="12"/><text class="t" x="387" y="321" text-anchor="middle">Validation paths</text><text class="s" x="387" y="349" text-anchor="middle">disjoint named seeds</text><text class="s" x="387" y="371" text-anchor="middle">every retained QD elite</text>
+  <rect class="b" x="565" y="285" width="510" height="100" rx="12"/><text class="t" x="820" y="320" text-anchor="middle">Report robustness, not just training fit</text><text class="s" x="820" y="348" text-anchor="middle">validation quality · descriptor migration · same-niche fraction</text><text class="s" x="820" y="371" text-anchor="middle">training and holdout archives remain visibly separate</text>
+  <path class="l" d="M957 208V245H387V285"/><path class="l" d="M505 335H565"/>
+</svg>

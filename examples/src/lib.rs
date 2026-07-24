@@ -3,7 +3,7 @@
 pub mod benchmark_gtop;
 pub mod damp;
 pub mod f8;
-pub mod gtop;
+pub use fcmaes_gtop as gtop;
 pub mod harvesting;
 mod integration;
 pub mod jobshop;

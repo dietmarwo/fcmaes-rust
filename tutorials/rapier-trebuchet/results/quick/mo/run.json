@@ -1,0 +1,38 @@
+{
+  "actual_evaluations": 512,
+  "artifacts": {
+    "convergence": "convergence.csv",
+    "pareto": "pareto.csv",
+    "replay": "replay.html",
+    "trajectory": "trajectory.csv"
+  },
+  "command": "target/release/rapier-trebuchet --mode multi --workers 4 --mo-evaluations 512 --popsize 32 --seed 42 --output results/quick/mo",
+  "convergence_metrics": [
+    "best_quality"
+  ],
+  "descriptors": [],
+  "elapsed_seconds": 0.117239661,
+  "formulation": "mo",
+  "objectives": [
+    {
+      "column": "objective_target_error",
+      "label": "Target error",
+      "unit": "m"
+    },
+    {
+      "column": "objective_input_energy",
+      "label": "Input energy",
+      "unit": "J"
+    },
+    {
+      "column": "objective_peak_joint_force",
+      "label": "Peak pivot load",
+      "unit": "N"
+    }
+  ],
+  "requested_evaluations": 512,
+  "schema_version": 1,
+  "seed": 42,
+  "tutorial": "rapier-trebuchet",
+  "workers": 4
+}

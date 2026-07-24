@@ -1,0 +1,43 @@
+{
+  "actual_evaluations": 2048,
+  "artifacts": {
+    "convergence": "convergence.csv",
+    "pareto": "pareto.csv",
+    "replications": "replications.csv",
+    "report": "report.html",
+    "traces": "traces.csv"
+  },
+  "command": "target/release/rebop-oscillator --mode multi --workers 24 --replications 4 --validation-replications 8 --mo-evaluations 2048 --popsize 128 --seed 42 --output results/publication/mo-seed-42",
+  "convergence_metrics": [
+    "best_quality"
+  ],
+  "descriptors": [],
+  "elapsed_seconds": 6.555744194,
+  "formulation": "mo",
+  "objectives": [
+    {
+      "column": "objective_oscillation_error",
+      "label": "Oscillation error"
+    },
+    {
+      "column": "objective_molecule_cost",
+      "label": "Molecule cost",
+      "unit": "molecules"
+    },
+    {
+      "column": "objective_fragility",
+      "label": "Stochastic fragility"
+    }
+  ],
+  "requested_evaluations": 2048,
+  "root_seed": 42,
+  "schema_version": 1,
+  "seed": 16646288086500911345,
+  "simulation": {
+    "replications": 4,
+    "target_period": 20.0,
+    "validation_replications": 8
+  },
+  "tutorial": "rebop-oscillator",
+  "workers": 24
+}

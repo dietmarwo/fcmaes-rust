@@ -1,0 +1,56 @@
+{
+  "actual_evaluations": 512,
+  "artifacts": {
+    "access_windows": "access_windows.csv",
+    "convergence": "convergence.csv",
+    "design": "design.csv",
+    "pareto": "pareto.csv",
+    "report": "report.html",
+    "stations": "stations.csv"
+  },
+  "command": "target/release/brahe-constellation --mode multi --workers 24 --parallel outer --mo-evaluations 512 --popsize 64 --seed 42 --output results/publication/mo-seed-42",
+  "convergence_metrics": [
+    "best_quality"
+  ],
+  "descriptors": [],
+  "elapsed_seconds": 4.558760922,
+  "formulation": "mo",
+  "objectives": [
+    {
+      "column": "objective_maximum_gap_hours",
+      "label": "Maximum contact gap",
+      "unit": "hours"
+    },
+    {
+      "column": "objective_negative_contact_hours",
+      "display_sign": -1,
+      "label": "Total contact",
+      "unit": "hours"
+    },
+    {
+      "column": "objective_launch_complexity",
+      "label": "Launch complexity"
+    }
+  ],
+  "requested_evaluations": 512,
+  "root_seed": 42,
+  "schema_version": 1,
+  "seed": 11562461410679940101,
+  "simulation": {
+    "access_step_seconds": 60.0,
+    "horizon_hours": 24.0,
+    "minimum_pass_seconds": 180.0,
+    "provider": "ksat",
+    "stations": [
+      "Svalbard",
+      "Fairbanks",
+      "Singapore",
+      "Hartebeesthoek",
+      "Cordoba",
+      "Troll"
+    ]
+  },
+  "strategy": "outer",
+  "tutorial": "brahe-constellation",
+  "workers": 24
+}

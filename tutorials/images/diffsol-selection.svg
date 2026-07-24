@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1120" height="430" viewBox="0 0 1120 430" role="img" aria-labelledby="title desc">
+  <title id="title">Optimizer selection for Diffsol models</title>
+  <desc id="desc">Trustworthy end-to-end sensitivities lead to gradient optimization. Discrete or nonsmooth formulations lead to fcmaes scalar retry, MODE, or MAP-Elites according to the desired result.</desc>
+  <defs><marker id="a" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0 0L10 4L0 8Z" fill="#355c7d"/></marker><style>.b{fill:#f5f8fb;stroke:#355c7d;stroke-width:2}.g{fill:#e4f4ef;stroke:#16817a;stroke-width:2}.t{font:700 18px system-ui;fill:#17324d}.s{font:13px system-ui;fill:#526779}.l{stroke:#355c7d;stroke-width:2;fill:none;marker-end:url(#a)}</style></defs>
+  <text class="t" x="35" y="34">Choose from the end-to-end mathematical structure—not the simulator language</text>
+  <rect class="b" x="355" y="68" width="410" height="78" rx="12"/><text class="t" x="560" y="99" text-anchor="middle">Trustworthy end-to-end Diffsol sensitivity?</text><text class="s" x="560" y="125" text-anchor="middle">including events, resets, robust aggregation and policy decoding</text>
+  <rect class="g" x="60" y="210" width="300" height="100" rx="12"/><text class="t" x="210" y="247" text-anchor="middle">Yes · smooth continuous fit</text><text class="s" x="210" y="276" text-anchor="middle">L-BFGS, Adam, or another</text><text class="s" x="210" y="297" text-anchor="middle">sensitivity-aware optimizer</text>
+  <rect class="b" x="410" y="210" width="300" height="100" rx="12"/><text class="t" x="560" y="247" text-anchor="middle">No · nonsmooth/discrete</text><text class="s" x="560" y="276" text-anchor="middle">scalar target → fcmaes retry</text><text class="s" x="560" y="297" text-anchor="middle">competing goals → MODE</text>
+  <rect class="b" x="760" y="210" width="300" height="100" rx="12"/><text class="t" x="910" y="247" text-anchor="middle">A repertoire is required</text><text class="s" x="910" y="276" text-anchor="middle">meaningful behavior axes</text><text class="s" x="910" y="297" text-anchor="middle">→ MAP-Elites</text>
+  <path class="l" d="M455 146L270 210"/><path class="l" d="M560 146V210"/><path class="l" d="M665 146L850 210"/>
+  <text class="s" x="300" y="183">yes</text><text class="s" x="570" y="183">no</text><text class="s" x="800" y="183">diversity is the deliverable</text>
+  <text class="s" x="35" y="385">Events do not automatically invalidate gradients; inspect whether the complete decision-to-loss path remains differentiable and correctly differentiated.</text>
+</svg>

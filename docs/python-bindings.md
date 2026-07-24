@@ -1,10 +1,9 @@
-# Optional PyO3 bindings
+# Python package and PyO3 bindings
 
-The `fcmaes-py` crate is an optional low-level embedding surface for Python
-packages. It builds `_fcmaes_ext`; no Python facade, SciPy result adapter, or
-plotting package is bundled in this Rust-only repository. The repository-local
-`pyproject.toml` keeps this extension package independent from any surrounding
-Python checkout.
+The `fcmaes-rust` Python distribution installs the public `fcmaes_rust`
+package. Its private `fcmaes_rust._fcmaes_ext` PyO3 module exposes the native
+optimizer core; `fcmaes_rust.native` provides explicit access to that
+low-level surface. SciPy result adapters and plotting are not bundled.
 
 ## Build and import
 
@@ -18,11 +17,19 @@ env -u CONDA_PREFIX VIRTUAL_ENV="$PWD/.venv" \
   .venv/bin/maturin develop --release \
   --manifest-path crates/fcmaes-py/Cargo.toml
 .venv/bin/python -c \
-  'from _fcmaes_ext import phase1_build_info; print(phase1_build_info())'
+  'import fcmaes_rust; print(fcmaes_rust.__version__); print(fcmaes_rust.phase1_build_info())'
 ```
 
-The extension functions return low-level tuples or dictionaries. Downstream
-packages can wrap these in their preferred public result types.
+For an installed release:
+
+```bash
+python -m pip install fcmaes-rust
+```
+
+The facade exports the optimizer functions and classes documented below.
+They return low-level tuples, dictionaries, and NumPy arrays. The binary
+extension remains private so future facade-level result adapters can evolve
+without changing its import location.
 
 ## Runnable Python example
 

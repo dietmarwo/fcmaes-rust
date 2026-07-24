@@ -1,8 +1,4 @@
-//! Pure-Rust core of the fcmaes optimization library.
-//!
-//! It contains the shared RNG and fitness layer, native optimizers, and retry
-//! coordinators. GTOP benchmarks and standalone drivers live in the sibling
-//! `fcmaes-examples` crate.
+#![doc = include_str!("../README.md")]
 
 pub mod biteopt;
 pub mod cmaes;
@@ -27,7 +23,7 @@ pub use de::{De, DeParams, DeResult};
 pub use fitness::{Fitness, NAN_REPLACEMENT, Objective, parallel_batch};
 pub use mapelites::{
     Archive, DiversifierParams, MapElitesParams, QdBatchFitness, QdFitness, diversify,
-    diversify_batch, map_elites, map_elites_batch,
+    diversify_batch, map_elites, map_elites_batch, map_elites_batch_with_progress,
 };
 pub use mode::{Mode, ModeParams, ModeResult};
 pub use moretry::{

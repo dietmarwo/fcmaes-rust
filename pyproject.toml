@@ -4,26 +4,60 @@ build-backend = "maturin"
 
 [project]
 name = "fcmaes-rust"
-version = "0.1.0"
-description = "Optional Python bindings for the native fcmaes Rust port"
-readme = "README.md"
-requires-python = ">=3.9"
-license = { text = "MIT" }
+dynamic = ["version"]
+description = "Native Rust implementation of fast, parallel, gradient-free optimization."
+readme = "python/README.md"
+requires-python = ">=3.9,<3.14"
+license = "MIT"
+license-files = ["LICENSE"]
 authors = [{ name = "Dietmar Wolz" }]
+keywords = [
+    "optimization",
+    "gradient-free",
+    "black-box optimization",
+    "CMA-ES",
+    "multi-objective optimization",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: Implementation :: CPython",
+    "Programming Language :: Rust",
+    "Topic :: Scientific/Engineering",
+]
 dependencies = [
     "numpy>=1.20",
     "scipy>=1.8",
 ]
 
 [project.optional-dependencies]
-test = ["pytest>=7"]
+test = [
+    "pytest>=7",
+]
+
+[project.urls]
+Repository = "https://github.com/dietmarwo/fcmaes-rust"
+Documentation = "https://github.com/dietmarwo/fcmaes-rust/tree/main/docs"
+Issues = "https://github.com/dietmarwo/fcmaes-rust/issues"
+Changelog = "https://github.com/dietmarwo/fcmaes-rust/blob/main/CHANGELOG.md"
 
 [tool.maturin]
 manifest-path = "crates/fcmaes-py/Cargo.toml"
-module-name = "_fcmaes_ext"
+python-source = "python"
+module-name = "fcmaes_rust._fcmaes_ext"
+strip = true
 
 [tool.pytest.ini_options]
 testpaths = [
     "crates/fcmaes-py/python_tests",
     "examples/python",
 ]
+
+[tool.maturin.generate-ci.github]
+trusted-publishing = true
+publishing-environment = "release"

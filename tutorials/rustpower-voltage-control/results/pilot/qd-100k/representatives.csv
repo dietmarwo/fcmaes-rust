@@ -1,0 +1,2 @@
+label,niche_id,quality_train,descriptor_battery_capacity_mw_train,descriptor_capacitor_mvar_train,category_battery_bus,objective_loss_mw,objective_voltage_deviation_mpu,objective_lifecycle_cost_musd,objective_security_index
+best,318,14.644767389981,273.852127966882,225.000000000000,14,36.112288554340,14.156748092688,105.282451783144,0.999984394205

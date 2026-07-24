@@ -1,0 +1,56 @@
+{
+  "actual_evaluations": 8192,
+  "artifacts": {
+    "convergence": "convergence.csv",
+    "pareto": "pareto.csv",
+    "report": "report.html",
+    "scenarios": "scenarios.csv"
+  },
+  "command": "target/release/rustpower-voltage-control --mode optimize --workers 24 --evaluations 8192 --popsize 128 --seed 42 --output results/publication/mo",
+  "convergence_metrics": [
+    "best_quality",
+    "feasible_population",
+    "pareto_population"
+  ],
+  "descriptors": [],
+  "elapsed_seconds": 3.069378158,
+  "formulation": "mo",
+  "objectives": [
+    {
+      "column": "objective_loss_mw",
+      "label": "Mean line loss",
+      "unit": "MW"
+    },
+    {
+      "column": "objective_voltage_deviation_mpu",
+      "label": "Voltage RMS deviation",
+      "unit": "mpu"
+    },
+    {
+      "column": "objective_lifecycle_cost_musd",
+      "label": "Lifecycle cost",
+      "unit": "M USD"
+    },
+    {
+      "column": "objective_security_index",
+      "label": "Worst security index"
+    }
+  ],
+  "requested_evaluations": 8192,
+  "schema_version": 1,
+  "seed": 42,
+  "simulation": {
+    "network": "IEEE-39",
+    "scenarios": [
+      "base",
+      "evening_peak",
+      "high_renewable_low_load",
+      "hot_peak",
+      "n_minus_1_line_23",
+      "renewable_trip"
+    ],
+    "solver": "RustPower RSparse Newton-Raphson"
+  },
+  "tutorial": "rustpower-voltage-control",
+  "workers": 24
+}

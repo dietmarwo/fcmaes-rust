@@ -2,14 +2,23 @@
 
 ## Prerequisites
 
-The native library requires a current stable Rust toolchain with Cargo. Python
-is optional and needed only when building the PyO3 extension crate.
+The native library requires Rust 1.88 or newer with Cargo. Rust 1.88 is the
+tested minimum supported Rust version (MSRV) for the edition-2024 source and
+the current locked dependency set. Python is optional and needed only when
+building the PyO3 extension crate.
 
 Check the toolchain:
 
 ```bash
 rustc --version
 cargo --version
+```
+
+To reproduce the minimum-version check used in CI:
+
+```bash
+rustup toolchain install 1.88.0
+cargo +1.88.0 check --workspace --locked
 ```
 
 ## Build and test the Rust workspace
@@ -100,11 +109,12 @@ Verify that Python loaded the Rust backend:
 
 ```bash
 .venv/bin/python -c \
-  'from _fcmaes_ext import phase1_build_info; print(phase1_build_info())'
+  'import fcmaes_rust; print(fcmaes_rust.__version__); print(fcmaes_rust.phase1_build_info())'
 ```
 
-The returned dictionary should contain `"backend": "rust"`. The extension is
-low-level; this repository does not bundle a Python facade package.
+The returned dictionary should contain `"backend": "rust"`. The installed
+distribution exposes the documented facade as `fcmaes_rust` and keeps the
+low-level extension available as `fcmaes_rust.native`.
 
 ## Run native examples
 

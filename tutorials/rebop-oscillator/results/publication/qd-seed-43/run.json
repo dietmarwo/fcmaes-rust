@@ -1,0 +1,85 @@
+{
+  "actual_evaluations": 20096,
+  "artifacts": {
+    "convergence": "convergence.csv",
+    "qd_archive": "qd_archive.csv",
+    "replications": "replications.csv",
+    "report": "report.html",
+    "traces": "traces.csv"
+  },
+  "command": "target/release/rebop-oscillator --mode qd --workers 24 --replications 4 --validation-replications 8 --qd-evaluations 20000 --qd-capacity 400 --qd-chunk-size 128 --seed 43 --output results/publication/qd-seed-43",
+  "convergence_metrics": [
+    "coverage",
+    "qd_score",
+    "best_quality",
+    "invalid_fraction"
+  ],
+  "descriptors": [
+    {
+      "bounds": [
+        8.0,
+        64.0
+      ],
+      "column": "descriptor_period",
+      "label": "Mean period",
+      "unit": "model time"
+    },
+    {
+      "bounds": [
+        0.0,
+        20000.0
+      ],
+      "column": "descriptor_amplitude",
+      "label": "Mean amplitude",
+      "unit": "molecules"
+    }
+  ],
+  "elapsed_seconds": 163.462356412,
+  "formulation": "qd",
+  "qd": {
+    "best_quality": 1.9087367643235182,
+    "capacity": 400,
+    "chunk_size": 128,
+    "clipped_descriptors": 625,
+    "coverage": 0.9775,
+    "grid_shape": [
+      20,
+      20
+    ],
+    "invalid_evaluations": 1,
+    "occupied": 391,
+    "qd_score": 64.31955591346006,
+    "quality_label": "Robust oscillator quality (lower is better)",
+    "quality_train_column": "quality_train",
+    "quality_validation_column": "quality_validation",
+    "validation_evaluations": 391,
+    "validation_same_niche_fraction": 0.3734015345268542
+  },
+  "requested_evaluations": 20000,
+  "schema_version": 1,
+  "seed": 43,
+  "simulation": {
+    "replications": 4,
+    "target_period": 20.0,
+    "training_seeds": [
+      "0x243f6a8885a308d3",
+      "0x13198a2e03707344",
+      "0xa4093822299f31d0",
+      "0x082efa98ec4e6c89"
+    ],
+    "validation_replications": 8,
+    "validation_seeds": [
+      "0xa458fea3f4933d7e",
+      "0x0d95748f728eb658",
+      "0x718bcd5882154aee",
+      "0x7b54a41dc25a59b5",
+      "0x9c30d5392af26013",
+      "0xc5d1b023286085f0",
+      "0xca417918b8db38ef",
+      "0x8e79dcb0603a180e"
+    ]
+  },
+  "tutorial": "rebop-oscillator",
+  "validation_elapsed_seconds": 4.701496071,
+  "workers": 24
+}

@@ -1,0 +1,79 @@
+{
+  "actual_evaluations": 1024,
+  "artifacts": {
+    "convergence": "convergence.csv",
+    "qd_archive": "qd_archive.csv",
+    "replications": "replications.csv",
+    "report": "report.html",
+    "traces": "traces.csv"
+  },
+  "command": "target/release/rebop-oscillator --mode qd --workers 4 --replications 2 --validation-replications 4 --qd-evaluations 1024 --qd-capacity 100 --qd-chunk-size 32 --seed 42 --output results/quick/qd",
+  "convergence_metrics": [
+    "coverage",
+    "qd_score",
+    "best_quality",
+    "invalid_fraction"
+  ],
+  "descriptors": [
+    {
+      "bounds": [
+        8.0,
+        64.0
+      ],
+      "column": "descriptor_period",
+      "label": "Mean period",
+      "unit": "model time"
+    },
+    {
+      "bounds": [
+        0.0,
+        20000.0
+      ],
+      "column": "descriptor_amplitude",
+      "label": "Mean amplitude",
+      "unit": "molecules"
+    }
+  ],
+  "elapsed_seconds": 10.630754527,
+  "formulation": "qd",
+  "qd": {
+    "best_quality": 2.3009949723770395,
+    "capacity": 100,
+    "chunk_size": 32,
+    "clipped_descriptors": 10,
+    "coverage": 0.62,
+    "grid_shape": [
+      10,
+      10
+    ],
+    "invalid_evaluations": 1,
+    "occupied": 62,
+    "qd_score": 10.688767606254833,
+    "quality_label": "Robust oscillator quality (lower is better)",
+    "quality_train_column": "quality_train",
+    "quality_validation_column": "quality_validation",
+    "validation_evaluations": 62,
+    "validation_same_niche_fraction": 0.46774193548387094
+  },
+  "requested_evaluations": 1024,
+  "schema_version": 1,
+  "seed": 42,
+  "simulation": {
+    "replications": 2,
+    "target_period": 20.0,
+    "training_seeds": [
+      "0x243f6a8885a308d3",
+      "0x13198a2e03707344"
+    ],
+    "validation_replications": 4,
+    "validation_seeds": [
+      "0xa458fea3f4933d7e",
+      "0x0d95748f728eb658",
+      "0x718bcd5882154aee",
+      "0x7b54a41dc25a59b5"
+    ]
+  },
+  "tutorial": "rebop-oscillator",
+  "validation_elapsed_seconds": 1.101704865,
+  "workers": 4
+}
