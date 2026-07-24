@@ -57,6 +57,7 @@ Run `git diff --check` before handing off changes.
 | Native Mazda evaluator and objectives | `examples/src/mazda.rs`, `examples/src/mazda_model.rs` |
 | Trading model and Yahoo cache | `examples/src/trading.rs` |
 | Factory material-flow objective | `examples/src/material_flow_planning.rs` |
+| Combinatorial encoding reference helpers | `examples/src/encoding.rs` |
 | Buckingham–Pi analysis and regression | `examples/src/buckingham.rs` |
 | Job-shop and harvesting objectives | `examples/src/{jobshop,harvesting}.rs` |
 | Harmonic and transfer-scheduling objectives | `examples/src/{tdesign,scheduling}.rs` |

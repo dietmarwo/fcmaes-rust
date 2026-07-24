@@ -146,7 +146,9 @@ requirements rather than algorithm names alone.
 `fcmaes-rust` optimizes fixed-length `f64` vectors within finite bounds.
 Continuous values are direct. Small integer and categorical decisions can
 often be decoded by rounding or indexed lookup; random keys can represent
-permutations and partitions. The [examples](examples.md) contain these
+permutations and partitions. The
+[combinatorial encoding cookbook](combinatorial-encodings.md) collects tested
+integer, categorical, subset, permutation, partition, ordering, and repair
 patterns.
 
 If the candidate is inherently a variable-length program, graph, expression

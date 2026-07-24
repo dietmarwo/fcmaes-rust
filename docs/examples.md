@@ -8,6 +8,12 @@ flow backend, held-out pollutant releases, MODE, MAP-Elites, and resolution
 evidence. The neural-controller tutorial additionally provides a direct
 PGPE/CR-FM-NES policy-search comparison with randomized native Rust rollouts.
 
+Reusable patterns for turning optimizer vectors into integer, categorical,
+subset, permutation, partition, and schedule decisions are collected in the
+[combinatorial encoding cookbook](combinatorial-encodings.md). Its tested
+reference helpers live in
+[`examples/src/encoding.rs`](../examples/src/encoding.rs).
+
 ## Binaries
 
 The `fcmaes-examples` crate provides:

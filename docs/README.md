@@ -16,6 +16,7 @@ configuration, workflows, and runnable examples.
 | [Retry](retry.md) | Basic, coordinated, and multi-objective retry |
 | [Optional Python bindings](python-bindings.md) | Direct PyO3 extension surface and GIL considerations |
 | [Examples](examples.md) | Every native binary, data input, GTOP problem, monitor, and benchmark |
+| [Combinatorial encodings](combinatorial-encodings.md) | Turning fixed real vectors into integers, categories, subsets, permutations, partitions, and repaired schedules |
 | [Buckingham–Pi](buckingham-pi.md) | Numerical dimensional analysis, holdout scoring, BiteOpt retry, and MODE |
 | [Application tutorials](../tutorials/README.md) | Nine native optimization applications, including simulation, policy search, ML hyperparameter tuning, and custom-backend verification |
 | [Development](development.md) | Formatting, linting, tests, coverage, rustdoc, and extension points |
@@ -32,6 +33,8 @@ configuration, workflows, and runnable examples.
   stock trading, material flow, flexible job-shop/harvesting, multi-UAV task
   assignment, Buckingham–Pi analysis, spherical t-design, transfer scheduling,
   damped control, F-8, and Lotka-Volterra.
+- Tested real-vector decoders for integers, categories, Booleans, random-key
+  permutations, fixed-cardinality subsets, partitions, and ordered times.
 - Nine standalone native application tutorials, including a PGPE/CR-FM-NES
   neural policy-search showcase, validation-aware
   SmartCore hyperparameter optimization and robust

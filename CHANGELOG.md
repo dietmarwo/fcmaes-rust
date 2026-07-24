@@ -8,6 +8,10 @@ phase, with breaking changes called out explicitly.
 
 ### Added
 
+- Added a combinatorial encoding cookbook and tested, dependency-free example
+  helpers for bounded and logarithmic integers, categories, Booleans,
+  random-key permutations, exact-cardinality subsets, unique-selection repair,
+  route partitions, and ordered breakpoints.
 - Added a GitHub-only fixed-topology neural-controller policy-search tutorial
   with a native stochastic cart-pole model, PGPE and CR-FM-NES showcases,
   equal-protocol active CMA-ES and BiteOpt comparisons, common scenario sets,

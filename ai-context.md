@@ -373,7 +373,9 @@ Use these conventions consistently:
   the numerical distance between unrelated categories as physically real.
 - Repair permutations, schedules, and mutually exclusive choices
   deterministically. See the job-shop, scheduling, harvesting, multi-UAV, and
-  Mazda examples for decoding patterns.
+  Mazda examples for decoding patterns. Use
+  `docs/combinatorial-encodings.md` for the tested recipes, representation
+  trade-offs, and repair-versus-constraint decision.
 
 If a scalar penalty dominates everywhere, normalize the base objective and
 constraint residuals before tuning `rho`. If it is too small, infeasible points
@@ -723,6 +725,9 @@ Before declaring success, the AI should:
 - `docs/retry.md`: basic, advanced, and weighted retry.
 - `docs/architecture.md`: objective flow, normalization, and concurrency.
 - `docs/examples.md`: native application and benchmark commands.
+- `docs/combinatorial-encodings.md`: bounded integer, categorical, Boolean,
+  random-key permutation, exact-cardinality subset, partition, ordering, and
+  deterministic repair patterns.
 - `docs/buckingham-pi.md`: dimensionally valid continuous feature search,
   holdout validation, conditioning safeguards, and MODE objectives.
 - `docs/python-bindings.md`: CPython 3.11–3.13 package, callable signatures,
@@ -732,6 +737,8 @@ Before declaring success, the AI should:
 - `examples/src/bin/mazda_qd.rs`: parallel MAP-Elites/Diversifier driver.
 - `examples/src/uav.rs`: random-key decoding for mixed assignment, ordering,
   scalar, and multi-objective optimization.
+- `examples/src/encoding.rs`: dependency-free reference decoders and invariant
+  tests supporting the combinatorial encoding cookbook.
 - `examples/src/buckingham.rs`: nullspace parameterization that makes every
   continuous optimizer trial dimensionally valid.
 - `tutorials/README.md`: nine native application-optimization tutorials,

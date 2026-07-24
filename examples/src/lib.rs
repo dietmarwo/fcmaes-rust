@@ -3,6 +3,7 @@
 pub mod benchmark_gtop;
 pub mod buckingham;
 pub mod damp;
+pub mod encoding;
 pub mod f8;
 pub use fcmaes_gtop as gtop;
 pub mod harvesting;
