@@ -150,7 +150,7 @@ cargo test --all-targets
 cargo run --release --bin cfd-room-ventilation -- --mode evaluate
 ```
 
-The [tutorial index](../tutorials/README.md) explains all eight application
+The [tutorial index](../tutorials/README.md) explains all nine application
 models, optimizer formulations, recorded evidence, and plotting workflow.
 
 ## Common mistakes

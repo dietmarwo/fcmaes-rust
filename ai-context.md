@@ -100,7 +100,7 @@ are naturally paired with L-BFGS or another gradient-based optimizer. Consider
 fcmaes around such a model only when discrete policies, resets, robust maxima,
 solver failures, or other end-to-end discontinuities make those sensitivities
 misleading or unavailable. See
-`tutorials/README.md#10-diffsol-why-gradients-are-the-better-default`.
+`tutorials/README.md#11-diffsol-why-gradients-are-the-better-default`.
 
 ## Fast algorithm-selection decision tree
 
@@ -126,7 +126,10 @@ misleading or unavailable. See
    - Use CR-FM-NES for higher-dimensional continuous distribution search where
      a full CMA covariance update is unattractive.
    - Use PGPE for high-throughput mirrored batches, diagonal distribution
-     search, or noisy objectives where rank-based updates help.
+     search, or noisy objectives where rank-based updates help. See the
+     fixed-topology
+     [neural-controller tutorial](tutorials/neural-controller-policy-search/)
+     for an equal-protocol PGPE/CR-FM-NES comparison.
    - Use Dual Annealing for low-to-moderate-dimensional global exploration,
      optionally followed by its bounded local search.
 5. If global structure is uncertain or local optima are likely, use independent
@@ -464,7 +467,7 @@ Archive guidance:
 
 ## Lessons from the application tutorials
 
-The eight standalone tutorials are implementation references for expensive
+The nine standalone tutorials are implementation references for expensive
 native objectives. They keep application dependencies outside the root
 workspace and demonstrate these transferable choices:
 
@@ -478,6 +481,7 @@ workspace and demonstrate these transferable choices:
 | Atmospheric source localization | Censored inverse inference, model mismatch, and non-identifiability | Use robust residuals and disjoint sensors/weather; keep MODE for error/emission trade-offs and interpret a source-centroid QD map as alternative hypotheses, not a confidence region. |
 | Room ventilation | Custom numerical backend, variable geometry, and grid sensitivity | A purpose-built backend can keep objective state isolated and fast, but then solver verification, held-out scenarios, constraint margins, and resolution sensitivity are part of the optimization evidence. |
 | SmartCore hyperparameter tuning | Mixed variables, nested stochastic fitting, and validation overfitting | Use probability-aware objectives, common folds and model seeds, disjoint candidate selection, and a frozen final test; report model-fit cost as well as optimizer calls. |
+| Neural controller policy search | 118-dimensional fixed-topology policy and randomized rollouts | Use PGPE or CR-FM-NES when full covariance is unattractive; use common per-population scenarios, rotate them deterministically, validate disjoint plants, and reserve a frozen final test. |
 
 MODE and MAP-Elites are complementary, not substitutes. Keep MODE when the
 user needs objective trade-offs, and add MAP-Elites only when descriptor-space
@@ -730,16 +734,19 @@ Before declaring success, the AI should:
   scalar, and multi-objective optimization.
 - `examples/src/buckingham.rs`: nullspace parameterization that makes every
   continuous optimizer trial dimensionally valid.
-- `tutorials/README.md`: eight native application-optimization tutorials,
+- `tutorials/README.md`: nine native application-optimization tutorials,
   MODE/MAP-Elites selection, stochastic validation, parallelism ownership,
-  validation-aware hyperparameter tuning, and the Diffsol gradient-based
-  counterexample.
+  validation-aware hyperparameter tuning, fixed-topology neural policy search,
+  and the Diffsol gradient-based counterexample.
 - `tutorials/ml-hyperparameter-tuning/`: native probability forests,
   mixed-variable decoding, fixed-fold tuning, disjoint selection, frozen final
   evaluation, fair baselines, constrained MODE, and a MAP-Elites pilot.
 - `tutorials/cfd-room-ventilation/`: custom native simulation state,
   worst-case training releases, held-out validation, three-grid sensitivity,
   MODE, and MAP-Elites.
+- `tutorials/neural-controller-policy-search/`: PGPE, CR-FM-NES, active
+  CMA-ES, and BiteOpt under an equal direct-policy-search protocol with
+  common scenarios, disjoint validation, a frozen test, and scaling evidence.
 - Generated rustdoc: `cargo doc --workspace --no-deps --open`.
 
 When code and this guide disagree, treat the current public Rust API and tests

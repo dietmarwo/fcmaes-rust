@@ -5,7 +5,8 @@ below. Larger application studies are isolated under
 [`tutorials/`](../tutorials/README.md), including validation-aware SmartCore
 hyperparameter tuning and the room-ventilation tutorial's purpose-built Rust
 flow backend, held-out pollutant releases, MODE, MAP-Elites, and resolution
-evidence.
+evidence. The neural-controller tutorial additionally provides a direct
+PGPE/CR-FM-NES policy-search comparison with randomized native Rust rollouts.
 
 ## Binaries
 

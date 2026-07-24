@@ -17,7 +17,7 @@ configuration, workflows, and runnable examples.
 | [Optional Python bindings](python-bindings.md) | Direct PyO3 extension surface and GIL considerations |
 | [Examples](examples.md) | Every native binary, data input, GTOP problem, monitor, and benchmark |
 | [Buckingham–Pi](buckingham-pi.md) | Numerical dimensional analysis, holdout scoring, BiteOpt retry, and MODE |
-| [Application tutorials](../tutorials/README.md) | Eight native optimization applications, including simulation, ML hyperparameter tuning, and custom-backend verification |
+| [Application tutorials](../tutorials/README.md) | Nine native optimization applications, including simulation, policy search, ML hyperparameter tuning, and custom-backend verification |
 | [Development](development.md) | Formatting, linting, tests, coverage, rustdoc, and extension points |
 
 ## Implemented Rust surface
@@ -32,7 +32,8 @@ configuration, workflows, and runnable examples.
   stock trading, material flow, flexible job-shop/harvesting, multi-UAV task
   assignment, Buckingham–Pi analysis, spherical t-design, transfer scheduling,
   damped control, F-8, and Lotka-Volterra.
-- Eight standalone native application tutorials, including validation-aware
+- Nine standalone native application tutorials, including a PGPE/CR-FM-NES
+  neural policy-search showcase, validation-aware
   SmartCore hyperparameter optimization and robust
   room-ventilation optimization with a purpose-built D2Q9/D2Q5 backend,
   held-out releases, MODE, and MAP-Elites.

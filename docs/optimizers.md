@@ -102,6 +102,12 @@ center. Defaults include population 32, ranking enabled, center learning rate
 The batch and ask/tell interfaces mirror CR-FM-NES. The optimizer tracks the
 true objective best even when ranking is used for updates.
 
+The
+[neural-controller policy-search tutorial](../tutorials/neural-controller-policy-search/)
+uses these interfaces to compare PGPE and CR-FM-NES on the same 118-parameter
+fixed-topology policy, rollout budget, scenario schedule, and disjoint
+validation protocol.
+
 ## Dual Annealing
 
 Use the free function:

@@ -64,6 +64,7 @@ Run `git diff --check` before handing off changes.
 | Standalone application tutorials | `tutorials/*/` |
 | Room-ventilation backend and verification | `tutorials/cfd-room-ventilation/src/` |
 | SmartCore HPO protocol and probability forest | `tutorials/ml-hyperparameter-tuning/src/` |
+| Neural controller, rollout model, and policy-search protocol | `tutorials/neural-controller-policy-search/src/` |
 | Tutorial artifact rendering and link checks | `tutorials/python/` |
 
 ## Generate rustdoc

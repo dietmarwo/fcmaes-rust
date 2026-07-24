@@ -8,6 +8,11 @@ phase, with breaking changes called out explicitly.
 
 ### Added
 
+- Added a GitHub-only fixed-topology neural-controller policy-search tutorial
+  with a native stochastic cart-pole model, PGPE and CR-FM-NES showcases,
+  equal-protocol active CMA-ES and BiteOpt comparisons, common scenario sets,
+  disjoint validation, a frozen final test, parallel-scaling measurements,
+  tests, raw result data, and deterministic figures.
 - Added a GitHub-only SmartCore hyperparameter-optimization tutorial with a
   native probability-forest adapter, mixed-variable decoding, fixed-fold
   tuning, disjoint selection and frozen final evaluation, BiteOpt retry,
@@ -29,6 +34,8 @@ phase, with breaking changes called out explicitly.
 
 ### Changed
 
+- Extended tutorial artifact validation to check the neural policy-search
+  comparison, scaling, convergence, and replay figures byte for byte.
 - Extended tutorial artifact validation to check the room-ventilation
   multi-seed, field, and resolution figures byte for byte.
 - Separated Pareto titles and legends in the shared tutorial renderer and

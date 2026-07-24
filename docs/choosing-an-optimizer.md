@@ -68,7 +68,7 @@ automatically a useful derivative of an objective that also contains:
 Events alone do not invalidate gradients. Diffsol supports forward and adjoint
 sensitivities, so smooth parameter fitting is naturally paired with a
 gradient-based optimizer. The
-[Diffsol discussion](../tutorials/README.md#10-diffsol-why-gradients-are-the-better-default)
+[Diffsol discussion](../tutorials/README.md#11-diffsol-why-gradients-are-the-better-default)
 explains the boundary. A gradient-free outer layer becomes attractive when
 discrete policies, resets, robust aggregation, or failures break the complete
 derivative path.
@@ -158,7 +158,10 @@ Dimension also changes the viable algorithm and budget. Full-covariance
 CMA-ES work grows roughly quadratically with dimension, and every population
 method needs enough evaluations to learn across all coordinates. Within
 `fcmaes-rust`, CR-FM-NES and PGPE are candidates when a full covariance is
-unattractive. For extremely large differentiable models, gradients and
+unattractive. The
+[neural-controller tutorial](../tutorials/neural-controller-policy-search/)
+compares both on a 118-parameter fixed-topology policy with randomized
+rollouts. For extremely large differentiable models, gradients and
 problem-specific parameterizations are usually the more important advantage.
 
 ### 7. Is hard real-time or `no_std` execution required?
@@ -194,12 +197,12 @@ It is a good fit when most of the following are true:
 - the required result is one robust design, a Pareto set, or a meaningful
   quality-diversity archive.
 
-The eight [application tutorials](../tutorials/README.md) cover different
+The nine [application tutorials](../tutorials/README.md) cover different
 reasons for reaching this point: stochastic discrete events, mechanical
 discontinuities, intrinsic simulation noise, changing access windows,
 mixed-integer controls and solver failures, censored inverse inference,
 variable geometry with numerical constraints, and validation-aware
-hyperparameter tuning.
+hyperparameter tuning, plus high-dimensional fixed-topology policy search.
 
 ## Constraints, noise, and validation can change the choice
 

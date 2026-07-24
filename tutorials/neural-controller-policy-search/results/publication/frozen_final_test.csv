@@ -1,0 +1,2 @@
+scenario_set,scenarios,validation_score,mean_loss,cvar_loss,success_rate,mean_steps,rms_force
+frozen-final,1024,0.232739478016,0.148494453594,0.240700069776,0.977539062500,300.000000,5.591102219523

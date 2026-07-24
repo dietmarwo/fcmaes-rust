@@ -8,7 +8,7 @@ callback or serialization boundary in the expensive path: a candidate is
 decoded and scored in Rust, and independent candidates are distributed across
 native worker threads.
 
-The eight applications deliberately cover different reasons for choosing
+The nine applications deliberately cover different reasons for choosing
 gradient-free optimization:
 
 | Tutorial | Simulator | Problem property | Implemented formulations | QD decision |
@@ -21,6 +21,7 @@ gradient-free optimization:
 | [Atmospheric source localization](dispersion-source-localization/) | ISC-3-derived native model | inverse inference, censoring, model mismatch, and non-identifiability | BiteOpt advanced retry + MODE + MAP-Elites | accepted |
 | [Room ventilation](cfd-room-ventilation/) | Custom D2Q9/D2Q5 Rust backend | variable geometry, numerical constraints, worst-case releases, and resolution sensitivity | BiteOpt retry + MODE + MAP-Elites | accepted |
 | [ML hyperparameter optimization](ml-hyperparameter-tuning/) | SmartCore decision trees | mixed variables, nested stochastic fitting, validation overfitting, and probability quality | BiteOpt retry + constrained MODE + MAP-Elites pilot | smoke pilot only; publication decision pending |
+| [Neural controller policy search](neural-controller-policy-search/) | Native stochastic cart-pole model | 118-dimensional fixed-topology policy, randomized rollouts, and validation variance | PGPE + CR-FM-NES + active CMA-ES/BiteOpt comparison | omitted: one robust controller is the deliverable |
 
 Each directory is a standalone Cargo workspace. This keeps large,
 simulator-specific dependency sets out of the main `fcmaes-rust` workspace
@@ -485,7 +486,53 @@ fair-comparison rules, commands, results, and limitations.
 
 ![A validation-aware optimization protocol separates tuning, selection, and final reporting](ml-hyperparameter-tuning/images/architecture.svg)
 
-## 10. Diffsol: why gradients are the better default
+## 10. PGPE and CR-FM-NES: fixed-topology policy search
+
+The [neural-controller tutorial](neural-controller-policy-search/) gives PGPE
+and CR-FM-NES a direct-policy-search showcase. A native Rust cart-pole model
+randomizes plant parameters, initial conditions, sensor perturbations and
+disturbances. The optimized `5 → 16 → 1` neural policy has 118 continuous
+weights and receives no gradients.
+
+The experiment contrasts fixed common training scenarios with deterministically
+rotating common scenarios, then evaluates every final policy on disjoint
+plants. Active CMA-ES and BiteOpt use the same bounds, population size,
+candidate and rollout budgets, scenario schedules, and validation protocol as
+comparison points. Five roots and exactly 20,480 candidates per run show PGPE
+leading under this recorded budget: rotating-scenario PGPE reached a
+`0.620 ± 0.376` validation score and `68.3% ± 39.9%` holdout success. The
+selected controller then achieved `97.8%` success on a one-time frozen
+1,024-scenario final test.
+
+Candidate-level parallelism reduced PGPE wall time from `2.051 s` at one
+worker to `0.155 s` at 24 workers for the identical run. The simulator remains
+serial and isolated inside each objective call, so fcmaes owns the worker
+budget.
+
+```bash
+cd tutorials/neural-controller-policy-search
+cargo run --release -- \
+  --experiment single --algo all \
+  --evaluations 2048 --popsize 64 --workers 16 \
+  --train-scenarios 2 --validation-scenarios 32 \
+  --horizon 200 --seeds 1 --output results/smoke
+```
+
+This tutorial deliberately omits MODE and MAP-Elites. Its question is which
+optimizer can find one robust policy for a fixed architecture and scalar
+control criterion. A Pareto formulation would be justified if control effort,
+robustness and settling time were independent deliverables; QD would be
+justified if users needed a repertoire indexed by meaningful controller
+behaviors. Neither is needed to demonstrate the intended PGPE/CR-FM-NES use
+case.
+
+![Validation score and holdout success for fixed and rotating training scenarios](neural-controller-policy-search/images/publication/quality.svg)
+
+See the [complete neural-controller policy-search tutorial](neural-controller-policy-search/README.md)
+for the model, objective, fixed-versus-rotating noise protocol, baselines,
+frozen test, scaling experiment, raw results and limitations.
+
+## 11. Diffsol: why gradients are the better default
 
 [Diffsol](https://github.com/martinjrobins/diffsol) is an MIT-licensed Rust
 ODE/DAE solver with explicit and implicit integration, event/root detection,

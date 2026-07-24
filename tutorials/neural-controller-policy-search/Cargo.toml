@@ -1,0 +1,17 @@
+[package]
+name = "neural-controller-policy-search"
+version = "0.1.0"
+edition = "2024"
+publish = false
+description = "Fixed-topology neural policy search with PGPE and CR-FM-NES"
+license = "MIT"
+
+[workspace]
+
+[dependencies]
+fcmaes-core = { path = "../../crates/fcmaes-core" }
+rayon = "1"
+
+[profile.release]
+codegen-units = 1
+lto = "thin"

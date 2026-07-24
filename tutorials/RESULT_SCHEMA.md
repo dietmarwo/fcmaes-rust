@@ -7,9 +7,11 @@ Rust likewise owns fitting, prediction, and metric evaluation.
 
 Most individual optimizer runs use the manifest schema below. A tutorial may
 also publish a documented aggregate evidence bundle when one figure combines
-multiple runs or validation studies. The room-ventilation tutorial is the
-current example: its per-seed Pareto/archive and convergence CSVs are combined
-with held-out evaluations, CFD fields, and a resolution study by a
+multiple runs or validation studies. The room-ventilation tutorial combines
+per-seed Pareto/archive and convergence CSVs with held-out evaluations, CFD
+fields, and a resolution study. The neural policy-search tutorial combines
+fixed/rotating-scenario comparisons, parallel-scaling repeats, baselines,
+monitor histories, a selected policy, and a frozen final test. Both use a
 byte-for-byte checked `plot_results.py`. Aggregate bundles retain the same
 minimization, feasibility, full-precision CSV, seed, budget, and artifact-link
 conventions even though no single `run.json` can describe the combined figure.

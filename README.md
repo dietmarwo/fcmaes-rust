@@ -60,7 +60,7 @@ optimizer backend.
 | `fcmaes-gtop` | Internal native GTOP objective library shared by the examples and Python package |
 | `examples` (`fcmaes-examples`) | Native GTOP problems, application objectives, benchmarks, and executable examples |
 | `fcmaes-py` | Optional PyO3 extension for embedding the Rust implementation in a Python package |
-| `tutorials/*` | Standalone application workspaces using NeXosim, Rapier, ReBop, Brahe, RustPower, SmartCore, native atmospheric dispersion, and a custom educational ventilation backend |
+| `tutorials/*` | Standalone application workspaces using NeXosim, Rapier, ReBop, Brahe, RustPower, SmartCore, native atmospheric dispersion, a custom educational ventilation backend, and native neural policy search |
 
 Only two registry artifacts are published: `fcmaes-core` on crates.io and the
 `fcmaes-rust` binding distribution on PyPI. `fcmaes-gtop` is an internal
@@ -72,7 +72,8 @@ The application tutorials are intentionally not root workspace members. Each
 keeps its application-specific dependencies, artifacts, and lockfile isolated;
 run its Cargo commands from that tutorial directory.
 
-All eight retain multi-objective optimization. MAP-Elites campaigns are
+The first eight application tutorials retain multi-objective optimization.
+MAP-Elites campaigns are
 implemented and recorded for NeXosim, Rapier, ReBop, Brahe, atmospheric source
 localization, room ventilation, and RustPower; the SmartCore hyperparameter
 tutorial additionally contains an explicitly provisional QD pilot. That
@@ -84,13 +85,16 @@ were decision variables and reached only 4% coverage, while emergent behavior
 coordinates measured from the solved scenarios reached 68% mean coverage over
 three seeds at the identical 100k-evaluation budget. Constrained MODE stays the
 primary formulation there, because the near-unique asset architecture the
-original pilot found survives the descriptor fix. The
+original pilot found survives the descriptor fix. The ninth tutorial is an
+intentional scalar showcase for PGPE and CR-FM-NES on a 118-parameter neural
+controller, with fixed and rotating common scenarios, disjoint validation, and
+a frozen 1,024-scenario final test. The
 [tutorial index](tutorials/README.md) includes commands, figures, validation
 results and the common result schema. Compact canonical result directories are
 version-controlled with generated SVGs so raw-evidence links and deterministic
 rendering work from a clean clone. Schema-driven tutorials use `run.json`;
-room ventilation adds an aggregate CSV/plot check spanning three seeds, CFD
-fields, and resolution evidence.
+room ventilation and neural policy search add aggregate CSV/plot checks
+spanning multiple seeds and validation studies.
 
 Implemented algorithms include Differential Evolution, active CMA-ES,
 CR-FM-NES, PGPE, Dual Annealing, BiteOpt, MODE, CVT-MAP-Elites, the
@@ -179,6 +183,7 @@ python examples/python/test_cma.py
 - [Native Rust application-optimization tutorials](tutorials/README.md)
 - [ML hyperparameter-optimization tutorial](tutorials/ml-hyperparameter-tuning/README.md)
 - [Room-ventilation optimization tutorial](tutorials/cfd-room-ventilation/README.md)
+- [Neural-controller policy-search tutorial](tutorials/neural-controller-policy-search/README.md)
 - [Optional PyO3 bindings](docs/python-bindings.md)
 - [Release history](CHANGELOG.md)
 - [Publishing checklist](RELEASING.md)
