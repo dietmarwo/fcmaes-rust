@@ -93,6 +93,38 @@ Lotka-Volterra control.
 
 ## Quick start
 
+### Install the released packages
+
+Inside a Rust application, add the published optimizer library:
+
+```bash
+cargo add fcmaes-core
+```
+
+The crate is imported in Rust as `fcmaes_core`.
+
+Python users install the published binding distribution with:
+
+```bash
+python -m pip install fcmaes-rust
+```
+
+It imports as `fcmaes_rust`; its optimizer backend is the same native Rust
+implementation:
+
+```python
+import fcmaes_rust
+
+print(fcmaes_rust.__version__)
+print(fcmaes_rust.phase1_build_info())
+```
+
+A compatible prebuilt wheel requires neither a local Rust toolchain nor a
+C/C++ compiler. Published wheels support CPython 3.11 through 3.13. Building
+the Python package from its source distribution does require Rust.
+
+### Build and run the repository
+
 Install Rust 1.88 or newer, then run from this directory. Rust 1.88 is the
 tested minimum for the edition-2024 source and current locked dependency set;
 the CI workflow checks it explicitly.
@@ -100,24 +132,6 @@ the CI workflow checks it explicitly.
 ```bash
 cargo test --workspace
 cargo build --release --workspace
-```
-
-After the registry release, downstream Rust and Python users install the
-published packages with:
-
-```bash
-cargo add fcmaes-core
-python -m pip install fcmaes-rust
-```
-
-The Python distribution imports as `fcmaes_rust`; its optimizer backend is
-the same native Rust implementation:
-
-```python
-import fcmaes_rust
-
-print(fcmaes_rust.__version__)
-print(fcmaes_rust.phase1_build_info())
 ```
 
 Run a small native optimization:
@@ -133,12 +147,11 @@ cargo run --release -p fcmaes-examples --bin gtop-examples -- \
   --problem cassini1 --retries 16 --evaluations 5000 --workers 16 --seed 1
 ```
 
-After installing the optional PyO3 extension as described in the
-[Python bindings guide](docs/python-bindings.md), run its active CMA-ES
+With `fcmaes-rust` installed, run the repository's active CMA-ES Python
 example with:
 
 ```bash
-.venv/bin/python examples/python/test_cma.py
+python examples/python/test_cma.py
 ```
 
 ## Documentation

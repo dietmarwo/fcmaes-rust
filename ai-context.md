@@ -23,6 +23,18 @@ repository:
 - `examples`, `tutorials`, and the internal native `fcmaes-gtop` source are
   GitHub-only and are not separate published packages.
 
+Keep distribution and API names distinct:
+
+```text
+cargo add fcmaes-core          -> use fcmaes_core
+python -m pip install fcmaes-rust -> import fcmaes_rust
+```
+
+Installing a compatible CPython wheel requires neither a Rust toolchain nor a
+C/C++ compiler. Building the Python package from its source distribution does
+require Rust. Do not tell a Python user to install the historical `fcmaes`
+package when they asked specifically for this Rust implementation.
+
 ## Required workflow for the AI
 
 Before selecting an algorithm, create a problem card containing the following

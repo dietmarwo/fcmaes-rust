@@ -6,6 +6,18 @@ on:
   pull_request:
 
 jobs:
+  msrv:
+    name: Rust 1.88 minimum version
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@1.88.0
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: msrv
+      - name: Check locked workspace on the declared MSRV
+        run: cargo check --workspace --locked
+
   rust:
     name: Rust workspace
     runs-on: ubuntu-latest
@@ -33,6 +45,54 @@ jobs:
             PATH="$PWD/.venv/bin:$PATH" \
             .venv/bin/maturin develop --release \
             --manifest-path crates/fcmaes-py/Cargo.toml
-          .venv/bin/python -m pytest crates/fcmaes-py/python_tests
+          .venv/bin/python -m pytest crates/fcmaes-py/python_tests examples/python
       - name: cargo doc
         run: cargo doc --workspace --no-deps
+
+  simulator-tutorials:
+    name: Tutorial · ${{ matrix.tutorial }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        tutorial:
+          - nexosim-production-line
+          - rapier-trebuchet
+          - rebop-oscillator
+          - brahe-constellation
+          - rustpower-voltage-control
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: tutorials/${{ matrix.tutorial }}
+      - name: cargo fmt
+        run: cargo fmt --manifest-path tutorials/${{ matrix.tutorial }}/Cargo.toml --all -- --check
+      - name: cargo clippy
+        run: cargo clippy --manifest-path tutorials/${{ matrix.tutorial }}/Cargo.toml --all-targets -- -D warnings
+      - name: cargo test
+        run: cargo test --manifest-path tutorials/${{ matrix.tutorial }}/Cargo.toml
+
+  tutorial-artifacts:
+    name: Tutorial artifacts and documentation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install plotting package
+        working-directory: tutorials/python
+        run: python -m pip install -e ".[test]"
+      - name: Test plotting API
+        working-directory: tutorials/python
+        run: python -m pytest
+      - name: Check generated figures
+        working-directory: tutorials/python
+        run: python render_all.py --check
+      - name: Check local documentation links
+        working-directory: tutorials/python
+        run: python check_docs.py

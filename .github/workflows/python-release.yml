@@ -177,5 +177,7 @@ jobs:
           subject-path: "wheels-*/*"
       - name: Install uv
         uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: false
       - name: Publish with PyPI Trusted Publishing
         run: uv publish --trusted-publishing always "wheels-*/*"
