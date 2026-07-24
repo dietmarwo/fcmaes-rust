@@ -1,5 +1,5 @@
 # Rust build and coverage artifacts
-/target/
+target/
 **/*.rs.bk
 Cargo.lock.orig
 *.profraw

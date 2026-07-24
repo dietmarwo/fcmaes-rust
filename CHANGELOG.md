@@ -6,6 +6,18 @@ phase, with breaking changes called out explicitly.
 
 ## [Unreleased]
 
+### Added
+
+- Added a GitHub-only atmospheric dispersion source-localization tutorial with
+  a native ISC-3-derived educational model, BiteOpt coordinated advanced retry,
+  MODE, MAP-Elites, disjoint holdout validation, reproducible result artifacts,
+  and deterministic figures.
+
+### Changed
+
+- Separated Pareto titles and legends in the shared tutorial renderer and
+  regenerated the byte-for-byte checked SVG figures.
+
 ## [0.1.2] - 2026-07-24
 
 First synchronized crates.io and PyPI release.

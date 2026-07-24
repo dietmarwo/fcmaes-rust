@@ -1,0 +1,69 @@
+{
+  "actual_evaluations": 200192,
+  "artifacts": {
+    "convergence": "convergence.csv",
+    "observations": "observations.csv",
+    "qd_archive": "qd_archive.csv",
+    "source_map": "source-map.svg",
+    "summary": "summary.csv"
+  },
+  "command": "target/release/dispersion-source-localization --mode qd --workers 24 --qd-evaluations 200000 --qd-capacity 400 --qd-chunk-size 256 --seed 43 --output results/publication/qd-seed-43",
+  "convergence_metrics": [
+    "coverage",
+    "qd_score",
+    "best_quality",
+    "invalid_fraction"
+  ],
+  "descriptors": [
+    {
+      "bounds": [
+        -1800.0,
+        1800.0
+      ],
+      "column": "descriptor_centroid_x",
+      "label": "Source-centroid easting",
+      "unit": "m"
+    },
+    {
+      "bounds": [
+        -1800.0,
+        1800.0
+      ],
+      "column": "descriptor_centroid_y",
+      "label": "Source-centroid northing",
+      "unit": "m"
+    }
+  ],
+  "elapsed_seconds": 0.45284842,
+  "formulation": "qd",
+  "qd": {
+    "best_quality": 0.10817848434770726,
+    "capacity": 400,
+    "chunk_size": 256,
+    "clipped_descriptors": 19,
+    "coverage": 1.0,
+    "grid_shape": [
+      20,
+      20
+    ],
+    "invalid_evaluations": 0,
+    "occupied": 400,
+    "qd_score": 600.451943431102,
+    "quality_label": "Robust score (lower is better)",
+    "quality_train_column": "quality_train",
+    "quality_validation_column": "quality_validation",
+    "validation_evaluations": 400
+  },
+  "requested_evaluations": 200000,
+  "schema_version": 1,
+  "seed": 11562461410679940100,
+  "simulation": {
+    "educational_model": "ISC-3-derived Gaussian plume with Briggs plume rise",
+    "non_regulatory": true,
+    "training_observations": 256,
+    "validation_observations": 100
+  },
+  "tutorial": "dispersion-source-localization",
+  "validation_elapsed_seconds": 0.000353883,
+  "workers": 24
+}

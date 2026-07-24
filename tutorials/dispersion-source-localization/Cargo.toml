@@ -1,0 +1,18 @@
+[package]
+name = "dispersion-source-localization"
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+publish = false
+description = "Native atmospheric source-localization tutorial with fcmaes-rust"
+
+# Standalone tutorial workspace: keep simulator dependencies out of the root workspace.
+[workspace]
+
+[dependencies]
+fcmaes-core = { path = "../../crates/fcmaes-core" }
+serde_json = "1"
+
+[profile.release]
+codegen-units = 1
+lto = "thin"

@@ -8,7 +8,7 @@ between optimizer and simulator: a candidate is decoded, simulated and scored
 in Rust, and independent candidates are distributed across native worker
 threads.
 
-The five applications deliberately cover different reasons for choosing
+The six applications deliberately cover different reasons for choosing
 gradient-free optimization:
 
 | Tutorial | Simulator | Problem property | Implemented formulations | QD decision |
@@ -18,6 +18,7 @@ gradient-free optimization:
 | [Biochemical oscillator](rebop-oscillator/) | ReBop | intrinsically noisy stochastic reaction paths | BiteOpt retry + MODE + MAP-Elites | accepted |
 | [Satellite constellation](brahe-constellation/) | Brahe | access-window appearance/disappearance and worst-gap aggregation | BiteOpt retry + constrained MODE + MAP-Elites | accepted |
 | [Voltage control](rustpower-voltage-control/) | RustPower | mixed-integer controls, contingencies and power-flow failures | constrained MODE + experimental QD pilot | rejected after pilot |
+| [Atmospheric source localization](dispersion-source-localization/) | ISC-3-derived native model | inverse inference, censoring, model mismatch, and non-identifiability | BiteOpt advanced retry + MODE + MAP-Elites | accepted |
 
 Each directory is a standalone Cargo workspace. This keeps large,
 simulator-specific dependency sets out of the main `fcmaes-rust` workspace
@@ -54,7 +55,8 @@ regeneration additionally needs Python 3.11 or newer:
 ```bash
 cd tutorials/python
 python -m venv .venv
-.venv/bin/python -m pip install -e ".[test]"
+.venv/bin/python -m pip install -r requirements-lock.txt
+.venv/bin/python -m pip install --no-deps -e .
 .venv/bin/python render_all.py --check
 ```
 
@@ -339,7 +341,57 @@ recorded Pareto result.
 
 ![Six-scenario voltage-control evaluation, constrained MODE, and the recorded QD go/no-go decision](rustpower-voltage-control/images/architecture.svg)
 
-## 7. Diffsol: why gradients are the better default
+## 7. Atmospheric dispersion: robust source localization
+
+The [dispersion tutorial](dispersion-source-localization/) is an inverse
+problem rather than another forward engineering design. A native Rust
+Gaussian-plume model infers the positions, emission rates, and release heights
+of two sources together with wind and spread corrections from censored
+receptor observations.
+
+Its numerical equations are adapted from the MIT-licensed
+[`really-simple-dispersion-wasm`](https://github.com/joshuanunn/really-simple-dispersion-wasm),
+but the browser and WebAssembly layers are not used. Concentration is evaluated
+only at the receptors required by the objective. The model is derived from the
+superseded ISC-3 model and is explicitly educational, not suitable for
+regulatory or safety decisions.
+
+The deterministic synthetic dataset has separate sensors and weather for
+training and validation. Observation-specific spread perturbations, relative
+noise, background concentration, and a detection limit prevent the inverse
+problem from being an exact replay of its own forward model.
+
+BiteOpt coordinated advanced retry searches for one robust estimate. MODE
+retains the trade-off among mean reconstruction error, tail/detection error,
+and total emission. MAP-Elites remains complementary: emission-weighted source
+centroid coordinates organize a map of alternative hypotheses, while the
+robust reconstruction score chooses the elite inside each cell. Archive
+coverage is not interpreted as a confidence region.
+
+Recorded 24-worker runs reduced the mean hidden-source position error from
+860.4 m for the initial baseline to 15.2 m for scalar retry and 11.7 m for the
+selected MODE point. Three 200,192-evaluation QD runs filled all 400 centroid
+niches; the quality gradient across that deliberately complete map, not
+coverage by itself, is the useful result.
+
+```bash
+cd tutorials/dispersion-source-localization
+cargo run --release -- \
+  --mode all --workers 24 \
+  --evaluations 5000 --retries 24 --depth 6 --max-eval-fac 6 \
+  --mo-evaluations 200000 --popsize 256 \
+  --qd-evaluations 200000 --qd-capacity 400 \
+  --qd-chunk-size 256 --seed 42
+```
+
+See the
+[complete atmospheric dispersion tutorial](dispersion-source-localization/README.md)
+for the decision vector, model attribution, held-out results, serious-run
+budgets, QD interpretation, and limitations.
+
+![Receptor observations feed a native inverse model, three complementary optimization formulations, and disjoint holdout validation](dispersion-source-localization/images/architecture.svg)
+
+## 8. Diffsol: why gradients are the better default
 
 [Diffsol](https://github.com/martinjrobins/diffsol) is an MIT-licensed Rust
 ODE/DAE solver with explicit and implicit integration, event/root detection,
@@ -347,7 +399,7 @@ resets, interpolation and dense output, quadrature, checkpointing, and forward
 and adjoint sensitivity analysis. Equations can be supplied through Rust
 traits/closures or the DiffSL DSL.
 
-We deliberately do **not** add a sixth fcmaes tutorial for Diffsol's standard
+We deliberately do **not** add another fcmaes tutorial for Diffsol's standard
 smooth parameter-fitting problems. Diffsol can calculate the gradients that
 those problems need, so a gradient-based optimizer is the natural first
 choice. The Diffsol book demonstrates this directly:

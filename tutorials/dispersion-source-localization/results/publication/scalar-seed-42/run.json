@@ -1,0 +1,35 @@
+{
+  "actual_evaluations": 420000,
+  "artifacts": {
+    "convergence": "convergence.csv",
+    "observations": "observations.csv",
+    "source_map": "source-map.svg",
+    "summary": "summary.csv"
+  },
+  "command": "target/release/dispersion-source-localization --mode scalar --workers 24 --evaluations 5000 --retries 24 --depth 6 --max-eval-fac 6 --seed 42 --output results/publication/scalar-seed-42",
+  "convergence_metrics": [
+    "best_quality"
+  ],
+  "descriptors": [],
+  "elapsed_seconds": 0.991892825,
+  "formulation": "scalar",
+  "objectives": [],
+  "optimizer": {
+    "algorithm": "BiteOpt coordinated advanced retry",
+    "depth": 6,
+    "initial_evaluations_per_retry": 5000,
+    "max_eval_fac": 6.0,
+    "retries": 24
+  },
+  "requested_evaluations": 420000,
+  "schema_version": 1,
+  "seed": 42,
+  "simulation": {
+    "educational_model": "ISC-3-derived Gaussian plume with Briggs plume rise",
+    "non_regulatory": true,
+    "training_observations": 256,
+    "validation_observations": 100
+  },
+  "tutorial": "dispersion-source-localization",
+  "workers": 24
+}

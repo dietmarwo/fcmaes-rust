@@ -61,6 +61,7 @@ jobs:
           - rebop-oscillator
           - brahe-constellation
           - rustpower-voltage-control
+          - dispersion-source-localization
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable

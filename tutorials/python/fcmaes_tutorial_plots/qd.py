@@ -84,8 +84,7 @@ def plot_qd(
             ]
         else:
             extent = [float(np.min(x)), float(np.max(x)), float(np.min(y)), float(np.max(y))]
-        colormap = plt.get_cmap("viridis_r").copy()
-        colormap.set_bad("#ECEFF1")
+        colormap = plt.get_cmap("viridis_r").with_extremes(bad="#ECEFF1")
         artist = axis.imshow(
             image,
             origin="lower",

@@ -1,0 +1,43 @@
+{
+  "actual_evaluations": 200192,
+  "artifacts": {
+    "convergence": "convergence.csv",
+    "observations": "observations.csv",
+    "pareto": "pareto.csv",
+    "source_map": "source-map.svg",
+    "summary": "summary.csv"
+  },
+  "command": "target/release/dispersion-source-localization --mode multi --workers 24 --mo-evaluations 200000 --popsize 256 --seed 42 --output results/publication/mo-seed-42",
+  "convergence_metrics": [
+    "best_quality"
+  ],
+  "descriptors": [],
+  "elapsed_seconds": 0.817733965,
+  "formulation": "mo",
+  "objectives": [
+    {
+      "column": "objective_mean_huber_error",
+      "label": "Mean Huber error"
+    },
+    {
+      "column": "objective_p95_detection_error",
+      "label": "P95 + detection error"
+    },
+    {
+      "column": "objective_total_emission_g_s",
+      "label": "Total emission",
+      "unit": "g/s"
+    }
+  ],
+  "requested_evaluations": 200000,
+  "schema_version": 1,
+  "seed": 16646288086500911345,
+  "simulation": {
+    "educational_model": "ISC-3-derived Gaussian plume with Briggs plume rise",
+    "non_regulatory": true,
+    "training_observations": 256,
+    "validation_observations": 100
+  },
+  "tutorial": "dispersion-source-localization",
+  "workers": 24
+}

@@ -121,12 +121,18 @@ def plot_pareto(
 
     handles, labels = pairs[0][0].get_legend_handles_labels()
     if handles:
-        figure.legend(handles, labels, loc="upper center", ncol=len(handles))
+        figure.legend(
+            handles,
+            labels,
+            loc="upper center",
+            bbox_to_anchor=(0.5, 0.955),
+            ncol=len(handles),
+        )
     figure.suptitle(
         title
         or f"{run.metadata['tutorial']}: {run.metadata.get('formulation', 'MO')} Pareto front",
-        y=1.01,
+        y=0.995,
     )
-    figure.tight_layout()
+    figure.tight_layout(rect=(0.0, 0.0, 1.0, 0.90))
     save_figure(figure, output)
     return figure

@@ -93,7 +93,8 @@ forward and adjoint sensitivities, so its smooth parameter-fitting tutorials
 are naturally paired with L-BFGS or another gradient-based optimizer. Consider
 fcmaes around such a model only when discrete policies, resets, robust maxima,
 solver failures, or other end-to-end discontinuities make those sensitivities
-misleading or unavailable. See `tutorials/README.md#7-diffsol-why-gradients-are-the-better-default`.
+misleading or unavailable. See
+`tutorials/README.md#8-diffsol-why-gradients-are-the-better-default`.
 
 ## Fast algorithm-selection decision tree
 
@@ -448,7 +449,7 @@ Archive guidance:
 
 ## Lessons from the simulator tutorials
 
-The five standalone tutorials are implementation references for expensive
+The six standalone tutorials are implementation references for expensive
 native objectives. They keep simulator dependencies outside the root workspace
 and demonstrate these transferable choices:
 
@@ -459,6 +460,7 @@ and demonstrate these transferable choices:
 | ReBop oscillator | Intrinsic stochastic simulation noise | Fix candidate-comparison seeds, report true simulation counts, and validate Pareto/QD results on disjoint paths. |
 | Brahe constellation | Access-window discontinuities and worst-gap aggregation | Keep feasibility explicit and assign either fcmaes or the simulator ownership of parallelism. |
 | RustPower voltage control | Mixed-integer controls, contingencies, and solver failures | Return calibrated constraint violations for failed power flows; reject a QD formulation when descriptors do not produce an informative archive. |
+| Atmospheric source localization | Censored inverse inference, model mismatch, and non-identifiability | Use robust residuals and disjoint sensors/weather; keep MODE for error/emission trade-offs and interpret a source-centroid QD map as alternative hypotheses, not a confidence region. |
 
 MODE and MAP-Elites are complementary, not substitutes. Keep MODE when the
 user needs objective trade-offs, and add MAP-Elites only when descriptor-space
@@ -696,7 +698,7 @@ Before declaring success, the AI should:
 - `examples/src/bin/mazda_qd.rs`: parallel MAP-Elites/Diversifier driver.
 - `examples/src/uav.rs`: random-key decoding for mixed assignment, ordering,
   scalar, and multi-objective optimization.
-- `tutorials/README.md`: five native simulator-optimization tutorials,
+- `tutorials/README.md`: six native simulator-optimization tutorials,
   MODE/MAP-Elites selection, stochastic validation, parallelism ownership, and
   the Diffsol gradient-based counterexample.
 - Generated rustdoc: `cargo doc --workspace --no-deps --open`.
