@@ -6,9 +6,9 @@
 
 ![Pure Rust optimizer core](https://img.shields.io/badge/optimizer%20core-100%25%20Rust-brightgreen)
 ![No C++ backend](https://img.shields.io/badge/C%2B%2B%20backend-none-brightgreen)
-[![crates.io](https://img.shields.io/crates/v/fcmaes-core.svg)](https://crates.io/crates/fcmaes-core)
+[![crates.io](https://img.shields.io/crates/v/fcmaes-core.svg?cacheSeconds=300)](https://crates.io/crates/fcmaes-core)
 [![docs.rs](https://docs.rs/fcmaes-core/badge.svg)](https://docs.rs/fcmaes-core)
-[![PyPI](https://img.shields.io/pypi/v/fcmaes-rust.svg)](https://pypi.org/project/fcmaes-rust/)
+[![PyPI](https://img.shields.io/pypi/v/fcmaes_rust.svg?cacheSeconds=300)](https://pypi.org/project/fcmaes-rust/)
 
 `fcmaes-rust` is a native Rust implementation of fast, parallel,
 gradient-free optimization algorithms and selected fcmaes application

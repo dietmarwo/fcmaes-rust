@@ -8,16 +8,36 @@ phase, with breaking changes called out explicitly.
 
 ## [0.1.2] - 2026-07-24
 
+First synchronized crates.io and PyPI release.
+
+### Released
+
+- Published `fcmaes-core` 0.1.2 on crates.io with API documentation on
+  docs.rs.
+- Published `fcmaes-rust` 0.1.2 on PyPI with a source distribution, CPython
+  3.11 through 3.13 wheels for Linux x86-64, Windows x86-64, macOS x86-64 and
+  macOS ARM64, and a PyPy 3.11 wheel for Linux x86-64.
+- Kept `fcmaes-gtop`, the example crate and the five simulator tutorials as
+  GitHub-only source; they are not separate registry packages.
+
+The synchronized release contains the pure-Rust implementations of
+Differential Evolution, active CMA-ES, CR-FM-NES, PGPE, Dual Annealing,
+BiteOpt, MODE, weighted multi-objective retry, CVT MAP-Elites and the
+Diversifier. It also contains independent and coordinated retry, reproducible
+per-worker random streams, ask/tell interfaces, parallel batch evaluation and
+the optional `fcmaes_rust` Python facade.
+
 ### Packaging
 
 - Added a tag-gated crates.io workflow for publishing `fcmaes-core` with
   short-lived GitHub OIDC credentials after package validation.
-- Kept crates.io and PyPI versions synchronized so a `v0.1.2` tag releases
-  both public packages from the same source revision.
+- Released both public packages from the `v0.1.2` source revision through
+  registry trusted publishing.
+- Rust 1.88 is the tested minimum supported Rust version.
 
 ## [0.1.1] - 2026-07-24
 
-Initial dual-registry release candidate.
+Initial crates.io bootstrap release.
 
 ### Added
 
@@ -27,18 +47,13 @@ Initial dual-registry release candidate.
 - Independent and coordinated retry with reproducible per-worker random
   streams.
 - Ask/tell and parallel batch-evaluation interfaces.
-- Native GTOP and application examples, reproducible optimizer comparisons,
-  and five Rust simulator-optimization tutorials.
 - `fcmaes-core` crates.io package metadata and docs.rs documentation.
-- `fcmaes-rust` Python distribution with the `fcmaes_rust` facade.
 
 ### Packaging
 
-- Rust 1.88 is the tested minimum supported Rust version.
-- CPython 3.11 through 3.13 wheels are prepared for Linux x86-64, Windows
-  x86-64, macOS x86-64 and macOS ARM64.
-- Registry workflows use GitHub environments and OpenID Connect trusted
-  publishing after the required registry-side setup.
+- Published `fcmaes-core` 0.1.1 manually to establish crates.io ownership
+  before configuring trusted publishing.
+- There was no corresponding `fcmaes-rust` 0.1.1 release on PyPI.
 
 [Unreleased]: https://github.com/dietmarwo/fcmaes-rust/compare/v0.1.2...HEAD
 [0.1.2]: https://github.com/dietmarwo/fcmaes-rust/compare/v0.1.1...v0.1.2
