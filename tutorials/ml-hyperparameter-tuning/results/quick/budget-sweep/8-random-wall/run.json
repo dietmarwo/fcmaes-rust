@@ -1,0 +1,137 @@
+{
+  "actual_evaluations": 7,
+  "artifacts": {
+    "candidates": "candidates.csv",
+    "selected": "selected.json"
+  },
+  "command": "target/release/ml-hyperparameter-tuning --preset smoke --mode budget-sweep --workers 4 --seed 42 --output results/quick/budget-sweep",
+  "dataset": {
+    "bayes_reference": {
+      "error": 0.16098260983750576,
+      "error_standard_error": 0.0013059840457676662,
+      "log_loss": 0.37917820874178226,
+      "log_loss_standard_error": 0.0019404197964901955,
+      "rows": 10000
+    },
+    "data_seed": 20260724,
+    "feature_count": 24,
+    "generator_version": 1,
+    "hashes": {
+      "selection": "d171c2051913607e",
+      "test": "9c29e9a4564bde89",
+      "tuning": "a0cc2b6131802e81"
+    },
+    "selection_prevalence": 0.19166666666666668,
+    "selection_rows": 120,
+    "test_prevalence": 0.205,
+    "test_rows": 400,
+    "tuning_folds": 5,
+    "tuning_prevalence": 0.16666666666666666,
+    "tuning_rows": 240
+  },
+  "descriptors": [],
+  "duplicate_configurations": 0,
+  "elapsed_seconds": 0.21911388,
+  "formulation": "baseline-random",
+  "model_fits": 38,
+  "objective_protocol": {
+    "common_random_numbers": true,
+    "infeasible_fitness_base": 14.815510557964274,
+    "inner_model_workers": 1,
+    "minority_recall_floor": 0.1,
+    "parallelism_owner": "fcmaes candidate workers",
+    "probability_clip": 1e-6,
+    "structural_cost_limit": 2000000,
+    "tuning_model_seed": 6791476662184033089
+  },
+  "objectives": [],
+  "optimizer": {
+    "algorithm": "random",
+    "selection_seeds": [
+      13084405178522369146
+    ],
+    "shortlist": 4
+  },
+  "requested_evaluations": 7,
+  "schema_version": 1,
+  "seed": 42,
+  "selected": {
+    "selection": {
+      "elapsed_seconds": 0.00890928,
+      "failure": null,
+      "log_loss_sdev": 0.0,
+      "mean_model_bytes": 96295.0,
+      "mean_structural_cost": 286.0,
+      "metrics": {
+        "brier": 0.16847998414585813,
+        "ece": 0.10316091954022986,
+        "false_negatives": 17,
+        "false_positives": 12,
+        "log_loss": 0.5113263623518536,
+        "pr_auc": 0.284226427538658,
+        "precision": 0.3333333333333333,
+        "predicted_positive_rate": 0.15,
+        "recall": 0.2608695652173913,
+        "roc_auc": 0.6315553563424473
+      },
+      "model_fits": 1,
+      "trees_fitted": 58
+    },
+    "tuning": {
+      "config": {
+        "criterion": "Gini",
+        "feature_fraction": 0.44247018652902004,
+        "max_depth": 7,
+        "min_samples_leaf": 39,
+        "min_samples_split": 58,
+        "n_trees": 58,
+        "positive_sampling_weight": 2.8460398076096904,
+        "row_sample_fraction": 0.9610419307216455
+      },
+      "elapsed_seconds": 0.031922343,
+      "estimated_structural_cost": 464,
+      "failure": null,
+      "mean_model_bytes": 79157.6,
+      "mean_structural_cost": 250.0,
+      "metrics": {
+        "brier": 0.1544986127625883,
+        "ece": 0.11681034066091954,
+        "false_negatives": 29,
+        "false_positives": 23,
+        "log_loss": 0.48255683030485835,
+        "pr_auc": 0.2878500140597706,
+        "precision": 0.3235294117647059,
+        "predicted_positive_rate": 0.14166666666666666,
+        "recall": 0.275,
+        "roc_auc": 0.63875
+      },
+      "model_fits": 5,
+      "recall_violation": -0.17500000000000002,
+      "scalar_fitness": 0.48255683030485835,
+      "structural_violation": -0.999768,
+      "trees_fitted": 290,
+      "x": [
+        0.569788024740044,
+        0.20999992958444813,
+        0.8798406943801356,
+        0.9692189657539424,
+        0.9350698845360758,
+        0.25662691537202675,
+        0.8363186136689528,
+        0.2998649678822156
+      ]
+    }
+  },
+  "selection_model_fits": 3,
+  "selection_trees_fitted": 307,
+  "software": {
+    "fcmaes-core": "0.1.2",
+    "smartcore": "0.5.3",
+    "tutorial": "0.1.0"
+  },
+  "trees_fitted": 2907,
+  "tuning_model_fits": 35,
+  "tuning_trees_fitted": 2600,
+  "tutorial": "ml-hyperparameter-tuning",
+  "workers": 4
+}

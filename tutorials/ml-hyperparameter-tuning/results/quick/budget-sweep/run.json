@@ -1,0 +1,34 @@
+{
+  "actual_evaluations": 405,
+  "artifacts": {
+    "budget_summary": "budget_summary.csv"
+  },
+  "command": "target/release/ml-hyperparameter-tuning --preset smoke --mode budget-sweep --workers 4 --seed 42 --output results/quick/budget-sweep",
+  "comparison_protocols": [
+    "equal candidate calls",
+    "one-pilot calibrated wall time"
+  ],
+  "descriptors": [],
+  "elapsed_seconds": 6.754072559000001,
+  "formulation": "budget-sweep",
+  "objective_protocol": {
+    "common_random_numbers": true,
+    "inner_model_workers": 1,
+    "minority_recall_floor": 0.1,
+    "parallelism_owner": "fcmaes candidate workers",
+    "structural_cost_limit": 2000000,
+    "tuning_model_seed": 6791476662184033089
+  },
+  "objectives": [],
+  "requested_evaluations": 0,
+  "schema_version": 1,
+  "seed": 42,
+  "software": {
+    "fcmaes-core": "0.1.2",
+    "smartcore": "0.5.3",
+    "tutorial": "0.1.0"
+  },
+  "table_rows_duplicate_reference_arm": true,
+  "tutorial": "ml-hyperparameter-tuning",
+  "workers": 4
+}

@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1120" height="520" viewBox="0 0 1120 520" role="img" aria-labelledby="title desc">
+  <title id="title">Validation-aware hyperparameter optimization pipeline</title>
+  <desc id="desc">Candidate hyperparameters are decoded, evaluated by fixed-fold probability forests, shortlisted on disjoint selection data, and evaluated on final test data only after the study plan is frozen.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <path d="M0,0 L10,3.5 L0,7 Z" fill="#37474f"/>
+    </marker>
+    <style>
+      .box { fill:#f7fbff; stroke:#1565c0; stroke-width:2; rx:12; }
+      .data { fill:#f3faf4; stroke:#2e7d32; stroke-width:2; rx:12; }
+      .gate { fill:#fff8e1; stroke:#ef6c00; stroke-width:2; rx:12; }
+      .text { font: 16px sans-serif; fill:#263238; text-anchor:middle; }
+      .small { font: 13px sans-serif; fill:#455a64; text-anchor:middle; }
+      .line { stroke:#37474f; stroke-width:2; marker-end:url(#arrow); }
+      .dash { stroke:#78909c; stroke-width:2; stroke-dasharray:7 6; marker-end:url(#arrow); }
+    </style>
+  </defs>
+
+  <rect class="box" x="35" y="80" width="180" height="95"/>
+  <text class="text" x="125" y="118">fcmaes candidate</text>
+  <text class="small" x="125" y="145">8 normalized values</text>
+
+  <rect class="box" x="270" y="80" width="190" height="95"/>
+  <text class="text" x="365" y="113">Mixed decoder</text>
+  <text class="small" x="365" y="140">log integers · continuous</text>
+  <text class="small" x="365" y="159">categorical criterion</text>
+
+  <rect class="box" x="515" y="55" width="220" height="145"/>
+  <text class="text" x="625" y="91">Fixed five-fold objective</text>
+  <text class="small" x="625" y="119">bootstrap + feature subset</text>
+  <text class="small" x="625" y="140">SmartCore probability trees</text>
+  <text class="small" x="625" y="161">common model seeds</text>
+
+  <rect class="box" x="790" y="35" width="285" height="190"/>
+  <text class="text" x="932" y="72">Three search views</text>
+  <text class="small" x="932" y="103">BiteOpt retry: one model</text>
+  <text class="small" x="932" y="128">MODE: predictive/deployment trade-offs</text>
+  <text class="small" x="932" y="153">MAP-Elites: error-profile repertoire</text>
+  <text class="small" x="932" y="184">Random + LHS baselines</text>
+
+  <line class="line" x1="215" y1="127" x2="270" y2="127"/>
+  <line class="line" x1="460" y1="127" x2="515" y2="127"/>
+  <line class="line" x1="735" y1="127" x2="790" y2="127"/>
+
+  <rect class="data" x="90" y="285" width="230" height="110"/>
+  <text class="text" x="205" y="320">Tuning pool</text>
+  <text class="small" x="205" y="348">fixed stratified folds</text>
+  <text class="small" x="205" y="370">visible to optimizer</text>
+
+  <rect class="data" x="445" y="285" width="230" height="110"/>
+  <text class="text" x="560" y="320">Selection set</text>
+  <text class="small" x="560" y="348">top-K re-ranking</text>
+  <text class="small" x="560" y="370">disjoint model seeds</text>
+
+  <rect class="gate" x="800" y="270" width="230" height="135"/>
+  <text class="text" x="915" y="305">Frozen final stage</text>
+  <text class="small" x="915" y="334">methods and budgets fixed</text>
+  <text class="small" x="915" y="356">data hashes verified</text>
+  <text class="small" x="915" y="378">test never tunes choices</text>
+
+  <line class="dash" x1="320" y1="340" x2="445" y2="340"/>
+  <line class="dash" x1="675" y1="340" x2="800" y2="340"/>
+  <line class="dash" x1="205" y1="285" x2="560" y2="200"/>
+
+  <text class="small" x="560" y="475">One outer worker pool evaluates independent candidates; model fitting remains serial.</text>
+</svg>

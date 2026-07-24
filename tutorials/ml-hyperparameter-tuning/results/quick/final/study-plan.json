@@ -1,0 +1,104 @@
+{
+  "schema_version": 1,
+  "frozen": true,
+  "data_hashes": {
+    "tuning": "a0cc2b6131802e81",
+    "selection": "d171c2051913607e",
+    "test": "9c29e9a4564bde89"
+  },
+  "final_model_seeds": [
+    10099765725528470808
+  ],
+  "arms": [
+    {
+      "name": "fcmaes-scalar",
+      "source_run": "results/quick/scalar",
+      "source_manifest_hash": "18297088329f9d2b",
+      "config": {
+        "n_trees": 236,
+        "max_depth": 24,
+        "min_samples_leaf": 1,
+        "min_samples_split": 11,
+        "row_sample_fraction": 0.9998220364771444,
+        "feature_fraction": 0.677124534101651,
+        "positive_sampling_weight": 1.8923390612009932,
+        "criterion": "Gini"
+      }
+    },
+    {
+      "name": "fcmaes-mode-representative",
+      "source_run": "results/quick/mo",
+      "source_manifest_hash": "2cc426d0f36de2ab",
+      "config": {
+        "n_trees": 58,
+        "max_depth": 15,
+        "min_samples_leaf": 46,
+        "min_samples_split": 58,
+        "row_sample_fraction": 0.9610419307216452,
+        "feature_fraction": 0.44863197444880065,
+        "positive_sampling_weight": 2.7339701056650765,
+        "criterion": "Gini"
+      }
+    },
+    {
+      "name": "fcmaes-qd-representative",
+      "source_run": "results/quick/qd",
+      "source_manifest_hash": "4f61d5b15131ae16",
+      "config": {
+        "n_trees": 256,
+        "max_depth": 20,
+        "min_samples_leaf": 24,
+        "min_samples_split": 19,
+        "row_sample_fraction": 0.6318093581188079,
+        "feature_fraction": 0.7801130057609001,
+        "positive_sampling_weight": 3.4197041297957003,
+        "criterion": "Entropy"
+      }
+    },
+    {
+      "name": "baseline-default",
+      "source_run": "results/quick/baselines/default",
+      "source_manifest_hash": "b75642d55c4fdd83",
+      "config": {
+        "n_trees": 64,
+        "max_depth": 12,
+        "min_samples_leaf": 2,
+        "min_samples_split": 4,
+        "row_sample_fraction": 0.8,
+        "feature_fraction": 0.7,
+        "positive_sampling_weight": 2.0,
+        "criterion": "Gini"
+      }
+    },
+    {
+      "name": "baseline-random",
+      "source_run": "results/quick/baselines/random",
+      "source_manifest_hash": "5dacf792ff3789c7",
+      "config": {
+        "n_trees": 58,
+        "max_depth": 7,
+        "min_samples_leaf": 39,
+        "min_samples_split": 58,
+        "row_sample_fraction": 0.9610419307216456,
+        "feature_fraction": 0.44247018652902,
+        "positive_sampling_weight": 2.8460398076096904,
+        "criterion": "Gini"
+      }
+    },
+    {
+      "name": "baseline-lhs",
+      "source_run": "results/quick/baselines/lhs",
+      "source_manifest_hash": "d8a498b164ba4729",
+      "config": {
+        "n_trees": 74,
+        "max_depth": 20,
+        "min_samples_leaf": 28,
+        "min_samples_split": 9,
+        "row_sample_fraction": 0.8161495372838801,
+        "feature_fraction": 0.3859992854481725,
+        "positive_sampling_weight": 2.9246263251982456,
+        "criterion": "Entropy"
+      }
+    }
+  ]
+}

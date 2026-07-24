@@ -1,8 +1,9 @@
 # Tutorial result schema
 
-The simulator tutorials write a small, versioned set of machine-readable
+The application tutorials write a small, versioned set of machine-readable
 artifacts. Native Rust performs simulation and optimization; Python reads these
-artifacts to create documentation figures.
+artifacts to create documentation figures. For model-fitting tutorials, native
+Rust likewise owns fitting, prediction, and metric evaluation.
 
 Most individual optimizer runs use the manifest schema below. A tutorial may
 also publish a documented aggregate evidence bundle when one figure combines
@@ -40,6 +41,11 @@ Schema version `1` uses one `run.json` manifest per optimization run:
 All objective values are minimized. Constraints are feasible at values less
 than or equal to zero. A manifest may add simulator-specific metadata, but
 must not change those conventions.
+
+When one objective call expands into several simulations or model fits, the
+manifest should record both logical candidate calls and physical work. The HPO
+tutorial, for example, separates `tuning_model_fits` from
+`selection_model_fits` and also reports their total as `model_fits`.
 
 ## Pareto data
 
@@ -84,8 +90,8 @@ number, is the common comparison axis.
 
 ## Reproducibility
 
-Manifests record the exact command, optimizer seed, simulation training and
-validation seeds, effective workers, requested and actual budgets, elapsed
-wall time, descriptor bounds and relevant optimizer parameters. Values are
-written at full `f64` precision; Markdown tables and plot labels perform
-display rounding.
+Manifests record the exact command, optimizer seed, simulation or model
+training and validation seeds, effective workers, requested and actual
+budgets, elapsed wall time, descriptor bounds and relevant optimizer
+parameters. Values are written at full `f64` precision; Markdown tables and
+plot labels perform display rounding.

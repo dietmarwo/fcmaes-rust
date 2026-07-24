@@ -94,7 +94,7 @@ are naturally paired with L-BFGS or another gradient-based optimizer. Consider
 fcmaes around such a model only when discrete policies, resets, robust maxima,
 solver failures, or other end-to-end discontinuities make those sensitivities
 misleading or unavailable. See
-`tutorials/README.md#9-diffsol-why-gradients-are-the-better-default`.
+`tutorials/README.md#10-diffsol-why-gradients-are-the-better-default`.
 
 ## Fast algorithm-selection decision tree
 
@@ -136,7 +136,7 @@ Prefer a native Rust objective when evaluation throughput matters. Put
 read-only model data behind shared references or `Arc`, give each evaluation
 isolated mutable state, and let fcmaes distribute candidates. This avoids
 Python callback and serialization overhead and is the design demonstrated by
-the application examples and simulator tutorials.
+the application examples and native application tutorials.
 
 The Buckingham–Pi example is also a useful pattern for optimized feature
 discovery. It parameterizes every dimensionally valid exponent matrix as
@@ -456,11 +456,11 @@ Archive guidance:
   negated negative elites otherwise. Compare it only between archives with the
   same quality definition, descriptor bounds, and niche geometry.
 
-## Lessons from the simulator tutorials
+## Lessons from the application tutorials
 
-The seven standalone tutorials are implementation references for expensive
-native objectives. They keep simulator dependencies outside the root workspace
-and demonstrate these transferable choices:
+The eight standalone tutorials are implementation references for expensive
+native objectives. They keep application dependencies outside the root
+workspace and demonstrate these transferable choices:
 
 | Tutorial | Main problem property | Recommended lesson |
 |---|---|---|
@@ -471,6 +471,7 @@ and demonstrate these transferable choices:
 | RustPower voltage control | Mixed-integer controls, contingencies, and solver failures | Return calibrated constraint violations for failed power flows; reject a QD formulation when descriptors do not produce an informative archive. |
 | Atmospheric source localization | Censored inverse inference, model mismatch, and non-identifiability | Use robust residuals and disjoint sensors/weather; keep MODE for error/emission trade-offs and interpret a source-centroid QD map as alternative hypotheses, not a confidence region. |
 | Room ventilation | Custom numerical backend, variable geometry, and grid sensitivity | A purpose-built backend can keep objective state isolated and fast, but then solver verification, held-out scenarios, constraint margins, and resolution sensitivity are part of the optimization evidence. |
+| SmartCore hyperparameter tuning | Mixed variables, nested stochastic fitting, and validation overfitting | Use probability-aware objectives, common folds and model seeds, disjoint candidate selection, and a frozen final test; report model-fit cost as well as optimizer calls. |
 
 MODE and MAP-Elites are complementary, not substitutes. Keep MODE when the
 user needs objective trade-offs, and add MAP-Elites only when descriptor-space
@@ -720,9 +721,13 @@ Before declaring success, the AI should:
   scalar, and multi-objective optimization.
 - `examples/src/buckingham.rs`: nullspace parameterization that makes every
   continuous optimizer trial dimensionally valid.
-- `tutorials/README.md`: seven native simulator-optimization tutorials,
-  MODE/MAP-Elites selection, stochastic validation, parallelism ownership, and
-  the Diffsol gradient-based counterexample.
+- `tutorials/README.md`: eight native application-optimization tutorials,
+  MODE/MAP-Elites selection, stochastic validation, parallelism ownership,
+  validation-aware hyperparameter tuning, and the Diffsol gradient-based
+  counterexample.
+- `tutorials/ml-hyperparameter-tuning/`: native probability forests,
+  mixed-variable decoding, fixed-fold tuning, disjoint selection, frozen final
+  evaluation, fair baselines, constrained MODE, and a MAP-Elites pilot.
 - `tutorials/cfd-room-ventilation/`: custom native simulation state,
   worst-case training releases, held-out validation, three-grid sensitivity,
   MODE, and MAP-Elites.

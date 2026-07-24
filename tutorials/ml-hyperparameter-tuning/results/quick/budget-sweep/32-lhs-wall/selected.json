@@ -1,0 +1,67 @@
+{
+  "tuning": {
+    "x": [
+      0.45717397153948064,
+      0.06809125664767345,
+      0.4697211355650056,
+      0.006816961756579269,
+      0.3250983108994071,
+      0.1505275989822346,
+      0.7773267522203574,
+      0.45635723643850784
+    ],
+    "config": {
+      "n_trees": 39,
+      "max_depth": 3,
+      "min_samples_leaf": 7,
+      "min_samples_split": 2,
+      "row_sample_fraction": 0.5950589865396443,
+      "feature_fraction": 0.362895699236676,
+      "positive_sampling_weight": 2.5174798949616384,
+      "criterion": "Gini"
+    },
+    "metrics": {
+      "log_loss": 0.45842838061042535,
+      "brier": 0.14721948279641406,
+      "pr_auc": 0.24426832619761296,
+      "roc_auc": 0.6366875,
+      "ece": 0.07938035021367512,
+      "recall": 0.15,
+      "precision": 0.3,
+      "predicted_positive_rate": 0.08333333333333333,
+      "false_positives": 14,
+      "false_negatives": 34
+    },
+    "mean_model_bytes": 46828.8,
+    "mean_structural_cost": 156.0,
+    "estimated_structural_cost": 585,
+    "model_fits": 5,
+    "trees_fitted": 195,
+    "elapsed_seconds": 0.012243834,
+    "recall_violation": -0.04999999999999999,
+    "structural_violation": -0.9997075,
+    "scalar_fitness": 0.45842838061042535,
+    "failure": null
+  },
+  "selection": {
+    "metrics": {
+      "log_loss": 0.47279292813204676,
+      "brier": 0.15365987289064206,
+      "pr_auc": 0.3172509666227079,
+      "roc_auc": 0.6687584043030032,
+      "ece": 0.08119658119658124,
+      "recall": 0.13043478260869565,
+      "precision": 0.2727272727272727,
+      "predicted_positive_rate": 0.09166666666666666,
+      "false_positives": 8,
+      "false_negatives": 20
+    },
+    "log_loss_sdev": 0.0,
+    "mean_model_bytes": 46864.0,
+    "mean_structural_cost": 156.0,
+    "model_fits": 1,
+    "trees_fitted": 39,
+    "elapsed_seconds": 0.003251663,
+    "failure": null
+  }
+}

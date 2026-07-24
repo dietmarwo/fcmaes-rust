@@ -61,8 +61,9 @@ Run `git diff --check` before handing off changes.
 | Job-shop and harvesting objectives | `examples/src/{jobshop,harvesting}.rs` |
 | Harmonic and transfer-scheduling objectives | `examples/src/{tdesign,scheduling}.rs` |
 | ODE/control objectives | `examples/src/{damp,f8,lotka,integration}.rs` |
-| Standalone simulation tutorials | `tutorials/*/` |
+| Standalone application tutorials | `tutorials/*/` |
 | Room-ventilation backend and verification | `tutorials/cfd-room-ventilation/src/` |
+| SmartCore HPO protocol and probability forest | `tutorials/ml-hyperparameter-tuning/src/` |
 | Tutorial artifact rendering and link checks | `tutorials/python/` |
 
 ## Generate rustdoc

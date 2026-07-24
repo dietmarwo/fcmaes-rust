@@ -63,6 +63,7 @@ jobs:
           - rustpower-voltage-control
           - dispersion-source-localization
           - cfd-room-ventilation
+          - ml-hyperparameter-tuning
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -77,6 +78,12 @@ jobs:
         run: cargo clippy --manifest-path tutorials/${{ matrix.tutorial }}/Cargo.toml --all-targets -- -D warnings
       - name: cargo test
         run: cargo test --manifest-path tutorials/${{ matrix.tutorial }}/Cargo.toml
+      - name: Run HPO protocol smoke test
+        if: matrix.tutorial == 'ml-hyperparameter-tuning'
+        run: >-
+          cargo run --release
+          --manifest-path tutorials/ml-hyperparameter-tuning/Cargo.toml --
+          --preset smoke --mode all --workers 2 --seed 42 --no-output
 
   tutorial-artifacts:
     name: Tutorial artifacts and documentation

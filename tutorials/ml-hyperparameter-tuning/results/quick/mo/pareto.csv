@@ -1,0 +1,3 @@
+point_id,feasible,selected,objective_negative_pr_auc,objective_brier,objective_model_bytes,objective_inference_work,constraint_recall,constraint_structural,selection_log_loss,selection_log_loss_sdev,decision_n_trees,decision_max_depth,decision_min_samples_leaf,decision_min_samples_split,decision_row_sample_fraction,decision_feature_fraction,decision_positive_sampling_weight,decision_criterion_index
+0,1,1,-0.2868105109882394,0.1649747324613556,67665.6,232,-0.275,-0.999797,0.49618134285534,0,58,15,46,58,0.9610419307216453,0.44863197444880065,2.7339701056650765,0
+1,1,0,-0.2868105109882394,0.1649747324613556,67665.6,232,-0.275,-0.999797,0.49618134285534,0,58,15,46,58,0.9610419307216453,0.44863197444880065,2.7339701056650756,0

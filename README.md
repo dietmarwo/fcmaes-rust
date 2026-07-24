@@ -60,7 +60,7 @@ optimizer backend.
 | `fcmaes-gtop` | Internal native GTOP objective library shared by the examples and Python package |
 | `examples` (`fcmaes-examples`) | Native GTOP problems, application objectives, benchmarks, and executable examples |
 | `fcmaes-py` | Optional PyO3 extension for embedding the Rust implementation in a Python package |
-| `tutorials/*` | Standalone simulation-optimization workspaces using NeXosim, Rapier, ReBop, Brahe, RustPower, native atmospheric dispersion, and a custom educational ventilation backend |
+| `tutorials/*` | Standalone application workspaces using NeXosim, Rapier, ReBop, Brahe, RustPower, SmartCore, native atmospheric dispersion, and a custom educational ventilation backend |
 
 Only two registry artifacts are published: `fcmaes-core` on crates.io and the
 `fcmaes-rust` binding distribution on PyPI. `fcmaes-gtop` is an internal
@@ -68,19 +68,23 @@ source dependency marked `publish = false`; `examples/` and `tutorials/` are
 available only from this GitHub repository and are not included in either
 registry package.
 
-The simulator tutorials are intentionally not root workspace members. Each
+The application tutorials are intentionally not root workspace members. Each
 keeps its application-specific dependencies, artifacts, and lockfile isolated;
 run its Cargo commands from that tutorial directory.
 
-All seven retain multi-objective optimization. MAP-Elites campaigns are
+All eight retain multi-objective optimization. MAP-Elites campaigns are
 implemented and recorded for NeXosim, Rapier, ReBop, Brahe, atmospheric source
-localization, room ventilation, and RustPower. RustPower additionally records a
-descriptor case study: its first pair of descriptors were decision variables and
-reached only 4% coverage, while emergent behavior coordinates measured from the
-solved scenarios reached 68% mean coverage over three seeds at the identical
-100k-evaluation budget. Constrained MODE stays the primary formulation there,
-because the near-unique asset architecture the original pilot found survives the
-descriptor fix. The
+localization, room ventilation, and RustPower; the SmartCore hyperparameter
+tutorial additionally contains an explicitly provisional QD pilot. That
+tutorial demonstrates an often missed part of optimizer benchmarking:
+fixed-fold tuning, disjoint model selection, frozen final evaluation, and
+probability-aware metrics must be part of the objective protocol. RustPower
+additionally records a descriptor case study: its first pair of descriptors
+were decision variables and reached only 4% coverage, while emergent behavior
+coordinates measured from the solved scenarios reached 68% mean coverage over
+three seeds at the identical 100k-evaluation budget. Constrained MODE stays the
+primary formulation there, because the near-unique asset architecture the
+original pilot found survives the descriptor fix. The
 [tutorial index](tutorials/README.md) includes commands, figures, validation
 results and the common result schema. Compact canonical result directories are
 version-controlled with generated SVGs so raw-evidence links and deterministic
@@ -171,7 +175,8 @@ python examples/python/test_cma.py
 - [Retry and multi-objective retry](docs/retry.md)
 - [Native examples and benchmarks](docs/examples.md)
 - [Buckingham–Pi dimensional-analysis example](docs/buckingham-pi.md)
-- [Native Rust simulator optimization tutorials](tutorials/README.md)
+- [Native Rust application-optimization tutorials](tutorials/README.md)
+- [ML hyperparameter-optimization tutorial](tutorials/ml-hyperparameter-tuning/README.md)
 - [Room-ventilation optimization tutorial](tutorials/cfd-room-ventilation/README.md)
 - [Optional PyO3 bindings](docs/python-bindings.md)
 - [Release history](CHANGELOG.md)

@@ -1,8 +1,8 @@
 # Tutorial plotting API
 
 This package turns the versioned JSON/CSV artifacts emitted by the native Rust
-simulator tutorials into consistent Matplotlib figures. It does not put Python
-callbacks in the optimization hot path.
+application tutorials into consistent Matplotlib figures. It does not put
+Python callbacks in the optimization hot path.
 
 From `public/tutorials/python`:
 
@@ -28,8 +28,9 @@ The API also accepts result arrays from the optional PyO3 bindings through
 
 `render_all.py --write` regenerates every figure from discovered schema-v1
 manifests and invokes any tutorial-specific `plot_results.py --write` script.
-The room-ventilation tutorial uses that extension because its publication
-figures combine optimizer seeds, CFD fields, and a resolution study.
+The room-ventilation and HPO tutorials use that extension because their
+publication figures combine evidence that is broader than one optimizer
+manifest.
 `--check` renders into temporary directories and compares bytes, so volatile
 Matplotlib metadata cannot create silent documentation drift.
 `requirements-lock.txt` fixes the complete plotting stack used for regeneration

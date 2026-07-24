@@ -1,0 +1,137 @@
+{
+  "actual_evaluations": 8,
+  "artifacts": {
+    "candidates": "candidates.csv",
+    "selected": "selected.json"
+  },
+  "command": "target/release/ml-hyperparameter-tuning --preset smoke --mode budget-sweep --workers 4 --seed 42 --output results/quick/budget-sweep",
+  "dataset": {
+    "bayes_reference": {
+      "error": 0.16098260983750576,
+      "error_standard_error": 0.0013059840457676662,
+      "log_loss": 0.37917820874178226,
+      "log_loss_standard_error": 0.0019404197964901955,
+      "rows": 10000
+    },
+    "data_seed": 20260724,
+    "feature_count": 24,
+    "generator_version": 1,
+    "hashes": {
+      "selection": "d171c2051913607e",
+      "test": "9c29e9a4564bde89",
+      "tuning": "a0cc2b6131802e81"
+    },
+    "selection_prevalence": 0.19166666666666668,
+    "selection_rows": 120,
+    "test_prevalence": 0.205,
+    "test_rows": 400,
+    "tuning_folds": 5,
+    "tuning_prevalence": 0.16666666666666666,
+    "tuning_rows": 240
+  },
+  "descriptors": [],
+  "duplicate_configurations": 0,
+  "elapsed_seconds": 0.100047363,
+  "formulation": "baseline-lhs",
+  "model_fits": 42,
+  "objective_protocol": {
+    "common_random_numbers": true,
+    "infeasible_fitness_base": 14.815510557964274,
+    "inner_model_workers": 1,
+    "minority_recall_floor": 0.1,
+    "parallelism_owner": "fcmaes candidate workers",
+    "probability_clip": 1e-6,
+    "structural_cost_limit": 2000000,
+    "tuning_model_seed": 6791476662184033089
+  },
+  "objectives": [],
+  "optimizer": {
+    "algorithm": "lhs",
+    "selection_seeds": [
+      13084405178522369146
+    ],
+    "shortlist": 4
+  },
+  "requested_evaluations": 8,
+  "schema_version": 1,
+  "seed": 42,
+  "selected": {
+    "selection": {
+      "elapsed_seconds": 0.002745778,
+      "failure": null,
+      "log_loss_sdev": 0.0,
+      "mean_model_bytes": 59130.0,
+      "mean_structural_cost": 91.0,
+      "metrics": {
+        "brier": 0.16969695303035304,
+        "ece": 0.10757570757575761,
+        "false_negatives": 20,
+        "false_positives": 11,
+        "log_loss": 0.603841187256706,
+        "pr_auc": 0.307418635116997,
+        "precision": 0.21428571428571427,
+        "predicted_positive_rate": 0.11666666666666667,
+        "recall": 0.13043478260869565,
+        "roc_auc": 0.6111609143881668
+      },
+      "model_fits": 1,
+      "trees_fitted": 11
+    },
+    "tuning": {
+      "config": {
+        "criterion": "Gini",
+        "feature_fraction": 0.48418164381395123,
+        "max_depth": 21,
+        "min_samples_leaf": 5,
+        "min_samples_split": 3,
+        "n_trees": 11,
+        "positive_sampling_weight": 2.5528332166140975,
+        "row_sample_fraction": 0.7115667647958419
+      },
+      "elapsed_seconds": 0.008745699,
+      "estimated_structural_cost": 583,
+      "failure": null,
+      "mean_model_bytes": 46957.6,
+      "mean_structural_cost": 85.6,
+      "metrics": {
+        "brier": 0.14132231404969506,
+        "ece": 0.0856061689393939,
+        "false_negatives": 34,
+        "false_positives": 15,
+        "log_loss": 0.43527798647906496,
+        "pr_auc": 0.29038453161641303,
+        "precision": 0.2857142857142857,
+        "predicted_positive_rate": 0.0875,
+        "recall": 0.15,
+        "roc_auc": 0.6949375
+      },
+      "model_fits": 5,
+      "recall_violation": -0.04999999999999999,
+      "scalar_fitness": 0.43527798647906496,
+      "structural_violation": -0.9997085,
+      "trees_fitted": 55,
+      "x": [
+        0.10032357447188922,
+        0.8755068970340797,
+        0.4074511537426907,
+        0.08520831729155519,
+        0.519277941326403,
+        0.31224219175193496,
+        0.7840330952395091,
+        0.4095333966511169
+      ]
+    }
+  },
+  "selection_model_fits": 2,
+  "selection_trees_fitted": 39,
+  "software": {
+    "fcmaes-core": "0.1.2",
+    "smartcore": "0.5.3",
+    "tutorial": "0.1.0"
+  },
+  "trees_fitted": 2819,
+  "tuning_model_fits": 40,
+  "tuning_trees_fitted": 2780,
+  "tutorial": "ml-hyperparameter-tuning",
+  "workers": 4
+}

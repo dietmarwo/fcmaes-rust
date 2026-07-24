@@ -1,0 +1,21 @@
+[package]
+name = "ml-hyperparameter-tuning"
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+publish = false
+description = "Validation-aware ML hyperparameter optimization with SmartCore and fcmaes-rust"
+
+# Standalone tutorial workspace: keep application dependencies out of the root workspace.
+[workspace]
+
+[dependencies]
+fcmaes-core = { path = "../../crates/fcmaes-core" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+smartcore = { version = "=0.5.3", features = ["serde"] }
+
+[profile.release]
+codegen-units = 1
+lto = "thin"
+

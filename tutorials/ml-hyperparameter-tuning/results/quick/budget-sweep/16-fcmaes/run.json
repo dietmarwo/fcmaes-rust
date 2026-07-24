@@ -1,0 +1,145 @@
+{
+  "actual_evaluations": 16,
+  "artifacts": {
+    "candidates": "candidates.csv",
+    "convergence": "convergence.csv",
+    "selected": "selected.json"
+  },
+  "command": "target/release/ml-hyperparameter-tuning --preset smoke --mode budget-sweep --workers 4 --seed 42 --output results/quick/budget-sweep",
+  "convergence_metrics": [
+    "best_quality"
+  ],
+  "dataset": {
+    "bayes_reference": {
+      "error": 0.16098260983750576,
+      "error_standard_error": 0.0013059840457676662,
+      "log_loss": 0.37917820874178226,
+      "log_loss_standard_error": 0.0019404197964901955,
+      "rows": 10000
+    },
+    "data_seed": 20260724,
+    "feature_count": 24,
+    "generator_version": 1,
+    "hashes": {
+      "selection": "d171c2051913607e",
+      "test": "9c29e9a4564bde89",
+      "tuning": "a0cc2b6131802e81"
+    },
+    "selection_prevalence": 0.19166666666666668,
+    "selection_rows": 120,
+    "test_prevalence": 0.205,
+    "test_rows": 400,
+    "tuning_folds": 5,
+    "tuning_prevalence": 0.16666666666666666,
+    "tuning_rows": 240
+  },
+  "descriptors": [],
+  "duplicate_configurations": 0,
+  "elapsed_seconds": 0.505088079,
+  "formulation": "scalar",
+  "model_fits": 84,
+  "objective_protocol": {
+    "common_random_numbers": true,
+    "infeasible_fitness_base": 14.815510557964274,
+    "inner_model_workers": 1,
+    "minority_recall_floor": 0.1,
+    "parallelism_owner": "fcmaes candidate workers",
+    "probability_clip": 1e-6,
+    "structural_cost_limit": 2000000,
+    "tuning_model_seed": 6791476662184033089
+  },
+  "objectives": [],
+  "optimizer": {
+    "algorithm": "BiteOpt parallel retry",
+    "completed_retries": 4,
+    "depth": 4,
+    "evaluations_per_retry": 4,
+    "retries": 4,
+    "selection_seeds": [
+      13084405178522369146
+    ],
+    "shortlist": 4
+  },
+  "requested_evaluations": 16,
+  "schema_version": 1,
+  "seed": 42,
+  "selected": {
+    "selection": {
+      "elapsed_seconds": 0.07505055,
+      "failure": null,
+      "log_loss_sdev": 0.0,
+      "mean_model_bytes": 1024695.0,
+      "mean_structural_cost": 1967.0,
+      "metrics": {
+        "brier": 0.15711162551440325,
+        "ece": 0.07407407407407408,
+        "false_negatives": 20,
+        "false_positives": 6,
+        "log_loss": 0.47734440764507996,
+        "pr_auc": 0.29989714445473603,
+        "precision": 0.3333333333333333,
+        "predicted_positive_rate": 0.075,
+        "recall": 0.13043478260869565,
+        "roc_auc": 0.6683101748095025
+      },
+      "model_fits": 1,
+      "trees_fitted": 216
+    },
+    "tuning": {
+      "config": {
+        "criterion": "Gini",
+        "feature_fraction": 0.7948699381356472,
+        "max_depth": 19,
+        "min_samples_leaf": 2,
+        "min_samples_split": 21,
+        "n_trees": 216,
+        "positive_sampling_weight": 2.0322505922623555,
+        "row_sample_fraction": 0.9451387155122998
+      },
+      "elapsed_seconds": 0.275418172,
+      "estimated_structural_cost": 38880,
+      "failure": null,
+      "mean_model_bytes": 851057.6,
+      "mean_structural_cost": 1843.0,
+      "metrics": {
+        "brier": 0.13861811271147687,
+        "ece": 0.07600308641975305,
+        "false_negatives": 32,
+        "false_positives": 11,
+        "log_loss": 0.43700173195481606,
+        "pr_auc": 0.2983932437022695,
+        "precision": 0.42105263157894735,
+        "predicted_positive_rate": 0.07916666666666666,
+        "recall": 0.2,
+        "roc_auc": 0.6955625
+      },
+      "model_fits": 5,
+      "recall_violation": -0.1,
+      "scalar_fitness": 0.43700173195481606,
+      "structural_violation": -0.98056,
+      "trees_fitted": 1080,
+      "x": [
+        0.9503937491238172,
+        0.7631246177407056,
+        0.11366523679218243,
+        0.6797496616712122,
+        0.908564525853833,
+        0.7264932508475297,
+        0.6743594361895231,
+        0.40554000007916274
+      ]
+    }
+  },
+  "selection_model_fits": 4,
+  "selection_trees_fitted": 424,
+  "software": {
+    "fcmaes-core": "0.1.2",
+    "smartcore": "0.5.3",
+    "tutorial": "0.1.0"
+  },
+  "trees_fitted": 8249,
+  "tuning_model_fits": 80,
+  "tuning_trees_fitted": 7825,
+  "tutorial": "ml-hyperparameter-tuning",
+  "workers": 4
+}

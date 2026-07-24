@@ -141,7 +141,7 @@ trading, material flow, job-shop/harvesting, t-design, transfer scheduling,
 damp control, F-8, and Lotka-Volterra are in
 [Native Rust examples](examples.md#binaries).
 
-Standalone simulation tutorials are tested and run from their own
+Standalone application tutorials are tested and run from their own
 directories. For example:
 
 ```bash
@@ -150,7 +150,7 @@ cargo test --all-targets
 cargo run --release --bin cfd-room-ventilation -- --mode evaluate
 ```
 
-The [tutorial index](../tutorials/README.md) explains all seven application
+The [tutorial index](../tutorials/README.md) explains all eight application
 models, optimizer formulations, recorded evidence, and plotting workflow.
 
 ## Common mistakes

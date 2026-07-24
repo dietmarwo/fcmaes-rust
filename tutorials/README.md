@@ -1,14 +1,14 @@
-# Optimizing native Rust simulations with fcmaes-rust
+# Optimizing native Rust applications with fcmaes-rust
 
 ## 1. Introduction
 
-These tutorials show how to put a native Rust simulation directly inside an
-`fcmaes-rust` objective. There is no Python callback or serialization boundary
-between optimizer and simulator: a candidate is decoded, simulated and scored
-in Rust, and independent candidates are distributed across native worker
-threads.
+These tutorials show how to put a native Rust simulation or model-fitting
+pipeline directly inside an `fcmaes-rust` objective. There is no Python
+callback or serialization boundary in the expensive path: a candidate is
+decoded and scored in Rust, and independent candidates are distributed across
+native worker threads.
 
-The seven applications deliberately cover different reasons for choosing
+The eight applications deliberately cover different reasons for choosing
 gradient-free optimization:
 
 | Tutorial | Simulator | Problem property | Implemented formulations | QD decision |
@@ -20,6 +20,7 @@ gradient-free optimization:
 | [Voltage control](rustpower-voltage-control/) | RustPower | mixed-integer controls, contingencies and power-flow failures | constrained MODE + MAP-Elites | MODE primary, QD secondary |
 | [Atmospheric source localization](dispersion-source-localization/) | ISC-3-derived native model | inverse inference, censoring, model mismatch, and non-identifiability | BiteOpt advanced retry + MODE + MAP-Elites | accepted |
 | [Room ventilation](cfd-room-ventilation/) | Custom D2Q9/D2Q5 Rust backend | variable geometry, numerical constraints, worst-case releases, and resolution sensitivity | BiteOpt retry + MODE + MAP-Elites | accepted |
+| [ML hyperparameter optimization](ml-hyperparameter-tuning/) | SmartCore decision trees | mixed variables, nested stochastic fitting, validation overfitting, and probability quality | BiteOpt retry + constrained MODE + MAP-Elites pilot | smoke pilot only; publication decision pending |
 
 Each directory is a standalone Cargo workspace. This keeps large,
 simulator-specific dependency sets out of the main `fcmaes-rust` workspace
@@ -440,7 +441,51 @@ verification evidence, and deterministic figure regeneration.
 
 ![Baseline and optimized velocity and pollutant fields from the custom Rust backend](cfd-room-ventilation/images/flow-fields.svg)
 
-## 9. Diffsol: why gradients are the better default
+## 9. ML hyperparameter optimization: validation-aware search
+
+The [hyperparameter-tuning tutorial](ml-hyperparameter-tuning/) turns a
+SmartCore decision tree into a deterministic, bagged probability forest and
+optimizes eight mixed hyperparameters. The entire expensive path—bootstrap
+sampling, feature subspaces, fitting, probability prediction, and metric
+calculation—runs in Rust. Python is used only to render recorded artifacts.
+
+This tutorial focuses on experimental discipline as much as optimizer speed.
+It uses fixed stratified tuning folds with common model seeds, a disjoint
+selection set for top-candidate re-ranking, and an independently seeded final
+test set that is not evaluated until a hash-bound study plan is frozen.
+Reported budgets count both candidate evaluations and underlying model fits.
+
+Three formulations answer different questions:
+
+- BiteOpt retry minimizes constrained cross-validated log-loss and returns one
+  selected configuration;
+- constrained MODE exposes probability quality, ranking quality, serialized
+  model size, and a structural prediction-work proxy; and
+- a MAP-Elites pilot explores alternatives by predicted-positive rate and the
+  false-positive/false-negative balance.
+
+The checked-in quick run is a functional smoke study, not publication
+evidence. It exercises the complete protocol, baselines, budget sweep,
+isolated prediction-latency benchmark, finalization guard, and deterministic
+figures. The documented publication profile raises data and optimization
+budgets and requires three independent outer seeds before the QD formulation
+can be accepted.
+
+```bash
+cd tutorials/ml-hyperparameter-tuning
+cargo run --release -- \
+  --preset smoke --mode all --workers 4 --seed 42 \
+  --output results/quick
+```
+
+See the
+[complete ML hyperparameter-optimization tutorial](ml-hyperparameter-tuning/README.md)
+for the parameter decoder, probability-forest adapter, objective protocol,
+fair-comparison rules, commands, results, and limitations.
+
+![A validation-aware optimization protocol separates tuning, selection, and final reporting](ml-hyperparameter-tuning/images/architecture.svg)
+
+## 10. Diffsol: why gradients are the better default
 
 [Diffsol](https://github.com/martinjrobins/diffsol) is an MIT-licensed Rust
 ODE/DAE solver with explicit and implicit integration, event/root detection,

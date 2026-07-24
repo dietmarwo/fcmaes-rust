@@ -16,7 +16,7 @@ flowchart LR
     P[Embedding Python package] --> B[fcmaes-py / PyO3]
     B --> C
     B --> G
-    T[Standalone native simulator tutorials] --> C
+    T[Standalone native application tutorials] --> C
 ```
 
 The workspace has four crates:
@@ -34,12 +34,13 @@ examples, networking dependencies, and large example data are excluded from
 the Python package. Native Rust applications can depend only on `fcmaes-core`
 unless they need the internal GTOP catalog.
 
-The seven directories below `tutorials/` are standalone Cargo workspaces, not
-root members. This isolates application dependencies and result artifacts
-while reusing the local core. The room-ventilation tutorial also demonstrates
-a purpose-built native simulation backend: each candidate owns its D2Q9 flow
-and D2Q5 pollutant state, so population parallelism remains at the fcmaes
-layer.
+The eight application directories below `tutorials/` are standalone Cargo
+workspaces, not root members. This isolates application dependencies and
+result artifacts while reusing the local core. The room-ventilation tutorial
+demonstrates a purpose-built native simulation backend: each candidate owns its
+D2Q9 flow and D2Q5 pollutant state, so population parallelism remains at the
+fcmaes layer. The ML tutorial similarly keeps every tree fit and probability
+prediction in Rust while using disjoint tuning, selection, and final datasets.
 
 ## Core module map
 
@@ -121,9 +122,10 @@ The following are implemented in Rust:
   transfer-scheduling, Buckingham–Pi dimensional analysis, damp-control, F-8,
   and Lotka-Volterra drivers.
 - Standalone application tutorials for NeXosim, Rapier, ReBop, Brahe,
-  RustPower, atmospheric dispersion, and room ventilation. The ventilation
-  backend is deliberately educational and is accompanied by reference,
-  held-out, and grid-sensitivity evidence rather than engineering claims.
+  RustPower, SmartCore hyperparameter tuning, atmospheric dispersion, and room
+  ventilation. The ventilation backend is deliberately educational and is
+  accompanied by reference, held-out, and grid-sensitivity evidence rather
+  than engineering claims.
 - Python bindings for the implemented optimizers, retry, MODE, QD, and GTOP.
 
 The following are deliberately outside this Rust workspace:

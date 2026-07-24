@@ -1,0 +1,137 @@
+{
+  "actual_evaluations": 16,
+  "artifacts": {
+    "candidates": "candidates.csv",
+    "selected": "selected.json"
+  },
+  "command": "target/release/ml-hyperparameter-tuning --preset smoke --mode budget-sweep --workers 4 --seed 42 --output results/quick/budget-sweep",
+  "dataset": {
+    "bayes_reference": {
+      "error": 0.16098260983750576,
+      "error_standard_error": 0.0013059840457676662,
+      "log_loss": 0.37917820874178226,
+      "log_loss_standard_error": 0.0019404197964901955,
+      "rows": 10000
+    },
+    "data_seed": 20260724,
+    "feature_count": 24,
+    "generator_version": 1,
+    "hashes": {
+      "selection": "d171c2051913607e",
+      "test": "9c29e9a4564bde89",
+      "tuning": "a0cc2b6131802e81"
+    },
+    "selection_prevalence": 0.19166666666666668,
+    "selection_rows": 120,
+    "test_prevalence": 0.205,
+    "test_rows": 400,
+    "tuning_folds": 5,
+    "tuning_prevalence": 0.16666666666666666,
+    "tuning_rows": 240
+  },
+  "descriptors": [],
+  "duplicate_configurations": 0,
+  "elapsed_seconds": 0.253975765,
+  "formulation": "baseline-lhs",
+  "model_fits": 84,
+  "objective_protocol": {
+    "common_random_numbers": true,
+    "infeasible_fitness_base": 14.815510557964274,
+    "inner_model_workers": 1,
+    "minority_recall_floor": 0.1,
+    "parallelism_owner": "fcmaes candidate workers",
+    "probability_clip": 1e-6,
+    "structural_cost_limit": 2000000,
+    "tuning_model_seed": 6791476662184033089
+  },
+  "objectives": [],
+  "optimizer": {
+    "algorithm": "lhs",
+    "selection_seeds": [
+      13084405178522369146
+    ],
+    "shortlist": 4
+  },
+  "requested_evaluations": 16,
+  "schema_version": 1,
+  "seed": 42,
+  "selected": {
+    "selection": {
+      "elapsed_seconds": 0.002147781,
+      "failure": null,
+      "log_loss_sdev": 0.0,
+      "mean_model_bytes": 20650.0,
+      "mean_structural_cost": 57.0,
+      "metrics": {
+        "brier": 0.1810606060606559,
+        "ece": 0.1598485348484848,
+        "false_negatives": 17,
+        "false_positives": 15,
+        "log_loss": 0.5370040000894252,
+        "pr_auc": 0.30441536235597527,
+        "precision": 0.2857142857142857,
+        "predicted_positive_rate": 0.175,
+        "recall": 0.2608695652173913,
+        "roc_auc": 0.6337965038099507
+      },
+      "model_fits": 1,
+      "trees_fitted": 11
+    },
+    "tuning": {
+      "config": {
+        "criterion": "Gini",
+        "feature_fraction": 0.8273045121024382,
+        "max_depth": 17,
+        "min_samples_leaf": 16,
+        "min_samples_split": 8,
+        "n_trees": 11,
+        "positive_sampling_weight": 3.390730549362489,
+        "row_sample_fraction": 0.44781660042136034
+      },
+      "elapsed_seconds": 0.006072602,
+      "estimated_structural_cost": 99,
+      "failure": null,
+      "mean_model_bytes": 17341.0,
+      "mean_structural_cost": 51.2,
+      "metrics": {
+        "brier": 0.1732438016529508,
+        "ece": 0.17613630530303026,
+        "false_negatives": 31,
+        "false_positives": 34,
+        "log_loss": 0.5211009459919088,
+        "pr_auc": 0.2238160808479539,
+        "precision": 0.20930232558139536,
+        "predicted_positive_rate": 0.17916666666666667,
+        "recall": 0.225,
+        "roc_auc": 0.6269375
+      },
+      "model_fits": 5,
+      "recall_violation": -0.125,
+      "scalar_fitness": 0.5211009459919088,
+      "structural_violation": -0.9999505,
+      "trees_fitted": 55,
+      "x": [
+        0.0895082393856706,
+        0.6631905687596943,
+        0.6598990555234745,
+        0.4000632542001936,
+        0.07969433403560051,
+        0.7697393494699175,
+        0.920532047501448,
+        0.34368312814525454
+      ]
+    }
+  },
+  "selection_model_fits": 4,
+  "selection_trees_fitted": 129,
+  "software": {
+    "fcmaes-core": "0.1.2",
+    "smartcore": "0.5.3",
+    "tutorial": "0.1.0"
+  },
+  "trees_fitted": 5714,
+  "tuning_model_fits": 80,
+  "tuning_trees_fitted": 5585,
+  "tutorial": "ml-hyperparameter-tuning",
+  "workers": 4
+}

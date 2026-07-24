@@ -8,6 +8,11 @@ phase, with breaking changes called out explicitly.
 
 ### Added
 
+- Added a GitHub-only SmartCore hyperparameter-optimization tutorial with a
+  native probability-forest adapter, mixed-variable decoding, fixed-fold
+  tuning, disjoint selection and frozen final evaluation, BiteOpt retry,
+  constrained MODE, a MAP-Elites pilot, fair baselines, cost accounting,
+  latency/scaling measurements, tests, and deterministic figures.
 - Added a GitHub-only room-ventilation optimization tutorial with a
   purpose-built D2Q9/D2Q5 Rust backend, worst-case training releases, held-out
   validation, BiteOpt retry, MODE, MAP-Elites, a straight-channel property

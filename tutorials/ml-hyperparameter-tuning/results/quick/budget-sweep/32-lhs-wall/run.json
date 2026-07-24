@@ -1,0 +1,137 @@
+{
+  "actual_evaluations": 63,
+  "artifacts": {
+    "candidates": "candidates.csv",
+    "selected": "selected.json"
+  },
+  "command": "target/release/ml-hyperparameter-tuning --preset smoke --mode budget-sweep --workers 4 --seed 42 --output results/quick/budget-sweep",
+  "dataset": {
+    "bayes_reference": {
+      "error": 0.16098260983750576,
+      "error_standard_error": 0.0013059840457676662,
+      "log_loss": 0.37917820874178226,
+      "log_loss_standard_error": 0.0019404197964901955,
+      "rows": 10000
+    },
+    "data_seed": 20260724,
+    "feature_count": 24,
+    "generator_version": 1,
+    "hashes": {
+      "selection": "d171c2051913607e",
+      "test": "9c29e9a4564bde89",
+      "tuning": "a0cc2b6131802e81"
+    },
+    "selection_prevalence": 0.19166666666666668,
+    "selection_rows": 120,
+    "test_prevalence": 0.205,
+    "test_rows": 400,
+    "tuning_folds": 5,
+    "tuning_prevalence": 0.16666666666666666,
+    "tuning_rows": 240
+  },
+  "descriptors": [],
+  "duplicate_configurations": 0,
+  "elapsed_seconds": 0.949143758,
+  "formulation": "baseline-lhs",
+  "model_fits": 319,
+  "objective_protocol": {
+    "common_random_numbers": true,
+    "infeasible_fitness_base": 14.815510557964274,
+    "inner_model_workers": 1,
+    "minority_recall_floor": 0.1,
+    "parallelism_owner": "fcmaes candidate workers",
+    "probability_clip": 1e-6,
+    "structural_cost_limit": 2000000,
+    "tuning_model_seed": 6791476662184033089
+  },
+  "objectives": [],
+  "optimizer": {
+    "algorithm": "lhs",
+    "selection_seeds": [
+      13084405178522369146
+    ],
+    "shortlist": 4
+  },
+  "requested_evaluations": 63,
+  "schema_version": 1,
+  "seed": 42,
+  "selected": {
+    "selection": {
+      "elapsed_seconds": 0.003251663,
+      "failure": null,
+      "log_loss_sdev": 0.0,
+      "mean_model_bytes": 46864.0,
+      "mean_structural_cost": 156.0,
+      "metrics": {
+        "brier": 0.15365987289064206,
+        "ece": 0.08119658119658124,
+        "false_negatives": 20,
+        "false_positives": 8,
+        "log_loss": 0.47279292813204676,
+        "pr_auc": 0.3172509666227079,
+        "precision": 0.2727272727272727,
+        "predicted_positive_rate": 0.09166666666666666,
+        "recall": 0.13043478260869565,
+        "roc_auc": 0.6687584043030032
+      },
+      "model_fits": 1,
+      "trees_fitted": 39
+    },
+    "tuning": {
+      "config": {
+        "criterion": "Gini",
+        "feature_fraction": 0.362895699236676,
+        "max_depth": 3,
+        "min_samples_leaf": 7,
+        "min_samples_split": 2,
+        "n_trees": 39,
+        "positive_sampling_weight": 2.5174798949616384,
+        "row_sample_fraction": 0.5950589865396443
+      },
+      "elapsed_seconds": 0.012243834,
+      "estimated_structural_cost": 585,
+      "failure": null,
+      "mean_model_bytes": 46828.8,
+      "mean_structural_cost": 156.0,
+      "metrics": {
+        "brier": 0.14721948279641406,
+        "ece": 0.07938035021367512,
+        "false_negatives": 34,
+        "false_positives": 14,
+        "log_loss": 0.45842838061042535,
+        "pr_auc": 0.24426832619761296,
+        "precision": 0.3,
+        "predicted_positive_rate": 0.08333333333333333,
+        "recall": 0.15,
+        "roc_auc": 0.6366875
+      },
+      "model_fits": 5,
+      "recall_violation": -0.04999999999999999,
+      "scalar_fitness": 0.45842838061042535,
+      "structural_violation": -0.9997075,
+      "trees_fitted": 195,
+      "x": [
+        0.45717397153948064,
+        0.06809125664767345,
+        0.4697211355650056,
+        0.006816961756579269,
+        0.3250983108994071,
+        0.1505275989822346,
+        0.7773267522203574,
+        0.45635723643850784
+      ]
+    }
+  },
+  "selection_model_fits": 4,
+  "selection_trees_fitted": 535,
+  "software": {
+    "fcmaes-core": "0.1.2",
+    "smartcore": "0.5.3",
+    "tutorial": "0.1.0"
+  },
+  "trees_fitted": 22995,
+  "tuning_model_fits": 315,
+  "tuning_trees_fitted": 22460,
+  "tutorial": "ml-hyperparameter-tuning",
+  "workers": 4
+}
