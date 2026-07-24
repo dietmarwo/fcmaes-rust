@@ -6,6 +6,15 @@ phase, with breaking changes called out explicitly.
 
 ## [Unreleased]
 
+## [0.1.2] - 2026-07-24
+
+### Packaging
+
+- Added a tag-gated crates.io workflow for publishing `fcmaes-core` with
+  short-lived GitHub OIDC credentials after package validation.
+- Kept crates.io and PyPI versions synchronized so a `v0.1.2` tag releases
+  both public packages from the same source revision.
+
 ## [0.1.1] - 2026-07-24
 
 Initial dual-registry release candidate.
@@ -31,5 +40,6 @@ Initial dual-registry release candidate.
 - Registry workflows use GitHub environments and OpenID Connect trusted
   publishing after the required registry-side setup.
 
-[Unreleased]: https://github.com/dietmarwo/fcmaes-rust/compare/v0.1.1...HEAD
+[Unreleased]: https://github.com/dietmarwo/fcmaes-rust/compare/v0.1.2...HEAD
+[0.1.2]: https://github.com/dietmarwo/fcmaes-rust/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/dietmarwo/fcmaes-rust/releases/tag/v0.1.1

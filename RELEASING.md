@@ -7,8 +7,9 @@ The public repository produces two synchronized artifacts:
 | crates.io / docs.rs | `fcmaes-core` | `[workspace.package].version` |
 | PyPI | `fcmaes-rust` | derived by Maturin from `fcmaes-py` |
 
-The initial prepared version is 0.1.1. Publication is irreversible: never
-reuse a version after uploading it to either registry.
+The synchronized release version is defined in `[workspace.package]`.
+Publication is irreversible: never reuse a version after uploading it to
+either registry.
 
 ## One-time registry setup
 
@@ -16,11 +17,9 @@ reuse a version after uploading it to either registry.
 2. In PyPI, create a pending Trusted Publisher with:
    owner `dietmarwo`, repository `fcmaes-rust`, workflow
    `python-release.yml`, environment `release`, and project `fcmaes-rust`.
-3. Confirm immediately before release that `fcmaes-core` and `fcmaes-rust`
-   are still available.
-4. The first `fcmaes-core` release must be published manually with a
-   least-privilege crates.io token. After it exists, configure its Trusted
-   Publisher for `publish-crates.yml` and environment `release`, then set the
+3. `fcmaes-core` 0.1.1 was published manually to establish ownership. Configure
+   its Trusted Publisher for owner `dietmarwo`, repository `fcmaes-rust`,
+   workflow `publish-crates.yml`, and environment `release`, then set the
    GitHub repository variable `CRATES_IO_TRUSTED_PUBLISHING` to `true`.
 
 Do not set that repository variable before crates.io has accepted the Trusted
@@ -93,7 +92,7 @@ Install with the production index available only for dependencies:
 python -m pip install \
   --index-url https://test.pypi.org/simple/ \
   --extra-index-url https://pypi.org/simple/ \
-  fcmaes-rust==0.1.1
+  fcmaes-rust==0.1.2
 ```
 
 If testing requires changing an artifact, increment the version. Registry
@@ -101,11 +100,11 @@ files cannot be replaced.
 
 ## Tag and publish
 
-After the manual first crates.io upload and successful TestPyPI check:
+After both trusted publishers are configured and all pre-release checks pass:
 
 ```bash
-git tag -a v0.1.1 -m "Release fcmaes-rust 0.1.1"
-git push origin v0.1.1
+git tag -a v0.1.2 -m "Release fcmaes-rust 0.1.2"
+git push origin v0.1.2
 ```
 
 The tag must exactly equal `v` plus the Cargo package version. The Python
