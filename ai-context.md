@@ -138,6 +138,15 @@ isolated mutable state, and let fcmaes distribute candidates. This avoids
 Python callback and serialization overhead and is the design demonstrated by
 the application examples and simulator tutorials.
 
+The Buckingham–Pi example is also a useful pattern for optimized feature
+discovery. It parameterizes every dimensionally valid exponent matrix as
+`E = Ns * C`, scores regressions on a disjoint holdout set, rejects overflowing
+log-features, and penalizes nearly dependent groups. Use this pattern when
+algebraic structure can make all optimizer trials valid by construction.
+Do not call an in-sample regression score “cross-validation,” and distinguish
+the coefficient of variation from cross-validation in output and reports. See
+`docs/buckingham-pi.md`.
+
 Python users can still use the Rust optimizers through `fcmaes_rust`.
 One-shot functions include `optimize_de`, `optimize_acma`,
 `optimize_crfmnes`, `optimize_pgpe`, `optimize_da`, and `optimize_bite`;
@@ -691,6 +700,8 @@ Before declaring success, the AI should:
 - `docs/retry.md`: basic, advanced, and weighted retry.
 - `docs/architecture.md`: objective flow, normalization, and concurrency.
 - `docs/examples.md`: native application and benchmark commands.
+- `docs/buckingham-pi.md`: dimensionally valid continuous feature search,
+  holdout validation, conditioning safeguards, and MODE objectives.
 - `docs/python-bindings.md`: CPython 3.11–3.13 package, callable signatures,
   result layouts, GIL behavior, and Python examples.
 - `examples/src/runner.rs`: canonical DE-to-CMA retry integration.
@@ -698,6 +709,8 @@ Before declaring success, the AI should:
 - `examples/src/bin/mazda_qd.rs`: parallel MAP-Elites/Diversifier driver.
 - `examples/src/uav.rs`: random-key decoding for mixed assignment, ordering,
   scalar, and multi-objective optimization.
+- `examples/src/buckingham.rs`: nullspace parameterization that makes every
+  continuous optimizer trial dimensionally valid.
 - `tutorials/README.md`: six native simulator-optimization tutorials,
   MODE/MAP-Elites selection, stochastic validation, parallelism ownership, and
   the Diffsol gradient-based counterexample.

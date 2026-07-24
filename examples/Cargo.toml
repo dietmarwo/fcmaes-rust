@@ -15,6 +15,7 @@ name = "fcmaes_examples"
 [dependencies]
 fcmaes-core = { workspace = true }
 fcmaes-gtop = { workspace = true }
+nalgebra = "0.33"
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
 yahoo_finance_api = "4.1.1"
 xz2 = "0.1"
@@ -82,3 +83,7 @@ path = "src/bin/lotka.rs"
 [[bin]]
 name = "uav-task-assignment"
 path = "src/bin/uav_task_assignment.rs"
+
+[[bin]]
+name = "buckingham-pi"
+path = "src/bin/buckingham_pi.rs"

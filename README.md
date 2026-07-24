@@ -24,7 +24,10 @@ C++ references in comments record provenance and behavioral comparisons only.
 The repository is a standalone Cargo workspace. GTOP models and example
 objective functions also execute in Rust. This includes the Mazda mass and
 constraint response surfaces: their compact model data is embedded in the
-example crate and evaluated by native Rust code.
+example crate and evaluated by native Rust code. The Buckingham–Pi example
+also implements dimension-matrix enumeration, numerical nullspace analysis,
+regression, and continuous-exponent optimization directly in Rust; it has no
+BuckinghamPy dependency.
 
 ## Implementation facts
 
@@ -88,8 +91,8 @@ multi-objective retry.
 The example crate includes GTOP mission optimization, Mazda factory-design
 objectives, stock-strategy optimization, material-flow planning, flexible
 job-shop and harvesting, multi-UAV task assignment, spherical t-design,
-transfer scheduling, damped control, F-8 aircraft control, and
-Lotka-Volterra control.
+transfer scheduling, Buckingham–Pi dimensional analysis, damped control, F-8
+aircraft control, and Lotka-Volterra control.
 
 ## Quick start
 
@@ -162,6 +165,7 @@ python examples/python/test_cma.py
 - [Optimizer guide](docs/optimizers.md)
 - [Retry and multi-objective retry](docs/retry.md)
 - [Native examples and benchmarks](docs/examples.md)
+- [Buckingham–Pi dimensional-analysis example](docs/buckingham-pi.md)
 - [Native Rust simulator optimization tutorials](tutorials/README.md)
 - [Optional PyO3 bindings](docs/python-bindings.md)
 - [Release history](CHANGELOG.md)
@@ -204,6 +208,9 @@ path. See the [Mazda data notice](examples/data/MAZDA_NOTICE.md) for provenance
 and the benchmark's acknowledgement request. The
 [Multi-UAV data and compatibility notice](examples/data/UAV_NOTICE.md)
 documents the native task-assignment port and its source benchmark.
+The [Buckingham notice](examples/data/BUCKINGHAM_NOTICE.md) records the
+dimension-matrix catalog's provenance and the numerical port's deliberately
+narrower scope than BuckinghamPy.
 
 Both Mazda drivers accept `--workers N` for ordered parallel objective batches;
 use `--workers 16` for sixteen evaluation threads or `--workers 0` to select

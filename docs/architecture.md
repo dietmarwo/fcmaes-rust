@@ -110,7 +110,8 @@ The following are implemented in Rust:
 - Weighted multi-objective retry, MODE, CVT-MAP-Elites, and Diversifier.
 - GTOP and Mazda objective functions and native GTOP, Mazda MO/QD, trading,
   material-flow, flexible job-shop/harvesting, spherical t-design,
-  transfer-scheduling, damp-control, F-8, and Lotka-Volterra drivers.
+  transfer-scheduling, Buckingham–Pi dimensional analysis, damp-control, F-8,
+  and Lotka-Volterra drivers.
 - Python bindings for the implemented optimizers, retry, MODE, QD, and GTOP.
 
 The following are deliberately outside this Rust workspace:

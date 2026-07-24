@@ -14,6 +14,7 @@ The `fcmaes-examples` crate provides:
 | `mazda-qd` | CVT-MAP-Elites, optional Diversifier | Mazda behavior archive |
 | `trading` | MODE and CVT-MAP-Elites | Four-stock EMA/SMA strategy search |
 | `material-flow-planning` | BiteOpt | Native 24-hour factory simulation and throughput measurement |
+| `buckingham-pi` | Enumeration, BiteOpt retry, and MODE | Native dimensionless-group analysis and continuous exponent search |
 | `uav-task-assignment` | BiteOpt retry and MODE | Single- and multi-objective extended team-orienteering benchmark |
 | `jobshop` | BiteOpt | Flexible job-shop objective; optional Brandimarte `.fjs` input |
 | `harvesting` | BiteOpt | Job-shop with bounded machine deployment windows |
@@ -174,6 +175,33 @@ the native BiteOpt implementation with a fixed seed, ask/tell batch size, and
 semantic drift immediately visible. `OBJECTIVE` and `OPTIMIZE` lines report
 separate wall times and throughput. Override the workloads with
 `--benchmark-evaluations` and `--optimize-evaluations`.
+
+## Buckingham–Pi dimensional analysis
+
+The `buckingham-pi` binary implements its dimension-matrix analysis,
+regression, validation, and optimization in Rust. It can enumerate
+conventional repeating-variable bases, rank them using held-out data, search
+continuous nullspace exponents with independent BiteOpt retries, or use MODE
+to expose the trade-off among predictive quality, exponent simplicity, and
+feature independence.
+
+Run the complete two-group cylinder workflow with 16 workers:
+
+```bash
+cargo run --release -p fcmaes-examples --bin buckingham-pi -- \
+  --problem cylinder --mode all --groups 2 --samples 300 \
+  --workers 16 --retries 32 --evaluations 2000 \
+  --mo-evaluations 20000 --popsize 128 --seed 42
+```
+
+The example is a numerical Rust implementation, not a BuckinghamPy binding or
+symbolic unit parser. Its deterministic synthetic data use disjoint training
+and holdout PCG streams; replace them with measured or simulation data for a
+scientific application. See the
+[Buckingham–Pi guide](buckingham-pi.md) for its equations, safeguards,
+objectives, recorded validation result, catalog, and smaller mode-specific
+commands. Source attribution is in the
+[Buckingham notice](../examples/data/BUCKINGHAM_NOTICE.md).
 
 ## Multi-UAV task assignment
 

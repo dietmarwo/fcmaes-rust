@@ -1,6 +1,7 @@
 //! Native benchmark problems and executable examples for `fcmaes-core`.
 
 pub mod benchmark_gtop;
+pub mod buckingham;
 pub mod damp;
 pub mod f8;
 pub use fcmaes_gtop as gtop;

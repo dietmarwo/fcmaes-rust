@@ -12,6 +12,10 @@ phase, with breaking changes called out explicitly.
   a native ISC-3-derived educational model, BiteOpt coordinated advanced retry,
   MODE, MAP-Elites, disjoint holdout validation, reproducible result artifacts,
   and deterministic figures.
+- Added the GitHub-only `buckingham-pi` example with native dimension-matrix
+  preprocessing, nullspace calculation, repeating-variable enumeration,
+  π-group construction, deterministic train/holdout regression, independent
+  BiteOpt retry, constrained MODE, tests, and a dedicated guide.
 
 ### Changed
 

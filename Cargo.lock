@@ -299,6 +299,7 @@ version = "0.1.2"
 dependencies = [
  "fcmaes-core",
  "fcmaes-gtop",
+ "nalgebra",
  "tokio",
  "xz2",
  "yahoo_finance_api",

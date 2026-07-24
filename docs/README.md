@@ -15,6 +15,7 @@ configuration, workflows, and runnable examples.
 | [Retry](retry.md) | Basic, coordinated, and multi-objective retry |
 | [Optional Python bindings](python-bindings.md) | Direct PyO3 extension surface and GIL considerations |
 | [Examples](examples.md) | Every native binary, data input, GTOP problem, monitor, and benchmark |
+| [Buckingham–Pi](buckingham-pi.md) | Numerical dimensional analysis, holdout scoring, BiteOpt retry, and MODE |
 | [Development](development.md) | Formatting, linting, tests, coverage, rustdoc, and extension points |
 
 ## Implemented Rust surface
@@ -27,8 +28,8 @@ configuration, workflows, and runnable examples.
   multi-objective retry.
 - Native GTOP and Mazda objectives plus application drivers for factory design,
   stock trading, material flow, flexible job-shop/harvesting, multi-UAV task
-  assignment, spherical t-design, transfer scheduling, damped control, F-8,
-  and Lotka-Volterra.
+  assignment, Buckingham–Pi analysis, spherical t-design, transfer scheduling,
+  damped control, F-8, and Lotka-Volterra.
 - An optional PyO3 extension distributed through the `fcmaes_rust` Python
   facade.
 
