@@ -170,6 +170,7 @@ python examples/python/test_cma.py
 
 - [AI problem-solving context](ai-context.md)
 - [Getting started](docs/getting-started.md)
+- [Choosing an optimizer](docs/choosing-an-optimizer.md)
 - [Architecture and implementation boundaries](docs/architecture.md)
 - [Optimizer guide](docs/optimizers.md)
 - [Retry and multi-objective retry](docs/retry.md)

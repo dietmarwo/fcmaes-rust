@@ -10,6 +10,7 @@ configuration, workflows, and runnable examples.
 |---|---|
 | [AI problem-solving context](../ai-context.md) | Selecting algorithms, parameters, budgets, encodings, and validation for a new user problem |
 | [Getting started](getting-started.md) | Building, testing, generating rustdoc, and running a first optimizer |
+| [Choosing an optimizer](choosing-an-optimizer.md) | Deciding whether fcmaes-rust, a structured solver, gradients, a surrogate, or another search representation fits the problem |
 | [Architecture](architecture.md) | Workspace layout, execution paths, concurrency, and scope |
 | [Optimizers](optimizers.md) | Pure-Rust optimizer APIs, defaults, one-shot operation, and ask/tell operation |
 | [Retry](retry.md) | Basic, coordinated, and multi-objective retry |

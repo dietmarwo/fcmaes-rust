@@ -70,6 +70,12 @@ record is not a reproducible optimization solution.
 
 ## First decide whether fcmaes is appropriate
 
+Use the human-facing
+[`Choosing an optimizer`](docs/choosing-an-optimizer.md) guide to route
+structured, differentiable, evaluation-scarce, real-time, and
+structure-evolution problems to more suitable tools before selecting an
+fcmaes algorithm.
+
 Do not select a gradient-free optimizer merely because the model is a
 simulation. Prefer a gradient-based optimizer when all decision variables are
 continuous, the end-to-end objective is differentiable, reliable analytical,
@@ -706,6 +712,9 @@ Before declaring success, the AI should:
 ## Repository references
 
 - `docs/getting-started.md`: building and basic Rust use.
+- `docs/choosing-an-optimizer.md`: deciding whether fcmaes-rust or a
+  structured, gradient-based, surrogate-based, real-time, or
+  genotype-aware alternative fits the complete problem.
 - `docs/optimizers.md`: public optimizer interfaces and defaults.
 - `docs/retry.md`: basic, advanced, and weighted retry.
 - `docs/architecture.md`: objective flow, normalization, and concurrency.
