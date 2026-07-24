@@ -17,7 +17,7 @@ gradient-free optimization:
 | [Trebuchet](rapier-trebuchet/) | Rapier | contact, release and joint-limit discontinuities | BiteOpt retry + MODE + MAP-Elites | accepted |
 | [Biochemical oscillator](rebop-oscillator/) | ReBop | intrinsically noisy stochastic reaction paths | BiteOpt retry + MODE + MAP-Elites | accepted |
 | [Satellite constellation](brahe-constellation/) | Brahe | access-window appearance/disappearance and worst-gap aggregation | BiteOpt retry + constrained MODE + MAP-Elites | accepted |
-| [Voltage control](rustpower-voltage-control/) | RustPower | mixed-integer controls, contingencies and power-flow failures | constrained MODE + experimental QD pilot | rejected after pilot |
+| [Voltage control](rustpower-voltage-control/) | RustPower | mixed-integer controls, contingencies and power-flow failures | constrained MODE + MAP-Elites | MODE primary, QD secondary |
 | [Atmospheric source localization](dispersion-source-localization/) | ISC-3-derived native model | inverse inference, censoring, model mismatch, and non-identifiability | BiteOpt advanced retry + MODE + MAP-Elites | accepted |
 | [Room ventilation](cfd-room-ventilation/) | Custom D2Q9/D2Q5 Rust backend | variable geometry, numerical constraints, worst-case releases, and resolution sensitivity | BiteOpt retry + MODE + MAP-Elites | accepted |
 
@@ -88,8 +88,9 @@ MODE and MAP-Elites answer different questions:
 MAP-Elites is useful only when its descriptors express diversity that a user
 would actually choose between. It is not a generic replacement for MODE, and
 objective values should not be relabeled as descriptors without a reason.
-The RustPower pilot demonstrates the go/no-go rule: implemented QD code is not
-promoted merely because it runs. See the
+The RustPower tutorial is the worked example: its first descriptor pair was a
+pair of decision variables and reached 4% coverage, while emergent behavior
+coordinates on the identical budget reached 68%. See the
 [CVT-MAP-Elites and Diversifier guide](../docs/optimizers.md#cvt-map-elites-and-diversifier)
 for the batch APIs, the [result schema](RESULT_SCHEMA.md), and the
 [Python plotting package](python/) for reproducible figures.
@@ -115,9 +116,12 @@ budgets, output files, limitations and validation strategy.
 
 ### Troubleshooting
 
-- An empty QD archive usually means feasibility is too rare, descriptor bounds
-  are wrong, or invalid simulations were correctly rejected. Inspect the
-  invalid and clipping counts before increasing the budget.
+- An empty or sparse QD archive usually means feasibility is too rare,
+  descriptor bounds are wrong, or invalid simulations were correctly rejected.
+  Inspect the invalid and clipping counts before increasing the budget. If the
+  descriptors are themselves decision variables, no budget will help: the
+  archive can only reach the part of that input space which is also feasible.
+  See the RustPower tutorial for the measured before/after.
 - If performance worsens as workers increase, check for a nested simulator
   thread pool. NeXosim and Brahe make the two ownership choices explicit.
 - If stochastic elites move between niches on validation, increase replication
@@ -321,13 +325,18 @@ auditable.
 
 Constrained MODE is the primary formulation because losses, voltage quality,
 investment and security are explicit competing goals with hard feasibility
-limits. The implemented QD pilot used continuous battery MW and capacitor MVAr
-as descriptors and exported categorical bus placement separately. Strict
-feasibility made the evidence decisive: after 100,097 evaluations only 16/400
-niches were occupied, battery capacity remained in a 269.9–274.2 MW band, and
-all elites used one battery-bus category. The proposed archive did not expose
-useful architectural diversity, so it is documented as a rejected pilot rather
-than a publication result. MODE was retained, not replaced.
+limits. This tutorial also records the clearest worked example of the descriptor
+rule stated above. The first QD attempt used continuous battery MW and capacitor
+MVAr as descriptors; after 100,097 evaluations only 16/400 niches were occupied
+and battery capacity stayed in a 269.9–274.2 MW band. Both axes were decision
+variables, so the archive re-plotted its own search box instead of illuminating
+behavior. Replacing them with emergent coordinates measured from the solved
+scenarios — weighted-mean bus voltage and the security-utilization spread across
+the six scenarios — raised mean coverage from 4.0% to 68.0% over three seeds at
+the identical budget, with no descriptor clipping. The corrected archive is a
+useful operating-strategy repertoire; asset siting and sizing remain nearly
+unique on this network, which the descriptor fix confirms rather than removes.
+MODE was retained, not replaced.
 
 ```bash
 cd tutorials/rustpower-voltage-control
@@ -340,7 +349,7 @@ See the [complete RustPower tutorial](rustpower-voltage-control/README.md) for
 scenario definitions, rating calibration, licensing/build caveats and the
 recorded Pareto result.
 
-![Six-scenario voltage-control evaluation, constrained MODE, and the recorded QD go/no-go decision](rustpower-voltage-control/images/architecture.svg)
+![Six-scenario voltage-control evaluation, constrained MODE, and the recorded MAP-Elites archive](rustpower-voltage-control/images/architecture.svg)
 
 ## 7. Atmospheric dispersion: robust source localization
 

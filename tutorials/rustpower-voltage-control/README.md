@@ -25,7 +25,7 @@ four objectives + three explicit feasibility constraints
 fcmaes constrained MODE
 ```
 
-![Six-scenario voltage-control evaluation, constrained MODE, and the recorded QD go/no-go decision](images/architecture.svg)
+![Six-scenario voltage-control evaluation, constrained MODE, and the recorded MAP-Elites archive](images/architecture.svg)
 
 ## Model
 
@@ -117,21 +117,36 @@ Transformer and line outages are discrete topology changes, while tap
 positions and bank steps are integers. The resulting objective is nonsmooth
 and is a natural gradient-free optimization problem.
 
-The CLI also contains an experimental MAP-Elites pilot. It uses installed
-battery capacity in MW and total capacitor support in MVAr as continuous
-descriptors. Battery and capacitor bus identities are exported as categorical
-columns; they are never treated as numbers with a false Euclidean distance.
-Within each niche it minimizes the reciprocal of the reporting quality, and
-any positive voltage, thermal or convergence constraint returns non-finite QD
-fitness and cannot occupy the archive.
+The CLI also contains a MAP-Elites formulation. Its two descriptors are
+*emergent behavior* coordinates measured from the six solved scenarios, not
+decision variables:
 
-The feasible volume is too small for a uniform random archive to bootstrap
-itself. The pilot therefore evaluates and counts one disclosed warm start: the
-documented seed-42 MODE representative. Decision variables are normalized to
-`[0,1]` before variation so a 0.01 mutation has comparable meaning for a
-generator setpoint and a 300 MW battery variable. This is an exploratory
-formulation; the go/no-go result below explains why it is not presented as a
-second production result.
+| Axis | Descriptor | Bounds | Meaning |
+|---:|---|---|---|
+| 0 | Weighted-mean bus voltage | 0.995–1.040 pu | The voltage level the plan settles into. Operating high reduces current and losses but spends upper headroom; operating low keeps headroom for contingencies. |
+| 1 | Security-utilization spread | 0.0–0.3 | Worst minus mildest scenario limit utilization. Small values are plans stressed almost equally by every condition; large values are plans comfortable in normal operation whose margin is set by one dominating scenario. |
+
+Neither coordinate repeats an optimized objective. Mean voltage is not the RMS
+deviation objective, which is symmetric about 1.0 pu and cannot tell a high
+profile from a low one. The spread is not the worst-case security objective,
+which records the level of the worst scenario rather than the gap between
+normal and stressed operation. Because both require the full power-flow
+campaign, the optimizer cannot place a candidate in a chosen niche without
+actually producing that operating behavior.
+
+Installed battery MW, installed capacitor MVAr and the bus identities are
+exported as archive metadata. Bus identities are never treated as numbers with
+a false Euclidean distance. Within each niche the formulation minimizes the
+reciprocal of the reporting quality, and any positive voltage, thermal or
+convergence constraint returns non-finite QD fitness and cannot occupy the
+archive.
+
+A uniform random archive does not bootstrap itself on this network, so the run
+evaluates and counts one disclosed warm start: the documented seed-42 MODE
+representative. Decision variables are normalized to `[0,1]` before variation
+so a 0.01 mutation has comparable meaning for a generator setpoint and a 300 MW
+battery variable. MODE remains the primary formulation; the recorded QD results
+below explain what the archive adds and what it does not.
 
 ## Parallelism
 
@@ -151,7 +166,7 @@ cargo run --release -- \
 MODE rounds the requested budget up to a complete population. `--workers 0`
 uses the available CPU count.
 
-Run MODE and the QD pilot in one invocation:
+Run MODE and MAP-Elites in one invocation:
 
 ```bash
 cargo run --release -- \
@@ -239,12 +254,15 @@ performance statistics.
 
 ![Four-objective constrained MODE front from the recorded seed-42 run](images/publication-mo/pareto.svg)
 
-## QD go/no-go pilot
+## QD: a rejected descriptor choice and its replacement
 
-The first unseeded 4,096-evaluation attempt found no feasible design. After
-adding the counted warm start and normalized variation, the same small pilot
-occupied 12/400 cells. A much larger run tested whether that was merely an
-initialization transient:
+### The rejected pilot: design variables as descriptors
+
+The first QD attempt used **installed battery MW and installed capacitor MVAr**
+as the two axes. The first unseeded 4,096-evaluation run found no feasible
+design. After adding the counted warm start and normalized variation, the same
+small pilot occupied 12/400 cells. A much larger run tested whether that was
+merely an initialization transient:
 
 ```bash
 cargo run --release -- \
@@ -258,19 +276,91 @@ cargo run --release -- \
 |---:|---:|---:|---:|---:|---:|---:|
 | 100,097 | 15.920 s | 16/400 | 4.0% | 1.085476 | 14.644767 | 54,755 |
 
-There was no descriptor clipping. Capacitor support covered eight discrete
-levels from 125 to 300 MVAr, but battery capacity remained within
-269.874–274.198 MW and every elite used battery bus 14. The proposed axes
-therefore did not distinguish a useful family of planning architectures.
-Narrowing the bounds around this one optimizer seed would make coverage look
-better without adding engineering information.
+There was no descriptor clipping, but battery capacity stayed within
+269.874–274.198 MW and every elite used battery bus 14.
 
-The decision is **no-go for a publication QD campaign**. The pilot code and
-artifacts remain reproducible, but the tutorial uses MODE to communicate the
-four genuine objective trade-offs. No three-seed or holdout-scenario QD
-campaign was run after this rejection.
+The `results/pilot/` artifacts are the original recordings and are kept as the
+evidence for this decision. They were produced by the superseded descriptor
+definition, so their `run.json` and `qd_archive.csv` carry the old
+`descriptor_battery_capacity_mw` / `descriptor_capacitor_mvar` columns. Both
+files remain self-describing and still render, but re-running the command above
+against the current code reproduces the *replacement* formulation below, not
+this table.
 
 ![The rejected 100k pilot archive shows the narrow reachable descriptor band](images/pilot-qd-100k/qd-archive.svg)
+
+The diagnosis is a descriptor error, not a budget or tuning problem. Both axes
+were **decision variables**: the optimizer sets battery MW and capacitor steps
+directly, so the archive re-plotted part of its own search box instead of
+illuminating distinct behavior. Worse, feasibility across all six scenarios
+demands a specific amount of storage and reactive support, so the reachable and
+feasible part of that input space is a thin band. No budget can fill cells that
+the feasible set does not reach.
+
+### The replacement: emergent behavior descriptors
+
+Replacing the two axes with the emergent coordinates documented above — solved
+mean bus voltage and security-utilization spread — keeps every other part of
+the formulation identical: the same model, budget, capacity, warm start, strict
+feasibility rule and quality definition. Only the descriptors changed. Three
+seeds at the same 100,097-evaluation budget:
+
+```bash
+for seed in 42 43 44; do
+  cargo run --release -- \
+    --mode qd --workers 24 \
+    --qd-evaluations 100000 --qd-capacity 400 \
+    --qd-chunk-size 128 --seed "$seed" \
+    --output "results/publication/qd-seed-$seed"
+done
+```
+
+| Metric | Mean | Sample standard deviation |
+|---|---:|---:|
+| Wall time | 16.054264 s | 0.054809 s |
+| Occupied niches | 272.000 | 10.817 |
+| Coverage | 68.000% | 2.704 percentage points |
+| QD score | 16.259571 | 0.676009 |
+| Best minimized quality | 14.757715 | 0.014069 |
+| Infeasible evaluations | 39,945.000 | 285.349 |
+| Clipped descriptors | 0.000 | 0.000 |
+
+Coverage rose from 4.0% to 68.0%, a seventeenfold increase, with no descriptor
+clipping on any seed. Per-seed statistics are in
+[`results/publication/qd-summary.csv`](results/publication/qd-summary.csv).
+
+The descriptor bounds were frozen from a recorded range pilot rather than
+guessed from the decision bounds. Sampling 40,960 candidates produced 30,679
+feasible designs spanning 0.998–1.036 pu mean voltage and 0.000–0.294
+utilization spread; the frozen 0.995–1.040 pu × 0.0–0.3 rectangle covers that
+observed range with a small margin. Occupied niches stay well inside it, so
+coverage is not an artifact of bounds drawn tightly around one seed.
+
+![Seed-42 MAP-Elites archive over solved mean voltage and security-utilization spread](images/publication-qd-seed-42/qd-archive.svg)
+
+![MAP-Elites coverage, QD score, best quality, and infeasible fraction versus evaluations](images/publication-qd-seed-42/convergence.svg)
+
+### What the archive does and does not show
+
+The archive is now a genuine **operating-strategy repertoire**. Across the
+seed-42 elites the minimized quality ranges 14.755–20.846, mean line loss
+34.058–37.113 MW, voltage RMS deviation 14.505–36.003 mpu and lifecycle cost
+99.981–105.495 M$. A planner can read off the best feasible design for a chosen
+voltage level and stress profile, which the single MODE representative does not
+provide.
+
+It is **not** an architecture repertoire, and this survives the descriptor fix:
+all 269 seed-42 elites still install the battery at bus 14, 264 of 269 place the
+first capacitor bank at bus 7, and battery capacity stays within
+266.643–273.738 MW. Seeds 43 and 44 agree. What varies across niches is the
+control settings — tap offsets, generator setpoints and curtailment — not the
+asset siting and sizing.
+
+That near-unique architecture was the rejected pilot's one durable finding, and
+it is now confirmed independently of the descriptor choice instead of being
+confounded with it. MODE remains the primary formulation because the four
+competing objectives are the decision the tutorial is really about; QD is
+reported alongside it, no longer as a rejected pilot.
 
 ## Output
 
@@ -282,7 +372,7 @@ MODE writes:
 - `report.html`: self-contained Pareto plot and selected scenario table;
 - `run.json`: schema-v1 provenance and artifact references.
 
-QD pilot output replaces `pareto.csv` with `qd_archive.csv` and
+QD output replaces `pareto.csv` with `qd_archive.csv` and
 `representatives.csv`. Regenerate all checked-in figures from the common
 Python analysis layer:
 

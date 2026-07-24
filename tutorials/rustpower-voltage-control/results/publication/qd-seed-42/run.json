@@ -1,0 +1,90 @@
+{
+  "actual_evaluations": 100097,
+  "artifacts": {
+    "convergence": "convergence.csv",
+    "qd_archive": "qd_archive.csv",
+    "representatives": "representatives.csv",
+    "scenarios": "scenarios.csv"
+  },
+  "categories": [
+    {
+      "column": "category_battery_bus",
+      "label": "Battery installation bus",
+      "values": [
+        3,
+        7,
+        14,
+        19,
+        24,
+        27
+      ]
+    }
+  ],
+  "command": "./target/release/rustpower-voltage-control --mode qd --workers 24 --qd-evaluations 100000 --qd-capacity 400 --qd-chunk-size 128 --seed 42 --output results/publication/qd-seed-42",
+  "convergence_metrics": [
+    "coverage",
+    "qd_score",
+    "best_quality",
+    "invalid_fraction"
+  ],
+  "decision_normalization": "[0,1] per variable before MAP-Elites variation",
+  "descriptors": [
+    {
+      "bounds": [
+        0.995,
+        1.04
+      ],
+      "column": "descriptor_mean_voltage_pu",
+      "label": "Weighted-mean bus voltage",
+      "unit": "pu"
+    },
+    {
+      "bounds": [
+        0.0,
+        0.3
+      ],
+      "column": "descriptor_security_spread",
+      "label": "Security-utilization spread across scenarios",
+      "unit": "utilization"
+    }
+  ],
+  "elapsed_seconds": 15.991089737,
+  "formulation": "qd",
+  "qd": {
+    "best_quality": 14.75508795477562,
+    "capacity": 400,
+    "chunk_size": 128,
+    "clipped_descriptors": 0,
+    "coverage": 0.6725,
+    "grid_shape": [
+      20,
+      20
+    ],
+    "invalid_evaluations": 39645,
+    "occupied": 269,
+    "qd_score": 16.001005843963632,
+    "quality_label": "Balanced feasible design cost (lower is better)",
+    "quality_train_column": "quality_train"
+  },
+  "requested_evaluations": 100000,
+  "schema_version": 1,
+  "seed": 42,
+  "simulation": {
+    "network": "IEEE-39",
+    "scenarios": [
+      "base",
+      "evening_peak",
+      "high_renewable_low_load",
+      "hot_peak",
+      "n_minus_1_line_23",
+      "renewable_trip"
+    ],
+    "solver": "RustPower RSparse Newton-Raphson"
+  },
+  "tutorial": "rustpower-voltage-control",
+  "warm_start": {
+    "counted_evaluations": 1,
+    "source": "documented seed-42 MODE representative"
+  },
+  "workers": 24
+}

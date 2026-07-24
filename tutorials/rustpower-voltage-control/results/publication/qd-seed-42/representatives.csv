@@ -1,0 +1,2 @@
+label,niche_id,quality_train,descriptor_mean_voltage_pu_train,descriptor_security_spread_train,category_battery_bus,objective_loss_mw,objective_voltage_deviation_mpu,objective_lifecycle_cost_musd,objective_security_index
+best,362,14.755087954776,1.001380295794,0.271722124890,14,36.242608546266,14.520621940173,104.984315032025,0.999714315562

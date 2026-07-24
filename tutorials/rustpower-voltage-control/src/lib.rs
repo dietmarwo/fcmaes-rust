@@ -29,8 +29,13 @@ pub const DIMENSION: usize = 20;
 pub const OBJECTIVES: usize = 4;
 pub const CONSTRAINTS: usize = 3;
 pub const VALUE_WIDTH: usize = OBJECTIVES + CONSTRAINTS;
-pub const QD_DESCRIPTOR_LOWER: [f64; 2] = [0.0, 0.0];
-pub const QD_DESCRIPTOR_UPPER: [f64; 2] = [300.0, 300.0];
+/// Bounds of the emergent behavior space documented in
+/// [`Evaluation::descriptors`]: weighted-mean bus voltage in pu and the
+/// security-utilization spread across the six scenarios. The values are frozen
+/// from the recorded descriptor-range pilot, not guessed from the decision
+/// bounds.
+pub const QD_DESCRIPTOR_LOWER: [f64; 2] = [0.995, 0.0];
+pub const QD_DESCRIPTOR_UPPER: [f64; 2] = [1.040, 0.3];
 
 pub const VARIABLE_NAMES: [&str; DIMENSION] = [
     "generator_vm_1_pu",
@@ -283,6 +288,7 @@ pub struct ScenarioResult {
     pub iterations: usize,
     pub line_loss_mw: f64,
     pub rms_voltage_deviation_pu: f64,
+    pub mean_voltage_pu: f64,
     pub minimum_voltage_pu: f64,
     pub maximum_voltage_pu: f64,
     pub maximum_line_loading_percent: f64,
@@ -316,6 +322,53 @@ impl Evaluation {
     pub fn is_feasible(&self) -> bool {
         self.objectives.iter().all(|value| value.is_finite())
             && self.constraints.iter().all(|&value| value <= 0.0)
+    }
+
+    /// Two emergent behavior coordinates measured from the solved scenarios.
+    ///
+    /// Neither coordinate is a decision variable and neither repeats an
+    /// optimized objective. Both require the full six-scenario power-flow
+    /// campaign, so the optimizer cannot place a candidate in a chosen niche
+    /// without actually producing the operating behavior that niche describes.
+    ///
+    /// * `0` — weighted-mean bus voltage in pu: the voltage level the plan
+    ///   settles into. Operating high reduces current and losses but spends
+    ///   upper headroom; operating low keeps headroom for contingencies. This
+    ///   is not the RMS deviation objective, which is symmetric about 1.0 pu
+    ///   and therefore cannot distinguish a high profile from a low one.
+    /// * `1` — security-utilization spread across the six scenarios, that is
+    ///   the worst minus the mildest limit utilization. Small values are plans
+    ///   stressed almost equally by every operating condition; large values
+    ///   are plans comfortable in normal operation whose margin is set by one
+    ///   dominating scenario. This is not the worst-case security objective,
+    ///   which records the level of the worst scenario rather than the gap
+    ///   between normal and stressed operation.
+    pub fn descriptors(&self) -> [f64; 2] {
+        if self.scenarios.is_empty() {
+            return [f64::NAN; 2];
+        }
+        let weight_sum = SCENARIOS
+            .iter()
+            .map(|scenario| scenario.weight)
+            .sum::<f64>();
+        let mean_voltage_pu = self
+            .scenarios
+            .iter()
+            .zip(SCENARIOS)
+            .map(|(result, scenario)| result.mean_voltage_pu * scenario.weight)
+            .sum::<f64>()
+            / weight_sum;
+        let worst = self
+            .scenarios
+            .iter()
+            .map(|result| result.security_index)
+            .fold(f64::NEG_INFINITY, f64::max);
+        let mildest = self
+            .scenarios
+            .iter()
+            .map(|result| result.security_index)
+            .fold(f64::INFINITY, f64::min);
+        [mean_voltage_pu, (worst - mildest).max(0.0)]
     }
 
     /// Higher is better; only used to select and compare representatives.
@@ -481,6 +534,13 @@ impl VoltageControlModel {
                 / finite_voltages.len() as f64)
                 .sqrt()
         };
+        // Nominal fallback for a collapsed solve. Such a scenario also fails
+        // the convergence constraint, so the value never reaches the archive.
+        let mean_voltage_pu = if finite_voltages.is_empty() {
+            1.0
+        } else {
+            finite_voltages.iter().sum::<f64>() / finite_voltages.len() as f64
+        };
 
         let mut voltage_constraint_pu = -f64::INFINITY;
         let mut voltage_utilization = 0.0_f64;
@@ -529,6 +589,7 @@ impl VoltageControlModel {
             iterations: result.iterations,
             line_loss_mw,
             rms_voltage_deviation_pu,
+            mean_voltage_pu,
             minimum_voltage_pu,
             maximum_voltage_pu,
             maximum_line_loading_percent,
@@ -874,18 +935,18 @@ pub fn optimize_mode(
     })
 }
 
-/// Return the minimized archive quality and two continuous physical
-/// descriptors. Categorical installation buses are deliberately not treated
-/// as Euclidean descriptors; they are retained as archive metadata.
+/// Return the minimized archive quality and the two emergent behavior
+/// descriptors of [`Evaluation::descriptors`]. Installed battery MW and
+/// capacitor MVAr are deliberately *not* descriptors: they are decision
+/// variables, so an archive built on them re-plots the search box instead of
+/// illuminating distinct operating strategies. Installed sizes and the
+/// categorical installation buses are retained as archive metadata.
 pub fn qd_objective(x: &[f64], model: &VoltageControlModel) -> (f64, [f64; 2]) {
     let evaluation = model.evaluate(x);
     if !evaluation.is_feasible() {
         return (f64::INFINITY, [f64::INFINITY; 2]);
     }
-    let descriptors = [
-        evaluation.design.battery_capacity_mw,
-        evaluation.design.total_capacitor_mvar(),
-    ];
+    let descriptors = evaluation.descriptors();
     let quality = 1.0 / evaluation.quality();
     if !quality.is_finite() || descriptors.iter().any(|value| !value.is_finite()) {
         (f64::INFINITY, [f64::INFINITY; 2])
@@ -1127,7 +1188,7 @@ pub fn write_qd_artifacts(
     write_scenarios_csv(directory, baseline, &outcome.representative.evaluation)?;
 
     let mut archive = String::from(
-        "niche_id,grid_x,grid_y,quality_train,descriptor_battery_capacity_mw_train,descriptor_capacitor_mvar_train,category_battery_bus,category_capacitor_bus_1,category_capacitor_bus_2,visit_count,objective_loss_mw,objective_voltage_deviation_mpu,objective_lifecycle_cost_musd,objective_security_index,constraint_voltage,constraint_thermal,constraint_power_flow",
+        "niche_id,grid_x,grid_y,quality_train,descriptor_mean_voltage_pu_train,descriptor_security_spread_train,asset_battery_capacity_mw,asset_capacitor_mvar,category_battery_bus,category_capacitor_bus_1,category_capacitor_bus_2,visit_count,objective_loss_mw,objective_voltage_deviation_mpu,objective_lifecycle_cost_musd,objective_security_index,constraint_voltage,constraint_thermal,constraint_power_flow",
     );
     for name in VARIABLE_NAMES {
         let _ = write!(archive, ",decision_{name}");
@@ -1139,13 +1200,15 @@ pub fn write_qd_artifacts(
         let capacitor_buses = design.capacitor_buses();
         let _ = write!(
             archive,
-            "{},{},{},{:.12},{:.12},{:.12},{},{},{},{},{:.12},{:.12},{:.12},{:.12},{:.12},{:.12},{:.12}",
+            "{},{},{},{:.12},{:.12},{:.12},{:.12},{:.12},{},{},{},{},{:.12},{:.12},{:.12},{:.12},{:.12},{:.12},{:.12}",
             point.niche_id,
             point.grid_x,
             point.grid_y,
             point.quality,
             point.descriptors[0],
             point.descriptors[1],
+            design.battery_capacity_mw,
+            design.total_capacitor_mvar(),
             design.battery_bus(),
             capacitor_buses[0],
             capacitor_buses[1],
@@ -1184,7 +1247,7 @@ pub fn write_qd_artifacts(
 
     let representative = &outcome.representative;
     let mut representatives = String::from(
-        "label,niche_id,quality_train,descriptor_battery_capacity_mw_train,descriptor_capacitor_mvar_train,category_battery_bus,objective_loss_mw,objective_voltage_deviation_mpu,objective_lifecycle_cost_musd,objective_security_index\n",
+        "label,niche_id,quality_train,descriptor_mean_voltage_pu_train,descriptor_security_spread_train,category_battery_bus,objective_loss_mw,objective_voltage_deviation_mpu,objective_lifecycle_cost_musd,objective_security_index\n",
     );
     let _ = writeln!(
         representatives,
@@ -1228,15 +1291,15 @@ pub fn write_qd_artifacts(
         "decision_normalization": "[0,1] per variable before MAP-Elites variation",
         "descriptors": [
             {
-                "column": "descriptor_battery_capacity_mw",
-                "label": "Installed battery capacity",
-                "unit": "MW",
+                "column": "descriptor_mean_voltage_pu",
+                "label": "Weighted-mean bus voltage",
+                "unit": "pu",
                 "bounds": [QD_DESCRIPTOR_LOWER[0], QD_DESCRIPTOR_UPPER[0]]
             },
             {
-                "column": "descriptor_capacitor_mvar",
-                "label": "Installed capacitor support",
-                "unit": "MVAr",
+                "column": "descriptor_security_spread",
+                "label": "Security-utilization spread across scenarios",
+                "unit": "utilization",
                 "bounds": [QD_DESCRIPTOR_LOWER[1], QD_DESCRIPTOR_UPPER[1]]
             }
         ],
@@ -1534,15 +1597,49 @@ mod tests {
     }
 
     #[test]
-    fn qd_uses_continuous_capacity_descriptors_and_strict_feasibility() {
+    fn qd_uses_emergent_behavior_descriptors_and_strict_feasibility() {
         let model = VoltageControlModel::new().unwrap();
+        let evaluation = model.evaluate(&QD_SEED_DESIGN);
         let (quality, descriptors) = qd_objective(&QD_SEED_DESIGN, &model);
         assert!(quality.is_finite());
-        assert!((descriptors[0] - QD_SEED_DESIGN[17]).abs() < 1.0e-12);
-        assert_eq!(descriptors[1], 175.0);
+        assert_eq!(descriptors, evaluation.descriptors());
+
+        // Descriptor 0 is the weighted-mean solved bus voltage, not a control.
+        let weight_sum = SCENARIOS.iter().map(|s| s.weight).sum::<f64>();
+        let expected_voltage = evaluation
+            .scenarios
+            .iter()
+            .zip(SCENARIOS)
+            .map(|(result, scenario)| result.mean_voltage_pu * scenario.weight)
+            .sum::<f64>()
+            / weight_sum;
+        assert!((descriptors[0] - expected_voltage).abs() < 1.0e-12);
+
+        // Descriptor 1 is the spread between the worst and mildest scenario
+        // utilization, which the worst-case security objective cannot express.
+        let indices: Vec<_> = evaluation
+            .scenarios
+            .iter()
+            .map(|result| result.security_index)
+            .collect();
+        let worst = indices.iter().copied().fold(f64::NEG_INFINITY, f64::max);
+        let mildest = indices.iter().copied().fold(f64::INFINITY, f64::min);
+        assert!((descriptors[1] - (worst - mildest)).abs() < 1.0e-12);
+        assert!(descriptors[1] >= 0.0);
+
+        // Both coordinates are emergent: neither reproduces the installed
+        // battery MW or capacitor MVAr the rejected pilot used as axes.
+        assert!((descriptors[0] - evaluation.design.battery_capacity_mw).abs() > 1.0);
+        assert!((descriptors[1] - evaluation.design.total_capacitor_mvar()).abs() > 1.0);
+
+        // The warm start must sit inside the frozen behavior bounds.
+        for axis in 0..2 {
+            assert!(descriptors[axis] >= QD_DESCRIPTOR_LOWER[axis]);
+            assert!(descriptors[axis] <= QD_DESCRIPTOR_UPPER[axis]);
+        }
         // Battery bus index 2 decodes to bus 14, but category identity is not
         // embedded in either continuous MAP-Elites axis.
-        assert_eq!(model.evaluate(&QD_SEED_DESIGN).design.battery_bus(), 14);
+        assert_eq!(evaluation.design.battery_bus(), 14);
         let normalized = normalize_qd(&QD_SEED_DESIGN);
         let restored = denormalize_qd(&normalized);
         assert!(

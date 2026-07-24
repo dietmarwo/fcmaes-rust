@@ -73,11 +73,14 @@ keeps its application-specific dependencies, artifacts, and lockfile isolated;
 run its Cargo commands from that tutorial directory.
 
 All seven retain multi-objective optimization. MAP-Elites campaigns are
-implemented and recorded for NeXosim, Rapier, ReBop, Brahe, and atmospheric
-source localization, and room ventilation. RustPower includes a reproducible
-100k-evaluation QD go/no-go pilot, but its proposed descriptors produced only
-4% coverage and one battery-location category, so the tutorial explicitly
-retains MODE as the informative result instead of promoting a weak archive. The
+implemented and recorded for NeXosim, Rapier, ReBop, Brahe, atmospheric source
+localization, room ventilation, and RustPower. RustPower additionally records a
+descriptor case study: its first pair of descriptors were decision variables and
+reached only 4% coverage, while emergent behavior coordinates measured from the
+solved scenarios reached 68% mean coverage over three seeds at the identical
+100k-evaluation budget. Constrained MODE stays the primary formulation there,
+because the near-unique asset architecture the original pilot found survives the
+descriptor fix. The
 [tutorial index](tutorials/README.md) includes commands, figures, validation
 results and the common result schema. Compact canonical result directories are
 version-controlled with generated SVGs so raw-evidence links and deterministic
