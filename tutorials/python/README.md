@@ -8,7 +8,8 @@ From `public/tutorials/python`:
 
 ```bash
 python -m venv .venv
-.venv/bin/python -m pip install -e ".[test]"
+.venv/bin/python -m pip install -r requirements-lock.txt
+.venv/bin/python -m pip install --no-deps -e .
 .venv/bin/python -m pytest
 .venv/bin/python render_all.py --check
 .venv/bin/python check_docs.py
@@ -28,6 +29,8 @@ The API also accepts result arrays from the optional PyO3 bindings through
 `render_all.py --write` regenerates every figure from discovered schema-v1
 manifests. `--check` renders into temporary directories and compares bytes, so
 volatile Matplotlib metadata cannot create silent documentation drift.
+`requirements-lock.txt` fixes the complete plotting stack used for regeneration
+and byte-for-byte validation; use it whenever checked-in figures are updated.
 `check_docs.py` verifies that every local Markdown link and image target exists.
 When `public/` is the Git repository root, as it is after publication and in
 CI, the check also requires every target to be present in the Git index. This
