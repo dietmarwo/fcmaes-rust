@@ -5,6 +5,8 @@ from __future__ import annotations
 
 import argparse
 import filecmp
+import subprocess
+import sys
 import tempfile
 from pathlib import Path
 
@@ -44,6 +46,16 @@ def main() -> int:
         for path in stale:
             print(path)
         return 1
+    custom_scripts = sorted(arguments.root.glob("*/plot_results.py"))
+    action = "--write" if arguments.write else "--check"
+    for script in custom_scripts:
+        completed = subprocess.run(
+            [sys.executable, str(script), action],
+            cwd=script.parent,
+            check=False,
+        )
+        if completed.returncode != 0:
+            return completed.returncode
     return 0
 
 

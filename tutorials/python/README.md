@@ -27,8 +27,11 @@ The API also accepts result arrays from the optional PyO3 bindings through
 `pareto_from_arrays` and `qd_from_archive`.
 
 `render_all.py --write` regenerates every figure from discovered schema-v1
-manifests. `--check` renders into temporary directories and compares bytes, so
-volatile Matplotlib metadata cannot create silent documentation drift.
+manifests and invokes any tutorial-specific `plot_results.py --write` script.
+The room-ventilation tutorial uses that extension because its publication
+figures combine optimizer seeds, CFD fields, and a resolution study.
+`--check` renders into temporary directories and compares bytes, so volatile
+Matplotlib metadata cannot create silent documentation drift.
 `requirements-lock.txt` fixes the complete plotting stack used for regeneration
 and byte-for-byte validation; use it whenever checked-in figures are updated.
 `check_docs.py` verifies that every local Markdown link and image target exists.

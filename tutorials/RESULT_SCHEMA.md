@@ -4,6 +4,15 @@ The simulator tutorials write a small, versioned set of machine-readable
 artifacts. Native Rust performs simulation and optimization; Python reads these
 artifacts to create documentation figures.
 
+Most individual optimizer runs use the manifest schema below. A tutorial may
+also publish a documented aggregate evidence bundle when one figure combines
+multiple runs or validation studies. The room-ventilation tutorial is the
+current example: its per-seed Pareto/archive and convergence CSVs are combined
+with held-out evaluations, CFD fields, and a resolution study by a
+byte-for-byte checked `plot_results.py`. Aggregate bundles retain the same
+minimization, feasibility, full-precision CSV, seed, budget, and artifact-link
+conventions even though no single `run.json` can describe the combined figure.
+
 Schema version `1` uses one `run.json` manifest per optimization run:
 
 ```json

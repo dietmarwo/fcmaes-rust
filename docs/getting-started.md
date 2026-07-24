@@ -141,6 +141,18 @@ trading, material flow, job-shop/harvesting, t-design, transfer scheduling,
 damp control, F-8, and Lotka-Volterra are in
 [Native Rust examples](examples.md#binaries).
 
+Standalone simulation tutorials are tested and run from their own
+directories. For example:
+
+```bash
+cd tutorials/cfd-room-ventilation
+cargo test --all-targets
+cargo run --release --bin cfd-room-ventilation -- --mode evaluate
+```
+
+The [tutorial index](../tutorials/README.md) explains all seven application
+models, optimizer formulations, recorded evidence, and plotting workflow.
+
 ## Common mistakes
 
 - Do not benchmark a debug build. Optimizer numerics are substantially slower

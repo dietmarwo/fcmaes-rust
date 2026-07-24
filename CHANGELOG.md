@@ -8,6 +8,11 @@ phase, with breaking changes called out explicitly.
 
 ### Added
 
+- Added a GitHub-only room-ventilation optimization tutorial with a
+  purpose-built D2Q9/D2Q5 Rust backend, worst-case training releases, held-out
+  validation, BiteOpt retry, MODE, MAP-Elites, a straight-channel property
+  check, three-grid sensitivity, three optimizer seeds, and deterministic
+  field/result figures.
 - Added a GitHub-only atmospheric dispersion source-localization tutorial with
   a native ISC-3-derived educational model, BiteOpt coordinated advanced retry,
   MODE, MAP-Elites, disjoint holdout validation, reproducible result artifacts,
@@ -19,6 +24,8 @@ phase, with breaking changes called out explicitly.
 
 ### Changed
 
+- Extended tutorial artifact validation to check the room-ventilation
+  multi-seed, field, and resolution figures byte for byte.
 - Separated Pareto titles and legends in the shared tutorial renderer and
   regenerated the byte-for-byte checked SVG figures.
 

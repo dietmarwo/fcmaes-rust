@@ -16,6 +16,7 @@ flowchart LR
     P[Embedding Python package] --> B[fcmaes-py / PyO3]
     B --> C
     B --> G
+    T[Standalone native simulator tutorials] --> C
 ```
 
 The workspace has four crates:
@@ -32,6 +33,13 @@ bindings depend only on the core and focused GTOP crates; application
 examples, networking dependencies, and large example data are excluded from
 the Python package. Native Rust applications can depend only on `fcmaes-core`
 unless they need the internal GTOP catalog.
+
+The seven directories below `tutorials/` are standalone Cargo workspaces, not
+root members. This isolates application dependencies and result artifacts
+while reusing the local core. The room-ventilation tutorial also demonstrates
+a purpose-built native simulation backend: each candidate owns its D2Q9 flow
+and D2Q5 pollutant state, so population parallelism remains at the fcmaes
+layer.
 
 ## Core module map
 
@@ -112,9 +120,14 @@ The following are implemented in Rust:
   material-flow, flexible job-shop/harvesting, spherical t-design,
   transfer-scheduling, Buckingham–Pi dimensional analysis, damp-control, F-8,
   and Lotka-Volterra drivers.
+- Standalone application tutorials for NeXosim, Rapier, ReBop, Brahe,
+  RustPower, atmospheric dispersion, and room ventilation. The ventilation
+  backend is deliberately educational and is accompanied by reference,
+  held-out, and grid-sensitivity evidence rather than engineering claims.
 - Python bindings for the implemented optimizers, retry, MODE, QD, and GTOP.
 
 The following are deliberately outside this Rust workspace:
 
-- MAP-Elites persistence, shared-memory statistics, and plotting orchestration.
+- General MAP-Elites persistence and shared-memory statistics. The GitHub
+  tutorials include application-specific CSV persistence and offline plotting.
 - Python package facades and integrations with SciPy, pygmo, or plotting tools.

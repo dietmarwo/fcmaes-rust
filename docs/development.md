@@ -61,6 +61,9 @@ Run `git diff --check` before handing off changes.
 | Job-shop and harvesting objectives | `examples/src/{jobshop,harvesting}.rs` |
 | Harmonic and transfer-scheduling objectives | `examples/src/{tdesign,scheduling}.rs` |
 | ODE/control objectives | `examples/src/{damp,f8,lotka,integration}.rs` |
+| Standalone simulation tutorials | `tutorials/*/` |
+| Room-ventilation backend and verification | `tutorials/cfd-room-ventilation/src/` |
+| Tutorial artifact rendering and link checks | `tutorials/python/` |
 
 ## Generate rustdoc
 
@@ -86,6 +89,8 @@ The test layers are:
 - PyO3 compilation as part of the workspace build and Python-level integration
   tests under `crates/fcmaes-py/python_tests/`.
 - Reproducible native performance workloads in `benchmarks/`.
+- Standalone tutorial tests plus byte-for-byte figure and local-link checks
+  under `tutorials/`.
 
 When adding a public parameter, test its default, a non-default path, invalid
 input, result accounting, and stop behavior. Ask/tell interfaces also need

@@ -60,7 +60,7 @@ optimizer backend.
 | `fcmaes-gtop` | Internal native GTOP objective library shared by the examples and Python package |
 | `examples` (`fcmaes-examples`) | Native GTOP problems, application objectives, benchmarks, and executable examples |
 | `fcmaes-py` | Optional PyO3 extension for embedding the Rust implementation in a Python package |
-| `tutorials/*` | Standalone simulation-optimization workspaces using NeXosim, Rapier, ReBop, Brahe, RustPower, and a native atmospheric dispersion model |
+| `tutorials/*` | Standalone simulation-optimization workspaces using NeXosim, Rapier, ReBop, Brahe, RustPower, native atmospheric dispersion, and a custom educational ventilation backend |
 
 Only two registry artifacts are published: `fcmaes-core` on crates.io and the
 `fcmaes-rust` binding distribution on PyPI. `fcmaes-gtop` is an internal
@@ -69,19 +69,21 @@ available only from this GitHub repository and are not included in either
 registry package.
 
 The simulator tutorials are intentionally not root workspace members. Each
-keeps its large, application-specific dependencies and lockfile isolated; run
-its Cargo commands from that tutorial directory.
+keeps its application-specific dependencies, artifacts, and lockfile isolated;
+run its Cargo commands from that tutorial directory.
 
-All six retain multi-objective optimization. MAP-Elites campaigns are
+All seven retain multi-objective optimization. MAP-Elites campaigns are
 implemented and recorded for NeXosim, Rapier, ReBop, Brahe, and atmospheric
-source localization. RustPower includes a reproducible 100k-evaluation QD
-go/no-go pilot, but its proposed descriptors produced only 4% coverage and one
-battery-location category, so the tutorial explicitly retains MODE as the
-informative result instead of promoting a weak archive. The
+source localization, and room ventilation. RustPower includes a reproducible
+100k-evaluation QD go/no-go pilot, but its proposed descriptors produced only
+4% coverage and one battery-location category, so the tutorial explicitly
+retains MODE as the informative result instead of promoting a weak archive. The
 [tutorial index](tutorials/README.md) includes commands, figures, validation
-results and the common result schema. Compact canonical `run.json`/CSV result
-directories are version-controlled with the generated SVGs so raw-evidence
-links and deterministic rendering work from a clean clone.
+results and the common result schema. Compact canonical result directories are
+version-controlled with generated SVGs so raw-evidence links and deterministic
+rendering work from a clean clone. Schema-driven tutorials use `run.json`;
+room ventilation adds an aggregate CSV/plot check spanning three seeds, CFD
+fields, and resolution evidence.
 
 Implemented algorithms include Differential Evolution, active CMA-ES,
 CR-FM-NES, PGPE, Dual Annealing, BiteOpt, MODE, CVT-MAP-Elites, the
@@ -167,6 +169,7 @@ python examples/python/test_cma.py
 - [Native examples and benchmarks](docs/examples.md)
 - [Buckingham–Pi dimensional-analysis example](docs/buckingham-pi.md)
 - [Native Rust simulator optimization tutorials](tutorials/README.md)
+- [Room-ventilation optimization tutorial](tutorials/cfd-room-ventilation/README.md)
 - [Optional PyO3 bindings](docs/python-bindings.md)
 - [Release history](CHANGELOG.md)
 - [Publishing checklist](RELEASING.md)

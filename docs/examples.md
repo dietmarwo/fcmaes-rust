@@ -1,5 +1,11 @@
 # Native Rust examples
 
+The root `fcmaes-examples` crate contains the compact binaries documented
+below. Larger application studies are isolated under
+[`tutorials/`](../tutorials/README.md), including the room-ventilation
+tutorial's purpose-built Rust flow backend, held-out pollutant releases, MODE,
+MAP-Elites, and resolution evidence.
+
 ## Binaries
 
 The `fcmaes-examples` crate provides:

@@ -94,7 +94,7 @@ are naturally paired with L-BFGS or another gradient-based optimizer. Consider
 fcmaes around such a model only when discrete policies, resets, robust maxima,
 solver failures, or other end-to-end discontinuities make those sensitivities
 misleading or unavailable. See
-`tutorials/README.md#8-diffsol-why-gradients-are-the-better-default`.
+`tutorials/README.md#9-diffsol-why-gradients-are-the-better-default`.
 
 ## Fast algorithm-selection decision tree
 
@@ -458,7 +458,7 @@ Archive guidance:
 
 ## Lessons from the simulator tutorials
 
-The six standalone tutorials are implementation references for expensive
+The seven standalone tutorials are implementation references for expensive
 native objectives. They keep simulator dependencies outside the root workspace
 and demonstrate these transferable choices:
 
@@ -470,12 +470,21 @@ and demonstrate these transferable choices:
 | Brahe constellation | Access-window discontinuities and worst-gap aggregation | Keep feasibility explicit and assign either fcmaes or the simulator ownership of parallelism. |
 | RustPower voltage control | Mixed-integer controls, contingencies, and solver failures | Return calibrated constraint violations for failed power flows; reject a QD formulation when descriptors do not produce an informative archive. |
 | Atmospheric source localization | Censored inverse inference, model mismatch, and non-identifiability | Use robust residuals and disjoint sensors/weather; keep MODE for error/emission trade-offs and interpret a source-centroid QD map as alternative hypotheses, not a confidence region. |
+| Room ventilation | Custom numerical backend, variable geometry, and grid sensitivity | A purpose-built backend can keep objective state isolated and fast, but then solver verification, held-out scenarios, constraint margins, and resolution sensitivity are part of the optimization evidence. |
 
 MODE and MAP-Elites are complementary, not substitutes. Keep MODE when the
 user needs objective trade-offs, and add MAP-Elites only when descriptor-space
 coverage is itself useful. A QD pilot that runs successfully but has poor or
 misleading coverage should remain a documented negative result rather than be
 promoted into the main formulation.
+
+Do not treat a custom simulator as independently validated merely because its
+optimizer integration is tested. Separate three questions: whether the
+numerical kernel satisfies reference properties, whether selected designs
+survive held-out scenarios and resolution changes, and whether the physical
+model is adequate for the user's decision. The room-ventilation tutorial
+demonstrates the first two while explicitly declining engineering claims about
+the third.
 
 ## Retry selection and parameters
 
@@ -711,9 +720,12 @@ Before declaring success, the AI should:
   scalar, and multi-objective optimization.
 - `examples/src/buckingham.rs`: nullspace parameterization that makes every
   continuous optimizer trial dimensionally valid.
-- `tutorials/README.md`: six native simulator-optimization tutorials,
+- `tutorials/README.md`: seven native simulator-optimization tutorials,
   MODE/MAP-Elites selection, stochastic validation, parallelism ownership, and
   the Diffsol gradient-based counterexample.
+- `tutorials/cfd-room-ventilation/`: custom native simulation state,
+  worst-case training releases, held-out validation, three-grid sensitivity,
+  MODE, and MAP-Elites.
 - Generated rustdoc: `cargo doc --workspace --no-deps --open`.
 
 When code and this guide disagree, treat the current public Rust API and tests

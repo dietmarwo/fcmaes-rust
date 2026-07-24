@@ -8,7 +8,7 @@ between optimizer and simulator: a candidate is decoded, simulated and scored
 in Rust, and independent candidates are distributed across native worker
 threads.
 
-The six applications deliberately cover different reasons for choosing
+The seven applications deliberately cover different reasons for choosing
 gradient-free optimization:
 
 | Tutorial | Simulator | Problem property | Implemented formulations | QD decision |
@@ -19,6 +19,7 @@ gradient-free optimization:
 | [Satellite constellation](brahe-constellation/) | Brahe | access-window appearance/disappearance and worst-gap aggregation | BiteOpt retry + constrained MODE + MAP-Elites | accepted |
 | [Voltage control](rustpower-voltage-control/) | RustPower | mixed-integer controls, contingencies and power-flow failures | constrained MODE + experimental QD pilot | rejected after pilot |
 | [Atmospheric source localization](dispersion-source-localization/) | ISC-3-derived native model | inverse inference, censoring, model mismatch, and non-identifiability | BiteOpt advanced retry + MODE + MAP-Elites | accepted |
+| [Room ventilation](cfd-room-ventilation/) | Custom D2Q9/D2Q5 Rust backend | variable geometry, numerical constraints, worst-case releases, and resolution sensitivity | BiteOpt retry + MODE + MAP-Elites | accepted |
 
 Each directory is a standalone Cargo workspace. This keeps large,
 simulator-specific dependency sets out of the main `fcmaes-rust` workspace
@@ -61,7 +62,7 @@ python -m venv .venv
 ```
 
 The quick commands are functional checks; the recorded publication commands
-use 24 workers and range from seconds to several minutes per seed on the
+use 16 or 24 workers and range from seconds to several minutes per seed on the
 documented Ryzen 9 9950X.
 
 The examples follow four recurring rules:
@@ -391,7 +392,46 @@ budgets, QD interpretation, and limitations.
 
 ![Receptor observations feed a native inverse model, three complementary optimization formulations, and disjoint holdout validation](dispersion-source-localization/images/architecture.svg)
 
-## 8. Diffsol: why gradients are the better default
+## 8. Room ventilation: optimization with a purpose-built backend
+
+The [room-ventilation tutorial](cfd-room-ventilation/) demonstrates a case
+where the objective needs a small simulation kernel tailored to optimization.
+Every candidate changes two wall vents and an internal baffle. A custom native
+Rust backend rebuilds that geometry, solves D2Q9 lattice-Boltzmann flow, and
+reuses the flow field for three D2Q5 pollutant releases.
+
+The custom implementation keeps solver state isolated and deterministic while
+fcmaes evaluates candidates in parallel. It also makes the backend part of the
+tutorial model rather than an independently validated engineering package.
+The tutorial therefore pairs optimization results with a straight-channel
+property check, three-grid sensitivity, three optimizer seeds, and three
+held-out pollutant releases.
+
+MODE preserves exposure, receptor concentration, fan-proxy, and final-mass
+trade-offs. MAP-Elites organizes feasible alternatives by fresh-air flow and
+occupied-zone low-velocity fraction. Across seeds 42–44, MODE obtained
+training quality `1.122344 ± 0.004929` and held-out quality
+`1.492211 ± 0.004592`; MAP-Elites filled `76.00% ± 1.56%` of 400 niches.
+The coarse-grid MODE representative slightly violates the flux constraint, so
+the result is explicitly described as resolution sensitivity rather than grid
+convergence.
+
+```bash
+cd tutorials/cfd-room-ventilation
+cargo run --release --bin cfd-room-ventilation -- \
+  --mode all --workers 16 \
+  --mo-evaluations 2048 --popsize 128 \
+  --qd-evaluations 2048 --qd-capacity 100 --qd-chunk-size 128 \
+  --seed 42 --output results/smoke
+```
+
+See the [complete room-ventilation tutorial](cfd-room-ventilation/README.md)
+for robust source sets, equal-budget publication commands, backend scope,
+verification evidence, and deterministic figure regeneration.
+
+![Baseline and optimized velocity and pollutant fields from the custom Rust backend](cfd-room-ventilation/images/flow-fields.svg)
+
+## 9. Diffsol: why gradients are the better default
 
 [Diffsol](https://github.com/martinjrobins/diffsol) is an MIT-licensed Rust
 ODE/DAE solver with explicit and implicit integration, event/root detection,

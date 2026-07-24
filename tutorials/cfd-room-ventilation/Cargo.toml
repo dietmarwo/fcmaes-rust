@@ -1,0 +1,18 @@
+[package]
+name = "cfd-room-ventilation"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.88"
+license = "MIT"
+publish = false
+description = "Educational native room-ventilation optimization with fcmaes-rust"
+
+# Standalone tutorial workspace: keep application code out of the root workspace.
+[workspace]
+
+[dependencies]
+fcmaes-core = { path = "../../crates/fcmaes-core" }
+
+[profile.release]
+codegen-units = 1
+lto = "thin"
