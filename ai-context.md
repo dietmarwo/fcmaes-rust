@@ -13,6 +13,16 @@ functions and executable applications; `fcmaes-py` is an optional low-level
 PyO3 extension exposing the Rust core, not an alternative implementation.
 All optimizers minimize.
 
+The public registry surfaces are deliberately smaller than the GitHub
+repository:
+
+- Rust users depend on the published `fcmaes-core` crate. Rust 1.88 is the
+  tested minimum supported toolchain.
+- Python users install the `fcmaes-rust` distribution and import
+  `fcmaes_rust`. Published wheels support CPython 3.11 through 3.13.
+- `examples`, `tutorials`, and the internal native `fcmaes-gtop` source are
+  GitHub-only and are not separate published packages.
+
 ## Required workflow for the AI
 
 Before selecting an algorithm, create a problem card containing the following
@@ -29,6 +39,7 @@ cannot be inferred and would materially change the solution.
 | What are the constraints and feasibility convention? | MODE and `moretry` require constraints after objectives, feasible at `g(x) <= 0`. |
 | Is a good initial point known? | CMA-ES, CR-FM-NES, PGPE, and local refinement benefit from it. |
 | Is the objective smooth, discontinuous, noisy, stochastic, or multimodal? | Distribution search, ranking, restart strategy, and stopping tolerances differ. |
+| For a stochastic objective, can simulations accept explicit seeds? | Fixed common-random-number seed sets make candidate comparisons fair; disjoint seeds are needed for validation. |
 | How long does one evaluation take, and is it thread-safe? | This determines inner batch parallelism versus outer retry parallelism. |
 | What is the evaluation, wall-time, memory, and core budget? | An evaluation budget is the fairest algorithm comparison unit. |
 | Is a target value known? | Set `stop_fitness`; do not confuse it with `value_limit`. |
@@ -45,18 +56,48 @@ non-default parameters, evaluation and worker budgets, seeds, validation
 method, and reported quality statistics. Code without this configuration
 record is not a reproducible optimization solution.
 
+## First decide whether fcmaes is appropriate
+
+Do not select a gradient-free optimizer merely because the model is a
+simulation. Prefer a gradient-based optimizer when all decision variables are
+continuous, the end-to-end objective is differentiable, reliable analytical,
+automatic-differentiation, adjoint, or sensitivity gradients are available,
+and the required result is one optimum or a smooth Pareto trade-off. Those
+gradients usually carry much more information per evaluation.
+
+fcmaes is a strong candidate when one or more of these conditions holds:
+
+- gradients are unavailable, unreliable, or dominated by simulation noise;
+- event appearance/disappearance, contact, failure, clipping, repair, routing,
+  integer choices, or categorical decoding makes the objective nonsmooth;
+- the landscape is multimodal and needs global exploration or restarts;
+- the result must be a repertoire of behaviorally diverse solutions rather
+  than one optimum; or
+- a robust aggregate such as a worst case, quantile, or failure rate creates
+  nonsmooth outer logic.
+
+Events alone do not invalidate gradients. Diffsol, for example, provides
+forward and adjoint sensitivities, so its smooth parameter-fitting tutorials
+are naturally paired with L-BFGS or another gradient-based optimizer. Consider
+fcmaes around such a model only when discrete policies, resets, robust maxima,
+solver failures, or other end-to-end discontinuities make those sensitivities
+misleading or unavailable. See `tutorials/README.md#7-diffsol-why-gradients-are-the-better-default`.
+
 ## Fast algorithm-selection decision tree
 
-1. If the user wants the best solution in many behavior niches rather than
+1. If valid, economical gradients exist for the complete decision-to-objective
+   map, start with a gradient-based method and use fcmaes only as a justified
+   global, discrete, robust, or QD outer layer.
+2. If the user wants the best solution in many behavior niches rather than
    one global optimum, use `Archive` plus MAP-Elites. Add Diversifier after the
    archive has useful coverage.
-2. If there are two or more competing objectives:
+3. If there are two or more competing objectives:
    - Use MODE when the user wants a Pareto population from one coordinated run,
      especially with explicit constraints or integer-decoded variables.
    - Use `moretry` when many independent scalar optimizer runs are desirable,
      when outer parallelism is important, or when a DE/CMA/BiteOpt pipeline is
      already effective for weighted scalar objectives.
-3. For one scalar objective:
+4. For one scalar objective:
    - Start with BiteOpt for a difficult bounded, nonsmooth, multimodal, or
      poorly characterized black box.
    - Start with DE for robust bounded exploration, mixed continuous/integer
@@ -69,12 +110,36 @@ record is not a reproducible optimization solution.
      search, or noisy objectives where rank-based updates help.
    - Use Dual Annealing for low-to-moderate-dimensional global exploration,
      optionally followed by its bounded local search.
-4. If global structure is uncertain or local optima are likely, use independent
+5. If global structure is uncertain or local optima are likely, use independent
    retry. Use coordinated advanced retry when retained elites can usefully
    generate local crossover boxes and increasing budgets.
-5. Benchmark at least two plausible choices with identical bounds, objective,
+6. Benchmark at least two plausible choices with identical bounds, objective,
    total evaluations, seeds, and worker resources. A good general comparison
    is BiteOpt versus DE followed by CMA-ES.
+
+## Choose the integration surface
+
+Prefer a native Rust objective when evaluation throughput matters. Put
+read-only model data behind shared references or `Arc`, give each evaluation
+isolated mutable state, and let fcmaes distribute candidates. This avoids
+Python callback and serialization overhead and is the design demonstrated by
+the application examples and simulator tutorials.
+
+Python users can still use the Rust optimizers through `fcmaes_rust`.
+One-shot functions include `optimize_de`, `optimize_acma`,
+`optimize_crfmnes`, `optimize_pgpe`, `optimize_da`, and `optimize_bite`;
+stateful `DE`, `ACMA`, `CRFMNES`, `PGPE`, `Bite`, `MODE`, and `Archive`
+classes expose the corresponding ask/tell or archive workflows. Retry is
+available through `minimize_retry`, `minimize_advanced_retry`, and
+`minimize_moretry`. Treat this as a low-level NumPy-oriented API and consult
+`docs/python-bindings.md` for the authoritative signatures and result layouts.
+
+The native optimizer loop releases the GIL, but every Python objective callback
+must reacquire it. Cheap objectives written in Python therefore rarely scale
+across threads. Python callbacks dominated by NumPy, another native extension,
+or external work may scale only if that work releases the GIL. When the
+objective itself can be implemented efficiently in Rust, prefer the direct
+`fcmaes-core` path.
 
 ## Algorithm comparison
 
@@ -238,12 +303,23 @@ is expensive and useful. Choose a population at least as large as the worker
 count, normally a small multiple of it. If global restarts are more important,
 use outer retry workers and keep inner optimizer workers at one.
 
+If the simulator also owns a thread pool, benchmark two explicit topologies:
+many serial simulator evaluations under fcmaes versus fewer evaluations using
+the simulator's internal parallelism. Keep the total worker allowance equal
+and do not enable both pools at full size.
+
 ### Noisy objective
 
 Use PGPE ranking, larger populations, or repeated evaluations. Do not use a
 tight `stop_fitness` or convergence tolerance based on one noisy observation.
 If the objective averages replications internally, report both optimizer calls
 and the true number of simulations; fcmaes can count only calls it makes.
+
+Use a fixed, named training seed set for every candidate so that optimizer
+comparisons use common random numbers. Re-evaluate finalists, Pareto points,
+and QD elites with a disjoint holdout seed set. For noisy QD, validate both
+quality and descriptor location because an elite can migrate to another niche
+under new stochastic paths.
 
 ## Constraints and variable encoding
 
@@ -353,6 +429,30 @@ Archive guidance:
 - `map_elites_batch` and `diversify_batch` evaluate concurrently, then mutate
   the archive serially in candidate order. `QdBatchFitness` must return exactly
   one `(fitness, descriptor)` pair per input in the same order.
+- `qd_score` is higher-is-better but depends on the fitness convention: the
+  implementation sums reciprocal fitness for an all-positive archive and
+  negated negative elites otherwise. Compare it only between archives with the
+  same quality definition, descriptor bounds, and niche geometry.
+
+## Lessons from the simulator tutorials
+
+The five standalone tutorials are implementation references for expensive
+native objectives. They keep simulator dependencies outside the root workspace
+and demonstrate these transferable choices:
+
+| Tutorial | Main problem property | Recommended lesson |
+|---|---|---|
+| NeXosim production line | Stochastic discrete events and mixed controls | Compare outer candidate parallelism with simulator-internal parallelism; use common random numbers and holdout seeds. |
+| Rapier trebuchet | Contact and release discontinuities | Use BiteOpt retry for one target, MODE for engineering trade-offs, and QD only for meaningful trajectory behaviors. |
+| ReBop oscillator | Intrinsic stochastic simulation noise | Fix candidate-comparison seeds, report true simulation counts, and validate Pareto/QD results on disjoint paths. |
+| Brahe constellation | Access-window discontinuities and worst-gap aggregation | Keep feasibility explicit and assign either fcmaes or the simulator ownership of parallelism. |
+| RustPower voltage control | Mixed-integer controls, contingencies, and solver failures | Return calibrated constraint violations for failed power flows; reject a QD formulation when descriptors do not produce an informative archive. |
+
+MODE and MAP-Elites are complementary, not substitutes. Keep MODE when the
+user needs objective trade-offs, and add MAP-Elites only when descriptor-space
+coverage is itself useful. A QD pilot that runs successfully but has poor or
+misleading coverage should remain a documented negative result rather than be
+promoted into the main formulation.
 
 ## Retry selection and parameters
 
@@ -551,7 +651,7 @@ Before declaring success, the AI should:
 - For multi-objective runs, report feasible Pareto points and a suitable front
   quality measure; do not compare only one selected point.
 - For QD runs, report capacity, occupied niches, coverage, best fitness,
-  `qd_score`, and descriptor ranges.
+  `qd_score`, descriptor ranges, and—when noisy—holdout niche migration.
 - Check scaling by testing workers 1 and N. Deterministic ordered batches should
   produce the same values; parallel retry may be statistically rather than
   bitwise reproducible.
@@ -577,11 +677,16 @@ Before declaring success, the AI should:
 - `docs/retry.md`: basic, advanced, and weighted retry.
 - `docs/architecture.md`: objective flow, normalization, and concurrency.
 - `docs/examples.md`: native application and benchmark commands.
+- `docs/python-bindings.md`: CPython 3.11–3.13 package, callable signatures,
+  result layouts, GIL behavior, and Python examples.
 - `examples/src/runner.rs`: canonical DE-to-CMA retry integration.
 - `examples/src/bin/mazda_mo.rs`: parallel constrained MODE driver.
 - `examples/src/bin/mazda_qd.rs`: parallel MAP-Elites/Diversifier driver.
 - `examples/src/uav.rs`: random-key decoding for mixed assignment, ordering,
   scalar, and multi-objective optimization.
+- `tutorials/README.md`: five native simulator-optimization tutorials,
+  MODE/MAP-Elites selection, stochastic validation, parallelism ownership, and
+  the Diffsol gradient-based counterexample.
 - Generated rustdoc: `cargo doc --workspace --no-deps --open`.
 
 When code and this guide disagree, treat the current public Rust API and tests
