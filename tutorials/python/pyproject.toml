@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "fcmaes-tutorial-plots"
 version = "0.1.0"
 description = "Reproducible Matplotlib figures for the fcmaes-rust simulator tutorials"
-requires-python = ">=3.9"
+requires-python = ">=3.11"
 license = { text = "MIT" }
 dependencies = [
     "numpy>=1.20",

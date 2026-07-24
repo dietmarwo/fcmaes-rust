@@ -26,7 +26,7 @@ Initial dual-registry release candidate.
 ### Packaging
 
 - Rust 1.88 is the tested minimum supported Rust version.
-- CPython 3.9 through 3.13 wheels are prepared for Linux x86-64, Windows
+- CPython 3.11 through 3.13 wheels are prepared for Linux x86-64, Windows
   x86-64, macOS x86-64 and macOS ARM64.
 - Registry workflows use GitHub environments and OpenID Connect trusted
   publishing after the required registry-side setup.

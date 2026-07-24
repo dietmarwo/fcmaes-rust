@@ -49,7 +49,7 @@ Across the series you will learn how to:
 
 Prerequisites are a current stable Rust toolchain and a platform linker. Each
 tutorial pins its standalone dependency graph in `Cargo.lock`. Figure
-regeneration additionally needs Python 3.10 or newer:
+regeneration additionally needs Python 3.11 or newer:
 
 ```bash
 cd tutorials/python

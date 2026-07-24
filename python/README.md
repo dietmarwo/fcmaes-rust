@@ -10,7 +10,7 @@ pure Rust and does not compile, link, or load the historical C++ backend.
 python -m pip install fcmaes-rust
 ```
 
-The initial release supports CPython 3.9 through 3.13 on the platforms for
+The initial release supports CPython 3.11 through 3.13 on the platforms for
 which wheels are listed on PyPI.
 
 ## Quick check
