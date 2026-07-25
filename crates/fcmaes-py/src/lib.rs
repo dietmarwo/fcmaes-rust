@@ -21,7 +21,11 @@ mod moretry;
 mod pgpe;
 mod retry;
 
-/// Small dict proving the Rust extension module was built and imported.
+/// Return native-extension build information.
+///
+/// The dictionary contains the extension module name, implementation backend,
+/// core and binding versions, and compatibility flags. This is useful in bug
+/// reports and installation smoke tests.
 #[pyfunction]
 fn phase1_build_info(py: Python<'_>) -> PyResult<Py<PyDict>> {
     let info = PyDict::new(py);
@@ -34,13 +38,21 @@ fn phase1_build_info(py: Python<'_>) -> PyResult<Py<PyDict>> {
     Ok(info.into())
 }
 
-/// Internal smoke test: sum a 1-D float64 array through the Rust core.
+/// Sum a contiguous one-dimensional ``float64`` array in the Rust core.
+///
+/// This internal function is retained as an installation probe. Applications
+/// should not use it as a numerical reduction API.
 #[pyfunction]
 fn _phase1_probe_sum(values: PyReadonlyArray1<'_, f64>) -> f64 {
     let slice = values.as_slice().unwrap_or(&[]);
     fcmaes_core::probe_sum(slice)
 }
 
+/// Native implementation backing the public :mod:`fcmaes_rust` facade.
+///
+/// Import :mod:`fcmaes_rust` in application code. The extension module remains
+/// available as ``fcmaes_rust.native`` for signature inspection and advanced
+/// use.
 #[pymodule]
 fn _fcmaes_ext(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(phase1_build_info, m)?)?;

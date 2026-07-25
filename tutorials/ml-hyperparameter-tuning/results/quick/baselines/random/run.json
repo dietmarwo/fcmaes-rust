@@ -31,7 +31,7 @@
   },
   "descriptors": [],
   "duplicate_configurations": 0,
-  "elapsed_seconds": 0.386572351,
+  "elapsed_seconds": 0.39382198,
   "formulation": "baseline-random",
   "model_fits": 164,
   "objective_protocol": {
@@ -41,6 +41,8 @@
     "minority_recall_floor": 0.1,
     "parallelism_owner": "fcmaes candidate workers",
     "probability_clip": 1e-6,
+    "qd_selection_descriptor_aggregation": "mean descriptors across independently fitted single forests",
+    "selection_quality_aggregation": "metrics of probabilities averaged across model seeds",
     "structural_cost_limit": 2000000,
     "tuning_model_seed": 6791476662184033089
   },
@@ -57,10 +59,14 @@
   "seed": 42,
   "selected": {
     "selection": {
-      "elapsed_seconds": 0.009080771,
+      "elapsed_seconds": 0.009138189,
       "failure": null,
       "log_loss_sdev": 0.0,
       "mean_model_bytes": 96295.0,
+      "mean_single_forest_qd_descriptors": [
+        0.3333333333333333,
+        0.17627641631952873
+      ],
       "mean_structural_cost": 286.0,
       "metrics": {
         "brier": 0.16847998414585813,
@@ -72,7 +78,8 @@
         "precision": 0.3333333333333333,
         "predicted_positive_rate": 0.15,
         "recall": 0.2608695652173913,
-        "roc_auc": 0.6315553563424473
+        "roc_auc": 0.6315553563424473,
+        "sharpness": 0.17627641631952873
       },
       "model_fits": 1,
       "trees_fitted": 58
@@ -88,7 +95,7 @@
         "positive_sampling_weight": 2.8460398076096904,
         "row_sample_fraction": 0.9610419307216455
       },
-      "elapsed_seconds": 0.032354997,
+      "elapsed_seconds": 0.032481725,
       "estimated_structural_cost": 464,
       "failure": null,
       "mean_model_bytes": 79157.6,
@@ -103,7 +110,8 @@
         "precision": 0.3235294117647059,
         "predicted_positive_rate": 0.14166666666666666,
         "recall": 0.275,
-        "roc_auc": 0.63875
+        "roc_auc": 0.63875,
+        "sharpness": 0.18238661573927678
       },
       "model_fits": 5,
       "recall_violation": -0.17500000000000002,

@@ -1,39 +1,76 @@
-//! CR-FM-NES — Rust port of the C++ `crfmnes.cpp`.
+//! CR-FM-NES for high-dimensional derivative-free optimization.
 //!
-//! Fast Moving Natural Evolution Strategy for high-dimensional problems
-//! (<https://arxiv.org/abs/2201.11422>, derived from
-//! <https://github.com/nomuramasahir0/crfmnes>). Faithful translation of the
-//! Eigen implementation; the dense per-generation natural-gradient update on
-//! `(v, D, sigma)` is expressed with column-vector algebra via `nalgebra`.
+//! CR-FM-NES uses a restricted covariance representation so its multivariate
+//! normal distribution update has linear time and space complexity in the
+//! decision dimension. The natural-gradient update of `(v, D, sigma)` is
+//! expressed with column-vector algebra via `nalgebra`.
 //!
-//! The population is evaluated as a whole (the C++ backend only had a parallel
-//! `func_par` callback), so the driver takes a batch closure. Replaces both the
-//! C++ optimizer and the pure-Python `fcmaes/crfmnes.py`; parity is statistical.
+//! The population is evaluated as a whole, so
+//! [`Crfmnes::optimize_batch`] takes a batch closure and the ask/tell API exposes
+//! one complete population at a time.
+//!
+//! # Reference
+//!
+//! M. Nomura and I. Ono, [“Fast Moving Natural Evolution Strategy for
+//! High-Dimensional Problems”](https://arxiv.org/abs/2201.11422) (2022).
+//!
+//! # Example
+//!
+//! ```
+//! use fcmaes_core::{Crfmnes, CrfmnesParams, Fitness};
+//!
+//! let fit = Fitness::bounded(8, 1, &[-5.0; 8], &[5.0; 8]);
+//! let params = CrfmnesParams {
+//!     max_evaluations: 1_024,
+//!     seed: 11,
+//!     ..Default::default()
+//! };
+//! let mut optimizer = Crfmnes::new(fit, &[1.0; 8], 0.5, &params);
+//! let result = optimizer.optimize_batch(|population| {
+//!     population
+//!         .iter()
+//!         .map(|x| x.iter().map(|v| v * v).sum())
+//!         .collect()
+//! });
+//! assert!(result.y.is_finite());
+//! ```
 
 use nalgebra::DVector;
 
 use crate::fitness::Fitness;
 use crate::rng::Rng;
 
-/// Outcome of a CR-FM-NES run (mirrors the C++ `CrfmnesResult`).
+/// Outcome of a CR-FM-NES run.
 #[derive(Clone, Debug)]
 pub struct CrfmnesResult {
+    /// Best decoded decision vector found.
     pub x: Vec<f64>,
+    /// Objective value at [`x`](Self::x).
     pub y: f64,
+    /// Number of objective evaluations charged to the run.
     pub evaluations: u64,
+    /// Number of completed generations.
     pub iterations: i32,
+    /// Termination code; `1` means `stop_fitness` was reached.
     pub stop: i32,
 }
 
 /// Tunable inputs for [`Crfmnes::new`].
 #[derive(Clone, Debug)]
 pub struct CrfmnesParams {
+    /// Population size; values below two are raised to two.
     pub popsize: i32,
+    /// Maximum number of objective evaluations.
     pub max_evaluations: u64,
+    /// Stop after finding an objective value strictly below this threshold.
     pub stop_fitness: f64,
+    /// Multiplier for the bound-violation penalty.
     pub penalty_coef: f64,
+    /// Whether ranking includes the accumulated bound-constraint violation.
     pub use_constraint_violation: bool,
+    /// Seed for the optimizer's independent random stream.
     pub seed: u64,
+    /// Additional run identifier mixed into [`seed`](Self::seed).
     pub runid: i64,
 }
 
@@ -57,6 +94,7 @@ fn sort_index(v: &[f64]) -> Vec<usize> {
     idx
 }
 
+/// Stateful CR-FM-NES optimizer.
 pub struct Crfmnes {
     fitfun: Fitness,
     rng: Rng,
@@ -104,6 +142,9 @@ pub struct Crfmnes {
 }
 
 impl Crfmnes {
+    /// Create an optimizer centered on `guess` with global step size `sigma`.
+    ///
+    /// `guess` must contain one decoded value per decision variable.
     pub fn new(mut fitfun: Fitness, guess: &[f64], sigma: f64, p: &CrfmnesParams) -> Self {
         let dim = fitfun.dim();
         fitfun.reset_evaluations();
@@ -176,12 +217,15 @@ impl Crfmnes {
         }
     }
 
+    /// Number of decision variables.
     pub fn dim(&self) -> usize {
         self.dim
     }
+    /// Number of mirrored samples in each generation.
     pub fn popsize(&self) -> usize {
         self.lamb
     }
+    /// Current termination code, or zero while the optimizer can continue.
     pub fn stop(&self) -> i32 {
         self.stop
     }
@@ -461,8 +505,8 @@ impl Crfmnes {
         }
     }
 
-    /// Run the generational loop, evaluating each population through the batch
-    /// closure `eval_batch(decoded_rows) -> ys` (the C++ `func_par` path).
+    /// Run the generational loop, evaluating each population through
+    /// `eval_batch(decoded_rows) -> ys`.
     pub fn optimize_batch<F>(&mut self, mut eval_batch: F) -> CrfmnesResult
     where
         F: FnMut(&[Vec<f64>]) -> Vec<f64>,
@@ -502,10 +546,12 @@ impl Crfmnes {
         self.tell(ys)
     }
 
+    /// Return the most recently evaluated decoded population.
     pub fn population(&self) -> Vec<Vec<f64>> {
         self.decode_columns(&self.xs_no_sort)
     }
 
+    /// Return the current best result for an ask/tell run.
     pub fn result(&self) -> CrfmnesResult {
         self.make_result(self.external_evaluations)
     }

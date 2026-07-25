@@ -35,7 +35,7 @@
   },
   "descriptors": [],
   "duplicate_configurations": 0,
-  "elapsed_seconds": 0.505088079,
+  "elapsed_seconds": 0.509667207,
   "formulation": "scalar",
   "model_fits": 84,
   "objective_protocol": {
@@ -45,6 +45,8 @@
     "minority_recall_floor": 0.1,
     "parallelism_owner": "fcmaes candidate workers",
     "probability_clip": 1e-6,
+    "qd_selection_descriptor_aggregation": "mean descriptors across independently fitted single forests",
+    "selection_quality_aggregation": "metrics of probabilities averaged across model seeds",
     "structural_cost_limit": 2000000,
     "tuning_model_seed": 6791476662184033089
   },
@@ -65,10 +67,14 @@
   "seed": 42,
   "selected": {
     "selection": {
-      "elapsed_seconds": 0.07505055,
+      "elapsed_seconds": 0.075621986,
       "failure": null,
       "log_loss_sdev": 0.0,
       "mean_model_bytes": 1024695.0,
+      "mean_single_forest_qd_descriptors": [
+        0.3333333333333333,
+        0.17323091085004685
+      ],
       "mean_structural_cost": 1967.0,
       "metrics": {
         "brier": 0.15711162551440325,
@@ -80,7 +86,8 @@
         "precision": 0.3333333333333333,
         "predicted_positive_rate": 0.075,
         "recall": 0.13043478260869565,
-        "roc_auc": 0.6683101748095025
+        "roc_auc": 0.6683101748095025,
+        "sharpness": 0.17323091085004685
       },
       "model_fits": 1,
       "trees_fitted": 216
@@ -96,7 +103,7 @@
         "positive_sampling_weight": 2.0322505922623555,
         "row_sample_fraction": 0.9451387155122998
       },
-      "elapsed_seconds": 0.275418172,
+      "elapsed_seconds": 0.277015245,
       "estimated_structural_cost": 38880,
       "failure": null,
       "mean_model_bytes": 851057.6,
@@ -111,7 +118,8 @@
         "precision": 0.42105263157894735,
         "predicted_positive_rate": 0.07916666666666666,
         "recall": 0.2,
-        "roc_auc": 0.6955625
+        "roc_auc": 0.6955625,
+        "sharpness": 0.15518987163994055
       },
       "model_fits": 5,
       "recall_violation": -0.1,
@@ -131,15 +139,15 @@
     }
   },
   "selection_model_fits": 4,
-  "selection_trees_fitted": 424,
+  "selection_trees_fitted": 542,
   "software": {
     "fcmaes-core": "0.1.2",
     "smartcore": "0.5.3",
     "tutorial": "0.1.0"
   },
-  "trees_fitted": 8249,
+  "trees_fitted": 9537,
   "tuning_model_fits": 80,
-  "tuning_trees_fitted": 7825,
+  "tuning_trees_fitted": 8995,
   "tutorial": "ml-hyperparameter-tuning",
   "workers": 4
 }

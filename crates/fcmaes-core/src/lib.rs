@@ -1,4 +1,12 @@
 #![doc = include_str!("../README.md")]
+#![deny(missing_docs)]
+#![deny(rustdoc::broken_intra_doc_links)]
+// Public entry points must state how they fail. Optimizer misuse (wrong batch
+// length, ask/tell out of order, mismatched bounds) is the most common
+// integration error, so the panicking and fallible variants both document
+// their contract.
+#![warn(clippy::missing_errors_doc)]
+#![warn(clippy::missing_panics_doc)]
 
 pub mod biteopt;
 pub mod cmaes;
@@ -40,8 +48,20 @@ pub use rng::Rng;
 /// Version string of the core crate, surfaced through the Python build-info.
 pub const CORE_VERSION: &str = env!("CARGO_PKG_VERSION");
 
-/// Sum of a slice of f64 — the Phase 0 probe used to prove the
-/// Python → PyO3 → core call path is wired end to end.
+/// Sum a slice of `f64`.
+///
+/// This exists as an installation probe: it is the smallest call that proves
+/// the Python → PyO3 → Rust path is wired end to end, and it backs
+/// `fcmaes_rust._fcmaes_ext._phase1_probe_sum`. It is not a numerical
+/// reduction API — it performs no compensated summation and applications
+/// should use [`Iterator::sum`] directly.
+///
+/// # Examples
+///
+/// ```
+/// assert_eq!(fcmaes_core::probe_sum(&[1.0, 2.0, 3.5]), 6.5);
+/// assert_eq!(fcmaes_core::probe_sum(&[]), 0.0);
+/// ```
 pub fn probe_sum(values: &[f64]) -> f64 {
     values.iter().sum()
 }

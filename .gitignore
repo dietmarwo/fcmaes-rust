@@ -26,7 +26,10 @@ htmlcov/
 # Python packaging output
 /build/
 /dist/
-/*.egg-info/
+*.egg-info/
+*.so
+*.pyd
+*.dylib
 
 # Editor and operating-system files
 .DS_Store

@@ -31,6 +31,47 @@ They return low-level tuples, dictionaries, and NumPy arrays. The binary
 extension remains private so future facade-level result adapters can evolve
 without changing its import location.
 
+Every public callable, stateful method, and property has a runtime docstring.
+Use Python's normal inspection tools for the exact installed version:
+
+```python
+import fcmaes_rust
+
+help(fcmaes_rust.optimize_de)
+help(fcmaes_rust.MODE)
+help(fcmaes_rust.Archive.optimize_map_elites)
+```
+
+CI inspects the installed extension and rejects newly exposed callables or
+descriptors without docstrings. The guide supplies workflow context; runtime
+docstrings supply callback contracts, array shapes, parameter meaning, result
+layouts, stopping behavior, raised exceptions, and parallelism notes at the API
+entry point.
+
+## Type checking and editor support
+
+The distribution ships a PEP 561 `py.typed` marker and a
+[`_fcmaes_ext.pyi`](../python/fcmaes_rust/_fcmaes_ext.pyi) stub, so editors and
+type checkers resolve the native surface without a plugin. No configuration is
+needed.
+
+The stub also records defaults that `inspect.signature` cannot show. PyO3
+renders any non-literal Rust default as `Ellipsis` in `__text_signature__`, and
+CPython rejects a text signature that spells `-inf` as a default, so the real
+value cannot be surfaced through introspection at all. Seventeen parameters
+across ten entry points are affected:
+
+| Parameter | Real default | Shown by `inspect.signature` |
+|---|---|---|
+| `stop_fitness` | `-inf` | `Ellipsis` |
+| `value_limit` | `inf` | `Ellipsis` |
+| `stop_hist` | `-1.0` | `Ellipsis` |
+| `update_gap` | `-1` | `Ellipsis` |
+
+Read the stub, not `help()`, when a default matters. `test_type_stubs.py`
+compares the stub against the built extension — names, parameter order, and
+every default — so the two cannot drift apart silently.
+
 ## Runnable Python example
 
 [`examples/python/test_cma.py`](../examples/python/test_cma.py) adapts the
@@ -62,7 +103,8 @@ best point observed by Python and that the evaluation counts agree.
 Stateful scalar classes expose `ask`, `tell`, `population`, and `result` where
 the underlying optimizer supports them. ACMA also exposes `tell_x`. BiteOpt
 enforces pending-batch call order and exact feedback lengths. The authoritative
-callable signatures are the `#[pyo3(signature = ...)]` declarations under
+callable signatures and docstrings are generated from the
+`#[pyo3(signature = ...)]` declarations and Rust documentation comments under
 `crates/fcmaes-py/src/`.
 
 ## MODE and quality diversity

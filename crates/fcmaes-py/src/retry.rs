@@ -13,7 +13,10 @@ use pyo3::types::PyDict;
 
 use crate::common::{rows_to_pyarray, slice_or_vec};
 
-/// Minimal store surface consumed by `fcmaes.optimizer.Optimizer`.
+/// Read-only retry context passed to a Python optimizer callback.
+///
+/// The callback can query its scaled evaluation budget and zero-based retry
+/// index. Applications do not construct this helper directly.
 #[pyclass]
 struct RetryStoreView {
     eval_factor: f64,
@@ -22,12 +25,14 @@ struct RetryStoreView {
 
 #[pymethods]
 impl RetryStoreView {
+    /// Return this retry's evaluation budget derived from ``max_evaluations``.
     fn eval_num(&self, max_evaluations: u64) -> u64 {
         ((max_evaluations as f64) * self.eval_factor)
             .round()
             .clamp(1.0, u64::MAX as f64) as u64
     }
 
+    /// Return the zero-based retry index assigned by the coordinator.
     fn get_count_runs(&self) -> usize {
         self.run_id
     }
@@ -111,6 +116,27 @@ fn result_dict(py: Python<'_>, result: RetryResult) -> PyResult<Py<PyDict>> {
 }
 
 #[allow(clippy::too_many_arguments)]
+/// Run independent optimizer retries in native worker threads.
+///
+/// ``fun(x)`` is the scalar objective. For each retry, ``optimize`` is called
+/// as ``optimize(fun, bounds, guess, sdev, rng, store)`` and must return
+/// ``(x, value, evaluations)``. ``bounds`` is a
+/// ``scipy.optimize.Bounds`` object, ``rng`` is an independently spawned
+/// ``numpy.random.Generator(PCG64DXSM)``, and ``store`` exposes the retry
+/// budget and index.
+///
+/// ``workers=0`` selects available parallelism. Python callbacks reacquire the
+/// GIL, so parallel speedup depends on whether their expensive work releases
+/// it.
+///
+/// Returns a dictionary containing ``x``, ``fun``, ``nfev``, ``runs``,
+/// ``success``, retained ``xs``/``ys``, and ``improvements`` rows of elapsed
+/// seconds, cumulative evaluations, and incumbent value.
+///
+/// Raises ``ValueError`` if the bound arrays are empty, of unequal length, or
+/// do not satisfy finite ``lower < upper``, or if ``optimize`` does not return
+/// an ``(x, value, evaluations)`` triple. Exceptions raised inside ``fun`` or
+/// ``optimize`` propagate to the caller.
 #[pyfunction]
 #[pyo3(signature = (fun, optimize, lower, upper, num_retries=1024, workers=0, capacity=500, value_limit=f64::INFINITY, stop_fitness=f64::NEG_INFINITY, max_evaluations=50_000, statistic_num=0, seed=0))]
 fn minimize_retry(
@@ -166,6 +192,18 @@ fn minimize_retry(
 }
 
 #[allow(clippy::too_many_arguments)]
+/// Run coordinated retries with adaptive budgets, bounds, and guesses.
+///
+/// The optimizer callback and result dictionary follow
+/// :func:`minimize_retry`. Every ``check_interval`` completed retries, the
+/// coordinator uses retained diverse solutions to focus bounds and seed
+/// crossover guesses. Per-retry budgets grow from ``min_evaluations`` up to
+/// ``max_eval_fac`` times that base budget.
+///
+/// Worker random streams remain independent and reproducible for a fixed
+/// configuration and ``seed``.
+///
+/// Raises the same exceptions as :func:`minimize_retry`.
 #[pyfunction]
 #[pyo3(signature = (fun, optimize, lower, upper, num_retries=5000, workers=0, capacity=500, value_limit=f64::INFINITY, stop_fitness=f64::NEG_INFINITY, min_evaluations=1500, max_eval_fac=50.0, check_interval=100, statistic_num=0, seed=0))]
 fn minimize_advanced_retry(

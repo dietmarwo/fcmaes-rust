@@ -1,40 +1,81 @@
-//! Differential Evolution — Rust port of the C++ `deoptimizer.cpp`.
+//! Differential Evolution (DE) for bounded, derivative-free optimization.
 //!
-//! DE/best/1 with the fcmaes extensions: temporal locality (an extra
+//! This implementation uses DE/best/1 with fcmaes extensions: temporal locality
+//! (an extra
 //! improvement trial along the previous move), age-based reinitialization of
 //! stale individuals, oscillating `F`/`CR` between generations, optional
 //! normal-distributed sampling around a guess, and mixed-integer "modify"
-//! resampling. Replaces both the C++ optimizer and the pure-Python
-//! `fcmaes/de.py`. Cross-implementation parity is statistical.
+//! resampling. It is implemented entirely in Rust; historical implementations
+//! informed compatibility testing, not the public API.
+//!
+//! # Reference
+//!
+//! R. Storn and K. Price, [“Differential Evolution – A Simple and Efficient
+//! Heuristic for Global Optimization over Continuous
+//! Spaces”](https://doi.org/10.1023/A:1008202821328), *Journal of Global
+//! Optimization* 11, 341–359 (1997).
+//!
+//! # Example
+//!
+//! ```
+//! use fcmaes_core::{De, DeParams, Fitness};
+//!
+//! let sphere = |x: &[f64]| x.iter().map(|v| v * v).sum::<f64>();
+//! let fit = Fitness::bounded(3, 1, &[-5.0; 3], &[5.0; 3]);
+//! let params = DeParams {
+//!     max_evaluations: 2_000,
+//!     seed: 42,
+//!     ..Default::default()
+//! };
+//! let mut de = De::new(fit, &[], &[], None, &params);
+//! let result = de.optimize(&sphere);
+//! assert!(result.y.is_finite());
+//! ```
 
 use std::collections::VecDeque;
 
 use crate::fitness::{Fitness, Objective};
 use crate::rng::Rng;
 
-/// Outcome of a DE run (mirrors the C++ `DeResult`).
+/// Outcome of a Differential Evolution run.
 #[derive(Clone, Debug)]
 pub struct DeResult {
+    /// Best decoded decision vector found.
     pub x: Vec<f64>,
+    /// Objective value at [`x`](Self::x).
     pub y: f64,
+    /// Number of objective evaluations charged to the run.
     pub evaluations: u64,
+    /// Number of completed generations.
     pub iterations: i32,
+    /// Termination code; `1` means `stop_fitness` was reached.
     pub stop: i32,
 }
 
 /// Tunable inputs for [`De::new`]. Non-positive values select DE defaults.
 #[derive(Clone, Debug)]
 pub struct DeParams {
+    /// Population size; non-positive values select the dimension-dependent default.
     pub popsize: i32,
+    /// Maximum number of objective evaluations.
     pub max_evaluations: u64,
+    /// Expected lifetime controlling age-based population reinitialization.
     pub keep: f64,
+    /// Stop after finding an objective value strictly below this threshold.
     pub stop_fitness: f64,
+    /// Base differential weight `F`.
     pub f: f64,
+    /// Base crossover probability `CR`.
     pub cr: f64,
+    /// Minimum probability used by mixed-integer mutation.
     pub min_mutate: f64,
+    /// Maximum probability used by mixed-integer mutation.
     pub max_mutate: f64,
+    /// Lower limit for normal-sampling step sizes.
     pub min_sigma: f64,
+    /// Seed for the optimizer's independent random stream.
     pub seed: u64,
+    /// Additional run identifier mixed into [`seed`](Self::seed).
     pub runid: i64,
 }
 
@@ -56,6 +97,11 @@ impl Default for DeParams {
     }
 }
 
+/// Stateful Differential Evolution optimizer.
+///
+/// Use [`optimize`](Self::optimize) for an in-process objective or
+/// [`ask`](Self::ask)/[`tell`](Self::tell) when another system evaluates a
+/// population.
 pub struct De {
     fitfun: Fitness,
     rng: Rng,
@@ -213,12 +259,15 @@ impl De {
         self.asked_p = vec![0; self.popsize];
     }
 
+    /// Number of decision variables.
     pub fn dim(&self) -> usize {
         self.dim
     }
+    /// Number of individuals evaluated per generation.
     pub fn popsize(&self) -> usize {
         self.popsize
     }
+    /// Current termination code, or zero while the optimizer can continue.
     pub fn stop(&self) -> i32 {
         self.stop
     }
@@ -404,8 +453,7 @@ impl De {
         self.stop
     }
 
-    /// Serial generational loop (the C++ `doOptimize`), the driver behind
-    /// `optimize_de` for `workers <= 1`.
+    /// Run the serial generational loop against an in-process objective.
     pub fn optimize(&mut self, obj: &impl Objective) -> DeResult {
         self.iterations = 1;
         self.fitfun.reset_evaluations();
@@ -498,10 +546,12 @@ impl De {
         self.stop
     }
 
+    /// Return a decoded snapshot of the current population.
     pub fn population(&self) -> Vec<Vec<f64>> {
         self.pop_x.clone()
     }
 
+    /// Return the current best result for an ask/tell run.
     pub fn result(&self) -> DeResult {
         self.make_result(self.external_evaluations)
     }

@@ -46,6 +46,8 @@ jobs:
             .venv/bin/maturin develop --release \
             --manifest-path crates/fcmaes-py/Cargo.toml
           .venv/bin/python -m pytest crates/fcmaes-py/python_tests examples/python
+      - name: fcmaes-core API documentation coverage
+        run: RUSTDOCFLAGS="-D warnings" cargo doc -p fcmaes-core --no-deps
       - name: cargo doc
         run: cargo doc --workspace --no-deps
 

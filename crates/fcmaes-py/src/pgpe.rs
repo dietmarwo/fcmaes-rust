@@ -66,6 +66,19 @@ fn eval_batch(batch_fun: &Py<PyAny>, rows: &[Vec<f64>]) -> Vec<f64> {
 }
 
 #[allow(clippy::too_many_arguments)]
+/// Minimize a scalar objective with Parameter-Exploring Policy Gradients.
+///
+/// ``batch_fun(xs)`` receives a ``(popsize, dim)`` ``float64`` array and must
+/// return one minimized value per row. ``guess`` and ``sigma`` initialize the
+/// center and per-coordinate spread of the sampling distribution. Bounds may
+/// be empty for unbounded search. The Python batch callback runs with the GIL.
+///
+/// Returns ``(x, fun, evaluations, iterations, stop)``.
+///
+/// Raises ``ValueError`` if the bound arrays are empty, of unequal length, or
+/// do not satisfy finite ``lower < upper``, and ``TypeError`` if an array
+/// argument cannot be converted to contiguous ``float64``. Exceptions raised
+/// inside the objective callback propagate to the caller.
 #[pyfunction]
 #[pyo3(signature = (batch_fun, guess, lower, upper, sigma, *, seed, runid=0,
     max_evaluations=100000, stop_fitness=f64::NEG_INFINITY, popsize=32,
@@ -133,7 +146,16 @@ pub fn optimize_pgpe<'py>(
     )
 }
 
-/// Stateful PGPE with an ask/tell interface.
+/// Stateful PGPE with an external ask/tell evaluator.
+///
+/// The optimizer uses mirrored parameter samples and an Adam center update.
+/// Alternate :meth:`ask` and :meth:`tell`, preserving row order.
+///
+/// Raises ``ValueError`` if the bound arrays do not match the decision
+/// dimension or do not satisfy finite ``lower < upper``, and ``TypeError`` if
+/// an array argument cannot be converted to contiguous ``float64``.
+/// :meth:`tell` raises ``ValueError`` if it does not receive exactly one value
+/// per row returned by the most recent :meth:`ask`.
 #[allow(clippy::upper_case_acronyms)]
 #[pyclass]
 pub struct PGPE {
@@ -145,7 +167,7 @@ pub struct PGPE {
 impl PGPE {
     #[new]
     #[pyo3(signature = (guess, lower, upper, sigma, popsize=32, *, seed, runid=0,
-        lr_decay_steps=1000, use_ranking=false, center_learning_rate=0.15,
+        lr_decay_steps=1000, use_ranking=true, center_learning_rate=0.15,
         stdev_learning_rate=0.1, stdev_max_change=0.2, b1=0.9, b2=0.999,
         eps=1e-8, decay_coef=1.0, normalize=true))]
     fn new(
@@ -194,31 +216,40 @@ impl PGPE {
         }
     }
 
+    /// Return the next mirrored candidate population, shape ``(popsize, dim)``.
     fn ask<'py>(&mut self, py: Python<'py>) -> Bound<'py, PyArray2<f64>> {
         rows_to_pyarray(py, &self.inner.ask_pop())
     }
 
+    /// Submit one minimized value per row from the most recent :meth:`ask`.
+    ///
+    /// Returns the current stop code.
     fn tell(&mut self, ys: PyReadonlyArray1<f64>) -> i32 {
         self.inner.tell_pop(&slice_or_vec(&ys))
     }
 
+    /// Return the current decoded candidate population.
     fn population<'py>(&self, py: Python<'py>) -> Bound<'py, PyArray2<f64>> {
         rows_to_pyarray(py, &self.inner.population())
     }
 
+    /// Return ``(x, fun, evaluations, iterations, stop)`` for the best point.
     fn result<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, PyTuple>> {
         let r = self.inner.result();
         result_tuple(py, &r.x, r.y, r.evaluations, r.iterations, r.stop)
     }
 
+    /// Number of decision variables.
     #[getter]
     fn dim(&self) -> usize {
         self.inner.dim()
     }
+    /// Number of mirrored candidates per update.
     #[getter]
     fn popsize(&self) -> usize {
         self.inner.popsize()
     }
+    /// Current termination code; zero means optimization is still active.
     #[getter]
     fn stop(&self) -> i32 {
         self.inner.stop()

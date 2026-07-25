@@ -2,7 +2,7 @@
 // range loops read more clearly than zipped iterators.
 #![allow(clippy::needless_range_loop, clippy::manual_memcpy)]
 
-//! MODE — Rust port of the C++ `modeoptimizer.cpp`.
+//! Multi-objective Differential Evolution (MODE).
 //!
 //! Multi-objective / constrained Differential Evolution (DE/all/1) with an
 //! optional NSGA-II-style population update. Features enhanced multiple
@@ -10,9 +10,38 @@
 //! integer handling, and normalized all-objective crowding distance.
 //!
 //! Ask/tell only (the caller evaluates objectives+constraints and feeds them
-//! back), so the core needs no objective callback. Row-per-individual layout
-//! (the C++ used column-per-individual Eigen matrices). Replaces both the C++
-//! optimizer and the pure-Python `fcmaes/mode.py`; parity is statistical.
+//! back), so the optimizer can drive Rust threads, a GPU batch, or an external
+//! evaluator without embedding a callback.
+//!
+//! # References
+//!
+//! - R. Storn and K. Price, [Differential
+//!   Evolution](https://doi.org/10.1023/A:1008202821328) (1997).
+//! - K. Deb, A. Pratap, S. Agarwal, and T. Meyarivan, [“A Fast and Elitist
+//!   Multiobjective Genetic Algorithm:
+//!   NSGA-II”](https://doi.org/10.1109/4235.996017), *IEEE Transactions on
+//!   Evolutionary Computation* 6(2), 182–197 (2002).
+//!
+//! # Example
+//!
+//! ```
+//! use fcmaes_core::{Fitness, Mode, ModeParams};
+//!
+//! let fit = Fitness::bounded(2, 2, &[0.0; 2], &[2.0; 2]);
+//! let mut mode = Mode::new(fit, 2, 0, None, &ModeParams::default());
+//! for _ in 0..5 {
+//!     let xs = mode.ask();
+//!     let ys: Vec<Vec<f64>> = xs
+//!         .iter()
+//!         .map(|x| vec![
+//!             x.iter().map(|v| v * v).sum(),
+//!             x.iter().map(|v| (v - 2.0).powi(2)).sum(),
+//!         ])
+//!         .collect();
+//!     mode.tell(&ys);
+//! }
+//! assert_eq!(mode.population().len(), mode.popsize());
+//! ```
 
 use crate::fitness::Fitness;
 use crate::rng::Rng;
@@ -26,25 +55,40 @@ pub struct ModeResult {
     pub x: Vec<Vec<f64>>,
     /// Objective+constraint values of the population.
     pub y: Vec<Vec<f64>>,
+    /// Number of completed population updates.
     pub iterations: i32,
+    /// Current termination code.
     pub stop: i32,
 }
 
 /// Tunable inputs for [`Mode::new`].
 #[derive(Clone, Debug)]
 pub struct ModeParams {
+    /// Number of individuals in the population.
     pub popsize: i32,
+    /// Differential mutation weight.
     pub f: f64,
+    /// Differential crossover probability.
     pub cr: f64,
+    /// Simulated-binary-crossover probability.
     pub pro_c: f64,
+    /// Simulated-binary-crossover distribution index.
     pub dis_c: f64,
+    /// Polynomial-mutation probability.
     pub pro_m: f64,
+    /// Polynomial-mutation distribution index.
     pub dis_m: f64,
+    /// Use the NSGA-II-style population update.
     pub nsga_update: bool,
+    /// Probability of selecting the Pareto update when update modes are mixed.
     pub pareto_update: f64,
+    /// Minimum mixed-integer mutation probability.
     pub min_mutate: f64,
+    /// Maximum mixed-integer mutation probability.
     pub max_mutate: f64,
+    /// Seed for the optimizer's independent random stream.
     pub seed: u64,
+    /// Additional run identifier mixed into [`seed`](Self::seed).
     pub runid: i64,
 }
 
@@ -126,6 +170,10 @@ fn validate_mode_inputs(
     Ok(())
 }
 
+/// Stateful constrained MODE optimizer.
+///
+/// Objective columns precede constraint columns in every row passed to
+/// [`tell`](Self::tell); constraints are feasible when they are non-positive.
 pub struct Mode {
     fitfun: Fitness,
     rng: Rng,
@@ -166,6 +214,13 @@ pub struct Mode {
 impl Mode {
     /// Construct MODE after validating dimensions, bounds, population size,
     /// probabilities, and the optional integer mask.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the fitness dimension or bounds are inconsistent,
+    /// if `nobj` is zero, if the population size is below four, if any
+    /// probability parameter is outside its valid range, or if a supplied
+    /// integer mask does not have one entry per decision variable.
     pub fn try_new(
         fitfun: Fitness,
         nobj: usize,
@@ -179,6 +234,10 @@ impl Mode {
 
     /// Construct MODE, panicking on invalid configuration. Applications that
     /// accept user input should prefer [`Mode::try_new`].
+    ///
+    /// # Panics
+    ///
+    /// Panics on any configuration [`Mode::try_new`] rejects.
     pub fn new(
         fitfun: Fitness,
         nobj: usize,
@@ -264,18 +323,23 @@ impl Mode {
         self.pending = false;
     }
 
+    /// Number of decision variables.
     pub fn dim(&self) -> usize {
         self.dim
     }
+    /// Number of objective columns.
     pub fn nobj(&self) -> usize {
         self.nobj
     }
+    /// Number of constraint columns.
     pub fn ncon(&self) -> usize {
         self.ncon
     }
+    /// Number of individuals evaluated per batch.
     pub fn popsize(&self) -> usize {
         self.popsize
     }
+    /// Current termination code.
     pub fn stop(&self) -> i32 {
         self.stop
     }
@@ -682,12 +746,22 @@ impl Mode {
     // ---- ask/tell interface ----
 
     /// Ask for `popsize` offspring rows.
+    ///
+    /// # Panics
+    ///
+    /// Panics if a previous batch is still pending, that is if `ask` is called
+    /// twice without an intervening `tell`. Use [`Mode::try_ask`] to receive
+    /// that as an error instead.
     pub fn ask(&mut self) -> Vec<Vec<f64>> {
         self.try_ask().expect("invalid MODE ask call")
     }
 
     /// Fallible ask variant for interfaces that need to report call-order
     /// errors rather than panic.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the previously asked batch has not been told yet.
     pub fn try_ask(&mut self) -> Result<Vec<Vec<f64>>, &'static str> {
         if self.pending {
             return Err("MODE ask called before telling the pending batch");
@@ -707,11 +781,22 @@ impl Mode {
     }
 
     /// Tell objective+constraint values for the offspring from [`ask`](Mode::ask).
+    ///
+    /// # Panics
+    ///
+    /// Panics if no batch is pending, if `ys` does not have `popsize` rows, or
+    /// if a row width differs from `nobj + ncon`. Use [`Mode::try_tell`] to
+    /// receive these as errors instead.
     pub fn tell(&mut self, ys: &[Vec<f64>]) -> i32 {
         self.try_tell(ys).expect("invalid MODE tell call")
     }
 
     /// Fallible tell variant validating call order and matrix shape.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if no batch is pending, if `ys` does not have
+    /// `popsize` rows, or if a row width differs from `nobj + ncon`.
     pub fn try_tell(&mut self, ys: &[Vec<f64>]) -> Result<i32, &'static str> {
         if !self.pending {
             return Err("MODE tell called without a pending ask batch");
@@ -733,12 +818,25 @@ impl Mode {
         Ok(self.stop)
     }
 
-    /// Tell with a switched update mode (the C++ `tell_switch`).
+    /// Tell values while switching the population-update mode.
+    ///
+    /// # Panics
+    ///
+    /// Panics on everything [`Mode::tell`] panics on, and additionally if
+    /// `pareto_update` is not finite. Use [`Mode::try_tell_switch`] for the
+    /// fallible form.
     pub fn tell_switch(&mut self, ys: &[Vec<f64>], nsga_update: bool, pareto_update: f64) -> i32 {
         self.try_tell_switch(ys, nsga_update, pareto_update)
             .expect("invalid MODE tell_switch call")
     }
 
+    /// Fallible [`tell_switch`](Self::tell_switch) variant validating the
+    /// update probability and pending batch.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if `pareto_update` is not finite, or for any condition
+    /// [`Mode::try_tell`] rejects.
     pub fn try_tell_switch(
         &mut self,
         ys: &[Vec<f64>],
@@ -753,12 +851,27 @@ impl Mode {
         self.try_tell(ys)
     }
 
-    /// Replace the population/offspring and tell (the C++ `set_population`).
+    /// Replace the candidate population and tell its values.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the population size is below four, or if `xs`/`ys` shapes do
+    /// not match the configured dimension and value width. Use
+    /// [`Mode::try_set_population`] for the fallible form.
     pub fn set_population(&mut self, xs: &[Vec<f64>], ys: &[Vec<f64>]) -> i32 {
         self.try_set_population(xs, ys)
             .expect("invalid MODE set_population call")
     }
 
+    /// Fallible [`set_population`](Self::set_population) variant validating
+    /// dimensions and population sizes.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the population size is below four, if `xs` and `ys`
+    /// have different lengths, if a decision row width differs from the
+    /// configured dimension, or if a value row width differs from
+    /// `nobj + ncon`.
     pub fn try_set_population(
         &mut self,
         xs: &[Vec<f64>],
@@ -787,6 +900,7 @@ impl Mode {
         self.pop_x[0..self.popsize].to_vec()
     }
 
+    /// Return a snapshot of the current population and its values.
     pub fn result(&self) -> ModeResult {
         ModeResult {
             x: self.population(),

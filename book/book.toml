@@ -1,0 +1,18 @@
+[book]
+title = "fcmaes-rust"
+authors = ["Dietmar Wolz"]
+description = "Native Rust gradient-free optimization: API guides, algorithms, examples, and application tutorials"
+language = "en"
+src = "src"
+
+[build]
+build-dir = "book"
+create-missing = false
+
+[output.html]
+site-url = "/fcmaes-rust/"
+git-repository-url = "https://github.com/dietmarwo/fcmaes-rust"
+
+[output.html.fold]
+enable = true
+level = 1

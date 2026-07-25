@@ -9,6 +9,7 @@
 [![crates.io](https://img.shields.io/crates/v/fcmaes-core.svg?cacheSeconds=300)](https://crates.io/crates/fcmaes-core)
 [![docs.rs](https://docs.rs/fcmaes-core/badge.svg)](https://docs.rs/fcmaes-core)
 [![PyPI](https://img.shields.io/pypi/v/fcmaes_rust.svg?cacheSeconds=300)](https://pypi.org/project/fcmaes-rust/)
+[![mdBook guide](https://img.shields.io/badge/guide-mdBook-blue)](https://dietmarwo.github.io/fcmaes-rust/)
 
 `fcmaes-rust` is a native Rust implementation of fast, parallel,
 gradient-free optimization algorithms and selected fcmaes application
@@ -19,7 +20,8 @@ evaluation, and parallel execution all run in Rust.
 
 In this project, “port” means that algorithms were translated, reimplemented,
 and tested in Rust. It does not mean an FFI wrapper around the old C++ code;
-C++ references in comments record provenance and behavioral comparisons only.
+the public API documentation explains the algorithms through their primary
+literature and records implementation-specific behavior explicitly.
 
 The repository is a standalone Cargo workspace. GTOP models and example
 objective functions also execute in Rust. This includes the Mazda mass and
@@ -76,10 +78,16 @@ The first eight application tutorials retain multi-objective optimization.
 MAP-Elites campaigns are
 implemented and recorded for NeXosim, Rapier, ReBop, Brahe, atmospheric source
 localization, room ventilation, and RustPower; the SmartCore hyperparameter
-tutorial additionally contains an explicitly provisional QD pilot. That
-tutorial demonstrates an often missed part of optimizer benchmarking:
+tutorial records a QD campaign that its own pre-registered criteria reject.
+That tutorial demonstrates an often missed part of optimizer benchmarking:
 fixed-fold tuning, disjoint model selection, frozen final evaluation, and
-probability-aware metrics must be part of the objective protocol. RustPower
+probability-aware metrics must be part of the objective protocol. It also
+records the second of two descriptor case studies: descriptors that are
+emergent but mutually redundant collapse the archive onto a curve, so
+the original pair had rank correlation +0.999715 and occupied only 16/400
+cells among the same 271 feasible range-study candidates for which the
+replacement occupied 91/400. The subsequent MAP-Elites campaign reached 49.0%
+mean coverage, but niche retention still failed. RustPower
 additionally records a descriptor case study: its first pair of descriptors
 were decision variables and reached only 4% coverage, while emergent behavior
 coordinates measured from the solved scenarios reached 68% mean coverage over
@@ -172,6 +180,8 @@ python examples/python/test_cma.py
 
 ## Documentation
 
+- [Rendered user guide and tutorial book](https://dietmarwo.github.io/fcmaes-rust/)
+- [Generated `fcmaes-core` API reference](https://docs.rs/fcmaes-core)
 - [AI problem-solving context](ai-context.md)
 - [Getting started](docs/getting-started.md)
 - [Choosing an optimizer](docs/choosing-an-optimizer.md)
@@ -196,6 +206,15 @@ Generate the complete API reference with:
 ```bash
 cargo doc --workspace --no-deps --open
 ```
+
+Build the rendered guide locally with mdBook 0.5.4:
+
+```bash
+python scripts/build_book.py
+```
+
+The builder stages canonical repository files under `target/`; it does not
+maintain duplicate copies of the guides or tutorial results.
 
 ## Optimizer comparison
 

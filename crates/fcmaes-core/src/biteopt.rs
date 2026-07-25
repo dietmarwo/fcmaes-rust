@@ -2,15 +2,32 @@
 // range loops read more clearly than zipped iterators.
 #![allow(clippy::needless_range_loop, clippy::manual_memcpy)]
 
-//! BiteOpt — Rust port of Aleksey Vaneev's BiteOpt
-//! (<https://github.com/avaneev/biteopt>), from the C++ `biteopt.h`/`biteaux.h`.
+//! BiteOpt, Aleksey Vaneev's adaptive derivative-free optimizer.
 //!
 //! The implementation includes the LCG-hash `BiteRnd`, 58-bit integer-mantissa
 //! parameters, adaptive sparse selectors, dynamic and diverging populations,
 //! all primary generators, CSpherOpt, sequential Nelder-Mead, deep
 //! multi-population solution exchange, and delayed-feedback batch ask/tell.
-//! Parity is validated by convergence because no independent Python twin
-//! exists.
+//!
+//! # Reference
+//!
+//! A. Vaneev, [BiteOpt algorithm description and reference
+//! implementation](https://github.com/avaneev/biteopt).
+//!
+//! # Example
+//!
+//! ```
+//! use fcmaes_core::{optimize_bite, BiteParams};
+//!
+//! let sphere = |x: &[f64]| x.iter().map(|v| v * v).sum::<f64>();
+//! let params = BiteParams {
+//!     max_evaluations: 2_000,
+//!     seed: 42,
+//!     ..Default::default()
+//! };
+//! let result = optimize_bite(&sphere, &[-5.0; 3], &[5.0; 3], None, &params, 1);
+//! assert!(result.y.is_finite());
+//! ```
 
 use std::collections::VecDeque;
 
@@ -33,6 +50,13 @@ fn objective_cost(objective: &dyn Objective, values: &[f64]) -> f64 {
 }
 
 /// Validate the dimensions and numeric domain required by BiteOpt.
+///
+/// # Errors
+///
+/// Returns an error if the bound slices are empty or of unequal length, if any
+/// bound is non-finite or does not satisfy `lower <= upper`, if `init` is
+/// supplied with the wrong length or non-finite values, if the parameters are
+/// outside their valid ranges, or if the population count `m` exceeds 36.
 pub fn validate_bite_inputs(
     lower: &[f64],
     upper: &[f64],
@@ -92,21 +116,32 @@ enum PopSel {
 /// Outcome of a BiteOpt run.
 #[derive(Clone, Debug)]
 pub struct BiteResult {
+    /// Best decision vector found.
     pub x: Vec<f64>,
+    /// Objective value at [`x`](Self::x).
     pub y: f64,
+    /// Number of objective evaluations charged to the run.
     pub evaluations: u64,
+    /// Number of candidates incorporated into the optimizer state.
     pub iterations: i32,
+    /// Termination code: `1` for target fitness and `2` for stall.
     pub stop: i32,
 }
 
 /// Tunable inputs for [`optimize_bite`].
 #[derive(Clone, Debug)]
 pub struct BiteParams {
+    /// Population size; non-positive values select `9 + 3 × dimension`.
     pub popsize: i32,
+    /// Maximum number of objective evaluations.
     pub max_evaluations: u64,
+    /// Stop after finding an objective value strictly below this threshold.
     pub stop_fitness: f64,
+    /// Stall multiplier; zero disables stall termination.
     pub stall_criterion: i32,
+    /// Seed for the optimizer's random stream.
     pub seed: u64,
+    /// Additional run identifier mixed into [`seed`](Self::seed).
     pub runid: i64,
 }
 
@@ -127,6 +162,10 @@ impl Default for BiteParams {
 // PRNG (faithful port of CBiteRnd)
 // ---------------------------------------------------------------------------
 
+/// Deterministic random generator used by BiteOpt's reference algorithm.
+///
+/// Most applications should seed [`BiteOpt`] rather than use this low-level
+/// generator directly.
 pub struct BiteRnd {
     seed: u64,
     lcg: u64,
@@ -136,6 +175,7 @@ pub struct BiteRnd {
 }
 
 impl BiteRnd {
+    /// Create and warm up a generator from `seed`.
     pub fn new(seed: u64) -> Self {
         let mut r = BiteRnd {
             seed,
@@ -166,10 +206,12 @@ impl BiteRnd {
     }
 
     #[inline]
+    /// Draw a uniform value in `[0, 1)`.
     pub fn get(&mut self) -> f64 {
         (self.advance() >> (64 - 53)) as f64 * (-53f64).exp2()
     }
     #[inline]
+    /// Draw an integer by scaling a uniform variate into `[0, n)`.
     pub fn get_int(&mut self, n: i32) -> i32 {
         (self.get() * n as f64) as i32
     }
@@ -179,6 +221,7 @@ impl BiteRnd {
         v * v
     }
     #[inline]
+    /// Draw an integer in `[0, n)` biased toward zero by squaring the variate.
     pub fn get_sqr_int(&mut self, n: i32) -> i32 {
         (self.get_sqr() * n as f64) as i32
     }
@@ -205,20 +248,24 @@ impl BiteRnd {
         }
     }
     #[inline]
+    /// Draw an integer in `[0, n)` after raising the uniform variate to `p`.
     pub fn get_pow_int(&mut self, p: f64, n: i32) -> i32 {
         (self.get_pow(p) * n as f64) as i32
     }
     #[inline]
+    /// Draw the next raw 64-bit generator output.
     pub fn get_raw(&mut self) -> u64 {
         self.advance()
     }
     #[inline]
+    /// Draw from the symmetric triangular distribution on `(-1, 1)`.
     pub fn get_tpdf(&mut self) -> f64 {
         let v1 = (self.advance() >> (64 - 53)) as i64;
         let v2 = (self.advance() >> (64 - 53)) as i64;
         (v1 - v2) as f64 * (-53f64).exp2()
     }
     #[inline]
+    /// Draw one unbiased bit as `0` or `1`.
     pub fn get_bit(&mut self) -> i32 {
         if self.bits_left == 0 {
             self.bit_pool = self.advance();
@@ -1264,6 +1311,10 @@ impl NMSeqOpt {
 // BiteOpt optimizer core (port of CBiteOpt)
 // ---------------------------------------------------------------------------
 
+/// Stateful single-population BiteOpt optimizer.
+///
+/// Use [`optimize`](Self::optimize) for an in-process objective or
+/// [`ask`](Self::ask)/[`tell`](Self::tell) for batched external evaluation.
 pub struct BiteOpt {
     param_count: usize,
     param_count_i: f64,
@@ -1306,6 +1357,12 @@ pub struct BiteOpt {
 }
 
 impl BiteOpt {
+    /// Construct BiteOpt for finite box bounds and an optional initial point.
+    ///
+    /// # Panics
+    ///
+    /// Panics on any configuration [`validate_bite_inputs`] rejects. Call that
+    /// function first to validate user-supplied input without panicking.
     pub fn new(lower: &[f64], upper: &[f64], init: Option<&[f64]>, p: &BiteParams) -> Self {
         validate_bite_inputs(lower, upper, init, p, 1).expect("invalid BiteOpt configuration");
         let param_count = lower.len();
@@ -2330,18 +2387,23 @@ impl BiteOpt {
         self.stop
     }
 
+    /// Number of candidates awaiting a matching [`tell`](Self::tell).
     pub fn current_batch_size(&self) -> usize {
         self.asked.len()
     }
+    /// Number of decision variables.
     pub fn dim(&self) -> usize {
         self.param_count
     }
+    /// Size of the principal adaptive population.
     pub fn population_size(&self) -> usize {
         self.pop_size
     }
+    /// Current termination code, or zero while optimization can continue.
     pub fn stop_code(&self) -> i32 {
         self.stop
     }
+    /// Return a snapshot of the best result found so far.
     pub fn result_public(&self) -> BiteResult {
         self.result()
     }
@@ -2403,6 +2465,14 @@ pub struct DeepBiteOpt {
 }
 
 impl DeepBiteOpt {
+    /// Construct `m` communicating BiteOpt populations.
+    ///
+    /// Values of `m` below one select one population; the maximum is 36.
+    ///
+    /// # Panics
+    ///
+    /// Panics on any configuration [`validate_bite_inputs`] rejects, including
+    /// `m` above 36.
     pub fn new(lower: &[f64], upper: &[f64], init: Option<&[f64]>, p: &BiteParams, m: i32) -> Self {
         validate_bite_inputs(lower, upper, init, p, m).expect("invalid deep BiteOpt configuration");
         let m = m.max(1) as usize;
@@ -2573,19 +2643,24 @@ impl DeepBiteOpt {
         self.stop
     }
 
+    /// Number of decision variables.
     pub fn dim(&self) -> usize {
         self.param_count
     }
+    /// Size of each constituent BiteOpt population.
     pub fn population_size(&self) -> usize {
         self.opts[0].population_size()
     }
+    /// Number of candidates awaiting a matching [`tell`](Self::tell).
     pub fn current_batch_size(&self) -> usize {
         self.opts[self.batch_cur_opt].current_batch_size()
     }
+    /// Current termination code, or zero while optimization can continue.
     pub fn stop_code(&self) -> i32 {
         self.stop
     }
 
+    /// Return a snapshot of the best result across all populations.
     pub fn result(&self) -> BiteResult {
         let b = self.best();
         BiteResult {
@@ -2597,6 +2672,7 @@ impl DeepBiteOpt {
         }
     }
 
+    /// Compatibility alias for [`result`](Self::result).
     pub fn result_public(&self) -> BiteResult {
         self.result()
     }

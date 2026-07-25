@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
-"""Render deterministic validation and budget figures for the HPO tutorial."""
+"""Render deterministic HPO figures and rebuild publication summaries."""
 
 from __future__ import annotations
 
 import argparse
 import csv
 import filecmp
+import json
 import math
+import statistics
 import tempfile
 from pathlib import Path
 
@@ -18,6 +20,12 @@ import matplotlib.pyplot as plt
 
 ROOT = Path(__file__).resolve().parent
 SUMMARY = ROOT / "results" / "quick" / "budget-sweep" / "budget_summary.csv"
+DESCRIPTOR_STUDY = ROOT / "results" / "publication" / "descriptor-study"
+DESCRIPTOR_SUMMARY = DESCRIPTOR_STUDY / "descriptor-summary.csv"
+QD_PUBLICATION = ROOT / "results" / "publication"
+QD_SUMMARY = QD_PUBLICATION / "qd-summary.csv"
+QD_VALIDATION_SUMMARY = QD_PUBLICATION / "qd-validation-summary.csv"
+QD_RETENTION_BY_GRID = QD_PUBLICATION / "qd-retention-by-grid.csv"
 LATENCY = ROOT / "results" / "quick" / "benchmark" / "latency.csv"
 SCALING = ROOT / "results" / "quick" / "benchmark" / "parallel_scaling.csv"
 OUTPUT = ROOT / "images" / "quick-budget-sweep"
@@ -52,6 +60,244 @@ def configure() -> None:
             "svg.hashsalt": "fcmaes-rust-hpo-v1",
         }
     )
+
+
+def average_ranks(values: list[float]) -> list[float]:
+    order = sorted(range(len(values)), key=values.__getitem__)
+    ranks = [0.0] * len(values)
+    start = 0
+    while start < len(order):
+        end = start + 1
+        while end < len(order) and values[order[end]] == values[order[start]]:
+            end += 1
+        rank = 0.5 * (start + end - 1) + 1.0
+        for index in order[start:end]:
+            ranks[index] = rank
+        start = end
+    return ranks
+
+
+def pearson(left: list[float], right: list[float]) -> float:
+    left_mean = sum(left) / len(left)
+    right_mean = sum(right) / len(right)
+    numerator = sum(
+        (x - left_mean) * (y - right_mean)
+        for x, y in zip(left, right, strict=True)
+    )
+    left_scale = math.sqrt(sum((x - left_mean) ** 2 for x in left))
+    right_scale = math.sqrt(sum((y - right_mean) ** 2 for y in right))
+    return numerator / (left_scale * right_scale)
+
+
+def spearman(left: list[float], right: list[float]) -> float:
+    return pearson(average_ranks(left), average_ranks(right))
+
+
+def occupied_cells(
+    rows: list[dict[str, str]],
+    x_name: str,
+    y_name: str,
+    x_bounds: tuple[float, float],
+    y_bounds: tuple[float, float],
+    side: int = 20,
+) -> int:
+    occupied: set[tuple[int, int]] = set()
+    for row in rows:
+        x = float(row[x_name])
+        y = float(row[y_name])
+        if not (x_bounds[0] <= x <= x_bounds[1] and y_bounds[0] <= y <= y_bounds[1]):
+            continue
+        grid_x = min(side - 1, int((x - x_bounds[0]) / (x_bounds[1] - x_bounds[0]) * side))
+        grid_y = min(side - 1, int((y - y_bounds[0]) / (y_bounds[1] - y_bounds[0]) * side))
+        occupied.add((grid_x, grid_y))
+    return len(occupied)
+
+
+def descriptor_summary_text() -> str:
+    rows: list[dict[str, str]] = []
+    for method in ("random", "lhs"):
+        with (DESCRIPTOR_STUDY / method / "candidates.csv").open(
+            newline="", encoding="utf-8"
+        ) as source:
+            rows.extend(csv.DictReader(source))
+    feasible = [row for row in rows if row["feasible"] == "1"]
+    columns = {
+        name: [float(row[name]) for row in feasible]
+        for name in (
+            "predicted_positive_rate",
+            "error_ratio",
+            "precision",
+            "sharpness",
+            "ece",
+        )
+    }
+    ppr_bounds = (
+        min(columns["predicted_positive_rate"]),
+        max(columns["predicted_positive_rate"]),
+    )
+    error_bounds = (min(columns["error_ratio"]), max(columns["error_ratio"]))
+    header = [
+        "candidate_calls",
+        "feasible_candidates",
+        "precision_min",
+        "precision_max",
+        "sharpness_min",
+        "sharpness_max",
+        "error_ratio_min",
+        "error_ratio_max",
+        "spearman_ppr_error_ratio",
+        "spearman_precision_sharpness",
+        "spearman_ece_sharpness",
+        "occupied_ppr_error_original_bounds",
+        "occupied_ppr_error_observed_bounds",
+        "occupied_precision_sharpness_frozen_bounds",
+    ]
+    values = [
+        len(rows),
+        len(feasible),
+        min(columns["precision"]),
+        max(columns["precision"]),
+        min(columns["sharpness"]),
+        max(columns["sharpness"]),
+        error_bounds[0],
+        error_bounds[1],
+        spearman(columns["predicted_positive_rate"], columns["error_ratio"]),
+        spearman(columns["precision"], columns["sharpness"]),
+        spearman(columns["ece"], columns["sharpness"]),
+        occupied_cells(
+            feasible,
+            "predicted_positive_rate",
+            "error_ratio",
+            (0.0, 0.5),
+            (-3.0, 3.0),
+        ),
+        occupied_cells(
+            feasible,
+            "predicted_positive_rate",
+            "error_ratio",
+            ppr_bounds,
+            error_bounds,
+        ),
+        occupied_cells(
+            feasible,
+            "precision",
+            "sharpness",
+            (0.24, 0.52),
+            (0.10, 0.45),
+        ),
+    ]
+    return ",".join(header) + "\n" + ",".join(str(value) for value in values) + "\n"
+
+
+def publication_qd_rows() -> list[dict[str, object]]:
+    rows = []
+    for seed in (42, 43, 44):
+        path = QD_PUBLICATION / f"qd-seed-{seed}" / "run.json"
+        with path.open(encoding="utf-8") as source:
+            manifest = json.load(source)
+        qd = manifest["qd"]
+        occupied = int(qd["occupied"])
+        capacity = int(qd["capacity"])
+        retained = int(qd["retained_niches"])
+        rows.append(
+            {
+                "seed": seed,
+                "evaluations": int(manifest["actual_evaluations"]),
+                "elapsed_seconds": float(manifest["elapsed_seconds"]),
+                "occupied": occupied,
+                "capacity": capacity,
+                "coverage": occupied / capacity,
+                "distinct_configurations": int(qd["distinct_configurations"]),
+                "retained_niches": retained,
+                "retention": retained / occupied,
+                "invalid_evaluations": int(qd["invalid_evaluations"]),
+                "clipped_descriptors": int(qd["clipped_descriptors"]),
+                "decision": manifest["qd_decision"],
+            }
+        )
+    return rows
+
+
+def publication_qd_summary_text() -> str:
+    rows = publication_qd_rows()
+    header = list(rows[0])
+    output = [",".join(header)]
+    output.extend(",".join(str(row[name]) for name in header) for row in rows)
+    return "\n".join(output) + "\n"
+
+
+def qd_archive_rows() -> list[dict[str, str]]:
+    rows: list[dict[str, str]] = []
+    for seed in (42, 43, 44):
+        path = QD_PUBLICATION / f"qd-seed-{seed}" / "qd_archive.csv"
+        with path.open(newline="", encoding="utf-8") as source:
+            rows.extend(csv.DictReader(source))
+    return rows
+
+
+def quantile(values: list[float], fraction: float) -> float:
+    ordered = sorted(values)
+    position = (len(ordered) - 1) * fraction
+    lower = int(math.floor(position))
+    upper = int(math.ceil(position))
+    weight = position - lower
+    return ordered[lower] * (1.0 - weight) + ordered[upper] * weight
+
+
+def qd_validation_summary_text() -> str:
+    rows = qd_archive_rows()
+    output = ["axis,valid_elites,cell_width,median_abs_shift,p90_abs_shift"]
+    for axis, lower, upper in (
+        ("precision", 0.24, 0.52),
+        ("sharpness", 0.10, 0.45),
+    ):
+        shifts = []
+        for row in rows:
+            training = float(row[f"descriptor_{axis}_train"])
+            validation = float(row[f"descriptor_{axis}_validation"])
+            if math.isfinite(training) and math.isfinite(validation):
+                shifts.append(abs(validation - training))
+        output.append(
+            ",".join(
+                str(value)
+                for value in (
+                    axis,
+                    len(shifts),
+                    (upper - lower) / 20,
+                    statistics.median(shifts),
+                    quantile(shifts, 0.9),
+                )
+            )
+        )
+    return "\n".join(output) + "\n"
+
+
+def descriptor_niche(row: dict[str, str], side: int, suffix: str) -> int | None:
+    coordinates = []
+    for axis, lower, upper in (
+        ("precision", 0.24, 0.52),
+        ("sharpness", 0.10, 0.45),
+    ):
+        value = float(row[f"descriptor_{axis}_{suffix}"])
+        if not math.isfinite(value) or not lower <= value <= upper:
+            return None
+        coordinates.append(min(side - 1, int((value - lower) / (upper - lower) * side)))
+    return coordinates[1] * side + coordinates[0]
+
+
+def qd_retention_by_grid_text() -> str:
+    rows = qd_archive_rows()
+    output = ["side,retained_niches,occupied_elites,retention"]
+    for side in (20, 10, 5, 4):
+        retained = sum(
+            row["selection_feasible"] == "1"
+            and descriptor_niche(row, side, "train") is not None
+            and descriptor_niche(row, side, "train")
+            == descriptor_niche(row, side, "validation")
+            for row in rows
+        )
+        output.append(f"{side},{retained},{len(rows)},{retained / len(rows)}")
+    return "\n".join(output) + "\n"
 
 
 def save(figure: plt.Figure, path: Path) -> None:
@@ -309,10 +555,29 @@ def main() -> int:
     mode.add_argument("--write", action="store_true")
     mode.add_argument("--check", action="store_true")
     arguments = parser.parse_args()
+    summaries = {
+        DESCRIPTOR_SUMMARY: descriptor_summary_text(),
+        QD_SUMMARY: publication_qd_summary_text(),
+        QD_VALIDATION_SUMMARY: qd_validation_summary_text(),
+        QD_RETENTION_BY_GRID: qd_retention_by_grid_text(),
+    }
     if arguments.write:
+        for path, content in summaries.items():
+            path.write_text(content, encoding="utf-8")
+            print(path)
         for path in render(OUTPUT):
             print(path)
         return 0
+    stale_summaries = [
+        path
+        for path, content in summaries.items()
+        if not path.is_file() or path.read_text(encoding="utf-8") != content
+    ]
+    if stale_summaries:
+        print("missing or stale HPO summaries:")
+        for path in stale_summaries:
+            print(path)
+        return 1
     with tempfile.TemporaryDirectory() as temporary:
         generated = render(Path(temporary))
         stale = [

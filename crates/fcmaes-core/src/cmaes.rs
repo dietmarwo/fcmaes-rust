@@ -1,40 +1,76 @@
-//! Active CMA-ES — Rust port of the C++ `acmaesoptimizer.cpp`.
+//! Active Covariance Matrix Adaptation Evolution Strategy (CMA-ES).
 //!
-//! Faithful translation of the Eigen-based active CMA-ES (covariance matrix
-//! adaptation with the negative/active rank-mu update). Matrix algebra uses
-//! `nalgebra`; the self-adjoint eigensolver replaces Eigen's
-//! `SelfAdjointEigenSolver`. Parity with the reference is statistical, so the
-//! RNG stream is not matched bit-for-bit.
+//! CMA-ES adapts a multivariate normal search distribution; the active
+//! rank-μ update also uses unsuccessful samples to reduce variance in
+//! unpromising directions. Matrix algebra is implemented with `nalgebra`.
 //!
-//! The single collapsed implementation replaces both the C++ optimizer and the
-//! pure-Python `fcmaes/cmaes.py`.
+//! # References
+//!
+//! - N. Hansen and A. Ostermeier, [“Completely Derandomized Self-Adaptation in
+//!   Evolution Strategies”](https://doi.org/10.1162/106365601750190398),
+//!   *Evolutionary Computation* 9(2), 159–195 (2001).
+//! - G. A. Jastrebski and D. V. Arnold, [“Improving Evolution Strategies
+//!   through Active Covariance Matrix
+//!   Adaptation”](https://ieeexplore.ieee.org/document/1688662), CEC 2006,
+//!   9719–9726.
+//!
+//! # Example
+//!
+//! ```
+//! use fcmaes_core::{Cmaes, CmaesParams, Fitness};
+//!
+//! let sphere = |x: &[f64]| x.iter().map(|v| v * v).sum::<f64>();
+//! let fit = Fitness::bounded(3, 1, &[-5.0; 3], &[5.0; 3]);
+//! let params = CmaesParams {
+//!     max_evaluations: 2_000,
+//!     seed: 7,
+//!     ..Default::default()
+//! };
+//! let mut cma = Cmaes::new(fit, &[2.0; 3], &[0.5], &params);
+//! let result = cma.optimize(&sphere, 1);
+//! assert!(result.y.is_finite());
+//! ```
 
 use nalgebra::{DMatrix, DVector};
 
 use crate::fitness::{Fitness, Objective};
 use crate::rng::Rng;
 
-/// Outcome of a CMA-ES run (mirrors the C++ `AcmaResult`).
+/// Outcome of an active CMA-ES run.
 #[derive(Clone, Debug)]
 pub struct AcmaResult {
+    /// Best decoded decision vector found.
     pub x: Vec<f64>,
+    /// Objective value at [`x`](Self::x).
     pub y: f64,
+    /// Number of objective evaluations charged to the run.
     pub evaluations: u64,
+    /// Number of completed generations.
     pub iterations: i32,
+    /// Termination code; zero means no stop criterion fired.
     pub stop: i32,
 }
 
 /// Tunable inputs for [`Cmaes::new`]. `popsize`/`mu` <= 0 select CMA defaults.
 #[derive(Clone, Debug)]
 pub struct CmaesParams {
+    /// Offspring population size; non-positive values select the CMA-ES default.
     pub popsize: i32,
+    /// Number of selected parents; non-positive values use half the population.
     pub mu: i32,
+    /// Maximum number of objective evaluations.
     pub max_evaluations: u64,
+    /// Scale applied to numerical termination tolerances.
     pub accuracy: f64,
+    /// Stop after finding an objective value strictly below this threshold.
     pub stop_fitness: f64,
+    /// Historical-fitness tolerance; a negative value selects the default.
     pub stop_tol_hist_fun: f64,
+    /// Generations between covariance eigendecompositions; negative selects the default.
     pub update_gap: i32,
+    /// Seed for the optimizer's independent random stream.
     pub seed: u64,
+    /// Additional run identifier mixed into [`seed`](Self::seed).
     pub runid: i64,
 }
 
@@ -75,6 +111,7 @@ fn col(m: &DMatrix<f64>, j: usize) -> DVector<f64> {
     DVector::from_iterator(m.nrows(), m.column(j).iter().copied())
 }
 
+/// Stateful active CMA-ES optimizer with serial and ask/tell interfaces.
 pub struct Cmaes {
     fitfun: Fitness,
     rng: Rng,
@@ -135,6 +172,11 @@ pub struct Cmaes {
 impl Cmaes {
     /// Build a CMA-ES optimizer. `guess` is the initial mean, `input_sigma`
     /// the per-coordinate step sizes (length 1 broadcasts to `dim`).
+    ///
+    /// # Panics
+    ///
+    /// Panics if `fitfun.dim()` differs from `guess.len()`, or if
+    /// `input_sigma` is neither length 1 nor length `dim`.
     pub fn new(mut fitfun: Fitness, guess: &[f64], input_sigma: &[f64], p: &CmaesParams) -> Self {
         let dim = guess.len();
         assert_eq!(fitfun.dim(), dim, "fitness dim must match guess");
@@ -258,12 +300,15 @@ impl Cmaes {
         }
     }
 
+    /// Number of decision variables.
     pub fn dim(&self) -> usize {
         self.dim
     }
+    /// Number of offspring in each generation.
     pub fn popsize(&self) -> usize {
         self.popsize
     }
+    /// Current termination code, or zero while the optimizer can continue.
     pub fn stop(&self) -> i32 {
         self.stop
     }
@@ -559,8 +604,8 @@ impl Cmaes {
         self.fitness_history[0] = best_fitness;
     }
 
-    /// Run the full generational loop (the C++ `doOptimize`), evaluating each
-    /// generation through `obj` (parallelized per `workers`).
+    /// Run the full generational loop, evaluating each population through
+    /// `obj` with the requested worker count.
     pub fn optimize(&mut self, obj: &impl Objective, workers: i32) -> AcmaResult {
         self.iterations = 0;
         self.fitfun.reset_evaluations();

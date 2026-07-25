@@ -40,7 +40,7 @@ test = [
 
 [project.urls]
 Repository = "https://github.com/dietmarwo/fcmaes-rust"
-Documentation = "https://github.com/dietmarwo/fcmaes-rust/tree/main/docs"
+Documentation = "https://dietmarwo.github.io/fcmaes-rust/"
 Issues = "https://github.com/dietmarwo/fcmaes-rust/issues"
 Changelog = "https://github.com/dietmarwo/fcmaes-rust/blob/main/CHANGELOG.md"
 

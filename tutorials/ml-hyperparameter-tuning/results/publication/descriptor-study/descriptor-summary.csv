@@ -1,0 +1,2 @@
+candidate_calls,feasible_candidates,precision_min,precision_max,sharpness_min,sharpness_max,error_ratio_min,error_ratio_max,spearman_ppr_error_ratio,spearman_precision_sharpness,spearman_ece_sharpness,occupied_ppr_error_original_bounds,occupied_ppr_error_observed_bounds,occupied_precision_sharpness_frozen_bounds
+1280,271,0.265359477124183,0.4648370497427101,0.1209539958607675,0.3987481436483916,-0.41454620804761966,0.9174205514014334,0.9997152566094537,-0.5936370981356871,0.2861183464775824,16,28,91

@@ -1,12 +1,65 @@
-//! Bounds handling, coordinate normalization, and (parallel) fitness
-//! evaluation — the Rust port of `Fitness` / `evaluator` from the C++
-//! `evaluator.h`.
+//! Bounds handling, coordinate normalization, and parallel evaluation.
 //!
-//! The C++ `Fitness` owned the objective function pointer directly. Here the
-//! objective is decoupled behind the [`Objective`] trait so the same bounds /
-//! encode / decode logic serves pure-Rust closures (tests, `fcmaes-cli`) and
-//! the Python-callback bridge in `fcmaes-py`. The parallel worker-thread pool
-//! (`blocking_queue` + `std::thread`) is replaced by `rayon`.
+//! The objective is decoupled behind [`Objective`] so the same decision-space
+//! mapping serves pure-Rust closures, structured Rust objectives, and the
+//! optional Python binding. [`parallel_batch`] uses cached Rayon pools and
+//! preserves input order.
+//!
+//! # Examples
+//!
+//! Any `Fn(&[f64]) -> f64` is already an [`Objective`], so the common case
+//! needs no trait implementation:
+//!
+//! ```
+//! use fcmaes_core::{Fitness, Objective};
+//!
+//! let sphere = |x: &[f64]| x.iter().map(|v| v * v).sum::<f64>();
+//! assert_eq!(sphere.nobj(), 1);
+//! assert_eq!(sphere.eval_scalar(&[3.0, 4.0]), 25.0);
+//!
+//! // `Fitness` owns the box constraints and the encode/decode mapping the
+//! // optimizers search in.
+//! let fitness = Fitness::bounded(2, 1, &[-5.0, -5.0], &[5.0, 5.0]);
+//! assert_eq!(fitness.dim(), 2);
+//! ```
+//!
+//! Implement the trait directly when the objective carries state, or when a
+//! multi-objective result is needed:
+//!
+//! ```
+//! use fcmaes_core::Objective;
+//!
+//! struct Shifted {
+//!     center: Vec<f64>,
+//! }
+//!
+//! impl Objective for Shifted {
+//!     fn nobj(&self) -> usize {
+//!         2
+//!     }
+//!     fn eval(&self, x: &[f64]) -> Vec<f64> {
+//!         let distance = x
+//!             .iter()
+//!             .zip(&self.center)
+//!             .map(|(v, c)| (v - c).powi(2))
+//!             .sum::<f64>();
+//!         vec![distance, x.iter().sum::<f64>()]
+//!     }
+//! }
+//!
+//! let objective = Shifted { center: vec![1.0, 1.0] };
+//! assert_eq!(objective.eval(&[1.0, 1.0]), vec![0.0, 2.0]);
+//! ```
+//!
+//! Evaluate a whole batch on a worker pool while keeping result order:
+//!
+//! ```
+//! use fcmaes_core::parallel_batch;
+//!
+//! let xs = vec![vec![1.0], vec![2.0], vec![3.0]];
+//! let ys = parallel_batch(&xs, 2, |x| x[0] * 10.0);
+//! assert_eq!(ys, vec![10.0, 20.0, 30.0]);
+//! ```
 
 use std::borrow::Cow;
 use std::collections::HashMap;
@@ -17,8 +70,7 @@ use rayon::{ThreadPool, ThreadPoolBuilder};
 
 use crate::rng::Rng;
 
-/// Value substituted for a non-finite objective result, matching the C++
-/// `1E99` sentinel.
+/// Finite value substituted for a non-finite objective result.
 pub const NAN_REPLACEMENT: f64 = 1e99;
 
 /// An objective function over `dim` decision variables returning `nobj`
@@ -132,6 +184,12 @@ pub struct Fitness {
 impl Fitness {
     /// Create a bounded (or, with empty `lower`/`upper`, unbounded) fitness
     /// wrapper. `scale = upper - lower`, `typx = 0.5 * (upper + lower)`.
+    ///
+    /// # Panics
+    ///
+    /// Panics if bounds are supplied and `lower.len()` or `upper.len()`
+    /// differs from `dim`. Passing empty `lower` and `upper` selects the
+    /// unbounded mapping and is always accepted.
     pub fn new(dim: usize, nobj: usize, lower: Vec<f64>, upper: Vec<f64>) -> Self {
         let bounded = !lower.is_empty();
         assert!(
@@ -167,47 +225,61 @@ impl Fitness {
         Self::new(dim, nobj, lower.to_vec(), upper.to_vec())
     }
 
+    /// Number of decision variables.
     pub fn dim(&self) -> usize {
         self.dim
     }
+    /// Number of values returned by the objective.
     pub fn nobj(&self) -> usize {
         self.nobj
     }
+    /// Whether finite-box coordinate mapping is configured.
     pub fn has_bounds(&self) -> bool {
         !self.lower.is_empty()
     }
+    /// Lower decision bounds, or an empty slice for an unbounded problem.
     pub fn lower(&self) -> &[f64] {
         &self.lower
     }
+    /// Upper decision bounds, or an empty slice for an unbounded problem.
     pub fn upper(&self) -> &[f64] {
         &self.upper
     }
+    /// Per-coordinate box widths used by normalization.
     pub fn scale(&self) -> &[f64] {
         &self.scale
     }
+    /// Per-coordinate box midpoints used by normalization.
     pub fn typx(&self) -> &[f64] {
         &self.typx
     }
+    /// Whether optimizers operate in normalized `[-1, 1]` coordinates.
     pub fn normalize(&self) -> bool {
         self.normalize
     }
+    /// Enable or disable normalized optimizer coordinates.
     pub fn set_normalize(&mut self, normalize: bool) {
         self.normalize = normalize;
     }
 
+    /// Number of objective calls charged through this wrapper.
     pub fn evaluations(&self) -> u64 {
         self.eval_counter
     }
+    /// Reset the charged objective-call counter to zero.
     pub fn reset_evaluations(&mut self) {
         self.eval_counter = 0;
     }
+    /// Add externally evaluated candidates to the objective-call counter.
     pub fn incr_evaluations(&mut self, by: u64) {
         self.eval_counter += by;
     }
 
+    /// Whether an external caller requested termination.
     pub fn terminate(&self) -> bool {
         self.terminate
     }
+    /// Request termination at the optimizer's next check point.
     pub fn set_terminate(&mut self) {
         self.terminate = true;
     }
@@ -245,7 +317,7 @@ impl Fitness {
             .collect()
     }
 
-    /// Normalize coordinate `i` into `[0, 1]` (the C++ `norm_i`).
+    /// Normalize decoded coordinate `i` into `[0, 1]`.
     pub fn norm_i(&self, i: usize, x: f64) -> f64 {
         debug_assert!(self.has_bounds(), "norm_i requires bounds");
         ((x - self.lower[i]) / self.scale[i]).clamp(0.0, 1.0)
@@ -329,13 +401,13 @@ impl Fitness {
             .collect()
     }
 
-    /// Uniform random value for coordinate `i` (the C++ `sample_i`).
+    /// Draw a uniform random value for coordinate `i`.
     pub fn sample_i(&self, i: usize, rng: &mut Rng) -> f64 {
         debug_assert!(self.has_bounds(), "sample_i requires bounds");
         self.lower[i] + self.scale[i] * rng.uniform01()
     }
 
-    /// Clamp coordinate `i` into its bound (the C++ `getClosestFeasible_i`).
+    /// Clamp coordinate `i` into its configured bound.
     pub fn closest_feasible_i(&self, i: usize, x: f64) -> f64 {
         if !self.has_bounds() {
             return x;
@@ -438,6 +510,11 @@ impl Fitness {
     /// Evaluate a scalar population stored as contiguous fixed-width chunks.
     /// This avoids building `Vec<Vec<f64>>` adapters for column-major matrix
     /// populations such as CMA-ES (`DMatrix` columns are contiguous).
+    ///
+    /// # Panics
+    ///
+    /// Panics if `dimensions` is zero, or if `population.len()` is not an
+    /// exact multiple of `dimensions`.
     pub fn eval_population_scalar_flat(
         &mut self,
         population: &[f64],

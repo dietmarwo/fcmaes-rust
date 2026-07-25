@@ -34,7 +34,7 @@
     "tuning_rows": 240
   },
   "descriptors": [],
-  "elapsed_seconds": 0.692434265,
+  "elapsed_seconds": 0.696583364,
   "formulation": "mo",
   "model_fits": 164,
   "objective_protocol": {
@@ -44,6 +44,8 @@
     "minority_recall_floor": 0.1,
     "parallelism_owner": "fcmaes candidate workers",
     "probability_clip": 1e-6,
+    "qd_selection_descriptor_aggregation": "mean descriptors across independently fitted single forests",
+    "selection_quality_aggregation": "metrics of probabilities averaged across model seeds",
     "structural_cost_limit": 2000000,
     "tuning_model_seed": 6791476662184033089
   },

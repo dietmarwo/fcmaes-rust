@@ -1,10 +1,20 @@
 //! Parallel weighted-scalarization retry for multi-objective problems.
 //!
-//! This is the native counterpart of `fcmaes/moretry.py`. Every retry draws a
-//! different weight vector, normalizes it with the configured p-norm, maps it
-//! into the requested weight bounds, and runs an arbitrary scalar optimizer.
+//! Every retry draws a different weight vector, normalizes it with the
+//! configured p-norm, maps it into the requested weight bounds, and runs an
+//! arbitrary scalar optimizer.
 //! Objective values and the sampled weights are retained with each result.
 //! As in [`mod@crate::retry`], workers own persistent independent PCG streams.
+//!
+//! # Example
+//!
+//! ```
+//! use fcmaes_core::scalarize;
+//!
+//! // Two objectives followed by one feasible (non-positive) constraint.
+//! let value = scalarize(&[2.0, 3.0, -0.5], &[0.5, 0.5, 1.0], 1, 2.0);
+//! assert!(value.is_finite());
+//! ```
 
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering as AtomicOrdering};
 use std::sync::{Mutex, MutexGuard};
@@ -19,6 +29,7 @@ use crate::rng::Rng;
 
 /// A synchronized vector-valued objective.
 pub trait MultiObjective: Sync {
+    /// Evaluate objective columns followed by any constraint columns.
     fn eval(&self, x: &[f64]) -> Vec<f64>;
 }
 
@@ -40,14 +51,17 @@ pub struct WeightedObjective<'a, O: MultiObjective> {
 }
 
 impl<'a, O: MultiObjective> WeightedObjective<'a, O> {
+    /// Scalarization weights sampled for this retry.
     pub fn weights(&self) -> &[f64] {
         self.weights
     }
 
+    /// Number of trailing values interpreted as constraints.
     pub fn ncon(&self) -> usize {
         self.ncon
     }
 
+    /// Exponent of the p-norm scalarization.
     pub fn value_exp(&self) -> f64 {
         self.value_exp
     }
@@ -78,8 +92,9 @@ impl<O: MultiObjective> Objective for WeightedObjective<'_, O> {
     }
 }
 
-/// Apply the `moretry.py` p-norm scalarization and its positive-constraint
-/// penalty. Constraints are the final `ncon` values and are feasible at `<= 0`.
+/// Apply p-norm scalarization and a positive-constraint penalty.
+///
+/// Constraints are the final `ncon` values and are feasible at `<= 0`.
 pub fn scalarize(values: &[f64], weights: &[f64], ncon: usize, value_exp: f64) -> f64 {
     if values.len() != weights.len()
         || ncon >= values.len()
@@ -112,16 +127,22 @@ pub fn scalarize(values: &[f64], weights: &[f64], ncon: usize, value_exp: f64) -
 /// Multi-objective retry configuration.
 #[derive(Clone, Debug)]
 pub struct MoRetryConfig {
+    /// Shared retry scheduling, budget, and retention settings.
     pub retry: RetryConfig,
+    /// Inclusive lower bounds for sampled scalarization weights.
     pub weight_lower: Vec<f64>,
+    /// Inclusive upper bounds for sampled scalarization weights.
     pub weight_upper: Vec<f64>,
+    /// Number of trailing values interpreted as non-positive constraints.
     pub ncon: usize,
+    /// Positive exponent of the p-norm scalarization.
     pub value_exp: f64,
     /// Optional strict upper bounds for every objective and constraint value.
     pub value_limits: Option<Vec<f64>>,
 }
 
 impl MoRetryConfig {
+    /// Create a configuration with default retry settings and supplied weight bounds.
     pub fn new(weight_lower: Vec<f64>, weight_upper: Vec<f64>) -> Self {
         Self {
             retry: RetryConfig::default(),
@@ -133,6 +154,14 @@ impl MoRetryConfig {
         }
     }
 
+    /// Validate weight bounds, dimensions, exponent, and optional value limits.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the weight bounds are empty, of unequal length,
+    /// non-finite or reversed; if `ncon` leaves no objective; if `value_exp`
+    /// is not finite and positive; or if `value_limits` does not match the
+    /// objective width or contains NaN.
     pub fn validate(&self) -> Result<(), &'static str> {
         if self.weight_lower.is_empty() || self.weight_lower.len() != self.weight_upper.len() {
             return Err("weight bounds must be non-empty and have equal lengths");
@@ -163,22 +192,34 @@ impl MoRetryConfig {
 /// One retained weighted-scalarization result.
 #[derive(Clone, Debug, PartialEq)]
 pub struct MoRetryEntry {
+    /// Decoded decision vector.
     pub x: Vec<f64>,
+    /// Original objective and constraint values.
     pub y: Vec<f64>,
+    /// Weights used for this retry.
     pub weights: Vec<f64>,
+    /// Scalarized value optimized by the retry.
     pub scalar_value: f64,
 }
 
 /// Final result of [`moretry`].
 #[derive(Clone, Debug)]
 pub struct MoRetryResult {
+    /// Decision vector with the best scalarized value.
     pub x: Vec<f64>,
+    /// Original values at [`x`](Self::x).
     pub y: Vec<f64>,
+    /// Best scalarized value found.
     pub scalar_value: f64,
+    /// Total objective evaluations reported by all retries.
     pub evaluations: u64,
+    /// Number of completed retries.
     pub runs: usize,
+    /// Whether at least one valid result was retained.
     pub success: bool,
+    /// Retained weighted results, ordered by scalarized value.
     pub entries: Vec<MoRetryEntry>,
+    /// Optional best-so-far progress samples.
     pub improvements: Vec<RetryImprovement>,
 }
 
@@ -315,6 +356,10 @@ fn sample_weights(config: &MoRetryConfig, rng: &mut Rng) -> Vec<f64> {
 }
 
 /// Run independent weighted-scalarization retries in parallel.
+///
+/// # Errors
+///
+/// Returns an error if `config` fails [`MoRetryConfig::validate`].
 pub fn moretry<O, F>(
     objective: &O,
     bounds: &RetryBounds,
@@ -396,6 +441,11 @@ where
 }
 
 /// Indices of non-dominated rows considering the first `nobj` values.
+///
+/// # Errors
+///
+/// Returns an error if `nobj` is zero, or if any row does not contain at
+/// least `nobj` finite values.
 pub fn pareto_indices(values: &[Vec<f64>], nobj: usize) -> Result<Vec<usize>, &'static str> {
     if nobj == 0 {
         return Err("nobj must be positive");

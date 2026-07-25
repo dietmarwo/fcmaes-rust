@@ -1,12 +1,30 @@
 //! Random number generation for the optimizers.
 //!
-//! Wraps `rand_pcg::Pcg64` (the same PCG family the C++ backend used) behind a
-//! small API mirroring the free helpers in the old `evaluator.h`
-//! (`rand01`, `randInt`, `normreal`, `uniformVec`, `normalVec`).
+//! Wraps `rand_pcg::Pcg64` behind the small set of scalar and vector
+//! distributions required by the optimizers.
 //!
-//! Cross-implementation parity is *statistical*: we make no attempt to
-//! reproduce an historical backend's exact PCG stream, only to provide a
-//! well-distributed, deterministically seedable generator.
+//! # Examples
+//!
+//! Every optimizer takes an [`Rng`], so seeding it is what makes a run
+//! reproducible:
+//!
+//! ```
+//! use fcmaes_core::Rng;
+//!
+//! let mut first = Rng::new(42);
+//! let mut second = Rng::new(42);
+//! assert_eq!(first.uniform01(), second.uniform01());
+//!
+//! // A different seed gives an independent stream.
+//! let mut other = Rng::new(43);
+//! assert_ne!(Rng::new(42).uniform01(), other.uniform01());
+//! ```
+//!
+//! # Reference
+//!
+//! M. E. O'Neill, [“PCG: A Family of Simple Fast Space-Efficient Statistically
+//! Good Algorithms for Random Number
+//! Generation”](https://www.pcg-random.org/paper.html) (2014).
 
 use rand::{Rng as _, SeedableRng};
 use rand_distr::StandardNormal;
@@ -33,7 +51,7 @@ impl Rng {
         }
     }
 
-    /// Uniform double in `[0, 1)` — the C++ `rand01`.
+    /// Draw a uniform value in `[0, 1)`.
     #[inline]
     pub fn uniform01(&mut self) -> f64 {
         self.inner.r#gen::<f64>()
@@ -51,14 +69,15 @@ impl Rng {
         self.inner.sample(StandardNormal)
     }
 
-    /// Normal sample with mean `mu` and stdev `sdev` — the C++ `normreal`.
+    /// Draw a normal value with mean `mu` and standard deviation `sdev`.
     #[inline]
     pub fn normreal(&mut self, mu: f64, sdev: f64) -> f64 {
         self.gaussian() * sdev + mu
     }
 
-    /// Integer in `[0, max)` matching the C++ `randInt`: `(int)(max * rand01())`.
-    /// Returns 0 for `max <= 0`.
+    /// Draw an integer in `[0, max)` by scaling a uniform value.
+    ///
+    /// Returns zero when `max <= 0`.
     #[inline]
     pub fn int_below(&mut self, max: i64) -> i64 {
         if max <= 0 {

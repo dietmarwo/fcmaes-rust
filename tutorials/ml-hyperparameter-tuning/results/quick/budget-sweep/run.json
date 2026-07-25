@@ -1,5 +1,5 @@
 {
-  "actual_evaluations": 405,
+  "actual_evaluations": 424,
   "artifacts": {
     "budget_summary": "budget_summary.csv"
   },
@@ -9,7 +9,7 @@
     "one-pilot calibrated wall time"
   ],
   "descriptors": [],
-  "elapsed_seconds": 6.754072559000001,
+  "elapsed_seconds": 7.003171669,
   "formulation": "budget-sweep",
   "objective_protocol": {
     "common_random_numbers": true,

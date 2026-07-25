@@ -1,33 +1,67 @@
-//! Dual Annealing — Rust port of the C++ `daoptimizer.cpp`.
+//! Dual Annealing with optional bounded local search.
 //!
-//! Generalized simulated annealing (derived from SciPy's `_dual_annealing`):
+//! The global phase is generalized simulated annealing:
 //! a distorted Cauchy-Lorentz visiting distribution, a Markov strategy chain
 //! with generalized accept/reject, re-annealing, and an optional local search.
-//! The C++ used LBFGSpp's L-BFGS-B for the local search; this port uses a
-//! self-contained bounded limited-memory quasi-Newton (projected L-BFGS on the
-//! `[0,1]` box with a finite-difference gradient), avoiding a Fortran
-//! dependency. C++-only in the original (no pure-Python twin); validated by
-//! convergence rather than a reference distribution.
+//! The local phase is a self-contained projected limited-memory quasi-Newton
+//! search on the normalized box, using finite-difference gradients.
+//!
+//! # Reference
+//!
+//! Y. Xiang, D. Y. Sun, W. Fan, and X. G. Gong, [“Generalized Simulated
+//! Annealing Algorithm and Its Application to the Thomson
+//! Model”](https://doi.org/10.1016/S0375-9601(97)00474-X), *Physics Letters A*
+//! 233, 216–220 (1997).
+//!
+//! # Example
+//!
+//! ```
+//! use fcmaes_core::{DaParams, optimize_da};
+//!
+//! let sphere = |x: &[f64]| x.iter().map(|v| v * v).sum::<f64>();
+//! let params = DaParams {
+//!     max_evaluations: 1_000,
+//!     seed: 5,
+//!     ..Default::default()
+//! };
+//! let result = optimize_da(
+//!     &sphere,
+//!     &[1.0; 3],
+//!     vec![-5.0; 3],
+//!     vec![5.0; 3],
+//!     &params,
+//! );
+//! assert!(result.y.is_finite());
+//! ```
 
 use crate::fitness::Objective;
 use crate::rng::Rng;
 
-/// Outcome of a Dual Annealing run (mirrors the C++ `DaResult`).
+/// Outcome of a Dual Annealing run.
 #[derive(Clone, Debug)]
 pub struct DaResult {
+    /// Best decoded decision vector found.
     pub x: Vec<f64>,
+    /// Objective value at [`x`](Self::x).
     pub y: f64,
+    /// Number of objective evaluations charged to the run.
     pub evaluations: u64,
+    /// Reserved iteration counter; currently zero.
     pub iterations: i32,
+    /// Termination code; `-1` indicates initialization failed.
     pub stop: i32,
 }
 
 /// Tunable inputs for [`optimize_da`].
 #[derive(Clone, Debug)]
 pub struct DaParams {
+    /// Maximum number of global and local objective evaluations combined.
     pub max_evaluations: u64,
+    /// Enable the projected limited-memory local-search phase.
     pub use_local_search: bool,
+    /// Seed for the optimizer's independent random stream.
     pub seed: u64,
+    /// Additional run identifier mixed into [`seed`](Self::seed).
     pub runid: i64,
 }
 

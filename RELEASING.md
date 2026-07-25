@@ -92,7 +92,7 @@ Install with the production index available only for dependencies:
 python -m pip install \
   --index-url https://test.pypi.org/simple/ \
   --extra-index-url https://pypi.org/simple/ \
-  fcmaes-rust==0.1.2
+  fcmaes-rust==0.1.3
 ```
 
 If testing requires changing an artifact, increment the version. Registry
@@ -103,8 +103,8 @@ files cannot be replaced.
 After both trusted publishers are configured and all pre-release checks pass:
 
 ```bash
-git tag -a v0.1.2 -m "Release fcmaes-rust 0.1.2"
-git push origin v0.1.2
+git tag -a v0.1.3 -m "Release fcmaes-rust 0.1.3"
+git push origin v0.1.3
 ```
 
 The tag must exactly equal `v` plus the Cargo package version. The Python

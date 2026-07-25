@@ -10,6 +10,12 @@ pub struct Metrics {
     pub recall: f64,
     pub precision: f64,
     pub predicted_positive_rate: f64,
+    /// Standard deviation of the predicted probabilities. High values are
+    /// decisive forests that push probabilities toward 0 and 1; low values are
+    /// hedging forests that keep every prediction near the base rate. It is an
+    /// aggregate over every row, so unlike a confusion count it does not hinge
+    /// on the handful of cases that straddle the 0.5 threshold.
+    pub sharpness: f64,
     pub false_positives: usize,
     pub false_negatives: usize,
 }
@@ -49,6 +55,13 @@ impl Metrics {
                 false_negatives += 1;
             }
         }
+        let mean_probability = probabilities.iter().sum::<f64>() / n;
+        let sharpness = (probabilities
+            .iter()
+            .map(|probability| (probability - mean_probability).powi(2))
+            .sum::<f64>()
+            / n)
+            .sqrt();
         let positives = labels.iter().filter(|&&label| label == 1).count();
         let recall = true_positives as f64 / positives.max(1) as f64;
         let precision = true_positives as f64 / predicted_positives.max(1) as f64;
@@ -61,13 +74,32 @@ impl Metrics {
             recall,
             precision,
             predicted_positive_rate: predicted_positives as f64 / n,
+            sharpness,
             false_positives,
             false_negatives,
         })
     }
 
-    pub fn error_ratio_descriptor(self) -> f64 {
+    /// log10 false-positive / false-negative ratio.
+    ///
+    /// Retained as a reported diagnostic. It is deliberately **not** a QD
+    /// descriptor: with the operating threshold fixed at 0.5 it is a monotone
+    /// function of [`Self::predicted_positive_rate`] (measured rank
+    /// correlation +0.999715 over 271 feasible publication candidates), so
+    /// pairing the two collapses the archive onto a one-dimensional ribbon.
+    pub fn error_ratio(self) -> f64 {
         ((self.false_positives as f64 + 1.0) / (self.false_negatives as f64 + 1.0)).log10()
+    }
+
+    /// The two QD behavior descriptors: where the forest sits on the
+    /// precision/recall trade-off, and how decisive its probabilities are.
+    ///
+    /// The axes are chosen to be jointly reachable rather than redundant.
+    /// Precision is driven mainly by the positive-class sampling weight, while
+    /// sharpness is driven by depth, leaf size and ensemble size, so feasible
+    /// designs spread over a genuinely two-dimensional region.
+    pub fn qd_descriptors(self) -> [f64; 2] {
+        [self.precision, self.sharpness]
     }
 }
 

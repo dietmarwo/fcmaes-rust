@@ -39,7 +39,17 @@ impl QdFitness for PyQdFitness {
     }
 }
 
-/// CVT-MAP-Elites archive with the MAP-Elites and Diversifier drivers.
+/// Quality-diversity archive with MAP-Elites and Diversifier drivers.
+///
+/// ``lower`` and ``upper`` bound the decision vector; ``qd_lower`` and
+/// ``qd_upper`` bound the behavior descriptor. ``capacity`` is the number of
+/// niches. For two descriptor dimensions, ``samples_per_niche=0`` selects an
+/// exact grid; positive values construct CVT centroids. ``seed_parents`` adds
+/// initial uniformly sampled solutions as emitter parents.
+///
+/// Raises ``ValueError`` if ``dim`` or ``capacity`` is zero, if the decision
+/// bounds do not match ``dim``, or if either bound pair is non-finite or does
+/// not satisfy ``lower < upper``.
 #[pyclass]
 pub struct Archive {
     inner: CoreArchive,
@@ -95,7 +105,19 @@ impl Archive {
         })
     }
 
-    /// Run CVT-MAP-Elites with the SBX / Iso+LineDD (+ optional CMA-ES) emitter.
+    /// Run MAP-Elites and update this archive in place.
+    ///
+    /// ``qd_fitness(x)`` must return ``(quality, descriptor)`` where quality is
+    /// minimized and the descriptor has length :attr:`qd_dim`. ``use_sbx``
+    /// chooses SBX/polynomial variation instead of Iso+LineDD;
+    /// ``cma_generations`` optionally adds a CMA improvement emitter.
+    ///
+    /// Returns ``None``. Inspect :attr:`occupied`, :attr:`qd_score`, and the
+    /// archive arrays after completion.
+    ///
+    /// Raises ``ValueError`` if ``qd_fitness`` does not return a
+    /// ``(quality, descriptor)`` pair whose descriptor has length
+    /// :attr:`qd_dim`. Exceptions raised inside ``qd_fitness`` propagate.
     #[pyo3(signature = (qd_fitness, generations=100, chunk_size=20, use_sbx=true,
         dis_c=20.0, dis_m=20.0, iso_sigma=0.02, line_sigma=0.2, cma_generations=0))]
     fn optimize_map_elites(
@@ -135,7 +157,14 @@ impl Archive {
         });
     }
 
-    /// Run the Diversifier (CMA-ME-style); returns `(best_x, best_y)`.
+    /// Run the CMA-ME-style Diversifier and update this archive.
+    ///
+    /// ``qd_fitness`` follows the same ``(quality, descriptor)`` contract as
+    /// :meth:`optimize_map_elites`. Returns ``(best_x, best_quality)``.
+    ///
+    /// Raises ``ValueError`` on the same descriptor-shape violations as
+    /// :meth:`optimize_map_elites`. Exceptions raised inside ``qd_fitness``
+    /// propagate.
     #[pyo3(signature = (qd_fitness, max_evaluations=100000, popsize=31, stall_criterion=20))]
     fn diversify<'py>(
         &mut self,
@@ -169,42 +198,50 @@ impl Archive {
         )
     }
 
+    /// Number of decision variables stored for every elite.
     #[getter]
     fn dim(&self) -> usize {
         self.inner.dim()
     }
+    /// Number of behavior-descriptor coordinates.
     #[getter]
     fn qd_dim(&self) -> usize {
         self.inner.qd_dim()
     }
+    /// Total number of archive niches.
     #[getter]
     fn capacity(&self) -> usize {
         self.inner.capacity()
     }
+    /// Number of niches currently containing an elite.
     #[getter]
     fn occupied(&self) -> usize {
         self.inner.occupied()
     }
+    /// Lowest minimized quality among occupied niches.
     #[getter]
     fn best_y(&self) -> f64 {
         self.inner.best_y()
     }
+    /// Archive quality-diversity score using the core minimization convention.
     #[getter]
     fn qd_score(&self) -> f64 {
         self.inner.qd_score()
     }
 
-    /// Niche fitness values (`inf` for empty niches).
+    /// Return niche quality values, shape ``(capacity,)``.
+    ///
+    /// Empty niches contain positive infinity.
     fn ys<'py>(&self, py: Python<'py>) -> Bound<'py, PyArray1<f64>> {
         PyArray1::from_slice(py, self.inner.ys())
     }
 
-    /// Niche solutions, shape `(capacity, dim)`.
+    /// Return niche decision vectors, shape ``(capacity, dim)``.
     fn xs<'py>(&self, py: Python<'py>) -> Bound<'py, PyArray2<f64>> {
         rows_to_pyarray(py, self.inner.xs())
     }
 
-    /// Niche behavior descriptors, shape `(capacity, qd_dim)`.
+    /// Return niche behavior descriptors, shape ``(capacity, qd_dim)``.
     fn descriptors<'py>(&self, py: Python<'py>) -> Bound<'py, PyArray2<f64>> {
         rows_to_pyarray(py, self.inner.descriptors())
     }

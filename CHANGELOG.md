@@ -6,8 +6,17 @@ phase, with breaking changes called out explicitly.
 
 ## [Unreleased]
 
+## [0.1.3] - 2026-07-25
+
 ### Added
 
+- Added complete rustdoc for every public `fcmaes-core` item, runnable examples
+  for all major solver families, and primary literature references for DE,
+  active CMA-ES, CR-FM-NES, PGPE, Dual Annealing, MODE and MAP-Elites.
+- Added complete runtime docstrings for every public PyO3 function, class,
+  method, and property, with an installed-extension test preventing regression.
+- Added an mdBook documentation site assembled from the canonical guides and
+  tutorials, plus a GitHub Pages deployment workflow.
 - Added a combinatorial encoding cookbook and tested, dependency-free example
   helpers for bounded and logarithmic integers, categories, Booleans,
   random-key permutations, exact-cardinality subsets, unique-selection repair,
@@ -38,6 +47,12 @@ phase, with breaking changes called out explicitly.
 
 ### Changed
 
+- Raised `fcmaes-core` rustdoc coverage from 37.34% to 100% and made missing
+  public API documentation a compile-time and CI error.
+- Reframed module documentation around algorithms and primary publications
+  instead of historical implementation provenance.
+- Pointed the crates.io and PyPI package documentation paths at the generated
+  API reference and rendered guide, respectively.
 - Extended tutorial artifact validation to check the neural policy-search
   comparison, scaling, convergence, and replay figures byte for byte.
 - Extended tutorial artifact validation to check the room-ventilation
@@ -94,6 +109,7 @@ Initial crates.io bootstrap release.
   before configuring trusted publishing.
 - There was no corresponding `fcmaes-rust` 0.1.1 release on PyPI.
 
-[Unreleased]: https://github.com/dietmarwo/fcmaes-rust/compare/v0.1.2...HEAD
+[Unreleased]: https://github.com/dietmarwo/fcmaes-rust/compare/v0.1.3...HEAD
+[0.1.3]: https://github.com/dietmarwo/fcmaes-rust/compare/v0.1.2...v0.1.3
 [0.1.2]: https://github.com/dietmarwo/fcmaes-rust/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/dietmarwo/fcmaes-rust/releases/tag/v0.1.1

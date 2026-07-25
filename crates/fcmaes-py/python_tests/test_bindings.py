@@ -1,5 +1,6 @@
 """Integration tests for the installed ``fcmaes_rust`` distribution."""
 
+import inspect
 from importlib.metadata import version
 
 import numpy as np
@@ -14,10 +15,36 @@ ext = fcmaes_rust.native
 EMPTY_FLOAT = np.empty(0, dtype=np.float64)
 EMPTY_BOOL = np.empty(0, dtype=np.bool_)
 
+PUBLIC_CLASSES = ("DE", "ACMA", "CRFMNES", "PGPE", "Bite", "MODE", "Archive")
+
 
 def sphere(x):
     values = np.asarray(x, dtype=np.float64)
     return float(np.dot(values, values))
+
+
+def test_public_api_has_runtime_documentation():
+    """Every callable and descriptor shown by help() must explain itself."""
+
+    assert inspect.getdoc(fcmaes_rust)
+    assert inspect.getdoc(ext)
+    assert inspect.getdoc(ext._phase1_probe_sum)
+
+    missing = []
+    for name in fcmaes_rust.__all__:
+        value = getattr(fcmaes_rust, name)
+        if callable(value) and not inspect.getdoc(value):
+            missing.append(name)
+
+    for class_name in PUBLIC_CLASSES:
+        cls = getattr(fcmaes_rust, class_name)
+        for name, value in vars(cls).items():
+            if name.startswith("_"):
+                continue
+            if (callable(value) or inspect.isdatadescriptor(value)) and not inspect.getdoc(value):
+                missing.append(f"{class_name}.{name}")
+
+    assert not missing, f"public Python API without runtime docstrings: {missing}"
 
 
 def test_module_metadata_and_numpy_probe():
@@ -206,3 +233,36 @@ def test_map_elites_archive_shapes_and_updates():
     assert archive.occupied > 0
     assert np.isfinite(archive.ys()).sum() == archive.occupied
     assert np.isfinite(archive.best_y)
+
+
+ONE_SHOT_AND_STATEFUL = [
+    ("optimize_acma", "ACMA"),
+    ("optimize_bite", "Bite"),
+    ("optimize_crfmnes", "CRFMNES"),
+    ("optimize_de", "DE"),
+    ("optimize_pgpe", "PGPE"),
+]
+
+
+def test_one_shot_and_stateful_optimizers_share_defaults():
+    """A parameter must not mean one thing in the function and another in the class.
+
+    ``PGPE`` once defaulted ``use_ranking`` to False while ``optimize_pgpe``
+    and the Rust ``PgpeParams::default()`` both used True, so the same
+    algorithm behaved differently depending on which entry point was called.
+    """
+
+    divergent = []
+    for function_name, class_name in ONE_SHOT_AND_STATEFUL:
+        function_parameters = inspect.signature(getattr(fcmaes_rust, function_name)).parameters
+        class_parameters = inspect.signature(getattr(fcmaes_rust, class_name)).parameters
+        for name, parameter in function_parameters.items():
+            if parameter.default is inspect.Parameter.empty or name not in class_parameters:
+                continue
+            other = class_parameters[name].default
+            if other is inspect.Parameter.empty or other == parameter.default:
+                continue
+            divergent.append(
+                f"{name}: {function_name}={parameter.default!r} {class_name}={other!r}"
+            )
+    assert not divergent, "shared parameter defaults diverged:\n" + "\n".join(divergent)

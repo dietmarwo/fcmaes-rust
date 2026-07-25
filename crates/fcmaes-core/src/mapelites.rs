@@ -1,9 +1,7 @@
 // Numeric kernels index parallel arrays by a shared counter.
 #![allow(clippy::needless_range_loop)]
 
-//! Quality-Diversity: CVT-MAP-Elites and the Diversifier meta-algorithm —
-//! Rust equivalents of the pure-Python `fcmaes/mapelites.py` and
-//! `fcmaes/diversifier.py`.
+//! Quality-Diversity search with CVT-MAP-Elites and the Diversifier.
 //!
 //! A CVT (centroidal Voronoi tessellation) archive partitions the behavior
 //! space into `capacity` niches (via k-means over uniform samples); each niche
@@ -16,6 +14,43 @@
 //! Archive mutation remains serial and deterministic. Objective evaluation can
 //! be supplied either point-by-point through [`QdFitness`] or in parallel
 //! batches through [`QdBatchFitness`].
+//!
+//! # References
+//!
+//! - J.-B. Mouret and J. Clune, [“Illuminating Search Spaces by Mapping
+//!   Elites”](https://arxiv.org/abs/1504.04909) (2015).
+//! - V. Vassiliades, K. Chatzilygeroudis, and J.-B. Mouret, [“Using
+//!   Centroidal Voronoi Tessellations to Scale Up the Multi-dimensional
+//!   Archive of Phenotypic Elites
+//!   Algorithm”](https://arxiv.org/abs/1610.05729) (2016).
+//!
+//! # Example
+//!
+//! ```
+//! use fcmaes_core::{map_elites, Archive, MapElitesParams, Rng};
+//!
+//! let mut rng = Rng::new(42);
+//! let mut archive = Archive::new(2, &[0.0, 0.0], &[1.0, 1.0], 16, 0, &mut rng);
+//! archive.seed_uniform(&[0.0; 2], &[1.0; 2], &mut rng);
+//! let mut fitness = |x: &[f64]| {
+//!     let quality = x.iter().map(|v| (v - 0.5).powi(2)).sum();
+//!     (quality, x.to_vec())
+//! };
+//! let params = MapElitesParams {
+//!     generations: 4,
+//!     chunk_size: 8,
+//!     ..Default::default()
+//! };
+//! map_elites(
+//!     &mut archive,
+//!     &mut fitness,
+//!     &[0.0; 2],
+//!     &[1.0; 2],
+//!     &params,
+//!     &mut rng,
+//! );
+//! assert!(archive.occupied() > 0);
+//! ```
 
 use crate::cmaes::{Cmaes, CmaesParams};
 use crate::fitness::Fitness;
@@ -24,6 +59,7 @@ use rayon::prelude::*;
 
 /// Quality-diversity fitness: maps a solution to `(fitness, behavior)`.
 pub trait QdFitness {
+    /// Evaluate one decoded solution, returning minimized quality and behavior descriptors.
     fn eval(&mut self, x: &[f64]) -> (f64, Vec<f64>);
 }
 
@@ -39,6 +75,7 @@ where
 /// Batch quality-diversity fitness. Implementations may evaluate `xs` in
 /// parallel, but must return one result per input in the same order.
 pub trait QdBatchFitness {
+    /// Evaluate decoded solutions in order.
     fn eval_batch(&mut self, xs: &[Vec<f64>]) -> Vec<(f64, Vec<f64>)>;
 }
 
@@ -210,6 +247,12 @@ pub struct Archive {
 
 impl Archive {
     /// Construct a validated CVT archive.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if `dim` or `capacity` is zero, if the descriptor
+    /// bound slices are empty or of unequal length, or if any bound pair is
+    /// non-finite or does not satisfy `lower < upper`.
     pub fn try_new(
         dim: usize,
         qd_lb: &[f64],
@@ -246,6 +289,10 @@ impl Archive {
 
     /// Construct a CVT archive, panicking on invalid configuration. Prefer
     /// [`Archive::try_new`] for user-supplied inputs.
+    ///
+    /// # Panics
+    ///
+    /// Panics on any configuration [`Archive::try_new`] rejects.
     pub fn new(
         dim: usize,
         qd_lb: &[f64],
@@ -292,15 +339,19 @@ impl Archive {
         }
     }
 
+    /// Number of decision variables stored for each elite.
     pub fn dim(&self) -> usize {
         self.dim
     }
+    /// Number of behavior-descriptor dimensions.
     pub fn qd_dim(&self) -> usize {
         self.qd_dim
     }
+    /// Total number of niches.
     pub fn capacity(&self) -> usize {
         self.capacity
     }
+    /// Number of niches containing an evaluated elite.
     pub fn occupied(&self) -> usize {
         self.occupied
     }
@@ -308,6 +359,11 @@ impl Archive {
     /// Seed all niche solutions with uniform random samples in `[lower, upper]`
     /// (never evaluated — they serve as the initial SBX/Iso parent pool, as the
     /// Python original documents).
+    ///
+    /// # Panics
+    ///
+    /// Panics if `lower.len()` or `upper.len()` differs from the archive's
+    /// decision dimension.
     pub fn seed_uniform(&mut self, lower: &[f64], upper: &[f64], rng: &mut Rng) {
         assert_eq!(lower.len(), self.dim, "lower bounds length must equal dim");
         assert_eq!(upper.len(), self.dim, "upper bounds length must equal dim");
@@ -332,6 +388,10 @@ impl Archive {
     }
 
     /// Index of the niche whose center is nearest the (encoded) descriptor.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `d.len()` differs from the archive's descriptor dimension.
     pub fn index_of_niche(&self, d: &[f64]) -> usize {
         assert_eq!(d.len(), self.qd_dim, "descriptor length must equal qd_dim");
         let e = self.encode_d(d);
@@ -351,6 +411,11 @@ impl Archive {
     }
 
     /// Add a solution to niche `i` if it improves it.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `i` is not below the archive capacity, or if `d` or `x` do
+    /// not match the descriptor and decision dimensions.
     pub fn set(&mut self, i: usize, y: f64, d: &[f64], x: &[f64]) {
         assert!(i < self.capacity, "niche index out of bounds");
         assert_eq!(d.len(), self.qd_dim, "descriptor length mismatch");
@@ -369,6 +434,11 @@ impl Archive {
     /// Evaluate `xs`, add to the archive, and return `(improvements, real_ys)`
     /// where `improvement = fitness - niche's previous fitness` (negative is an
     /// improvement — the objective the Diversifier's optimizer minimizes).
+    ///
+    /// # Panics
+    ///
+    /// Panics if `fitness` returns a descriptor whose length differs from the
+    /// archive's descriptor dimension.
     pub fn update(&mut self, xs: &[Vec<f64>], fitness: &mut dyn QdFitness) -> (Vec<f64>, Vec<f64>) {
         let evaluations: Vec<(f64, Vec<f64>)> = xs.iter().map(|x| fitness.eval(x)).collect();
         self.update_evaluated(xs, &evaluations)
@@ -378,6 +448,10 @@ impl Archive {
     /// Apply already evaluated `(fitness, descriptor)` values in input order.
     /// Keeping this step separate lets callers parallelize expensive objective
     /// functions without concurrently mutating the archive.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if `evaluated` does not have the same length as `xs`.
     pub fn update_evaluated(
         &mut self,
         xs: &[Vec<f64>],
@@ -410,6 +484,11 @@ impl Archive {
 
     /// Evaluate and apply a complete batch. Evaluation may be parallel inside
     /// `fitness`; archive updates are deterministic and retain input order.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if `fitness` does not return exactly one
+    /// `(fitness, descriptor)` pair per candidate.
     pub fn update_batch(
         &mut self,
         xs: &[Vec<f64>],
@@ -454,6 +533,7 @@ impl Archive {
         (self.xs[niche].clone(), self.ys[niche])
     }
 
+    /// Lowest finite quality currently stored, or infinity for an empty archive.
     pub fn best_y(&self) -> f64 {
         self.ys.iter().cloned().fold(f64::INFINITY, f64::min)
     }
@@ -486,15 +566,19 @@ impl Archive {
         }
     }
 
+    /// Per-niche quality values; empty niches contain infinity.
     pub fn ys(&self) -> &[f64] {
         &self.ys
     }
+    /// Per-niche decision vectors.
     pub fn xs(&self) -> &[Vec<f64>] {
         &self.xs
     }
+    /// Per-niche behavior descriptors.
     pub fn descriptors(&self) -> &[Vec<f64>] {
         &self.ds
     }
+    /// Number of evaluated candidates mapped to each niche.
     pub fn counts(&self) -> &[u64] {
         &self.counts
     }
@@ -611,13 +695,21 @@ pub fn iso_dd(
 /// MAP-Elites parameters.
 #[derive(Clone, Debug)]
 pub struct MapElitesParams {
+    /// Number of ordinary emitter generations.
     pub generations: usize,
+    /// Candidates requested per ordinary generation.
     pub chunk_size: usize,
+    /// Use simulated binary crossover; false selects Iso+LineDD.
     pub use_sbx: bool,
+    /// Simulated-binary-crossover distribution index.
     pub dis_c: f64,
+    /// Polynomial-mutation distribution index.
     pub dis_m: f64,
+    /// Isotropic noise standard deviation for Iso+LineDD.
     pub iso_sigma: f64,
+    /// Directional noise standard deviation for Iso+LineDD.
     pub line_sigma: f64,
+    /// Additional CMA-ES emitter generations after ordinary generations.
     pub cma_generations: usize,
 }
 
@@ -638,6 +730,12 @@ impl Default for MapElitesParams {
 
 /// Run CVT-MAP-Elites into `archive` using the SBX / Iso+LineDD emitter, with
 /// optional CMA-ES emitter generations.
+///
+/// # Panics
+///
+/// Panics if the serial adapter around `fitness` returns a batch of the wrong
+/// length, which indicates a bug in this crate rather than in caller code.
+/// Use [`map_elites_batch`] to handle batch-length mismatches as an error.
 pub fn map_elites(
     archive: &mut Archive,
     fitness: &mut dyn QdFitness,
@@ -654,6 +752,11 @@ pub fn map_elites(
 /// Batch-evaluation variant of [`map_elites`]. Candidate generation and
 /// archive updates remain deterministic; `fitness` controls evaluation
 /// parallelism.
+///
+/// # Errors
+///
+/// Returns an error if `fitness` does not return one result per requested
+/// candidate.
 pub fn map_elites_batch(
     archive: &mut Archive,
     fitness: &mut dyn QdBatchFitness,
@@ -671,6 +774,12 @@ pub fn map_elites_batch(
 /// sorted. It is intended for convergence logging and must not mutate the
 /// archive. The generation index is one-based and continues through optional
 /// CMA-emitter generations.
+///
+/// # Errors
+///
+/// Returns an error if `fitness` does not return one result per requested
+/// candidate. The archive keeps every generation committed before the
+/// failure.
 pub fn map_elites_batch_with_progress(
     archive: &mut Archive,
     fitness: &mut dyn QdBatchFitness,
@@ -754,8 +863,11 @@ fn cma_emitter_batch(
 /// Diversifier parameters.
 #[derive(Clone, Debug)]
 pub struct DiversifierParams {
+    /// Maximum number of candidate evaluations.
     pub max_evaluations: u64,
+    /// CMA-ES population size used by each emitter.
     pub popsize: i32,
+    /// Stop an emitter after this many generations without improvement.
     pub stall_criterion: i32,
 }
 
@@ -772,6 +884,12 @@ impl Default for DiversifierParams {
 /// The Diversifier meta-algorithm (CMA-ME-style): drive a CMA-ES ask/tell loop
 /// whose objective is per-niche improvement, filling the archive. Returns the
 /// best real solution found.
+///
+/// # Panics
+///
+/// Panics if the serial adapter around `fitness` returns a batch of the wrong
+/// length, which indicates a bug in this crate rather than in caller code.
+/// Use [`diversify_batch`] to handle batch-length mismatches as an error.
 pub fn diversify(
     archive: &mut Archive,
     fitness: &mut dyn QdFitness,
@@ -787,6 +905,11 @@ pub fn diversify(
 
 /// Batch-evaluation variant of [`diversify`]. CMA-ES asks and tells remain
 /// serial while each requested population can be evaluated concurrently.
+///
+/// # Errors
+///
+/// Returns an error if `fitness` does not return one result per requested
+/// candidate.
 pub fn diversify_batch(
     archive: &mut Archive,
     fitness: &mut dyn QdBatchFitness,

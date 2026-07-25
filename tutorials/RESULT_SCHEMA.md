@@ -44,6 +44,12 @@ All objective values are minimized. Constraints are feasible at values less
 than or equal to zero. A manifest may add simulator-specific metadata, but
 must not change those conventions.
 
+An independently executed comparison arm that cannot produce a feasible
+candidate is not omitted. It writes a manifest with `status: "skipped"`, a
+machine-readable `reason`, its requested protocol, `actual_evaluations: null`,
+and an empty `artifacts` object. A frozen study plan may list such arms under
+`excluded_arms`; excluded arms are never evaluated on final-test data.
+
 When one objective call expands into several simulations or model fits, the
 manifest should record both logical candidate calls and physical work. The HPO
 tutorial, for example, separates `tuning_model_fits` from
@@ -73,6 +79,9 @@ For a regular two-dimensional archive, `run.json` includes
 `qd.grid_shape = [columns, rows]`. CVT archives instead export their center
 coordinates. Invalid or infeasible simulations are represented by non-finite
 fitness while optimizing and never become archive elites.
+Validation-aware tutorials may use `selection_feasible` and `retained_niche`
+to distinguish failure of a held-out constraint from movement to a different
+behavior niche.
 
 ## Convergence data
 

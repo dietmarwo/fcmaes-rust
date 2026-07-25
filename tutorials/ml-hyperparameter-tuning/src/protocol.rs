@@ -20,12 +20,21 @@ pub struct FinalArm {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct FinalArmExclusion {
+    pub name: String,
+    pub source_run: String,
+    pub reason: String,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct FinalStudyPlan {
     pub schema_version: u32,
     pub frozen: bool,
     pub data_hashes: DatasetHashes,
     pub final_model_seeds: Vec<u64>,
     pub arms: Vec<FinalArm>,
+    #[serde(default)]
+    pub excluded_arms: Vec<FinalArmExclusion>,
 }
 
 impl FinalStudyPlan {
@@ -55,6 +64,25 @@ impl FinalStudyPlan {
         let unique_names: HashSet<&str> = self.arms.iter().map(|arm| arm.name.as_str()).collect();
         if unique_names.len() != self.arms.len() {
             return Err("final-study arm names must be unique");
+        }
+        if self.excluded_arms.iter().any(|arm| {
+            arm.name.trim().is_empty()
+                || arm.source_run.trim().is_empty()
+                || arm.reason.trim().is_empty()
+        }) {
+            return Err("every excluded arm needs a name, source run, and reason");
+        }
+        let excluded_names: HashSet<&str> = self
+            .excluded_arms
+            .iter()
+            .map(|arm| arm.name.as_str())
+            .collect();
+        if excluded_names.len() != self.excluded_arms.len()
+            || unique_names
+                .iter()
+                .any(|name| excluded_names.contains(name))
+        {
+            return Err("included and excluded final-study arm names must be unique");
         }
         Ok(())
     }
@@ -146,9 +174,15 @@ mod tests {
                     ..ForestConfig::default_config()
                 },
             }],
+            excluded_arms: Vec::new(),
         };
         assert!(finalize_study(Arc::clone(&evaluator), &plan, 1).is_err());
         plan.frozen = true;
+        plan.excluded_arms.push(FinalArmExclusion {
+            name: "infeasible-baseline".to_string(),
+            source_run: "results/baselines/default".to_string(),
+            reason: "no feasible candidate".to_string(),
+        });
         let result = finalize_study(evaluator, &plan, 1).unwrap();
         assert_eq!(result.arms.len(), 1);
         assert!(result.arms[0].test.metrics.is_some());

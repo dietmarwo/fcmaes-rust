@@ -18,7 +18,19 @@ fn opt_ints(ints: &PyReadonlyArray1<bool>) -> Option<Vec<bool>> {
     }
 }
 
-/// Stateful multi-objective / constrained MODE with an ask/tell interface.
+/// Stateful multi-objective and constrained MODE optimizer.
+///
+/// ``nobj`` is the number of minimized objectives and ``ncon`` the number of
+/// following constraint columns. Constraints are feasible when less than or
+/// equal to zero. ``ints`` optionally marks integer coordinates. Alternate
+/// :meth:`ask` and :meth:`tell`, preserving population row order.
+///
+/// Raises ``ValueError`` if ``dim`` or ``nobj`` is zero, if the bounds do not
+/// match ``dim`` or do not satisfy finite ``lower < upper``, if ``popsize`` is
+/// below four, if a probability parameter is outside its valid range, or if
+/// ``ints`` does not have one entry per decision variable. :meth:`ask` raises
+/// ``ValueError`` when a previous batch has not been told, and :meth:`tell`
+/// when no batch is pending or ``ys`` is not ``(popsize, nobj + ncon)``.
 #[allow(clippy::upper_case_acronyms)]
 #[pyclass]
 pub struct MODE {
@@ -88,6 +100,9 @@ impl MODE {
         })
     }
 
+    /// Return the next candidate population, shape ``(popsize, dim)``.
+    ///
+    /// Calling again before submitting feedback raises ``ValueError``.
     fn ask<'py>(&mut self, py: Python<'py>) -> PyResult<Bound<'py, PyArray2<f64>>> {
         Ok(rows_to_pyarray(
             py,
@@ -95,6 +110,10 @@ impl MODE {
         ))
     }
 
+    /// Update with objectives followed by constraints for the last population.
+    ///
+    /// ``ys`` must have shape ``(popsize, nobj + ncon)``. Returns the current
+    /// stop code.
     fn tell(&mut self, ys: PyReadonlyArray2<f64>) -> PyResult<i32> {
         self.inner
             .try_tell(&matrix_rows(&ys))
@@ -102,6 +121,10 @@ impl MODE {
     }
 
     #[pyo3(signature = (ys, nsga_update=true, pareto_update=0.0))]
+    /// Submit feedback while overriding the population-update strategy.
+    ///
+    /// ``nsga_update`` selects NSGA-II-style survival. ``pareto_update`` sets
+    /// the alternate Pareto-update probability for this batch.
     fn tell_switch(
         &mut self,
         ys: PyReadonlyArray2<f64>,
@@ -113,6 +136,11 @@ impl MODE {
             .map_err(PyValueError::new_err)
     }
 
+    /// Replace the optimizer population and its evaluated values.
+    ///
+    /// ``xs`` has shape ``(popsize, dim)`` and ``ys`` has shape
+    /// ``(popsize, nobj + ncon)``. This supports warm starts and checkpoint
+    /// restoration. Returns the current stop code.
     fn set_population(
         &mut self,
         xs: PyReadonlyArray2<f64>,
@@ -123,26 +151,32 @@ impl MODE {
             .map_err(PyValueError::new_err)
     }
 
+    /// Return the current decoded population, shape ``(popsize, dim)``.
     fn population<'py>(&self, py: Python<'py>) -> Bound<'py, PyArray2<f64>> {
         rows_to_pyarray(py, &self.inner.population())
     }
 
+    /// Number of decision variables.
     #[getter]
     fn dim(&self) -> usize {
         self.inner.dim()
     }
+    /// Number of minimized objective columns.
     #[getter]
     fn nobj(&self) -> usize {
         self.inner.nobj()
     }
+    /// Number of constraint columns following the objectives.
     #[getter]
     fn ncon(&self) -> usize {
         self.inner.ncon()
     }
+    /// Number of candidates in each population.
     #[getter]
     fn popsize(&self) -> usize {
         self.inner.popsize()
     }
+    /// Current termination code; zero means optimization is still active.
     #[getter]
     fn stop(&self) -> i32 {
         self.inner.stop()

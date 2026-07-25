@@ -1,0 +1,149 @@
+{
+  "actual_evaluations": 640,
+  "artifacts": {
+    "candidates": "candidates.csv",
+    "selected": "selected.json"
+  },
+  "command": "target/release/ml-hyperparameter-tuning --preset publication --mode baselines --workers 24 --seed 42 --baseline-evaluations 640 --output results/publication/descriptor-study",
+  "dataset": {
+    "bayes_reference": {
+      "error": 0.16221644716922123,
+      "error_standard_error": 0.00013179738985333883,
+      "log_loss": 0.38044589860044625,
+      "log_loss_standard_error": 0.00019444714879304209,
+      "rows": 1000000
+    },
+    "data_seed": 20260724,
+    "feature_count": 24,
+    "generator_version": 1,
+    "hashes": {
+      "selection": "dbb7c30c8d6aed1e",
+      "test": "7dc4741929f30ba8",
+      "tuning": "e7a881f21c32ce60"
+    },
+    "selection_prevalence": 0.1805,
+    "selection_rows": 4000,
+    "test_prevalence": 0.1807,
+    "test_rows": 20000,
+    "tuning_folds": 5,
+    "tuning_prevalence": 0.1805,
+    "tuning_rows": 6000
+  },
+  "descriptors": [],
+  "duplicate_configurations": 0,
+  "elapsed_seconds": 176.402269983,
+  "formulation": "baseline-lhs",
+  "model_fits": 3285,
+  "objective_protocol": {
+    "common_random_numbers": true,
+    "infeasible_fitness_base": 14.815510557964274,
+    "inner_model_workers": 1,
+    "minority_recall_floor": 0.25,
+    "parallelism_owner": "fcmaes candidate workers",
+    "probability_clip": 1e-6,
+    "qd_selection_descriptor_aggregation": "mean descriptors across independently fitted single forests",
+    "selection_quality_aggregation": "metrics of probabilities averaged across model seeds",
+    "structural_cost_limit": 2000000,
+    "tuning_model_seed": 6791476662184033089
+  },
+  "objectives": [],
+  "optimizer": {
+    "algorithm": "lhs",
+    "selection_seeds": [
+      13084405178522369146,
+      2983285000724944447,
+      14333343327963194368,
+      14927275479814530658,
+      13327879741551639386
+    ],
+    "shortlist": 20
+  },
+  "requested_evaluations": 640,
+  "schema_version": 1,
+  "seed": 42,
+  "selected": {
+    "selection": {
+      "elapsed_seconds": 10.685965324,
+      "failure": null,
+      "log_loss_sdev": 0.0038662980816720426,
+      "mean_model_bytes": 3708732.6,
+      "mean_single_forest_qd_descriptors": [
+        0.4672022458222619,
+        0.1811937372449648
+      ],
+      "mean_structural_cost": 1909.6,
+      "metrics": {
+        "brier": 0.13663719213291192,
+        "ece": 0.05519888598888898,
+        "false_negatives": 535,
+        "false_positives": 210,
+        "log_loss": 0.4344158319614608,
+        "pr_auc": 0.3866410331979983,
+        "precision": 0.47103274559193953,
+        "predicted_positive_rate": 0.09925,
+        "recall": 0.2590027700831025,
+        "roc_auc": 0.7269560437331729,
+        "sharpness": 0.1789062259045861
+      },
+      "model_fits": 5,
+      "trees_fitted": 675
+    },
+    "tuning": {
+      "config": {
+        "criterion": "Gini",
+        "feature_fraction": 0.7215743256412551,
+        "max_depth": 14,
+        "min_samples_leaf": 39,
+        "min_samples_split": 12,
+        "n_trees": 135,
+        "positive_sampling_weight": 2.338774023455874,
+        "row_sample_fraction": 0.719116506067914
+      },
+      "elapsed_seconds": 8.178981326,
+      "estimated_structural_cost": 23625,
+      "failure": null,
+      "mean_model_bytes": 3001734.4,
+      "mean_structural_cost": 1836.6,
+      "metrics": {
+        "brier": 0.13971979847782634,
+        "ece": 0.05794320720987636,
+        "false_negatives": 810,
+        "false_positives": 348,
+        "log_loss": 0.44412190414863806,
+        "pr_auc": 0.3698655826920197,
+        "precision": 0.4396135265700483,
+        "predicted_positive_rate": 0.1035,
+        "recall": 0.2520775623268698,
+        "roc_auc": 0.715280488988868,
+        "sharpness": 0.18072401677304065
+      },
+      "model_fits": 5,
+      "recall_violation": -0.0020775623268697863,
+      "scalar_fitness": 0.44412190414863806,
+      "structural_violation": -0.9881875,
+      "trees_fitted": 675,
+      "x": [
+        0.8160941224005229,
+        0.538674932894045,
+        0.8833189132047264,
+        0.5159501376879656,
+        0.5318608434465233,
+        0.6287657675216735,
+        0.7419174908799426,
+        0.15675939677119038
+      ]
+    }
+  },
+  "selection_model_fits": 95,
+  "selection_trees_fitted": 11625,
+  "software": {
+    "fcmaes-core": "0.1.2",
+    "smartcore": "0.5.3",
+    "tutorial": "0.1.0"
+  },
+  "trees_fitted": 238240,
+  "tuning_model_fits": 3190,
+  "tuning_trees_fitted": 226615,
+  "tutorial": "ml-hyperparameter-tuning",
+  "workers": 24
+}

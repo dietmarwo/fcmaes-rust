@@ -29,6 +29,19 @@ fn make_params(
 }
 
 #[allow(clippy::too_many_arguments)]
+/// Minimize a bounded scalar objective with BiteOpt.
+///
+/// ``fun(x)`` receives a decoded one-dimensional ``float64`` candidate.
+/// ``guess`` may be empty; ``lower`` and ``upper`` define the finite box.
+/// ``M`` selects the deep population count, while non-positive ``popsize`` and
+/// ``stall_criterion`` select BiteOpt defaults.
+///
+/// Returns ``(x, fun, evaluations, iterations, stop)``.
+///
+/// Raises ``ValueError`` if the bound arrays are empty, of unequal length, or
+/// do not satisfy finite ``lower < upper``, and ``TypeError`` if an array
+/// argument cannot be converted to contiguous ``float64``. Exceptions raised
+/// inside the objective callback propagate to the caller.
 #[pyfunction]
 #[pyo3(name = "optimize_bite")]
 #[pyo3(signature = (fun, guess, lower, upper, *, seed, runid=0,
@@ -77,7 +90,17 @@ pub fn optimize_bite_py<'py>(
     )
 }
 
-/// Stateful BiteOpt with a batched ask/tell interface.
+/// Stateful BiteOpt with a delayed-feedback batched ask/tell interface.
+///
+/// ``batch_size`` controls how many pending candidates may be evaluated
+/// together; it is distinct from BiteOpt's internal ``population_size``.
+/// Calls must alternate strictly between :meth:`ask` and :meth:`tell`.
+///
+/// Raises ``ValueError`` if the bound arrays do not match the decision
+/// dimension or do not satisfy finite ``lower < upper``, and ``TypeError`` if
+/// an array argument cannot be converted to contiguous ``float64``.
+/// :meth:`tell` raises ``ValueError`` if it does not receive exactly one value
+/// per row returned by the most recent :meth:`ask`.
 #[allow(clippy::upper_case_acronyms)]
 #[pyclass]
 pub struct Bite {
@@ -128,6 +151,11 @@ impl Bite {
         })
     }
 
+    /// Return up to ``popsize`` decoded candidates for external evaluation.
+    ///
+    /// The final batch may be shorter at the evaluation budget. An empty
+    /// ``(0, dim)`` array means the run has stopped. Calling twice without
+    /// :meth:`tell` raises ``RuntimeError``.
     fn ask<'py>(&mut self, py: Python<'py>) -> PyResult<Bound<'py, PyArray2<f64>>> {
         if self.inner.current_batch_size() != 0 {
             return Err(PyRuntimeError::new_err(
@@ -144,6 +172,10 @@ impl Bite {
         }
     }
 
+    /// Submit exactly one minimized value per candidate from :meth:`ask`.
+    ///
+    /// Returns the stop code. A missing ask or wrong feedback length raises an
+    /// exception.
     fn tell(&mut self, ys: PyReadonlyArray1<f64>) -> PyResult<i32> {
         let expected = self.inner.current_batch_size();
         if expected == 0 {
@@ -158,27 +190,33 @@ impl Bite {
         Ok(self.inner.tell(&values))
     }
 
+    /// Return ``(x, fun, evaluations, iterations, stop)`` for the best point.
     fn result<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, PyTuple>> {
         let r = self.inner.result_public();
         result_tuple(py, &r.x, r.y, r.evaluations, r.iterations, r.stop)
     }
 
+    /// Number of decision variables.
     #[getter]
     fn dim(&self) -> usize {
         self.inner.dim()
     }
+    /// Configured external ask/tell batch size.
     #[getter]
     fn popsize(&self) -> usize {
         self.batch_size
     }
+    /// Current internal BiteOpt population size.
     #[getter]
     fn population_size(&self) -> usize {
         self.inner.population_size()
     }
+    /// Number of candidates awaiting feedback from :meth:`tell`.
     #[getter]
     fn current_batch_size(&self) -> usize {
         self.inner.current_batch_size()
     }
+    /// Current termination code; zero means optimization is still active.
     #[getter]
     fn stop(&self) -> i32 {
         self.inner.stop_code()

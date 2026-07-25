@@ -25,6 +25,11 @@ impl MultiObjective for PyMultiObjective {
     }
 }
 
+/// Scalarized objective supplied to a weighted-retry optimizer callback.
+///
+/// Calling the object evaluates the original vector objective and combines
+/// its objective columns with this retry's sampled weights and constraint
+/// penalty. Applications do not construct this helper directly.
 #[pyclass]
 struct PyWeightedObjective {
     fun: Py<PyAny>,
@@ -35,6 +40,7 @@ struct PyWeightedObjective {
 
 #[pymethods]
 impl PyWeightedObjective {
+    /// Evaluate and scalarize the original multi-objective function at ``x``.
     fn __call__(&self, py: Python<'_>, x: PyReadonlyArray1<'_, f64>) -> f64 {
         let x = slice_or_vec(&x);
         let values = call_vector(py, &self.fun, &x, self.weights.len());
@@ -101,6 +107,28 @@ fn result_dict(py: Python<'_>, result: MoRetryResult) -> PyResult<Py<PyDict>> {
 }
 
 #[allow(clippy::too_many_arguments)]
+/// Run parallel weighted-scalarization retries for a vector objective.
+///
+/// ``fun(x)`` returns minimized objectives followed by ``ncon`` constraints;
+/// constraints are feasible at values less than or equal to zero.
+/// ``weight_lower`` and ``weight_upper`` define the sampled range for every
+/// returned column. ``optimize`` follows the callback protocol documented by
+/// :func:`minimize_retry`, but receives a callable scalarized objective.
+///
+/// ``value_limits`` optionally filters vector results component-wise.
+/// ``workers=0`` selects available parallelism, with one independently spawned
+/// NumPy PCG64DXSM stream per native worker.
+///
+/// Returns a dictionary containing the best ``x``, vector ``fun``,
+/// ``scalar_fun``, evaluation and run counts, retained ``xs``, ``ys``,
+/// ``weights``, ``scalar_ys``, and progress ``improvements``.
+///
+/// Raises ``ValueError`` if the decision or weight bounds are empty, of
+/// unequal length, or do not satisfy finite ``lower < upper``; if ``ncon``
+/// leaves no objective; if ``value_exp`` is not finite and positive; if
+/// ``value_limits`` does not match the objective width; or if ``optimize``
+/// does not return an ``(x, value, evaluations)`` triple. Exceptions raised
+/// inside ``fun`` or ``optimize`` propagate to the caller.
 #[pyfunction]
 #[pyo3(signature = (fun, optimize, lower, upper, weight_lower, weight_upper,
     ncon=0, value_exp=2.0, value_limits=None, num_retries=1024, workers=0,

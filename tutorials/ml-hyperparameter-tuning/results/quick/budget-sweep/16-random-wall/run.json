@@ -1,5 +1,5 @@
 {
-  "actual_evaluations": 35,
+  "actual_evaluations": 36,
   "artifacts": {
     "candidates": "candidates.csv",
     "selected": "selected.json"
@@ -31,9 +31,9 @@
   },
   "descriptors": [],
   "duplicate_configurations": 0,
-  "elapsed_seconds": 0.393065365,
+  "elapsed_seconds": 0.378276199,
   "formulation": "baseline-random",
-  "model_fits": 179,
+  "model_fits": 184,
   "objective_protocol": {
     "common_random_numbers": true,
     "infeasible_fitness_base": 14.815510557964274,
@@ -41,6 +41,8 @@
     "minority_recall_floor": 0.1,
     "parallelism_owner": "fcmaes candidate workers",
     "probability_clip": 1e-6,
+    "qd_selection_descriptor_aggregation": "mean descriptors across independently fitted single forests",
+    "selection_quality_aggregation": "metrics of probabilities averaged across model seeds",
     "structural_cost_limit": 2000000,
     "tuning_model_seed": 6791476662184033089
   },
@@ -52,15 +54,19 @@
     ],
     "shortlist": 4
   },
-  "requested_evaluations": 35,
+  "requested_evaluations": 36,
   "schema_version": 1,
   "seed": 42,
   "selected": {
     "selection": {
-      "elapsed_seconds": 0.027309846,
+      "elapsed_seconds": 0.02779907,
       "failure": null,
       "log_loss_sdev": 0.0,
       "mean_model_bytes": 295113.0,
+      "mean_single_forest_qd_descriptors": [
+        0.36363636363636365,
+        0.17157993664764995
+      ],
       "mean_structural_cost": 734.0,
       "metrics": {
         "brier": 0.15928186487268522,
@@ -72,7 +78,8 @@
         "precision": 0.36363636363636365,
         "predicted_positive_rate": 0.09166666666666666,
         "recall": 0.17391304347826086,
-        "roc_auc": 0.6483639623487225
+        "roc_auc": 0.6483639623487225,
+        "sharpness": 0.17157993664764995
       },
       "model_fits": 1,
       "trees_fitted": 96
@@ -88,7 +95,7 @@
         "positive_sampling_weight": 1.9854930974352711,
         "row_sample_fraction": 0.7552406711219591
       },
-      "elapsed_seconds": 0.100453988,
+      "elapsed_seconds": 0.101217175,
       "estimated_structural_cost": 6816,
       "failure": null,
       "mean_model_bytes": 244714.4,
@@ -103,7 +110,8 @@
         "precision": 0.27586206896551724,
         "predicted_positive_rate": 0.12083333333333333,
         "recall": 0.2,
-        "roc_auc": 0.710125
+        "roc_auc": 0.710125,
+        "sharpness": 0.17101991855609353
       },
       "model_fits": 5,
       "recall_violation": -0.1,
@@ -129,9 +137,9 @@
     "smartcore": "0.5.3",
     "tutorial": "0.1.0"
   },
-  "trees_fitted": 10395,
-  "tuning_model_fits": 175,
-  "tuning_trees_fitted": 10035,
+  "trees_fitted": 11290,
+  "tuning_model_fits": 180,
+  "tuning_trees_fitted": 10930,
   "tutorial": "ml-hyperparameter-tuning",
   "workers": 4
 }

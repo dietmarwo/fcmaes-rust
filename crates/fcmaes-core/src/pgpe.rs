@@ -1,46 +1,87 @@
-//! PGPE — Rust port of the C++ `pgpe.cpp`.
+//! Parameter-Exploring Policy Gradients (PGPE).
 //!
-//! Parameter-exploring Policy Gradients with an ADAM center/baseline update and
-//! symmetric ("mirrored") sampling
-//! (<http://mediatum.ub.tum.de/doc/1099128/631352.pdf>, derived from EvoJax).
-//! C++-only in the original (no pure-Python twin); parity is validated by
-//! convergence rather than against a reference distribution.
+//! PGPE searches the parameters of a sampling distribution instead of
+//! perturbing actions. This implementation combines symmetric (“mirrored”)
+//! sampling with an Adam update of the distribution center.
 //!
-//! Note: the C++ free-function driver left `popX` unpopulated, so its reported
-//! best-x read uninitialized memory. This port decodes the population every
-//! generation (as the ask/tell path did), so the best-x is always a real point.
+//! # Reference
+//!
+//! F. Sehnke, C. Osendorfer, T. Rückstieß, A. Graves, J. Peters, and
+//! J. Schmidhuber, [“Parameter-Exploring Policy
+//! Gradients”](https://doi.org/10.1016/j.neunet.2009.12.004), *Neural
+//! Networks* 23(4), 551–559 (2010).
+//!
+//! # Example
+//!
+//! ```
+//! use fcmaes_core::{Fitness, Pgpe, PgpeParams};
+//!
+//! let fit = Fitness::bounded(6, 1, &[-3.0; 6], &[3.0; 6]);
+//! let params = PgpeParams {
+//!     max_evaluations: 1_024,
+//!     seed: 19,
+//!     ..Default::default()
+//! };
+//! let mut pgpe = Pgpe::new(fit, &[1.0; 6], &[0.4; 6], &params);
+//! let result = pgpe.optimize_batch(|population| {
+//!     population
+//!         .iter()
+//!         .map(|x| x.iter().map(|v| v * v).sum())
+//!         .collect()
+//! });
+//! assert!(result.y.is_finite());
+//! ```
 
 use nalgebra::DVector;
 
 use crate::fitness::Fitness;
 use crate::rng::Rng;
 
-/// Outcome of a PGPE run (mirrors the C++ `PgpeResult`).
+/// Outcome of a PGPE run.
 #[derive(Clone, Debug)]
 pub struct PgpeResult {
+    /// Best decoded decision vector found.
     pub x: Vec<f64>,
+    /// Objective value at [`x`](Self::x).
     pub y: f64,
+    /// Number of objective evaluations charged to the run.
     pub evaluations: u64,
+    /// Number of completed distribution updates.
     pub iterations: i32,
+    /// Termination code; `1` means `stop_fitness` was reached.
     pub stop: i32,
 }
 
 /// Tunable inputs for [`Pgpe::new`].
 #[derive(Clone, Debug)]
 pub struct PgpeParams {
+    /// Population size; the implementation rounds odd values up for mirrored pairs.
     pub popsize: i32,
+    /// Maximum number of objective evaluations.
     pub max_evaluations: u64,
+    /// Stop after finding an objective value strictly below this threshold.
     pub stop_fitness: f64,
+    /// Number of updates over which the center learning rate decays.
     pub lr_decay_steps: i32,
+    /// Use rank-normalized utilities instead of raw objective differences.
     pub use_ranking: bool,
+    /// Initial Adam learning rate for the distribution center.
     pub center_learning_rate: f64,
+    /// Learning rate for the coordinate-wise standard deviations.
     pub stdev_learning_rate: f64,
+    /// Maximum relative standard-deviation change per update.
     pub stdev_max_change: f64,
+    /// Adam first-moment decay coefficient.
     pub b1: f64,
+    /// Adam second-moment decay coefficient.
     pub b2: f64,
+    /// Adam numerical-stability constant.
     pub eps: f64,
+    /// Multiplicative learning-rate decay coefficient.
     pub decay_coef: f64,
+    /// Seed for the optimizer's independent random stream.
     pub seed: u64,
+    /// Additional run identifier mixed into [`seed`](Self::seed).
     pub runid: i64,
 }
 
@@ -118,6 +159,7 @@ impl Adam {
     }
 }
 
+/// Stateful PGPE optimizer with batch and ask/tell evaluation interfaces.
 pub struct Pgpe {
     fitfun: Fitness,
     rng: Rng,
@@ -144,6 +186,9 @@ pub struct Pgpe {
 }
 
 impl Pgpe {
+    /// Create a PGPE distribution centered on `guess`.
+    ///
+    /// `input_sigma` supplies one initial standard deviation per dimension.
     pub fn new(mut fitfun: Fitness, guess: &[f64], input_sigma: &[f64], p: &PgpeParams) -> Self {
         let dim = fitfun.dim();
         fitfun.reset_evaluations();
@@ -201,12 +246,15 @@ impl Pgpe {
         }
     }
 
+    /// Number of decision variables.
     pub fn dim(&self) -> usize {
         self.dim
     }
+    /// Number of mirrored samples in each population.
     pub fn popsize(&self) -> usize {
         self.popsize
     }
+    /// Current termination code, or zero while the optimizer can continue.
     pub fn stop(&self) -> i32 {
         self.stop
     }
@@ -359,20 +407,25 @@ impl Pgpe {
 
     // ---- ask/tell interface (mirrors PgpeState::Impl) ----
 
+    /// Sample and return one decoded population.
     pub fn ask_pop(&mut self) -> Vec<Vec<f64>> {
         self.ask_pop_internal()
     }
 
+    /// Update the distribution from objective values corresponding to
+    /// [`ask_pop`](Self::ask_pop), returning the current stop code.
     pub fn tell_pop(&mut self, ys: &[f64]) -> i32 {
         let stop = self.tell(ys);
         self.external_evaluations += ys.len() as u64;
         stop
     }
 
+    /// Return the most recently sampled decoded population.
     pub fn population(&self) -> Vec<Vec<f64>> {
         self.pop_x.iter().map(|c| c.as_slice().to_vec()).collect()
     }
 
+    /// Return the current best result for an ask/tell run.
     pub fn result(&self) -> PgpeResult {
         self.make_result(self.external_evaluations)
     }

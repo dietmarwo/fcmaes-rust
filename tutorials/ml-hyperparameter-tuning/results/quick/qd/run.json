@@ -38,24 +38,24 @@
   "descriptors": [
     {
       "bounds": [
-        0.0,
-        0.5
+        0.24,
+        0.52
       ],
-      "column": "descriptor_predicted_positive_rate",
-      "label": "Predicted positive rate"
+      "column": "descriptor_precision",
+      "label": "Precision at threshold 0.5"
     },
     {
       "bounds": [
-        -3.0,
-        3.0
+        0.1,
+        0.45
       ],
-      "column": "descriptor_error_ratio",
-      "label": "log10 false-positive / false-negative ratio"
+      "column": "descriptor_sharpness",
+      "label": "Predicted-probability sharpness (standard deviation)"
     }
   ],
-  "elapsed_seconds": 1.162087074,
+  "elapsed_seconds": 0.674428489,
   "formulation": "qd",
-  "model_fits": 163,
+  "model_fits": 164,
   "objective_protocol": {
     "common_random_numbers": true,
     "infeasible_fitness_base": 14.815510557964274,
@@ -63,43 +63,46 @@
     "minority_recall_floor": 0.1,
     "parallelism_owner": "fcmaes candidate workers",
     "probability_clip": 1e-6,
+    "qd_selection_descriptor_aggregation": "mean descriptors across independently fitted single forests",
+    "selection_quality_aggregation": "metrics of probabilities averaged across model seeds",
     "structural_cost_limit": 2000000,
     "tuning_model_seed": 6791476662184033089
   },
   "qd": {
     "capacity": 16,
     "chunk_size": 8,
-    "clipped_descriptors": 0,
-    "distinct_configurations": 3,
+    "clipped_descriptors": 3,
+    "distinct_configurations": 4,
     "grid_shape": [
       4,
       4
     ],
-    "invalid_evaluations": 5,
-    "occupied": 3,
+    "invalid_evaluations": 7,
+    "occupied": 4,
+    "publication_criteria_applied": false,
     "quality_label": "Cross-validated log-loss (lower is better)",
     "quality_train_column": "quality_train",
     "quality_validation_column": "quality_validation",
-    "retained_niches": 3,
+    "retained_niches": 1,
     "selection_seeds": [
       13084405178522369146
     ]
   },
-  "qd_decision": "smoke-only: publication acceptance criteria not applied",
+  "qd_decision": "exploratory: publication acceptance criteria not applied",
   "requested_evaluations": 32,
   "schema_version": 1,
   "seed": 42,
-  "selection_model_fits": 3,
-  "selection_trees_fitted": 446,
+  "selection_model_fits": 4,
+  "selection_trees_fitted": 286,
   "software": {
     "fcmaes-core": "0.1.2",
     "smartcore": "0.5.3",
     "tutorial": "0.1.0"
   },
-  "trees_fitted": 24631,
+  "trees_fitted": 13421,
   "tuning_model_fits": 160,
-  "tuning_trees_fitted": 24185,
+  "tuning_trees_fitted": 13135,
   "tutorial": "ml-hyperparameter-tuning",
-  "validation_elapsed_seconds": 0.053940444,
+  "validation_elapsed_seconds": 0.026638539,
   "workers": 4
 }

@@ -31,7 +31,7 @@
   },
   "descriptors": [],
   "duplicate_configurations": 0,
-  "elapsed_seconds": 0.49353809,
+  "elapsed_seconds": 0.567739192,
   "formulation": "baseline-lhs",
   "model_fits": 164,
   "objective_protocol": {
@@ -41,6 +41,8 @@
     "minority_recall_floor": 0.1,
     "parallelism_owner": "fcmaes candidate workers",
     "probability_clip": 1e-6,
+    "qd_selection_descriptor_aggregation": "mean descriptors across independently fitted single forests",
+    "selection_quality_aggregation": "metrics of probabilities averaged across model seeds",
     "structural_cost_limit": 2000000,
     "tuning_model_seed": 6791476662184033089
   },
@@ -57,10 +59,14 @@
   "seed": 42,
   "selected": {
     "selection": {
-      "elapsed_seconds": 0.010938791,
+      "elapsed_seconds": 0.010489562,
       "failure": null,
       "log_loss_sdev": 0.0,
       "mean_model_bytes": 141305.0,
+      "mean_single_forest_qd_descriptors": [
+        0.4166666666666667,
+        0.15611369958032542
+      ],
       "mean_structural_cost": 401.0,
       "metrics": {
         "brier": 0.15821615534453373,
@@ -72,7 +78,8 @@
         "precision": 0.4166666666666667,
         "predicted_positive_rate": 0.1,
         "recall": 0.21739130434782608,
-        "roc_auc": 0.653966831017481
+        "roc_auc": 0.653966831017481,
+        "sharpness": 0.15611369958032542
       },
       "model_fits": 1,
       "trees_fitted": 74
@@ -88,7 +95,7 @@
         "positive_sampling_weight": 2.9246263251982456,
         "row_sample_fraction": 0.8161495372838801
       },
-      "elapsed_seconds": 0.037376807,
+      "elapsed_seconds": 0.038139581,
       "estimated_structural_cost": 740,
       "failure": null,
       "mean_model_bytes": 115943.4,
@@ -103,7 +110,8 @@
         "precision": 0.23529411764705882,
         "predicted_positive_rate": 0.07083333333333333,
         "recall": 0.1,
-        "roc_auc": 0.61775
+        "roc_auc": 0.61775,
+        "sharpness": 0.13802805088951806
       },
       "model_fits": 5,
       "recall_violation": 0.0,

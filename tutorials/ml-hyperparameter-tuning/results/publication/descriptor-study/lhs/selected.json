@@ -1,0 +1,73 @@
+{
+  "tuning": {
+    "x": [
+      0.8160941224005229,
+      0.538674932894045,
+      0.8833189132047264,
+      0.5159501376879656,
+      0.5318608434465233,
+      0.6287657675216735,
+      0.7419174908799426,
+      0.15675939677119038
+    ],
+    "config": {
+      "n_trees": 135,
+      "max_depth": 14,
+      "min_samples_leaf": 39,
+      "min_samples_split": 12,
+      "row_sample_fraction": 0.719116506067914,
+      "feature_fraction": 0.7215743256412551,
+      "positive_sampling_weight": 2.338774023455874,
+      "criterion": "Gini"
+    },
+    "metrics": {
+      "log_loss": 0.44412190414863806,
+      "brier": 0.13971979847782634,
+      "pr_auc": 0.3698655826920197,
+      "roc_auc": 0.715280488988868,
+      "ece": 0.05794320720987636,
+      "recall": 0.2520775623268698,
+      "precision": 0.4396135265700483,
+      "predicted_positive_rate": 0.1035,
+      "sharpness": 0.18072401677304065,
+      "false_positives": 348,
+      "false_negatives": 810
+    },
+    "mean_model_bytes": 3001734.4,
+    "mean_structural_cost": 1836.6,
+    "estimated_structural_cost": 23625,
+    "model_fits": 5,
+    "trees_fitted": 675,
+    "elapsed_seconds": 8.178981326,
+    "recall_violation": -0.0020775623268697863,
+    "structural_violation": -0.9881875,
+    "scalar_fitness": 0.44412190414863806,
+    "failure": null
+  },
+  "selection": {
+    "metrics": {
+      "log_loss": 0.4344158319614608,
+      "brier": 0.13663719213291192,
+      "pr_auc": 0.3866410331979983,
+      "roc_auc": 0.7269560437331729,
+      "ece": 0.05519888598888898,
+      "recall": 0.2590027700831025,
+      "precision": 0.47103274559193953,
+      "predicted_positive_rate": 0.09925,
+      "sharpness": 0.1789062259045861,
+      "false_positives": 210,
+      "false_negatives": 535
+    },
+    "mean_single_forest_qd_descriptors": [
+      0.4672022458222619,
+      0.1811937372449648
+    ],
+    "log_loss_sdev": 0.0038662980816720426,
+    "mean_model_bytes": 3708732.6,
+    "mean_structural_cost": 1909.6,
+    "model_fits": 5,
+    "trees_fitted": 675,
+    "elapsed_seconds": 10.685965324,
+    "failure": null
+  }
+}

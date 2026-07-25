@@ -54,6 +54,26 @@ fn make_params(
 }
 
 #[allow(clippy::too_many_arguments, non_snake_case)]
+/// Minimize a scalar objective with Differential Evolution.
+///
+/// ``fun(x)`` receives a one-dimensional ``float64`` NumPy array and must
+/// return a scalar to minimize. ``lower`` and ``upper`` define the finite
+/// search box; ``guess`` and ``sigma`` may be empty. Set entries of ``ints`` to
+/// true for integer coordinates. ``seed`` and ``runid`` make the run
+/// reproducible.
+///
+/// ``workers`` and ``terminate`` are accepted for compatibility; this
+/// one-shot Python-callback path currently evaluates serially because each
+/// callback reacquires the GIL.
+///
+/// Returns ``(x, fun, evaluations, iterations, stop)``. ``stop == 1`` means
+/// ``stop_fitness`` was reached.
+///
+/// Raises ``ValueError`` if the bound arrays are empty, of unequal length, or
+/// do not satisfy finite ``lower < upper``, or if ``ints`` does not have one
+/// entry per decision variable, and ``TypeError`` if an array argument cannot
+/// be converted to contiguous ``float64``. Exceptions raised inside the
+/// objective callback propagate to the caller.
 #[pyfunction]
 #[pyo3(signature = (fun, dim, lower, upper, guess, sigma, ints, *, seed, runid=0,
     max_evaluations=100000, keep=200.0, stop_fitness=f64::NEG_INFINITY, popsize=31,
@@ -120,7 +140,18 @@ pub fn optimize_de<'py>(
     )
 }
 
-/// Stateful DE with an ask/tell interface.
+/// Stateful Differential Evolution with an external ask/tell evaluator.
+///
+/// The constructor arguments match :func:`optimize_de` except that evaluation
+/// budgets and objective callbacks belong to the caller. Call :meth:`ask`,
+/// evaluate every returned row in the same order, and pass the scalar values
+/// to :meth:`tell`.
+///
+/// Raises ``ValueError`` if the bound arrays do not match the decision
+/// dimension or do not satisfy finite ``lower < upper``, and ``TypeError`` if
+/// an array argument cannot be converted to contiguous ``float64``.
+/// :meth:`tell` raises ``ValueError`` if it does not receive exactly one value
+/// per row returned by the most recent :meth:`ask`.
 #[pyclass]
 pub struct DE {
     inner: De,
@@ -176,31 +207,40 @@ impl DE {
         }
     }
 
+    /// Return the next decoded candidate population, shape ``(popsize, dim)``.
     fn ask<'py>(&mut self, py: Python<'py>) -> Bound<'py, numpy::PyArray2<f64>> {
         rows_to_pyarray(py, &self.inner.ask())
     }
 
+    /// Submit one minimized objective value per row returned by :meth:`ask`.
+    ///
+    /// Returns the optimizer stop code.
     fn tell(&mut self, ys: PyReadonlyArray1<f64>) -> i32 {
         self.inner.tell(&slice_or_vec(&ys))
     }
 
+    /// Return the current decoded population, shape ``(popsize, dim)``.
     fn population<'py>(&self, py: Python<'py>) -> Bound<'py, numpy::PyArray2<f64>> {
         rows_to_pyarray(py, &self.inner.population())
     }
 
+    /// Return ``(x, fun, evaluations, iterations, stop)`` for the best point.
     fn result<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, PyTuple>> {
         let r = self.inner.result();
         result_tuple(py, &r.x, r.y, r.evaluations, r.iterations, r.stop)
     }
 
+    /// Number of decision variables.
     #[getter]
     fn dim(&self) -> usize {
         self.inner.dim()
     }
+    /// Number of candidates in each ask/tell population.
     #[getter]
     fn popsize(&self) -> usize {
         self.inner.popsize()
     }
+    /// Current termination code; zero means no stop criterion has fired.
     #[getter]
     fn stop(&self) -> i32 {
         self.inner.stop()

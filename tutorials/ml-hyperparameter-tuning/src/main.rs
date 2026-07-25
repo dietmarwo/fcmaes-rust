@@ -12,12 +12,12 @@ use ml_hyperparameter_tuning::optimize::{
     optimize_baseline, optimize_multi, optimize_qd, optimize_scalar,
 };
 use ml_hyperparameter_tuning::protocol::{
-    FinalArm, FinalStudyPlan, finalize_study, source_manifest_hash,
+    FinalArm, FinalArmExclusion, FinalStudyPlan, finalize_study, source_manifest_hash,
 };
 use ml_hyperparameter_tuning::report::{
-    config_summary, peak_rss_kib, write_baseline_artifacts, write_benchmark_artifacts,
-    write_final_artifacts, write_multi_artifacts, write_qd_artifacts, write_scalar_artifacts,
-    write_study_plan,
+    config_summary, peak_rss_kib, revalidate_qd_artifacts, write_baseline_artifacts,
+    write_baseline_failure_artifact, write_benchmark_artifacts, write_final_artifacts,
+    write_multi_artifacts, write_qd_artifacts, write_scalar_artifacts, write_study_plan,
 };
 use ml_hyperparameter_tuning::space::default_coordinates;
 
@@ -27,6 +27,7 @@ enum RunMode {
     Scalar,
     Multi,
     Qd,
+    RevalidateQd,
     Baselines,
     BudgetSweep,
     Benchmark,
@@ -116,7 +117,7 @@ fn usage() {
          Usage: cargo run --release -- [OPTIONS]\n\
          \n\
          --preset NAME                 smoke or publication (smoke)\n\
-         --mode NAME                   evaluate, scalar, mo, qd, baselines,\n\
+         --mode NAME                   evaluate, scalar, mo, qd, revalidate-qd, baselines,\n\
                                        budget-sweep, benchmark, finalize, or all\n\
          --workers N                   Candidate-evaluation workers (preset)\n\
          --seed N                      Optimizer seed (42)\n\
@@ -182,6 +183,7 @@ fn parse_args() -> Result<Option<Args>, Box<dyn Error>> {
                     "scalar" => RunMode::Scalar,
                     "mo" | "multi" => RunMode::Multi,
                     "qd" => RunMode::Qd,
+                    "revalidate-qd" => RunMode::RevalidateQd,
                     "baselines" | "baseline" => RunMode::Baselines,
                     "budget-sweep" => RunMode::BudgetSweep,
                     "benchmark" => RunMode::Benchmark,
@@ -264,6 +266,11 @@ fn validate_args(args: &Args) -> Result<(), Box<dyn Error>> {
     }
     if args.mode == RunMode::Finalize && args.final_plan.is_none() {
         return Err("--final-plan is required in finalize mode".into());
+    }
+    if args.mode == RunMode::RevalidateQd && !args.write_output {
+        return Err(
+            "revalidate-qd rewrites QD artifacts and cannot be used with --no-output".into(),
+        );
     }
     Ok(())
 }
@@ -377,6 +384,25 @@ fn main() -> Result<(), Box<dyn Error>> {
                 write_qd_artifacts(&args.output, &dataset, &outcome, &options, &command())?;
             }
         }
+        RunMode::RevalidateQd => {
+            let options = qd_options(&args);
+            let outcome = revalidate_qd_artifacts(
+                &args.output,
+                &dataset,
+                Arc::clone(&evaluator),
+                &options,
+                &command(),
+            )?;
+            println!(
+                "QD_REVALIDATED occupied={} retained={} selection_fits={} selection_trees={} seconds={:.6}",
+                outcome.occupied,
+                outcome.retained_niches,
+                outcome.selection_model_fits,
+                outcome.selection_trees_fitted,
+                outcome.elapsed.as_secs_f64(),
+            );
+            println!("QD_DECISION {}", outcome.decision);
+        }
         RunMode::Baselines => {
             let _ = run_baselines(&args, Arc::clone(&evaluator), &dataset, &args.output)?;
         }
@@ -485,13 +511,22 @@ fn print_multi(outcome: &ml_hyperparameter_tuning::optimize::MultiOutcome) {
 }
 
 fn qd_options(args: &Args) -> QdOptions {
+    let selection_seeds = selection_seeds(args);
+    let apply_publication_criteria = args.preset == Preset::Publication
+        && args.workers == 24
+        && args.qd_evaluations == 16_384
+        && args.qd_capacity == 400
+        && args.qd_chunk_size == 256
+        && (args.min_recall - 0.25).abs() < f64::EPSILON
+        && selection_seeds.len() == 5;
     QdOptions {
         evaluations: args.qd_evaluations,
         capacity: args.qd_capacity,
         chunk_size: args.qd_chunk_size,
         workers: args.workers,
         seed: args.seed,
-        selection_seeds: selection_seeds(args),
+        selection_seeds,
+        apply_publication_criteria,
     }
 }
 
@@ -524,13 +559,19 @@ fn baseline_options(args: &Args, method: BaselineMethod, evaluations: usize) -> 
     }
 }
 
+struct BaselineStage {
+    outcomes: Vec<BaselineOutcome>,
+    excluded_arms: Vec<FinalArmExclusion>,
+}
+
 fn run_baselines(
     args: &Args,
     evaluator: Arc<Evaluator>,
     dataset: &Dataset,
     output: &Path,
-) -> Result<Vec<BaselineOutcome>, Box<dyn Error>> {
+) -> Result<BaselineStage, Box<dyn Error>> {
     let mut outcomes = Vec::new();
+    let mut excluded_arms = Vec::new();
     for method in [
         BaselineMethod::Default,
         BaselineMethod::Random,
@@ -542,7 +583,35 @@ fn run_baselines(
             args.baseline_evaluations
         };
         let options = baseline_options(args, method, evaluations);
-        let outcome = optimize_baseline(Arc::clone(&evaluator), &options)?;
+        // Arms fail independently. The single-candidate default arm is
+        // infeasible on the publication data, and aborting the whole stage for
+        // it would discard the random and Latin-hypercube arms that did
+        // succeed. A skipped arm gets both a manifest and a study-plan
+        // exclusion, rather than disappearing into terminal output.
+        let outcome = match optimize_baseline(Arc::clone(&evaluator), &options) {
+            Ok(outcome) => outcome,
+            Err(error) => {
+                let reason = error.to_string();
+                let source_run = output.join(method.name());
+                println!("BASELINE_SKIPPED method={} reason={reason}", method.name());
+                if args.write_output {
+                    write_baseline_failure_artifact(
+                        &source_run,
+                        dataset,
+                        &options,
+                        &command(),
+                        &reason,
+                        evaluator.as_ref(),
+                    )?;
+                }
+                excluded_arms.push(FinalArmExclusion {
+                    name: format!("baseline-{}", method.name()),
+                    source_run: source_run.display().to_string(),
+                    reason,
+                });
+                continue;
+            }
+        };
         println!(
             "BASELINE method={} evaluations={} tuning_fits={} selection_fits={} tuning_trees={} selection_trees={} duplicates={} seconds={:.6}",
             method.name(),
@@ -569,7 +638,13 @@ fn run_baselines(
         }
         outcomes.push(outcome);
     }
-    Ok(outcomes)
+    if outcomes.is_empty() {
+        return Err("no baseline arm produced a feasible configuration".into());
+    }
+    Ok(BaselineStage {
+        outcomes,
+        excluded_arms,
+    })
 }
 
 fn run_all(
@@ -645,7 +720,7 @@ fn run_all(
                     .expect("selected QD config"),
             )?,
         ];
-        for outcome in baselines {
+        for outcome in baselines.outcomes {
             arms.push(final_arm(
                 &format!("baseline-{}", outcome.method.name()),
                 args.output.join("baselines").join(outcome.method.name()),
@@ -666,6 +741,7 @@ fn run_all(
                 })
                 .collect(),
             arms,
+            excluded_arms: baselines.excluded_arms,
         };
         write_study_plan(&args.output.join("study-plan.json"), &plan)?;
         println!(
@@ -847,7 +923,7 @@ fn run_budget_sweep(
             "elapsed_seconds": total_elapsed,
             "software": {
                 "tutorial": env!("CARGO_PKG_VERSION"),
-                "fcmaes-core": "0.1.2",
+                "fcmaes-core": fcmaes_core::CORE_VERSION,
                 "smartcore": "0.5.3",
             },
             "objective_protocol": {

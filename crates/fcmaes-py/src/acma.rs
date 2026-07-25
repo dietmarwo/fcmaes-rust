@@ -52,6 +52,23 @@ fn make_params(
 }
 
 #[allow(clippy::too_many_arguments)]
+/// Minimize a scalar objective with active CMA-ES.
+///
+/// ``fun(x)`` receives one decoded candidate and returns a scalar to minimize.
+/// ``guess`` defines the initial center and ``sigma`` is either one shared
+/// standard deviation or one value per coordinate. Empty bounds select an
+/// unbounded search; otherwise ``lower`` and ``upper`` must match ``guess``.
+///
+/// Candidate evaluation can use ``workers`` native threads, but Python
+/// callbacks still reacquire the GIL. ``batch_fun`` and ``delayed_update`` are
+/// currently accepted for API compatibility and do not change evaluation.
+///
+/// Returns ``(x, fun, evaluations, iterations, stop)``.
+///
+/// Raises ``ValueError`` if the bound arrays are empty, of unequal length, or
+/// do not satisfy finite ``lower < upper``, and ``TypeError`` if an array
+/// argument cannot be converted to contiguous ``float64``. Exceptions raised
+/// inside the objective callback propagate to the caller.
 #[pyfunction]
 #[pyo3(signature = (fun, batch_fun, guess, lower, upper, sigma, *, seed, runid=0,
     max_evaluations=100000, stop_fitness=f64::NEG_INFINITY, stop_hist=-1.0, mu=0,
@@ -106,7 +123,17 @@ pub fn optimize_acma<'py>(
     acma_result_tuple(py, &result)
 }
 
-/// Stateful active CMA-ES with an ask/tell interface.
+/// Stateful active CMA-ES with an external ask/tell evaluator.
+///
+/// Construct the search distribution from ``guess`` and ``sigma``, then
+/// alternate :meth:`ask` with :meth:`tell` or :meth:`tell_x`. Bounds may be
+/// empty for an unbounded search.
+///
+/// Raises ``ValueError`` if the bound arrays do not match the decision
+/// dimension or do not satisfy finite ``lower < upper``, and ``TypeError`` if
+/// an array argument cannot be converted to contiguous ``float64``.
+/// :meth:`tell` raises ``ValueError`` if it does not receive exactly one value
+/// per row returned by the most recent :meth:`ask`.
 #[allow(clippy::upper_case_acronyms)]
 #[pyclass]
 pub struct ACMA {
@@ -161,15 +188,24 @@ impl ACMA {
         }
     }
 
+    /// Return the next decoded offspring population, shape ``(popsize, dim)``.
     fn ask<'py>(&mut self, py: Python<'py>) -> Bound<'py, PyArray2<f64>> {
         let pop = self.inner.ask();
         rows_to_pyarray(py, &pop)
     }
 
+    /// Update the distribution with values for the most recent :meth:`ask`.
+    ///
+    /// ``ys`` must contain one minimized scalar value per offspring. Returns
+    /// the current stop code.
     fn tell(&mut self, ys: PyReadonlyArray1<f64>) -> i32 {
         self.inner.tell(&slice_or_vec(&ys))
     }
 
+    /// Update with externally supplied candidate rows and their objective values.
+    ///
+    /// ``xs`` has shape ``(popsize, dim)`` and ``ys`` has length ``popsize``.
+    /// This supports evaluators that repair or otherwise modify candidates.
     fn tell_x(&mut self, ys: PyReadonlyArray1<f64>, xs: PyReadonlyArray2<f64>) -> i32 {
         let ys = slice_or_vec(&ys);
         let arr = xs.as_array();
@@ -177,22 +213,27 @@ impl ACMA {
         self.inner.tell_x(&ys, &rows)
     }
 
+    /// Return the current decoded offspring population.
     fn population<'py>(&self, py: Python<'py>) -> Bound<'py, PyArray2<f64>> {
         rows_to_pyarray(py, &self.inner.population())
     }
 
+    /// Return ``(x, fun, evaluations, iterations, stop)`` for the best point.
     fn result<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, PyTuple>> {
         acma_result_tuple(py, &self.inner.result())
     }
 
+    /// Number of decision variables.
     #[getter]
     fn dim(&self) -> usize {
         self.inner.dim()
     }
+    /// Number of offspring in each generation.
     #[getter]
     fn popsize(&self) -> usize {
         self.inner.popsize()
     }
+    /// Current termination code; zero means optimization is still active.
     #[getter]
     fn stop(&self) -> i32 {
         self.inner.stop()

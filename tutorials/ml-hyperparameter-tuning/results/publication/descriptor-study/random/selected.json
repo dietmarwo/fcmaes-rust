@@ -1,0 +1,73 @@
+{
+  "tuning": {
+    "x": [
+      0.8433919539251593,
+      0.44896084907862166,
+      0.34991161510559,
+      0.14057448353601343,
+      0.4649118733788524,
+      0.7684140359371047,
+      0.7881673361125341,
+      0.5281124518693571
+    ],
+    "config": {
+      "n_trees": 149,
+      "max_depth": 12,
+      "min_samples_leaf": 4,
+      "min_samples_split": 3,
+      "row_sample_fraction": 0.6789471240273115,
+      "feature_fraction": 0.8263105269528285,
+      "positive_sampling_weight": 2.574874306584958,
+      "criterion": "Entropy"
+    },
+    "metrics": {
+      "log_loss": 0.45091514046758685,
+      "brier": 0.14309743555095025,
+      "pr_auc": 0.3598268470685513,
+      "roc_auc": 0.7078794226073409,
+      "ece": 0.07198322147650979,
+      "recall": 0.27793167128347185,
+      "precision": 0.4356005788712012,
+      "predicted_positive_rate": 0.11516666666666667,
+      "sharpness": 0.1767404194233568,
+      "false_positives": 390,
+      "false_negatives": 782
+    },
+    "mean_model_bytes": 8095665.6,
+    "mean_structural_cost": 1937.0,
+    "estimated_structural_cost": 242572,
+    "model_fits": 5,
+    "trees_fitted": 745,
+    "elapsed_seconds": 21.465606602,
+    "recall_violation": -0.02793167128347185,
+    "structural_violation": -0.878714,
+    "scalar_fitness": 0.45091514046758685,
+    "failure": null
+  },
+  "selection": {
+    "metrics": {
+      "log_loss": 0.43930373327662064,
+      "brier": 0.13898412861476073,
+      "pr_auc": 0.37550835927608694,
+      "roc_auc": 0.7257296608465063,
+      "ece": 0.06223657768120798,
+      "recall": 0.29778393351800553,
+      "precision": 0.46336206896551724,
+      "predicted_positive_rate": 0.116,
+      "sharpness": 0.1796398216451773,
+      "false_positives": 249,
+      "false_negatives": 507
+    },
+    "mean_single_forest_qd_descriptors": [
+      0.45806918349300385,
+      0.1818399243945185
+    ],
+    "log_loss_sdev": 0.0033653090665955675,
+    "mean_model_bytes": 9223657.4,
+    "mean_structural_cost": 1937.0,
+    "model_fits": 5,
+    "trees_fitted": 745,
+    "elapsed_seconds": 19.333270092,
+    "failure": null
+  }
+}

@@ -71,13 +71,51 @@ Run `git diff --check` before handing off changes.
 ## Generate rustdoc
 
 ```bash
+RUSTDOCFLAGS="-D warnings" cargo doc -p fcmaes-core --no-deps
 cargo doc --workspace --no-deps
 ```
 
-Add rustdoc comments to public types and methods when extending the API. Use
-intra-doc links such as ``[`De::optimize`]`` where the target is in the same
-crate. Keep this directory focused on workflows and architecture rather than
+`fcmaes-core` denies missing public documentation and broken intra-doc links.
+Add rustdoc comments to every public module, type, field, constant, function,
+and method when extending the API. Public solver modules should include a
+runnable example and cite the primary algorithm literature. Use intra-doc
+links such as ``[`De::optimize`]`` where the target is in the same crate.
+Keep this directory focused on workflows and architecture rather than
 duplicating every generated signature.
+
+Rust nightly's coverage display (or the equivalent bootstrap command used for
+local auditing) reports the exact documented-item ratio:
+
+```bash
+RUSTC_BOOTSTRAP=1 cargo rustdoc -p fcmaes-core --lib -- \
+  -Z unstable-options --show-coverage
+```
+
+The 0.1.3 release reports 399/399 public items documented. The compile-time
+lint and CI documentation build prevent that count from silently regressing.
+
+## Build the documentation site
+
+Install the pinned mdBook release once:
+
+```bash
+cargo install mdbook --no-default-features --features search \
+  --version "^0.5.4" --locked
+```
+
+Then assemble and build the site from the canonical repository content:
+
+```bash
+python scripts/build_book.py
+```
+
+This writes staged input to `target/mdbook-src` and rendered HTML to
+`target/book`. The `book/SUMMARY.md` file controls navigation. Do not edit the
+staged files; change the corresponding README, guide, tutorial, or benchmark
+instead. The documentation workflow checks the build on pull requests and
+deploys `main` through GitHub Pages. Repository administrators need to select
+**GitHub Actions** once under **Settings → Pages → Build and deployment →
+Source**.
 
 ## Testing strategy
 

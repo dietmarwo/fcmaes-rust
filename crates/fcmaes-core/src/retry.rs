@@ -1,10 +1,44 @@
 //! Parallel optimization restart coordinators.
 //!
-//! This is the native coordination core of the former `retry.py` and
-//! `advretry.py` implementations. A caller supplies one objective and a
-//! restart closure; the coordinator owns scheduling, independently spawned
-//! worker random streams, result retention, early stopping, and advanced
-//! crossover.
+//! A caller supplies one objective and a restart closure; the coordinator owns
+//! scheduling, independently spawned worker random streams, bounded result
+//! retention, early stopping, and—under [`advanced_retry`]—adaptive budgets,
+//! bounds, and crossover.
+//!
+//! # Example
+//!
+//! ```
+//! use fcmaes_core::{
+//!     retry, De, DeParams, Fitness, RetryBounds, RetryConfig, RetryRunResult,
+//! };
+//!
+//! let objective = |x: &[f64]| x.iter().map(|v| v * v).sum::<f64>();
+//! let bounds = RetryBounds::new(vec![-5.0; 2], vec![5.0; 2]).unwrap();
+//! let config = RetryConfig {
+//!     num_retries: 4,
+//!     workers: 1,
+//!     max_evaluations: 200,
+//!     seed: 42,
+//!     ..Default::default()
+//! };
+//! let result = retry(&objective, &bounds, &config, |obj, context| {
+//!     let fit = Fitness::bounded(
+//!         context.bounds.dim(),
+//!         1,
+//!         context.bounds.lower(),
+//!         context.bounds.upper(),
+//!     );
+//!     let params = DeParams {
+//!         max_evaluations: context.max_evaluations,
+//!         seed: context.seed,
+//!         ..Default::default()
+//!     };
+//!     let mut de = De::new(fit, &[], &[], None, &params);
+//!     let run = de.optimize(obj);
+//!     RetryRunResult { x: run.x, y: run.y, evaluations: run.evaluations }
+//! });
+//! assert!(result.success);
+//! ```
 
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering as AtomicOrdering};
 use std::sync::{Arc, Mutex, MutexGuard};
@@ -24,6 +58,11 @@ pub struct RetryBounds {
 impl RetryBounds {
     /// Construct bounds, rejecting empty, mismatched, non-finite, or reversed
     /// intervals.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the slices are empty or of unequal length, or if
+    /// any pair is non-finite or does not satisfy `lower < upper`.
     pub fn new(lower: Vec<f64>, upper: Vec<f64>) -> Result<Self, &'static str> {
         if lower.is_empty() || lower.len() != upper.len() {
             return Err("bounds must be non-empty and have equal lengths");
@@ -42,16 +81,19 @@ impl RetryBounds {
     }
 
     #[inline]
+    /// Number of bounded decision variables.
     pub fn dim(&self) -> usize {
         self.lower.len()
     }
 
     #[inline]
+    /// Lower bounds shared by every retry.
     pub fn lower(&self) -> &[f64] {
         &self.lower
     }
 
     #[inline]
+    /// Upper bounds shared by every retry.
     pub fn upper(&self) -> &[f64] {
         &self.upper
     }
@@ -60,29 +102,41 @@ impl RetryBounds {
 /// Inputs for one independent optimizer run.
 #[derive(Clone, Debug)]
 pub struct RetryContext {
+    /// Zero-based retry identifier.
     pub run_id: usize,
+    /// Independent seed assigned from the worker's persistent stream.
     pub seed: u64,
+    /// Bounds selected for this retry.
     pub bounds: RetryBounds,
+    /// Optional initial point, including coordinated crossover points.
     pub guess: Option<Vec<f64>>,
+    /// Suggested initial per-coordinate search deviations.
     pub sdev: Vec<f64>,
+    /// Evaluation budget assigned to this retry.
     pub max_evaluations: u64,
     /// A crossover result is retained only when it improves this parent.
     pub value_limit: f64,
+    /// Whether this context was produced by coordinated crossover.
     pub crossover: bool,
 }
 
 /// Result returned by a caller-provided restart optimizer.
 #[derive(Clone, Debug, PartialEq)]
 pub struct RetryRunResult {
+    /// Best decoded decision vector from the retry.
     pub x: Vec<f64>,
+    /// Objective value at [`x`](Self::x).
     pub y: f64,
+    /// Number of objective evaluations consumed by the retry.
     pub evaluations: u64,
 }
 
 /// One retained retry result.
 #[derive(Clone, Debug, PartialEq)]
 pub struct RetryEntry {
+    /// Retained decoded decision vector.
     pub x: Vec<f64>,
+    /// Objective value at [`x`](Self::x).
     pub y: f64,
 }
 
@@ -90,35 +144,51 @@ pub struct RetryEntry {
 /// retained objective value.
 #[derive(Clone, Debug, PartialEq)]
 pub struct RetryImprovement {
+    /// Wall time since the coordinator started.
     pub elapsed_seconds: f64,
+    /// Cumulative evaluations reported by completed retries.
     pub evaluations: u64,
+    /// New best objective value.
     pub value: f64,
 }
 
 /// Final output common to basic and coordinated retry.
 #[derive(Clone, Debug)]
 pub struct RetryResult {
+    /// Best retained decoded decision vector.
     pub x: Vec<f64>,
+    /// Objective value at [`x`](Self::x).
     pub y: f64,
+    /// Total objective evaluations reported by completed retries.
     pub evaluations: u64,
+    /// Number of completed retries.
     pub runs: usize,
+    /// Whether at least one valid result was retained.
     pub success: bool,
+    /// Bounded set of retained results, ordered by objective value.
     pub entries: Vec<RetryEntry>,
+    /// Optional best-so-far progress samples.
     pub improvements: Vec<RetryImprovement>,
 }
 
-/// Configuration corresponding to the scheduling and store controls in
-/// `retry.py`.
+/// Scheduling, budget, stopping, and retention controls for [`retry`].
 #[derive(Clone, Debug)]
 pub struct RetryConfig {
+    /// Maximum number of independent optimizer runs.
     pub num_retries: usize,
     /// `0` uses all available CPUs.
     pub workers: usize,
+    /// Maximum number of results retained in memory.
     pub capacity: usize,
+    /// Discard completed runs whose objective value is not below this limit.
     pub value_limit: f64,
+    /// Stop scheduling work after reaching this objective value.
     pub stop_fitness: f64,
+    /// Evaluation budget assigned to each basic retry.
     pub max_evaluations: u64,
+    /// Root seed from which independent worker streams are spawned.
     pub seed: u64,
+    /// Maximum number of best-so-far progress samples; zero disables them.
     pub statistic_num: usize,
 }
 
@@ -137,13 +207,18 @@ impl Default for RetryConfig {
     }
 }
 
-/// Additional controls corresponding to `advretry.py`.
+/// Additional controls for coordinated [`advanced_retry`].
 #[derive(Clone, Debug)]
 pub struct AdvancedRetryConfig {
+    /// Shared scheduling, stopping, and retention controls.
     pub retry: RetryConfig,
+    /// Completed runs between diversity and adaptation checkpoints.
     pub check_interval: usize,
+    /// Maximum multiplier applied to the initial per-retry evaluation budget.
     pub max_eval_fac: f64,
+    /// Probability that a retry starts from crossover of retained solutions.
     pub crossover_probability: f64,
+    /// Minimum normalized spacing used while retaining a diverse result set.
     pub diversity_threshold: f64,
 }
 

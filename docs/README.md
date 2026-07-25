@@ -4,6 +4,12 @@ This directory documents the standalone Rust implementation. Generated API
 documentation comes from the Rust sources; these guides focus on architecture,
 configuration, workflows, and runnable examples.
 
+Read the guides as a navigable
+[mdBook site](https://dietmarwo.github.io/fcmaes-rust/), or browse the same
+canonical Markdown files in the repository. Exact public signatures, runnable
+API examples, and primary algorithm references are in the
+[`fcmaes-core` API reference](https://docs.rs/fcmaes-core).
+
 ## Documentation map
 
 | Document | Read this for |
@@ -52,6 +58,14 @@ cargo test --workspace
 cargo build --release --workspace
 cargo doc --workspace --no-deps
 ```
+
+To build the guide and tutorial site locally after installing mdBook 0.5.4:
+
+```bash
+python scripts/build_book.py
+```
+
+The assembled source and output are written below `target/`.
 
 Run a small native GTOP workload:
 

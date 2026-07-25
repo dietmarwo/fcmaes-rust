@@ -20,7 +20,7 @@ gradient-free optimization:
 | [Voltage control](rustpower-voltage-control/) | RustPower | mixed-integer controls, contingencies and power-flow failures | constrained MODE + MAP-Elites | MODE primary, QD secondary |
 | [Atmospheric source localization](dispersion-source-localization/) | ISC-3-derived native model | inverse inference, censoring, model mismatch, and non-identifiability | BiteOpt advanced retry + MODE + MAP-Elites | accepted |
 | [Room ventilation](cfd-room-ventilation/) | Custom D2Q9/D2Q5 Rust backend | variable geometry, numerical constraints, worst-case releases, and resolution sensitivity | BiteOpt retry + MODE + MAP-Elites | accepted |
-| [ML hyperparameter optimization](ml-hyperparameter-tuning/) | SmartCore decision trees | mixed variables, nested stochastic fitting, validation overfitting, and probability quality | BiteOpt retry + constrained MODE + MAP-Elites pilot | smoke pilot only; publication decision pending |
+| [ML hyperparameter optimization](ml-hyperparameter-tuning/) | SmartCore decision trees | mixed variables, nested stochastic fitting, validation overfitting, and probability quality | BiteOpt retry + constrained MODE + MAP-Elites | rejected: coverage and diversity pass, niche retention fails |
 | [Neural controller policy search](neural-controller-policy-search/) | Native stochastic cart-pole model | 118-dimensional fixed-topology policy, randomized rollouts, and validation variance | PGPE + CR-FM-NES + active CMA-ES/BiteOpt comparison | omitted: one robust controller is the deliverable |
 
 Each directory is a standalone Cargo workspace. This keeps large,
@@ -90,9 +90,14 @@ MODE and MAP-Elites answer different questions:
 MAP-Elites is useful only when its descriptors express diversity that a user
 would actually choose between. It is not a generic replacement for MODE, and
 objective values should not be relabeled as descriptors without a reason.
-The RustPower tutorial is the worked example: its first descriptor pair was a
-pair of decision variables and reached 4% coverage, while emergent behavior
-coordinates on the identical budget reached 68%. See the
+Two tutorials record the failure modes with measurements. RustPower's first
+descriptor pair were decision variables and reached 4% coverage, while emergent
+behavior coordinates on the identical budget reached 68%. The ML tutorial shows
+that emergent is not sufficient: its first pair were both emergent yet mutually
+redundant (rank correlation +0.9997). On the same 271 feasible range-study
+candidates and 20×20 grid, the original pair occupied 16 cells while the
+replacement occupied 91. Descriptors must be jointly reachable and individually
+reproducible. See the
 [CVT-MAP-Elites and Diversifier guide](../docs/optimizers.md#cvt-map-elites-and-diversifier)
 for the batch APIs, the [result schema](RESULT_SCHEMA.md), and the
 [Python plotting package](python/) for reproducible figures.
@@ -127,7 +132,12 @@ budgets, output files, limitations and validation strategy.
 - If performance worsens as workers increase, check for a nested simulator
   thread pool. NeXosim and Brahe make the two ownership choices explicit.
 - If stochastic elites move between niches on validation, increase replication
-  count and show both training and holdout maps; do not hide the migration.
+  count and show both training and holdout maps; do not hide the migration. If
+  migration stays high at every grid resolution, the descriptor itself is the
+  high-variance part. The ML tutorial measures this directly: its
+  threshold-derived precision axis moves a median 1.74 cells between tuning and
+  selection while its distributional sharpness axis moves 0.23, so retention
+  fails at 20x20 and still fails at 4x4.
 - Run `cargo test` and `cargo clippy --all-targets -- -D warnings` inside a
   standalone tutorial directory. The root workspace deliberately excludes
   these simulator-heavy crates.
@@ -462,15 +472,31 @@ Three formulations answer different questions:
   selected configuration;
 - constrained MODE exposes probability quality, ranking quality, serialized
   model size, and a structural prediction-work proxy; and
-- a MAP-Elites pilot explores alternatives by predicted-positive rate and the
-  false-positive/false-negative balance.
+- MAP-Elites explores alternatives by precision at threshold 0.5 and
+  predicted-probability sharpness.
+
+The descriptor pair is itself a recorded lesson, and a different one from the
+RustPower case. Both of the originally proposed axes — predicted-positive rate
+and the log false-positive/false-negative ratio — are emergent model behavior,
+so neither repeats the decision-variable mistake. They still failed, because
+with the threshold fixed at 0.5 they are a monotone function of each other
+  (rank correlation +0.999715 over 271 feasible recorded candidates) and the
+  reachable region is a narrow ribbon inside a two-dimensional grid. The raw
+  range-study candidates and deterministic summary are checked in. Two
+  emergent descriptors can still be the same axis twice; check that a pair is
+  *jointly reachable* before spending a campaign on it.
 
 The checked-in quick run is a functional smoke study, not publication
 evidence. It exercises the complete protocol, baselines, budget sweep,
 isolated prediction-latency benchmark, finalization guard, and deterministic
-figures. The documented publication profile raises data and optimization
-budgets and requires three independent outer seeds before the QD formulation
-can be accepted.
+figures. The QD formulation was then run at the publication profile over three
+independent outer seeds and **rejected**: coverage (49.0%) and configuration
+  diversity (196) pass their pre-registered thresholds comfortably, but niche
+  retention (6.8%) fails the 50% requirement because precision does not
+  reproduce between fixed-fold tuning and the disjoint selection set. The
+  saved elites were revalidated after correcting a validation-only aggregation
+  defect so both sides describe single-forest behavior; the training archives
+  and optimizer budgets are unchanged, and every manifest records that scope.
 
 ```bash
 cd tutorials/ml-hyperparameter-tuning

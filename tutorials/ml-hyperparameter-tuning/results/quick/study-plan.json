@@ -13,7 +13,7 @@
     {
       "name": "fcmaes-scalar",
       "source_run": "results/quick/scalar",
-      "source_manifest_hash": "18297088329f9d2b",
+      "source_manifest_hash": "48e376e9076e8c48",
       "config": {
         "n_trees": 236,
         "max_depth": 24,
@@ -28,7 +28,7 @@
     {
       "name": "fcmaes-mode-representative",
       "source_run": "results/quick/mo",
-      "source_manifest_hash": "2cc426d0f36de2ab",
+      "source_manifest_hash": "22c2006892318d8d",
       "config": {
         "n_trees": 58,
         "max_depth": 15,
@@ -43,22 +43,22 @@
     {
       "name": "fcmaes-qd-representative",
       "source_run": "results/quick/qd",
-      "source_manifest_hash": "4f61d5b15131ae16",
+      "source_manifest_hash": "5ffd5f98699ce7fd",
       "config": {
-        "n_trees": 256,
-        "max_depth": 20,
-        "min_samples_leaf": 24,
-        "min_samples_split": 19,
-        "row_sample_fraction": 0.6318093581188079,
-        "feature_fraction": 0.7801130057609001,
-        "positive_sampling_weight": 3.4197041297957003,
+        "n_trees": 84,
+        "max_depth": 16,
+        "min_samples_leaf": 10,
+        "min_samples_split": 2,
+        "row_sample_fraction": 0.9101392250639679,
+        "feature_fraction": 0.5328749053685149,
+        "positive_sampling_weight": 3.1028437265355384,
         "criterion": "Entropy"
       }
     },
     {
       "name": "baseline-default",
       "source_run": "results/quick/baselines/default",
-      "source_manifest_hash": "b75642d55c4fdd83",
+      "source_manifest_hash": "1c2c0009397cb8fa",
       "config": {
         "n_trees": 64,
         "max_depth": 12,
@@ -73,7 +73,7 @@
     {
       "name": "baseline-random",
       "source_run": "results/quick/baselines/random",
-      "source_manifest_hash": "5dacf792ff3789c7",
+      "source_manifest_hash": "02e431cf793c6e86",
       "config": {
         "n_trees": 58,
         "max_depth": 7,
@@ -88,7 +88,7 @@
     {
       "name": "baseline-lhs",
       "source_run": "results/quick/baselines/lhs",
-      "source_manifest_hash": "d8a498b164ba4729",
+      "source_manifest_hash": "814ae509b4cefceb",
       "config": {
         "n_trees": 74,
         "max_depth": 20,
@@ -100,5 +100,6 @@
         "criterion": "Entropy"
       }
     }
-  ]
+  ],
+  "excluded_arms": []
 }

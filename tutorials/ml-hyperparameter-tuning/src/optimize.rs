@@ -16,8 +16,14 @@ use crate::space::{DIMENSION, ForestConfig, LOWER_BOUNDS, UPPER_BOUNDS, default_
 
 const OBJECTIVES: usize = 4;
 const CONSTRAINTS: usize = 2;
-pub const QD_DESCRIPTOR_LOWER: [f64; 2] = [0.0, -3.0];
-pub const QD_DESCRIPTOR_UPPER: [f64; 2] = [0.5, 3.0];
+/// Behavior-space bounds for `[precision, sharpness]`, frozen from a recorded
+/// range pilot rather than guessed: 1,280 uniform-random and Latin-hypercube
+/// publication candidates produced 271 feasible designs spanning precision
+/// 0.2654–0.4648 and sharpness 0.1210–0.3987. The frozen rectangle adds a
+/// small margin so MAP-Elites can push past the randomly sampled extremes
+/// without most of either axis being structurally unreachable.
+pub const QD_DESCRIPTOR_LOWER: [f64; 2] = [0.24, 0.10];
+pub const QD_DESCRIPTOR_UPPER: [f64; 2] = [0.52, 0.45];
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct SelectedCandidate {
@@ -592,6 +598,10 @@ pub struct QdOptions {
     pub workers: usize,
     pub seed: u64,
     pub selection_seeds: Vec<u64>,
+    /// Apply the frozen publication acceptance criteria. Callers must set this
+    /// only for the exact pre-registered publication protocol; archive capacity
+    /// alone is not evidence level.
+    pub apply_publication_criteria: bool,
 }
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize)]
@@ -825,16 +835,13 @@ pub fn optimize_qd(
             archive.descriptors()[niche_id][0],
             archive.descriptors()[niche_id][1],
         ];
-        let descriptors_selection = selection.metrics.map_or([f64::NAN; 2], |metrics| {
-            [
-                metrics.predicted_positive_rate,
-                metrics.error_ratio_descriptor(),
-            ]
-        });
+        let descriptors_selection = selection
+            .mean_single_forest_qd_descriptors
+            .unwrap_or([f64::NAN; 2]);
         let retained_niche = selection
             .metrics
             .is_some_and(|metrics| metrics.recall >= evaluator.min_recall)
-            && niche_index(descriptors_selection, side) == Some(niche_id);
+            && qd_niche_index(descriptors_selection, side) == Some(niche_id);
         elites.push(QdPoint {
             niche_id,
             grid_x: niche_id % side,
@@ -881,13 +888,12 @@ pub fn optimize_qd(
     let retained_niches = elites.iter().filter(|point| point.retained_niche).count();
     let coverage = archive.occupied() as f64 / archive.capacity() as f64;
     let retention = retained_niches as f64 / archive.occupied().max(1) as f64;
-    let decision = if options.capacity < 400 {
-        "smoke-only: publication acceptance criteria not applied".to_string()
-    } else if coverage >= 0.4 && distinct_configurations >= 50 && retention >= 0.5 {
-        "accepted: coverage, configuration diversity, and niche retention passed".to_string()
-    } else {
-        "rejected: at least one pre-registered QD criterion failed".to_string()
-    };
+    let decision = qd_decision(
+        options.apply_publication_criteria,
+        coverage,
+        distinct_configurations,
+        retention,
+    );
     Ok(QdOutcome {
         representative,
         evaluations: actual_evaluations,
@@ -913,11 +919,26 @@ pub fn optimize_qd(
     })
 }
 
+pub fn qd_decision(
+    apply_publication_criteria: bool,
+    coverage: f64,
+    distinct_configurations: usize,
+    retention: f64,
+) -> String {
+    if !apply_publication_criteria {
+        "exploratory: publication acceptance criteria not applied".to_string()
+    } else if coverage >= 0.4 && distinct_configurations >= 50 && retention >= 0.5 {
+        "accepted: coverage, configuration diversity, and niche retention passed".to_string()
+    } else {
+        "rejected: at least one pre-registered QD criterion failed".to_string()
+    }
+}
+
 fn point_key(values: &[f64]) -> Vec<u64> {
     values.iter().map(|value| value.to_bits()).collect()
 }
 
-fn niche_index(descriptors: [f64; 2], side: usize) -> Option<usize> {
+pub fn qd_niche_index(descriptors: [f64; 2], side: usize) -> Option<usize> {
     if descriptors.iter().any(|value| !value.is_finite())
         || descriptors[0] < QD_DESCRIPTOR_LOWER[0]
         || descriptors[0] > QD_DESCRIPTOR_UPPER[0]
@@ -947,6 +968,7 @@ pub fn configurations_by_key(evaluations: &[CandidateEvaluation]) -> HashMap<Str
 mod tests {
     use super::*;
     use crate::data::{DataConfig, Dataset, Preset};
+    use crate::metrics::Metrics;
 
     fn evaluator() -> Arc<Evaluator> {
         Arc::new(Evaluator::new(
@@ -1026,19 +1048,53 @@ mod tests {
                 workers: 2,
                 seed: 42,
                 selection_seeds: vec![101],
+                apply_publication_criteria: false,
             },
         )
         .unwrap();
         assert_eq!(result.evaluations, 8);
         assert_eq!(result.model_fits, 8 * 5);
         assert_eq!(result.selection_model_fits, result.occupied);
+        assert!(result.decision.starts_with("exploratory:"));
     }
 
     #[test]
     fn qd_niche_mapping_checks_bounds() {
-        assert_eq!(niche_index([0.0, -3.0], 20), Some(0));
-        assert_eq!(niche_index([0.5, 3.0], 20), Some(399));
-        assert_eq!(niche_index([0.6, 0.0], 20), None);
+        assert_eq!(qd_niche_index(QD_DESCRIPTOR_LOWER, 20), Some(0));
+        assert_eq!(qd_niche_index(QD_DESCRIPTOR_UPPER, 20), Some(399));
+        assert_eq!(
+            qd_niche_index([QD_DESCRIPTOR_UPPER[0] + 0.01, QD_DESCRIPTOR_LOWER[1]], 20),
+            None
+        );
+        assert_eq!(
+            qd_niche_index([QD_DESCRIPTOR_LOWER[0] - 0.01, QD_DESCRIPTOR_LOWER[1]], 20),
+            None
+        );
+    }
+
+    #[test]
+    fn qd_publication_decision_requires_an_explicit_protocol_flag() {
+        assert!(qd_decision(false, 0.8, 200, 0.8).starts_with("exploratory:"));
+        assert!(qd_decision(true, 0.8, 200, 0.8).starts_with("accepted:"));
+        assert!(qd_decision(true, 0.8, 200, 0.1).starts_with("rejected:"));
+    }
+
+    /// The rejected descriptor pair collapsed onto a ribbon because both axes
+    /// moved together. Guard the replacement against silently regressing to a
+    /// confusion-count axis.
+    #[test]
+    fn qd_descriptors_are_precision_and_sharpness() {
+        let metrics = Metrics::calculate(&[0, 0, 1, 1], &[0.2, 0.4, 0.6, 0.9]).unwrap();
+        assert_eq!(
+            metrics.qd_descriptors(),
+            [metrics.precision, metrics.sharpness]
+        );
+        // A hedging forest and a decisive one can share an operating point yet
+        // must land in different sharpness niches.
+        let hedging = Metrics::calculate(&[0, 0, 1, 1], &[0.45, 0.48, 0.52, 0.55]).unwrap();
+        let decisive = Metrics::calculate(&[0, 0, 1, 1], &[0.02, 0.10, 0.90, 0.98]).unwrap();
+        assert_eq!(hedging.precision, decisive.precision);
+        assert!(decisive.sharpness > hedging.sharpness * 5.0);
     }
 
     #[test]

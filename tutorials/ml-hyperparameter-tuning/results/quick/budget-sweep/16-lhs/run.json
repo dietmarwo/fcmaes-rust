@@ -31,7 +31,7 @@
   },
   "descriptors": [],
   "duplicate_configurations": 0,
-  "elapsed_seconds": 0.253975765,
+  "elapsed_seconds": 0.252324545,
   "formulation": "baseline-lhs",
   "model_fits": 84,
   "objective_protocol": {
@@ -41,6 +41,8 @@
     "minority_recall_floor": 0.1,
     "parallelism_owner": "fcmaes candidate workers",
     "probability_clip": 1e-6,
+    "qd_selection_descriptor_aggregation": "mean descriptors across independently fitted single forests",
+    "selection_quality_aggregation": "metrics of probabilities averaged across model seeds",
     "structural_cost_limit": 2000000,
     "tuning_model_seed": 6791476662184033089
   },
@@ -57,10 +59,14 @@
   "seed": 42,
   "selected": {
     "selection": {
-      "elapsed_seconds": 0.002147781,
+      "elapsed_seconds": 0.001699647,
       "failure": null,
       "log_loss_sdev": 0.0,
       "mean_model_bytes": 20650.0,
+      "mean_single_forest_qd_descriptors": [
+        0.2857142857142857,
+        0.20453976353486336
+      ],
       "mean_structural_cost": 57.0,
       "metrics": {
         "brier": 0.1810606060606559,
@@ -72,7 +78,8 @@
         "precision": 0.2857142857142857,
         "predicted_positive_rate": 0.175,
         "recall": 0.2608695652173913,
-        "roc_auc": 0.6337965038099507
+        "roc_auc": 0.6337965038099507,
+        "sharpness": 0.20453976353486336
       },
       "model_fits": 1,
       "trees_fitted": 11
@@ -88,7 +95,7 @@
         "positive_sampling_weight": 3.390730549362489,
         "row_sample_fraction": 0.44781660042136034
       },
-      "elapsed_seconds": 0.006072602,
+      "elapsed_seconds": 0.00619166,
       "estimated_structural_cost": 99,
       "failure": null,
       "mean_model_bytes": 17341.0,
@@ -103,7 +110,8 @@
         "precision": 0.20930232558139536,
         "predicted_positive_rate": 0.17916666666666667,
         "recall": 0.225,
-        "roc_auc": 0.6269375
+        "roc_auc": 0.6269375,
+        "sharpness": 0.17720421645418385
       },
       "model_fits": 5,
       "recall_violation": -0.125,

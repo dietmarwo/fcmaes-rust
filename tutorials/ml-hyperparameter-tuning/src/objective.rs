@@ -59,19 +59,20 @@ impl CandidateEvaluation {
             return (f64::INFINITY, [f64::NAN, f64::NAN]);
         }
         let metrics = self.metrics.expect("feasible evaluation has metrics");
-        (
-            metrics.log_loss,
-            [
-                metrics.predicted_positive_rate,
-                metrics.error_ratio_descriptor(),
-            ],
-        )
+        (metrics.log_loss, metrics.qd_descriptors())
     }
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ValidationEvaluation {
     pub metrics: Option<Metrics>,
+    /// Mean QD descriptors across independently fitted single forests.
+    ///
+    /// `metrics` describes the seed-averaged probability ensemble used for
+    /// robust model selection. QD retention instead compares like with like:
+    /// tuning descriptors come from single-forest out-of-fold predictions, so
+    /// validation descriptors must not be computed from a multi-seed ensemble.
+    pub mean_single_forest_qd_descriptors: Option<[f64; 2]>,
     pub log_loss_sdev: f64,
     pub mean_model_bytes: f64,
     pub mean_structural_cost: f64,
@@ -270,6 +271,7 @@ fn evaluate_partition(
     if seeds.is_empty() {
         return ValidationEvaluation {
             metrics: None,
+            mean_single_forest_qd_descriptors: None,
             log_loss_sdev: f64::NAN,
             mean_model_bytes: f64::NAN,
             mean_structural_cost: f64::NAN,
@@ -283,6 +285,8 @@ fn evaluate_partition(
     }
     let mut probability_sum = vec![0.0; validation.len()];
     let mut log_losses = Vec::with_capacity(seeds.len());
+    let mut qd_descriptor_sum = [0.0; 2];
+    let mut qd_descriptor_count = 0usize;
     let mut total_bytes = 0usize;
     let mut total_structural = 0u64;
     let mut trees_fitted = 0usize;
@@ -298,6 +302,7 @@ fn evaluate_partition(
             Err(failure) => {
                 return ValidationEvaluation {
                     metrics: None,
+                    mean_single_forest_qd_descriptors: None,
                     log_loss_sdev: f64::NAN,
                     mean_model_bytes: f64::NAN,
                     mean_structural_cost: f64::NAN,
@@ -310,6 +315,10 @@ fn evaluate_partition(
         };
         if let Ok(metrics) = Metrics::calculate(&validation.labels, &outcome.probabilities) {
             log_losses.push(metrics.log_loss);
+            let descriptors = metrics.qd_descriptors();
+            qd_descriptor_sum[0] += descriptors[0];
+            qd_descriptor_sum[1] += descriptors[1];
+            qd_descriptor_count += 1;
         }
         for (sum, probability) in probability_sum.iter_mut().zip(outcome.probabilities) {
             *sum += probability;
@@ -322,9 +331,16 @@ fn evaluate_partition(
         *probability /= seeds.len() as f64;
     }
     let metrics = Metrics::calculate(&validation.labels, &probability_sum).ok();
+    let mean_single_forest_qd_descriptors = (qd_descriptor_count == seeds.len()).then(|| {
+        [
+            qd_descriptor_sum[0] / qd_descriptor_count as f64,
+            qd_descriptor_sum[1] / qd_descriptor_count as f64,
+        ]
+    });
     let (_, log_loss_sdev) = mean_and_sdev(&log_losses);
     ValidationEvaluation {
         metrics,
+        mean_single_forest_qd_descriptors,
         log_loss_sdev,
         mean_model_bytes: total_bytes as f64 / seeds.len() as f64,
         mean_structural_cost: total_structural as f64 / seeds.len() as f64,
@@ -366,10 +382,35 @@ mod tests {
         let dataset = Arc::new(Dataset::generate(DataConfig::for_preset(Preset::Smoke)).unwrap());
         let evaluator = Evaluator::new(dataset, 0.2, 42);
         let config = decode(&[0.2; DIMENSION]).unwrap();
-        let selection = evaluator.evaluate_selection(&config, &[101, 102]);
+        let seeds = [101, 102];
+        let selection = evaluator.evaluate_selection(&config, &seeds);
         assert!(selection.metrics.is_some());
         assert_eq!(selection.model_fits, 2);
         assert_eq!(selection.trees_fitted, 2 * config.n_trees);
+        let mut expected = [0.0; 2];
+        for seed in seeds {
+            let outcome = evaluator
+                .forest
+                .fit_predict(
+                    &config,
+                    &evaluator.dataset.tuning.features,
+                    &evaluator.dataset.tuning.labels,
+                    &evaluator.dataset.selection.features,
+                    seed,
+                )
+                .unwrap();
+            let descriptors =
+                Metrics::calculate(&evaluator.dataset.selection.labels, &outcome.probabilities)
+                    .unwrap()
+                    .qd_descriptors();
+            expected[0] += descriptors[0] / seeds.len() as f64;
+            expected[1] += descriptors[1] / seeds.len() as f64;
+        }
+        let actual = selection
+            .mean_single_forest_qd_descriptors
+            .expect("single-forest descriptors");
+        assert!((actual[0] - expected[0]).abs() < 1.0e-12);
+        assert!((actual[1] - expected[1]).abs() < 1.0e-12);
     }
 
     #[test]

@@ -9,6 +9,19 @@ use pyo3::types::PyTuple;
 use crate::common::{PyObjective, result_tuple, slice_or_vec};
 
 #[allow(clippy::too_many_arguments)]
+/// Minimize a bounded scalar objective with Dual Annealing.
+///
+/// ``fun(x)`` receives a one-dimensional decoded ``float64`` array. ``guess``,
+/// ``lower``, and ``upper`` must have the same length. Set
+/// ``use_local_search`` to enable the bounded finite-difference quasi-Newton
+/// phase after annealing steps.
+///
+/// Returns ``(x, fun, evaluations, iterations, stop)``.
+///
+/// Raises ``ValueError`` if the bound arrays are empty, of unequal length, or
+/// do not satisfy finite ``lower < upper``, and ``TypeError`` if an array
+/// argument cannot be converted to contiguous ``float64``. Exceptions raised
+/// inside the objective callback propagate to the caller.
 #[pyfunction]
 #[pyo3(name = "optimize_da")]
 #[pyo3(signature = (fun, guess, lower, upper, *, seed, runid=0,

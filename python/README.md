@@ -30,8 +30,11 @@ MODE, MAP-Elites, the Diversifier, independent retry, coordinated retry and
 weighted multi-objective retry.
 
 The functions currently return low-level NumPy arrays, tuples or dictionaries.
-See the [Python binding guide](https://github.com/dietmarwo/fcmaes-rust/blob/main/docs/python-bindings.md)
+See the [Python binding guide](https://dietmarwo.github.io/fcmaes-rust/docs/python-bindings.html)
 for signatures, examples, parallelism behavior and result layouts.
+Every exported function, stateful method, and property also provides an
+installed runtime docstring, for example `help(fcmaes_rust.optimize_de)` or
+`help(fcmaes_rust.MODE)`.
 SciPy is a runtime dependency because retry callbacks receive a public
 `scipy.optimize.Bounds` object.
 
@@ -66,7 +69,7 @@ callback-bound.
 ## Project links
 
 - [Source repository](https://github.com/dietmarwo/fcmaes-rust)
-- [Documentation](https://github.com/dietmarwo/fcmaes-rust/tree/main/docs)
+- [Documentation](https://dietmarwo.github.io/fcmaes-rust/)
 - [Issue tracker](https://github.com/dietmarwo/fcmaes-rust/issues)
 - [Release history](https://github.com/dietmarwo/fcmaes-rust/releases)
 

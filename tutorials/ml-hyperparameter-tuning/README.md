@@ -11,7 +11,7 @@ The example combines:
   [SmartCore](https://smartcorelib.org/) decision trees;
 - BiteOpt parallel retry for one selected configuration;
 - constrained MODE for predictive/deployment trade-offs;
-- a MAP-Elites pilot for behaviorally different error profiles;
+- a MAP-Elites study of behaviorally different error profiles;
 - uniform-random and Latin-hypercube baselines;
 - fixed-fold tuning, disjoint shortlist selection, and a separately invoked
   final-test stage; and
@@ -125,8 +125,16 @@ After optimization:
 2. the best `K` fixed-fold candidates form a shortlist;
 3. every shortlisted configuration is refitted on the full tuning pool with
    disjoint model seeds;
-4. those models are evaluated on the selection set; and
+4. those models are evaluated on the selection set, and their probabilities are
+   averaged for the robust selection-quality score; and
 5. the lowest selection log-loss wins, with structural work as tie-breaker.
+
+QD validation deliberately handles the same fits differently for behavior
+descriptors. Tuning behavior comes from single-forest out-of-fold predictions,
+so validation behavior is the mean of the independently fitted single-forest
+descriptors—not the descriptor of the seed-averaged probability ensemble.
+This keeps niche retention a like-for-like behavior comparison. Manifests record
+both aggregation rules, and fitted-model/tree counts include every seed.
 
 The final test set is not part of this loop. `--mode all` writes an unfrozen
 `study-plan.json`. Review all methods, budgets, constraints, and selected
@@ -182,22 +190,70 @@ candidate at a time.
 
 MODE remains present regardless of the QD result. MAP-Elites uses:
 
-- predicted-positive rate at threshold 0.5; and
-- `log10((false positives + 1) / (false negatives + 1))`
+- precision at threshold 0.5, that is where the forest sits on the
+  precision/recall trade-off; and
+- predicted-probability sharpness, the standard deviation of the predicted
+  probabilities, that is how decisive the forest is
 
 as behavior descriptors. Within a niche, lower fixed-fold log-loss is better.
+The two axes are driven by different hyperparameters — precision mainly by the
+positive-class sampling weight, sharpness by depth, leaf size and ensemble size
+— so feasible designs spread over a genuinely two-dimensional region instead of
+a curve. A hedging forest and a decisive one can share an operating point and
+still occupy different niches.
+
+Bounds are frozen from a recorded range study rather than guessed from the
+decision domain. The checked-in 1,280-candidate uniform-random/Latin-hypercube
+study produced 271 feasible designs spanning precision 0.2654–0.4648 and
+sharpness 0.1210–0.3987. The deliberately wider frozen rectangle remains
+precision 0.24–0.52 by sharpness 0.10–0.45. Raw candidates, manifests, and the
+derived summary are under
+[`results/publication/descriptor-study`](results/publication/descriptor-study).
+
 The publication archive is accepted only if:
 
 - coverage is at least 40%;
 - at least 50 distinct canonical configurations occupy its 400 cells; and
 - at least 50% of occupied cells retain their niche on selection data.
 
-The 32-evaluation smoke run occupies 3 of 16 cells. It is explicitly labeled
-“smoke-only”; publication acceptance criteria are not applied.
+These criteria are enforced in code, not by inspection. They are enabled only
+for the exact frozen protocol: publication data, 24 workers, 16,384
+evaluations, 400 cells, chunk size 256, recall floor 0.25, and five selection
+seeds. Every other configuration is labeled `exploratory`, regardless of
+archive capacity, so a smoke run cannot masquerade as publication evidence.
+
+The 32-evaluation smoke run occupies 4 of 16 cells. It is explicitly labeled
+`exploratory`; publication acceptance criteria are not applied. The frozen
+bounds are calibrated for the publication preset, so the smoke run clips 3 of
+its 32 descriptors: 240 tuning rows produce narrower sharpness than 6,000 do.
+That is expected for a pipeline check and is another reason the smoke archive
+is not evidence.
 
 ![Smoke MAP-Elites archive on the fixed-fold tuning protocol](images/quick-qd/qd-archive.svg)
 
 ![The same smoke elites evaluated on disjoint selection data](images/quick-qd/qd-archive-validation.svg)
+
+### Why the first descriptor pair was replaced
+
+The original descriptors were predicted-positive rate and
+`log10((FP + 1) / (FN + 1))`. Both are emergent model behavior, so they avoid
+the decision-variable mistake documented in the RustPower tutorial, but they
+still encode almost the same behavior.
+
+With the operating threshold fixed at 0.5, anything that makes the forest
+predict more positives raises false positives and lowers false negatives at the
+same time. The recorded study measures **rank correlation +0.999715** over 271
+feasible candidates. `error_ratio` spans [−0.4145, +0.9174], far narrower than
+the original [−3, +3] bounds. The same candidates occupy only 16/400 cells
+under those original bounds and 28/400 even when both axes are tightened to
+their observed ranges. Under the frozen precision×sharpness bounds they occupy
+91/400 cells. These are like-for-like calculations on the same candidates and
+grid size; they support ribbon geometry without comparing different algorithms,
+budgets, or rectangles.
+
+The lesson is narrower than “pick emergent descriptors”: two emergent
+descriptors can still be the same axis twice. Check that the pair is jointly
+reachable before spending a campaign on it.
 
 ## Run it
 
@@ -250,12 +306,100 @@ cargo run --release -- \
   --preset publication --mode qd --workers 24 --seed 42 \
   --qd-evaluations 16384 --qd-capacity 400 --qd-chunk-size 256 \
   --output results/publication/qd-seed-42
+
+cargo run --release -- \
+  --preset publication --mode baselines --workers 24 --seed 42 \
+  --baseline-evaluations 640 \
+  --output results/publication/descriptor-study
 ```
 
 Run publication experiments for seeds 42, 43, and 44. Do not describe the
 checked-in smoke artifacts as publication evidence.
 
+`--mode revalidate-qd` is a maintenance path for recomputing only the saved
+elites' disjoint selection columns after a validation-protocol correction. It
+verifies the dataset hashes, optimizer seed, QD budget, grid, chunk size, and
+selection seeds against `run.json`; it does not repeat or alter MAP-Elites
+training.
+
 Use `--help` for every option.
+
+## Recorded QD publication campaign
+
+The three-seed QD campaign was run at 16,384 evaluations, 400 cells and chunk
+size 256 on an AMD Ryzen 9 9950X with 24 workers. Per-seed statistics are in
+[`results/publication/qd-summary.csv`](results/publication/qd-summary.csv).
+
+| Metric | Mean | Sample standard deviation |
+|---|---:|---:|
+| Wall time | 5,175.827575 s | 1,456.029509 s |
+| Occupied niches | 196.000 | 3.606 |
+| Coverage | 49.000% | 0.901 percentage points |
+| Distinct configurations | 196.000 | 3.606 |
+| Retained niches | 13.333 | 1.528 |
+| Retention | 6.805% | 0.793 percentage points |
+| Infeasible evaluations | 2,397.667 | 57.726 |
+| Clipped descriptors | 59.667 | 28.729 |
+
+Against the pre-registered criteria:
+
+| Criterion | Required | Seed 42 | Seed 43 | Seed 44 | Verdict |
+|---|---:|---:|---:|---:|---|
+| coverage | ≥ 40% | 48.00% | 49.25% | 49.75% | **pass** |
+| distinct configurations | ≥ 50 | 192 | 197 | 199 | **pass** |
+| niche retention | ≥ 50% | 6.77% | 7.61% | 6.03% | **fail** |
+
+**The decision is therefore `QD_DECISION rejected` on all three seeds.** The
+descriptor replacement provides broad reachability—49.0% mean optimized
+coverage and 196 distinct configurations—but one criterion still fails, so the
+archive is reported as a rejected campaign rather than promoted. The acceptance
+thresholds were fixed before the run and were not adjusted afterwards.
+
+The original validation columns accidentally described a five-forest
+probability ensemble while tuning columns described single-forest behavior.
+The saved elites were therefore revalidated after correcting that
+validation-only protocol defect; MAP-Elites training, coverage, evaluation
+counts, and recorded optimizer wall times are unchanged. Each `run.json`
+records the revalidation command and scope.
+
+![Seed-42 publication MAP-Elites archive over precision and predicted-probability sharpness](images/publication-qd-seed-42/qd-archive.svg)
+
+![The same seed-42 elites re-evaluated on disjoint selection data](images/publication-qd-seed-42/qd-archive-validation.svg)
+
+### Why retention fails, and what would fix it
+
+The failure is measurable rather than mysterious. Comparing each elite's
+fixed-fold tuning descriptors against the mean single-forest descriptors on
+disjoint selection data gives 587 valid descriptor pairs among 588 elites:
+
+| Axis | Cell width | Median shift | p90 shift |
+|---|---:|---:|---:|
+| precision | 0.0140 | 0.0244 (**1.74 cells**) | 0.0449 (3.20 cells) |
+| sharpness | 0.0175 | 0.0039 (**0.23 cells**) | 0.0127 (0.73 cells) |
+
+Sharpness is stable: a typical elite lands about a quarter of a cell from where
+it was measured. Precision moves nearly two cells, so exact 20×20 niche
+retention is unlikely. Recomputing the full criterion on the same 588 elites
+gives 6.8% at 20×20, 16.8% at 10×10, 37.8% at 5×5 and 45.9% at 4×4. Coarsening
+helps substantially but still does not reach the pre-registered 50% threshold.
+The machine-readable calculations are in
+[`qd-validation-summary.csv`](results/publication/qd-validation-summary.csv)
+and
+[`qd-retention-by-grid.csv`](results/publication/qd-retention-by-grid.csv).
+
+The reason is the same one that sank the original descriptors, in a subtler
+form. Precision is derived from thresholded decisions, so it depends on the
+cases that straddle 0.5 and inherits their variance; sharpness is a
+distributional statistic over every row and does not. Choosing precision fixed
+the *reachability* defect while carrying the *stability* defect forward.
+
+The indicated next step is a pair in which **both** axes are threshold-free —
+expected calibration error and sharpness are candidates, since both are
+computed from the predicted-probability distribution rather than from a
+confusion matrix. Their rank correlation is 0.286 in the recorded range study.
+That is a hypothesis supported by the stability contrast above, not an
+optimized result, and it needs its own recorded campaign before any claim is
+made for it.
 
 ## Recorded smoke results
 
@@ -330,9 +474,13 @@ Every optimizer run follows [`../RESULT_SCHEMA.md`](../RESULT_SCHEMA.md):
 
 - `run.json` records commands, software versions, budgets, seeds, data hashes,
   constraints, tuning/selection fitted-model and tree counts, and artifacts;
-- `candidates.csv` records decoded configurations and fixed-fold metrics;
+- an infeasible baseline gets a durable `status: skipped` manifest, and the
+  generated final-study plan records it under `excluded_arms`;
+- `candidates.csv` records decoded configurations and fixed-fold metrics,
+  including both current and rejected QD descriptors;
 - `pareto.csv` contains feasible MODE points;
-- `qd_archive.csv` contains tuning and selection behavior;
+- `qd_archive.csv` contains tuning and selection behavior plus held-out
+  feasibility and niche-retention flags;
 - `convergence.csv` uses objective evaluations as its common axis; and
 - `selected.json` records the tuning and selection evidence for one chosen
   configuration.
@@ -346,7 +494,8 @@ Regenerate all checked tutorial figures from `tutorials/python`:
 ```
 
 `plot_results.py` creates the HPO-specific budget, validation, latency, and
-parallel-scaling figures. The common renderer creates Pareto, QD, and
+parallel-scaling figures and deterministically rebuilds descriptor/QD summary
+tables from raw artifacts. The common renderer creates Pareto, QD, and
 convergence figures from schema-v1 manifests.
 
 ## Tests
@@ -366,7 +515,8 @@ Tests cover:
 - log-loss, Brier, PR-AUC, ROC-AUC, ECE, recall, and confusion counts;
 - finite constraint handling and structural-cost rejection;
 - shortlist selection and LHS strata;
-- MAP-Elites niche indexing;
+- MAP-Elites niche indexing, descriptor identity, explicit evidence gating, and
+  like-for-like single-forest validation descriptors;
 - frozen-plan and data-hash finalization guards;
 - source-manifest tamper detection;
 - ordered parallel evaluation; and

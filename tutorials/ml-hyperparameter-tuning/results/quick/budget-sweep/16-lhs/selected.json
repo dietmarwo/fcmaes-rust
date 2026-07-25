@@ -29,6 +29,7 @@
       "recall": 0.225,
       "precision": 0.20930232558139536,
       "predicted_positive_rate": 0.17916666666666667,
+      "sharpness": 0.17720421645418385,
       "false_positives": 34,
       "false_negatives": 31
     },
@@ -37,7 +38,7 @@
     "estimated_structural_cost": 99,
     "model_fits": 5,
     "trees_fitted": 55,
-    "elapsed_seconds": 0.006072602,
+    "elapsed_seconds": 0.00619166,
     "recall_violation": -0.125,
     "structural_violation": -0.9999505,
     "scalar_fitness": 0.5211009459919088,
@@ -53,15 +54,20 @@
       "recall": 0.2608695652173913,
       "precision": 0.2857142857142857,
       "predicted_positive_rate": 0.175,
+      "sharpness": 0.20453976353486336,
       "false_positives": 15,
       "false_negatives": 17
     },
+    "mean_single_forest_qd_descriptors": [
+      0.2857142857142857,
+      0.20453976353486336
+    ],
     "log_loss_sdev": 0.0,
     "mean_model_bytes": 20650.0,
     "mean_structural_cost": 57.0,
     "model_fits": 1,
     "trees_fitted": 11,
-    "elapsed_seconds": 0.002147781,
+    "elapsed_seconds": 0.001699647,
     "failure": null
   }
 }

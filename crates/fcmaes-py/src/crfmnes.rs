@@ -39,6 +39,19 @@ fn make_params(
 }
 
 #[allow(clippy::too_many_arguments)]
+/// Minimize a scalar objective with CR-FM-NES.
+///
+/// ``batch_fun(xs)`` receives a ``(popsize, dim)`` ``float64`` array and must
+/// return one minimized value per row. ``guess`` is the distribution center,
+/// ``sigma`` its initial scalar scale, and optional bounds constrain decoded
+/// candidates. The batch callback is invoked with the GIL held.
+///
+/// Returns ``(x, fun, evaluations, iterations, stop)``.
+///
+/// Raises ``ValueError`` if the bound arrays are empty, of unequal length, or
+/// do not satisfy finite ``lower < upper``, and ``TypeError`` if an array
+/// argument cannot be converted to contiguous ``float64``. Exceptions raised
+/// inside the objective callback propagate to the caller.
 #[pyfunction]
 #[pyo3(signature = (batch_fun, guess, lower, upper, sigma=0.3, *, seed, runid=0,
     max_evaluations=100000, stop_fitness=f64::NEG_INFINITY, popsize=32,
@@ -103,7 +116,17 @@ fn eval_batch(batch_fun: &Py<PyAny>, rows: &[Vec<f64>]) -> Vec<f64> {
     })
 }
 
-/// Stateful CR-FM-NES with an ask/tell interface.
+/// Stateful CR-FM-NES with an external ask/tell evaluator.
+///
+/// CR-FM-NES uses a restricted covariance representation for
+/// high-dimensional search. Alternate :meth:`ask` and :meth:`tell`; evaluate
+/// every returned row in order.
+///
+/// Raises ``ValueError`` if the bound arrays do not match the decision
+/// dimension or do not satisfy finite ``lower < upper``, and ``TypeError`` if
+/// an array argument cannot be converted to contiguous ``float64``.
+/// :meth:`tell` raises ``ValueError`` if it does not receive exactly one value
+/// per row returned by the most recent :meth:`ask`.
 #[allow(clippy::upper_case_acronyms)]
 #[pyclass]
 pub struct CRFMNES {
@@ -147,31 +170,40 @@ impl CRFMNES {
         }
     }
 
+    /// Return the next decoded candidate population, shape ``(popsize, dim)``.
     fn ask<'py>(&mut self, py: Python<'py>) -> Bound<'py, PyArray2<f64>> {
         rows_to_pyarray(py, &self.inner.ask_pop())
     }
 
+    /// Submit one minimized value per row from the most recent :meth:`ask`.
+    ///
+    /// Returns the current stop code.
     fn tell(&mut self, ys: PyReadonlyArray1<f64>) -> i32 {
         self.inner.tell_pop(&slice_or_vec(&ys))
     }
 
+    /// Return the current decoded population.
     fn population<'py>(&self, py: Python<'py>) -> Bound<'py, PyArray2<f64>> {
         rows_to_pyarray(py, &self.inner.population())
     }
 
+    /// Return ``(x, fun, evaluations, iterations, stop)`` for the best point.
     fn result<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, PyTuple>> {
         let r = self.inner.result();
         result_tuple(py, &r.x, r.y, r.evaluations, r.iterations, r.stop)
     }
 
+    /// Number of decision variables.
     #[getter]
     fn dim(&self) -> usize {
         self.inner.dim()
     }
+    /// Number of candidates in one mirrored population.
     #[getter]
     fn popsize(&self) -> usize {
         self.inner.popsize()
     }
+    /// Current termination code; zero means optimization is still active.
     #[getter]
     fn stop(&self) -> i32 {
         self.inner.stop()

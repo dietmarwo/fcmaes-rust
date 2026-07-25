@@ -26,7 +26,8 @@ pub use optimize::{
 };
 pub use protocol::{FinalStudyPlan, FinalStudyResult, finalize_study};
 pub use report::{
-    write_baseline_artifacts, write_benchmark_artifacts, write_final_artifacts,
+    QdRevalidationOutcome, revalidate_qd_artifacts, write_baseline_artifacts,
+    write_baseline_failure_artifact, write_benchmark_artifacts, write_final_artifacts,
     write_multi_artifacts, write_qd_artifacts, write_scalar_artifacts,
 };
 pub use space::{Criterion, DIMENSION, ForestConfig, decode};

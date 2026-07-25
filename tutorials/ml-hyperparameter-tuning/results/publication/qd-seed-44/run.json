@@ -1,0 +1,117 @@
+{
+  "actual_evaluations": 16384,
+  "artifacts": {
+    "convergence": "convergence.csv",
+    "qd_archive": "qd_archive.csv"
+  },
+  "command": "./target/release/ml-hyperparameter-tuning --preset publication --mode qd --workers 24 --seed 44 --qd-evaluations 16384 --qd-capacity 400 --qd-chunk-size 256 --output results/publication/qd-seed-44",
+  "convergence_metrics": [
+    "coverage",
+    "qd_score",
+    "best_quality",
+    "invalid_fraction"
+  ],
+  "dataset": {
+    "bayes_reference": {
+      "error": 0.16221644716922123,
+      "error_standard_error": 0.00013179738985333883,
+      "log_loss": 0.38044589860044625,
+      "log_loss_standard_error": 0.00019444714879304209,
+      "rows": 1000000
+    },
+    "data_seed": 20260724,
+    "feature_count": 24,
+    "generator_version": 1,
+    "hashes": {
+      "selection": "dbb7c30c8d6aed1e",
+      "test": "7dc4741929f30ba8",
+      "tuning": "e7a881f21c32ce60"
+    },
+    "selection_prevalence": 0.1805,
+    "selection_rows": 4000,
+    "test_prevalence": 0.1807,
+    "test_rows": 20000,
+    "tuning_folds": 5,
+    "tuning_prevalence": 0.1805,
+    "tuning_rows": 6000
+  },
+  "descriptors": [
+    {
+      "bounds": [
+        0.24,
+        0.52
+      ],
+      "column": "descriptor_precision",
+      "label": "Precision at threshold 0.5"
+    },
+    {
+      "bounds": [
+        0.1,
+        0.45
+      ],
+      "column": "descriptor_sharpness",
+      "label": "Predicted-probability sharpness (standard deviation)"
+    }
+  ],
+  "elapsed_seconds": 6667.892278594,
+  "formulation": "qd",
+  "model_fits": 82660,
+  "objective_protocol": {
+    "common_random_numbers": true,
+    "infeasible_fitness_base": 14.815510557964274,
+    "inner_model_workers": 1,
+    "minority_recall_floor": 0.25,
+    "parallelism_owner": "fcmaes candidate workers",
+    "probability_clip": 1e-6,
+    "qd_selection_descriptor_aggregation": "mean descriptors across independently fitted single forests",
+    "selection_quality_aggregation": "metrics of probabilities averaged across model seeds",
+    "structural_cost_limit": 2000000,
+    "tuning_model_seed": 821575716627221161
+  },
+  "qd": {
+    "capacity": 400,
+    "chunk_size": 256,
+    "clipped_descriptors": 71,
+    "distinct_configurations": 199,
+    "grid_shape": [
+      20,
+      20
+    ],
+    "invalid_evaluations": 2461,
+    "occupied": 199,
+    "publication_criteria_applied": true,
+    "quality_label": "Cross-validated log-loss (lower is better)",
+    "quality_train_column": "quality_train",
+    "quality_validation_column": "quality_validation",
+    "retained_niches": 12,
+    "selection_seeds": [
+      17984624418883850962,
+      8018836081557538450,
+      15864422413682604207,
+      3239637649554228757,
+      13681408626826662751
+    ]
+  },
+  "qd_decision": "rejected: at least one pre-registered QD criterion failed",
+  "requested_evaluations": 16384,
+  "revalidation": {
+    "command": "target/release/ml-hyperparameter-tuning --preset publication --mode revalidate-qd --workers 24 --seed 44 --qd-evaluations 16384 --qd-capacity 400 --qd-chunk-size 256 --output results/publication/qd-seed-44",
+    "reason": "make QD validation descriptors comparable to single-forest tuning behavior",
+    "scope": "saved archive elites only; training archive unchanged"
+  },
+  "schema_version": 1,
+  "seed": 44,
+  "selection_model_fits": 990,
+  "selection_trees_fitted": 142515,
+  "software": {
+    "fcmaes-core": "0.1.2",
+    "smartcore": "0.5.3",
+    "tutorial": "0.1.0"
+  },
+  "trees_fitted": 10307920,
+  "tuning_model_fits": 81670,
+  "tuning_trees_fitted": 10165405,
+  "tutorial": "ml-hyperparameter-tuning",
+  "validation_elapsed_seconds": 129.855725097,
+  "workers": 24
+}
