@@ -1,0 +1,18 @@
+[package]
+name = "gtoc1"
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+publish = false
+description = "Reproducible Rust optimization of the real GTOC1 EVEEEJSJA trajectory"
+
+# Standalone tutorial workspace: pykep stays outside the main fcmaes workspace.
+[workspace]
+
+[dependencies]
+fcmaes-core = { path = "../../crates/fcmaes-core" }
+pykep-core = "=0.1.2"
+
+[profile.release]
+codegen-units = 1
+lto = "thin"

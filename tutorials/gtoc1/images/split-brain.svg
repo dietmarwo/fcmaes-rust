@@ -1,0 +1,79 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="620" viewBox="0 0 1200 620" role="img" aria-labelledby="title description">
+  <title id="title">Split-brain GTOC1 planet-order search</title>
+  <desc id="description">An AI agent proposes discrete planet orders. Fcmaes optimizes continuous timings, a cheap pykep model scores the tuned route, and an archive returns diagnostics to the agent. Selected candidates proceed to costly low-thrust validation.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L0,6 L9,3 z" fill="#334155"/>
+    </marker>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="130%">
+      <feDropShadow dx="0" dy="3" stdDeviation="4" flood-color="#0f172a" flood-opacity="0.14"/>
+    </filter>
+    <style>
+      .title { font: 700 30px system-ui, sans-serif; fill: #0f172a; }
+      .subtitle { font: 400 17px system-ui, sans-serif; fill: #475569; }
+      .box-title { font: 700 20px system-ui, sans-serif; fill: #0f172a; }
+      .box-text { font: 400 16px system-ui, sans-serif; fill: #334155; }
+      .label { font: 600 15px system-ui, sans-serif; fill: #334155; }
+      .arrow { fill: none; stroke: #334155; stroke-width: 3; marker-end: url(#arrow); }
+    </style>
+  </defs>
+
+  <rect width="1200" height="620" rx="24" fill="#f8fafc"/>
+  <text x="600" y="48" text-anchor="middle" class="title">Split-brain GTOC1 planet-order search</text>
+  <text x="600" y="78" text-anchor="middle" class="subtitle">Agents choose structure; numerical tools tune and validate physics</text>
+
+  <g filter="url(#shadow)">
+    <rect x="55" y="125" width="250" height="150" rx="18" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/>
+    <text x="180" y="160" text-anchor="middle" class="box-title">AI outer loop</text>
+    <text x="180" y="194" text-anchor="middle" class="box-text">Propose unseen planet order</text>
+    <text x="180" y="220" text-anchor="middle" class="box-text">and coarse route family</text>
+    <text x="180" y="250" text-anchor="middle" class="label">DISCRETE STRUCTURE</text>
+  </g>
+
+  <g filter="url(#shadow)">
+    <rect x="360" y="125" width="250" height="150" rx="18" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/>
+    <text x="485" y="160" text-anchor="middle" class="box-title">fcmaes inner loop</text>
+    <text x="485" y="194" text-anchor="middle" class="box-text">Optimize launch epoch,</text>
+    <text x="485" y="220" text-anchor="middle" class="box-text">encounter times and durations</text>
+    <text x="485" y="250" text-anchor="middle" class="label">CONTINUOUS NUMBERS</text>
+  </g>
+
+  <g filter="url(#shadow)">
+    <rect x="665" y="125" width="250" height="150" rx="18" fill="#e0e7ff" stroke="#4f46e5" stroke-width="2"/>
+    <text x="790" y="160" text-anchor="middle" class="box-title">Cheap pykep scout</text>
+    <text x="790" y="194" text-anchor="middle" class="box-text">Lambert families, flybys,</text>
+    <text x="790" y="220" text-anchor="middle" class="box-text">mass proxy and diagnostics</text>
+    <text x="790" y="250" text-anchor="middle" class="label">FAST MODEL SCORE</text>
+  </g>
+
+  <g filter="url(#shadow)">
+    <rect x="970" y="125" width="175" height="150" rx="18" fill="#f1f5f9" stroke="#64748b" stroke-width="2"/>
+    <text x="1057" y="160" text-anchor="middle" class="box-title">Archive</text>
+    <text x="1057" y="194" text-anchor="middle" class="box-text">Top routes</text>
+    <text x="1057" y="220" text-anchor="middle" class="box-text">Niche elites</text>
+    <text x="1057" y="246" text-anchor="middle" class="box-text">Failure reasons</text>
+  </g>
+
+  <path d="M305 200 H350" class="arrow"/>
+  <path d="M610 200 H655" class="arrow"/>
+  <path d="M915 200 H960" class="arrow"/>
+  <text x="333" y="187" text-anchor="middle" class="label">order</text>
+  <text x="638" y="187" text-anchor="middle" class="label">timed route</text>
+  <text x="942" y="187" text-anchor="middle" class="label">evidence</text>
+
+  <path d="M1057 285 V325 H180 V285" class="arrow"/>
+  <text x="500" y="316" text-anchor="middle" class="label">compact feedback: scores, margins, novelty and failure categories</text>
+
+  <g filter="url(#shadow)">
+    <rect x="350" y="430" width="500" height="155" rx="18" fill="#fef3c7" stroke="#d97706" stroke-width="2"/>
+    <text x="600" y="467" text-anchor="middle" class="box-title">Promoted low-thrust candidates</text>
+    <text x="600" y="503" text-anchor="middle" class="box-text">Sims–Flanagan or direct propagation, thrust and mass,</text>
+    <text x="600" y="530" text-anchor="middle" class="box-text">unpowered flybys, solar-distance sampling and strict validation</text>
+    <text x="600" y="563" text-anchor="middle" class="label">ONLY THIS LAYER MAY DECLARE FEASIBILITY</text>
+  </g>
+
+  <path d="M790 285 V370 H600 V420" class="arrow"/>
+  <text x="690" y="396" text-anchor="middle" class="label">promote score + diversity + margin</text>
+  <path d="M850 505 H1057 V285" class="arrow"/>
+  <text x="950" y="494" text-anchor="middle" class="label">validation feedback</text>
+</svg>

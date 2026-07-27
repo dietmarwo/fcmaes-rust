@@ -19,6 +19,7 @@ they cover:
 | Room-ventilation CFD | custom verified backend, robust design, MODE, MAP-Elites |
 | ML hyperparameter tuning | leakage-free evaluation, BiteOpt, MODE, QD diagnostics |
 | Neural-controller policy search | 118-dimensional PGPE and CR-FM-NES |
+| GTOC1 “Save the Earth” | planet-order search, staged DE–CMA-ES, low thrust, split-brain architecture |
 
 The canonical, detailed [tutorial index](tutorials/README.md) retains the
 common experiment contract, comparison table, complete commands, and Diffsol

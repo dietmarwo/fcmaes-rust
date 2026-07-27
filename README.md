@@ -62,7 +62,7 @@ optimizer backend.
 | `fcmaes-gtop` | Internal native GTOP objective library shared by the examples and Python package |
 | `examples` (`fcmaes-examples`) | Native GTOP problems, application objectives, benchmarks, and executable examples |
 | `fcmaes-py` | Optional PyO3 extension for embedding the Rust implementation in a Python package |
-| `tutorials/*` | Standalone application workspaces using NeXosim, Rapier, ReBop, Brahe, RustPower, SmartCore, native atmospheric dispersion, a custom educational ventilation backend, and native neural policy search |
+| `tutorials/*` | Standalone application workspaces using NeXosim, Rapier, ReBop, Brahe, RustPower, SmartCore, pykep-core astrodynamics, native atmospheric dispersion, a custom educational ventilation backend, and native neural policy search |
 
 Only two registry artifacts are published: `fcmaes-core` on crates.io and the
 `fcmaes-rust` binding distribution on PyPI. `fcmaes-gtop` is an internal
@@ -96,7 +96,10 @@ primary formulation there, because the near-unique asset architecture the
 original pilot found survives the descriptor fix. The ninth tutorial is an
 intentional scalar showcase for PGPE and CR-FM-NES on a 118-parameter neural
 controller, with fixed and rotating common scenarios, disjoint validation, and
-a frozen 1,024-scenario final test. The
+a frozen 1,024-scenario final test. The tenth tutorial uses coordinated
+DE–CMA-ES and incumbent-seeded parallel retry on the real 87-variable GTOC1
+EVEEEJSJA low-thrust trajectory, and documents why its VSOP2013 score above
+the historical reference is not an official DE405 re-scoring. The
 [tutorial index](tutorials/README.md) includes commands, figures, validation
 results and the common result schema. Compact canonical result directories are
 version-controlled with generated SVGs so raw-evidence links and deterministic
@@ -195,6 +198,7 @@ python examples/python/test_cma.py
 - [ML hyperparameter-optimization tutorial](tutorials/ml-hyperparameter-tuning/README.md)
 - [Room-ventilation optimization tutorial](tutorials/cfd-room-ventilation/README.md)
 - [Neural-controller policy-search tutorial](tutorials/neural-controller-policy-search/README.md)
+- [GTOC1 “Save the Earth” tutorial](tutorials/gtoc1/README.md)
 - [Optional PyO3 bindings](docs/python-bindings.md)
 - [Release history](CHANGELOG.md)
 - [Publishing checklist](RELEASING.md)

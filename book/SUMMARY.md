@@ -32,6 +32,7 @@
     - [Publication evidence](tutorials/cfd-room-ventilation/results/publication-evidence.md)
   - [ML hyperparameter tuning](tutorials/ml-hyperparameter-tuning/README.md)
   - [Neural-controller policy search](tutorials/neural-controller-policy-search/README.md)
+  - [GTOC1 “Save the Earth”](tutorials/gtoc1/README.md)
 - [Result artifact schema](tutorials/RESULT_SCHEMA.md)
 - [Figure and artifact tools](tutorials/python/README.md)
 

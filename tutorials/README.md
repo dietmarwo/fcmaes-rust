@@ -8,7 +8,7 @@ callback or serialization boundary in the expensive path: a candidate is
 decoded and scored in Rust, and independent candidates are distributed across
 native worker threads.
 
-The nine applications deliberately cover different reasons for choosing
+The ten applications deliberately cover different reasons for choosing
 gradient-free optimization:
 
 | Tutorial | Simulator | Problem property | Implemented formulations | QD decision |
@@ -22,6 +22,7 @@ gradient-free optimization:
 | [Room ventilation](cfd-room-ventilation/) | Custom D2Q9/D2Q5 Rust backend | variable geometry, numerical constraints, worst-case releases, and resolution sensitivity | BiteOpt retry + MODE + MAP-Elites | accepted |
 | [ML hyperparameter optimization](ml-hyperparameter-tuning/) | SmartCore decision trees | mixed variables, nested stochastic fitting, validation overfitting, and probability quality | BiteOpt retry + constrained MODE + MAP-Elites | rejected: coverage and diversity pass, niche retention fails |
 | [Neural controller policy search](neural-controller-policy-search/) | Native stochastic cart-pole model | 118-dimensional fixed-topology policy, randomized rollouts, and validation variance | PGPE + CR-FM-NES + active CMA-ES/BiteOpt comparison | omitted: one robust controller is the deliverable |
+| [GTOC1 “Save the Earth”](gtoc1/) | pykep-core astrodynamics | 87 variables, narrow equality constraints, two multi-revolution Lambert arcs, and low thrust | coordinated DE–CMA-ES + seeded CMA-ES/BiteOpt retry | omitted: one maximum-impact trajectory is the deliverable |
 
 Each directory is a standalone Cargo workspace. This keeps large,
 simulator-specific dependency sets out of the main `fcmaes-rust` workspace
@@ -558,7 +559,50 @@ See the [complete neural-controller policy-search tutorial](neural-controller-po
 for the model, objective, fixed-versus-rotating noise protocol, baselines,
 frozen test, scaling experiment, raw results and limitations.
 
-## 11. Diffsol: why gradients are the better default
+## 11. GTOC1 “Save the Earth”: multi-fidelity trajectory optimization
+
+The [GTOC1 tutorial](gtoc1/) combines `pykep-core` and `fcmaes-core` to
+reproduce the EVEEEJSJA asteroid-impact trajectory disclosed by JPL. Its
+87-variable objective contains encounter dates, endpoint geometry, final mass,
+and 24 spherical Sims-Flanagan controls. Seven selected Lambert arcs—two of
+them multi-revolution—and unpowered flyby constraints complete the mission.
+
+This example focuses on continuation across model fidelity and optimizer
+scale. Its campaign record explains how an earlier 12-segment model was
+repaired with coordinated DE–CMA-ES, refined with incumbent-seeded CMA-ES,
+doubled to 24 segments, and finally repaired at the highest available
+VSOP2013 coefficient precision. The current executable intentionally ships
+only the final 24-segment, `1e-9` model and labels this history accordingly.
+
+The chapter now places that fixed-order experiment inside the complete GTOC1
+search: propose planet orders, rank them with a cheap Lambert/flyby model, and
+promote selected candidates into costly low-thrust validation. It also maps
+the `autoresearch-circuit` split-brain architecture onto this task: an AI agent
+selects discrete route structures while `fcmaes-core` optimizes their
+continuous timings under equal budgets.
+
+The stored solution scores `1,850,730.667522` inside the Rust model, versus
+JPL's reported `1,850,000`, with a `3.58e-9` normalized low-thrust mismatch
+and a sampled minimum solar distance of `0.671463 AU`. The chapter is explicit
+that this is not a new official competition result: pykep-core supplies
+VSOP2013 Earth-Moon-barycentre states rather than the required DE405-equivalent
+Earth-centre ephemeris. Its threshold-sensitivity table also shows the active
+Venus periapsis margin changing sign one truncation level away.
+
+![The GTOC1 split-brain architecture separates AI planet-order proposals, continuous timing optimization, cheap scoring, and costly low-thrust validation](gtoc1/images/split-brain.svg)
+
+```bash
+cd tutorials/gtoc1
+cargo run --release -- --algorithm inspect
+cargo test
+```
+
+See the [complete GTOC1 tutorial](gtoc1/README.md) for the competition
+background, multi-fidelity and split-brain architectures, mission
+transcription, objective construction, staged search, parallel retry commands,
+measured wall times, feasibility checks, and scoring limitation.
+
+## 12. Diffsol: why gradients are the better default
 
 [Diffsol](https://github.com/martinjrobins/diffsol) is an MIT-licensed Rust
 ODE/DAE solver with explicit and implicit integration, event/root detection,

@@ -67,6 +67,7 @@ jobs:
           - cfd-room-ventilation
           - ml-hyperparameter-tuning
           - neural-controller-policy-search
+          - gtoc1
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
