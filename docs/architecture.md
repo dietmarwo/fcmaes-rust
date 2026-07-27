@@ -7,17 +7,7 @@ they do not identify a runtime or build dependency.
 
 ## Workspace
 
-```mermaid
-flowchart LR
-    R[Rust application] --> C[fcmaes-core]
-    E[Native example and benchmark binaries] --> X[fcmaes-examples]
-    X --> C
-    X --> G[fcmaes-gtop]
-    P[Embedding Python package] --> B[fcmaes-py / PyO3]
-    B --> C
-    B --> G
-    T[Standalone native application tutorials] --> C
-```
+![Workspace dependency flow: Rust applications and standalone tutorials depend directly on fcmaes-core; native examples use fcmaes-examples, and the Python package uses fcmaes-py, with both adapters depending on fcmaes-core and the internal fcmaes-gtop objective library.](images/workspace-architecture.svg)
 
 The workspace has four crates:
 
