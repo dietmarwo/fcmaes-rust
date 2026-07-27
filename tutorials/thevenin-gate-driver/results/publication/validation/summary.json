@@ -1,0 +1,43 @@
+{
+  "schema_version": 1,
+  "rows": 49,
+  "passed": true,
+  "gate_semantics": "every maximum absolute difference must be <= its limit",
+  "metrics": {
+    "rise_time_abs_ns": {
+      "median": 3.9090049662071635e-05,
+      "p95": 0.00010104634999379403,
+      "maximum": 0.00012999134978919358,
+      "limit": 0.01,
+      "passed": true
+    },
+    "overshoot_abs_percentage_points": {
+      "median": 6.969787184729626e-05,
+      "p95": 0.0005641731051838404,
+      "maximum": 0.0006277677320909447,
+      "limit": 0.01,
+      "passed": true
+    },
+    "peak_current_abs_a": {
+      "median": 1.1317033670188437e-05,
+      "p95": 6.240227993590242e-05,
+      "maximum": 7.46863417706578e-05,
+      "limit": 0.01,
+      "passed": true
+    },
+    "settling_time_abs_ns": {
+      "median": 0.004427453960662575,
+      "p95": 0.02533474855349308,
+      "maximum": 0.04589404719989432,
+      "limit": 0.1,
+      "passed": true
+    },
+    "final_voltage_abs_v": {
+      "median": 2.236770680674738e-05,
+      "p95": 0.0020653769944111383,
+      "maximum": 0.004970442123664043,
+      "limit": 0.01,
+      "passed": true
+    }
+  }
+}

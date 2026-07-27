@@ -1,0 +1,50 @@
+{
+  "actual_evaluations": 4096,
+  "artifacts": {
+    "mo_convergence": "convergence.csv",
+    "mo_pareto": "pareto.csv",
+    "selected_waveforms": "waveforms.csv"
+  },
+  "command": "cargo run --release -- --mode all --preset publication --workers 16",
+  "constraints": [
+    {
+      "column": "constraint_peak_current_a",
+      "feasible": "<= 0",
+      "label": "Peak current above 5 A",
+      "unit": "A"
+    },
+    {
+      "column": "constraint_settling_time_ns",
+      "feasible": "<= 0",
+      "label": "Settling time above 75 ns",
+      "unit": "ns"
+    }
+  ],
+  "descriptors": [],
+  "elapsed_seconds": 1.151192089,
+  "formulation": "constrained-mo",
+  "objectives": [
+    {
+      "column": "objective_rise_time_ns",
+      "label": "10–90% rise time",
+      "unit": "ns"
+    },
+    {
+      "column": "objective_overshoot_percent",
+      "label": "Gate overshoot",
+      "unit": "%"
+    }
+  ],
+  "pareto_points": 128,
+  "requested_evaluations": 4096,
+  "schema_version": 1,
+  "seed": 42,
+  "selected_points": 3,
+  "transient": {
+    "maximum_step_s": 5e-11,
+    "method": "trapezoidal",
+    "stop_s": 1.2e-7
+  },
+  "tutorial": "thevenin-gate-driver",
+  "workers": 16
+}

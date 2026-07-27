@@ -1,0 +1,62 @@
+{
+  "ac_points": 41,
+  "ac_solves": 69416,
+  "actual_evaluations": 4096,
+  "artifacts": {
+    "qd_catalogue": "archive.csv",
+    "qd_convergence": "convergence.csv",
+    "qd_elites": "elites.csv",
+    "qd_range_study": "range_study.csv"
+  },
+  "command": "cargo run --release -- --preset publication --mode all --workers 16 --seed 42 --output results/publication",
+  "descriptors": [
+    {
+      "column": "descriptor_log10_f0",
+      "label": "Centre frequency",
+      "unit": "log10(Hz)"
+    },
+    {
+      "column": "descriptor_peak_gain_db",
+      "label": "Peak gain",
+      "unit": "dB"
+    }
+  ],
+  "distinct_elite_designs": 381,
+  "elapsed_seconds": 2.757147464,
+  "formulation": "quality-diversity",
+  "invalid_evaluations": 85,
+  "mc_draws": 16,
+  "objectives": [
+    {
+      "column": "quality_robustness_db",
+      "label": "Tolerance sensitivity",
+      "unit": "dB"
+    }
+  ],
+  "optimization_ac_solves": 68416,
+  "out_of_range_descriptors": 189,
+  "qd": {
+    "capacity": 400,
+    "descriptor_lower": [
+      2.0,
+      -60.0
+    ],
+    "descriptor_upper": [
+      6.5,
+      40.0
+    ],
+    "grid_shape": [
+      20,
+      20
+    ],
+    "occupied": 381,
+    "range_study_attempts": 1000,
+    "range_study_valid": 898
+  },
+  "range_study_ac_solves": 1000,
+  "requested_evaluations": 4096,
+  "schema_version": 1,
+  "seed": 42,
+  "tutorial": "sindr-circuit-design",
+  "workers": 16
+}

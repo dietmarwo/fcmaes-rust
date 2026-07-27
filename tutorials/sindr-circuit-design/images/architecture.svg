@@ -1,0 +1,71 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1060" height="330" viewBox="0 0 1060 330" role="img" aria-labelledby="title desc">
+  <title id="title">Circuit optimization architecture</title>
+  <desc id="desc">A candidate is decoded into component values, built as a sindr circuit, solved by AC analysis, converted into interpolated features, then consumed by scalar retry, MODE, or MAP-Elites.</desc>
+  <defs>
+    <filter id="shadow" x="-10%" y="-20%" width="120%" height="150%">
+      <feDropShadow dx="0" dy="3" stdDeviation="3" flood-opacity=".16"/>
+    </filter>
+    <marker id="arrow" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+      <path d="M0,0 L10,4 L0,8 Z" fill="#49636f"/>
+    </marker>
+    <style>
+      .box { fill:#fff; stroke:#a7bcc5; stroke-width:1.5; rx:12; filter:url(#shadow) }
+      .head { font-family:"DejaVu Sans"; font-size:15px; font-weight:600; fill:#12333f }
+      .sub { font-family:"DejaVu Sans"; font-size:12px; fill:#4a626c }
+      .arrow { stroke:#49636f; stroke-width:2; fill:none; marker-end:url(#arrow) }
+      .pill { font-family:"DejaVu Sans"; font-size:13px; font-weight:600; fill:#fff }
+    </style>
+  </defs>
+  <rect width="1060" height="330" rx="18" fill="#f4f8fa"/>
+  <rect x="0" y="0" width="1060" height="66" rx="18" fill="#0b5264"/>
+  <rect x="0" y="48" width="1060" height="18" fill="#0b5264"/>
+  <text x="32" y="31" class="pill" style="font-size:19px">Native simulator-in-the-loop circuit design</text>
+  <text x="32" y="52" class="pill" opacity=".76">one owner for candidate parallelism · deterministic replay · machine-readable evidence</text>
+
+  <rect class="box" x="30" y="112" width="150" height="104"/>
+  <text class="head" x="105" y="143" text-anchor="middle">Candidate u</text>
+  <text class="sub" x="105" y="166" text-anchor="middle">continuous [0,1]</text>
+  <text class="sub" x="105" y="185" text-anchor="middle">or E12 indices</text>
+  <rect x="64" y="196" width="82" height="6" rx="3" fill="#ff9f1c"/>
+
+  <rect class="box" x="222" y="112" width="150" height="104"/>
+  <text class="head" x="297" y="143" text-anchor="middle">Decode</text>
+  <text class="sub" x="297" y="166" text-anchor="middle">log R/C scales</text>
+  <text class="sub" x="297" y="185" text-anchor="middle">round + clamp E12</text>
+  <rect x="256" y="196" width="82" height="6" rx="3" fill="#ff9f1c"/>
+
+  <rect class="box" x="414" y="112" width="150" height="104"/>
+  <text class="head" x="489" y="143" text-anchor="middle">Build Circuit</text>
+  <text class="sub" x="489" y="166" text-anchor="middle">fresh isolated netlist</text>
+  <text class="sub" x="489" y="185" text-anchor="middle">MFB or LP4</text>
+  <rect x="448" y="196" width="82" height="6" rx="3" fill="#2ec4b6"/>
+
+  <rect class="box" x="606" y="112" width="150" height="104"/>
+  <text class="head" x="681" y="143" text-anchor="middle">sindr solve_ac</text>
+  <text class="sub" x="681" y="166" text-anchor="middle">complex MNA</text>
+  <text class="sub" x="681" y="185" text-anchor="middle">log frequency grid</text>
+  <rect x="640" y="196" width="82" height="6" rx="3" fill="#2ec4b6"/>
+
+  <rect class="box" x="798" y="112" width="230" height="104"/>
+  <text class="head" x="913" y="143" text-anchor="middle">Interpolate features</text>
+  <text class="sub" x="913" y="166" text-anchor="middle">peak · −3 dB crossings · Q</text>
+  <text class="sub" x="913" y="185" text-anchor="middle">ripple · tolerance robustness</text>
+  <rect x="872" y="196" width="82" height="6" rx="3" fill="#e71d36"/>
+
+  <path class="arrow" d="M180 164 H215"/>
+  <path class="arrow" d="M372 164 H407"/>
+  <path class="arrow" d="M564 164 H599"/>
+  <path class="arrow" d="M756 164 H791"/>
+
+  <path d="M913 216 V251" stroke="#49636f" stroke-width="2"/>
+  <path d="M913 251 H305" stroke="#49636f" stroke-width="2"/>
+  <path d="M913 251 H913" stroke="#49636f" stroke-width="2"/>
+  <path d="M305 251 V267 M609 251 V267 M913 251 V267" stroke="#49636f" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <rect x="207" y="277" width="196" height="35" rx="17" fill="#0072b2"/>
+  <text x="305" y="299" class="pill" text-anchor="middle">CMA / DE / Bite retry</text>
+  <rect x="511" y="277" width="196" height="35" rx="17" fill="#6a4c93"/>
+  <text x="609" y="299" class="pill" text-anchor="middle">constrained MODE</text>
+  <rect x="815" y="277" width="196" height="35" rx="17" fill="#d55e00"/>
+  <text x="913" y="299" class="pill" text-anchor="middle">batch MAP-Elites</text>
+</svg>

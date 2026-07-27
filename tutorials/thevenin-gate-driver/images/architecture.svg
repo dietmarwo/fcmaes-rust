@@ -1,0 +1,75 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="980" height="410" viewBox="0 0 980 410" role="img" aria-labelledby="title desc">
+  <title id="title">Gate-driver optimization and validation architecture</title>
+  <desc id="desc">MODE proposes two normalized controls. Rust decodes them, renders one shared SPICE template, simulates the transient with thevenin, extracts interpolated time-domain metrics, and returns objectives and constraints. A publication-only branch sends the identical template to ngspice and compares a fixed validation grid.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#455a64"/>
+    </marker>
+    <style>
+      .box{rx:12;ry:12;stroke-width:2}
+      .main{fill:#e3f2fd;stroke:#1565c0}
+      .model{fill:#e8f5e9;stroke:#2e7d32}
+      .metric{fill:#fff3e0;stroke:#ef6c00}
+      .valid{fill:#f3e5f5;stroke:#7b1fa2}
+      .text{font-family:DejaVu Sans,sans-serif;fill:#263238;text-anchor:middle}
+      .head{font-size:16px;font-weight:700}
+      .body{font-size:13px}
+      .line{stroke:#455a64;stroke-width:2;fill:none;marker-end:url(#arrow)}
+      .dash{stroke:#7b1fa2;stroke-width:2;stroke-dasharray:7 5;fill:none;marker-end:url(#arrow)}
+    </style>
+  </defs>
+  <g font-family="DejaVu Sans, sans-serif" font-style="normal" font-size="13" fill="#263238" text-anchor="middle">
+  <rect x="25" y="55" width="150" height="92" rx="12" ry="12" fill="#e3f2fd" stroke="#1565c0" stroke-width="2"/>
+  <text x="100" y="86" class="text head" font-size="16" font-weight="700">fcmaes MODE</text>
+  <text x="100" y="112" class="text body">uR, uS ∈ [0,1]</text>
+  <text x="100" y="132" class="text body">parallel candidates</text>
+
+  <rect x="220" y="55" width="160" height="92" rx="12" ry="12" fill="#e8f5e9" stroke="#2e7d32" stroke-width="2"/>
+  <text x="300" y="84" class="text head" font-size="16" font-weight="700">Log decode</text>
+  <text x="300" y="109" class="text body">Rdrive: 0.2–6 Ω</text>
+  <text x="300" y="130" class="text body">Rsnub: 0.2–30 Ω</text>
+
+  <rect x="425" y="55" width="165" height="92" rx="12" ry="12" fill="#e8f5e9" stroke="#2e7d32" stroke-width="2"/>
+  <text x="507" y="84" class="text head" font-size="16" font-weight="700">SPICE template</text>
+  <text x="507" y="109" class="text body">8 nH trace · 4 nF gate</text>
+  <text x="507" y="130" class="text body">2 nF series-RC snubber</text>
+
+  <rect x="635" y="55" width="145" height="92" rx="12" ry="12" fill="#e3f2fd" stroke="#1565c0" stroke-width="2"/>
+  <text x="707" y="84" class="text head" font-size="16" font-weight="700">thevenin 0.5</text>
+  <text x="707" y="109" class="text body">trapezoidal .tran</text>
+  <text x="707" y="130" class="text body">50 ps max step</text>
+
+  <rect x="825" y="55" width="130" height="92" rx="12" ry="12" fill="#fff3e0" stroke="#ef6c00" stroke-width="2"/>
+  <text x="890" y="80" class="text head" font-size="16" font-weight="700">Metrics</text>
+  <text x="890" y="103" class="text body">rise · overshoot</text>
+  <text x="890" y="123" class="text body">current · settling</text>
+
+  <path d="M175 101 H220" class="line"/>
+  <path d="M380 101 H425" class="line"/>
+  <path d="M590 101 H635" class="line"/>
+  <path d="M780 101 H825" class="line"/>
+  <path d="M890 147 V185 H100 V147" class="line"/>
+  <text x="493" y="178" class="text body">two objectives + two constraints</text>
+
+  <rect x="275" y="260" width="180" height="92" rx="12" ry="12" fill="#f3e5f5" stroke="#7b1fa2" stroke-width="2"/>
+  <text x="365" y="289" class="text head" font-size="16" font-weight="700">Fixed 7×7 grid</text>
+  <text x="365" y="314" class="text body">includes all bounds</text>
+  <text x="365" y="335" class="text body">49 retained netlists</text>
+
+  <rect x="520" y="260" width="165" height="92" rx="12" ry="12" fill="#f3e5f5" stroke="#7b1fa2" stroke-width="2"/>
+  <text x="602" y="289" class="text head" font-size="16" font-weight="700">libngspice 42</text>
+  <text x="602" y="314" class="text body">synchronous replay</text>
+  <text x="602" y="335" class="text body">independent vectors</text>
+
+  <rect x="750" y="260" width="190" height="92" rx="12" ry="12" fill="#f3e5f5" stroke="#7b1fa2" stroke-width="2"/>
+  <text x="845" y="289" class="text head" font-size="16" font-weight="700">Publication gate</text>
+  <text x="845" y="314" class="text body">absolute metric errors</text>
+  <text x="845" y="335" class="text body">all maxima must pass</text>
+
+  <path d="M507 147 V220 H365 V260" class="dash"/>
+  <path d="M455 306 H520" class="dash"/>
+  <path d="M685 306 H750" class="dash"/>
+  <path d="M707 147 V220 H845 V260" class="dash"/>
+  <text x="620" y="225" class="text body">validation only — never inside optimization</text>
+  </g>
+</svg>

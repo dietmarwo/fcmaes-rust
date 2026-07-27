@@ -62,7 +62,7 @@ optimizer backend.
 | `fcmaes-gtop` | Internal native GTOP objective library shared by the examples and Python package |
 | `examples` (`fcmaes-examples`) | Native GTOP problems, application objectives, benchmarks, and executable examples |
 | `fcmaes-py` | Optional PyO3 extension for embedding the Rust implementation in a Python package |
-| `tutorials/*` | Standalone application workspaces using NeXosim, Rapier, ReBop, Brahe, RustPower, SmartCore, pykep-core astrodynamics, native atmospheric dispersion, a custom educational ventilation backend, and native neural policy search |
+| `tutorials/*` | Standalone application workspaces using NeXosim, Rapier, ReBop, Brahe, RustPower, SmartCore, pykep-core astrodynamics, sindr AC analysis, thevenin transient analysis, native atmospheric dispersion, a custom educational ventilation backend, and native neural policy search |
 
 Only two registry artifacts are published: `fcmaes-core` on crates.io and the
 `fcmaes-rust` binding distribution on PyPI. `fcmaes-gtop` is an internal
@@ -74,11 +74,12 @@ The application tutorials are intentionally not root workspace members. Each
 keeps its application-specific dependencies, artifacts, and lockfile isolated;
 run its Cargo commands from that tutorial directory.
 
-The first eight application tutorials retain multi-objective optimization.
+Ten application tutorials retain multi-objective optimization.
 MAP-Elites campaigns are
 implemented and recorded for NeXosim, Rapier, ReBop, Brahe, atmospheric source
-localization, room ventilation, and RustPower; the SmartCore hyperparameter
-tutorial records a QD campaign that its own pre-registered criteria reject.
+localization, room ventilation, RustPower, and sindr circuit design; the
+SmartCore hyperparameter tutorial records a QD campaign that its own
+pre-registered criteria reject.
 That tutorial demonstrates an often missed part of optimizer benchmarking:
 fixed-fold tuning, disjoint model selection, frozen final evaluation, and
 probability-aware metrics must be part of the objective protocol. It also
@@ -99,7 +100,12 @@ controller, with fixed and rotating common scenarios, disjoint validation, and
 a frozen 1,024-scenario final test. The tenth tutorial uses coordinated
 DE–CMA-ES and incumbent-seeded parallel retry on the real 87-variable GTOC1
 EVEEEJSJA low-thrust trajectory, and documents why its VSOP2013 score above
-the historical reference is not an official DE405 re-scoring. The
+the historical reference is not an official DE405 re-scoring. The eleventh
+tutorial combines interpolated AC-response features, equal-budget retry,
+constrained MODE, and an E12 MAP-Elites catalogue. The twelfth tutorial uses
+thevenin transient simulation for a constrained
+rise-time/overshoot gate-driver front, admitted only after timestep refinement
+and a 49-design ngspice comparison passed. The
 [tutorial index](tutorials/README.md) includes commands, figures, validation
 results and the common result schema. Compact canonical result directories are
 version-controlled with generated SVGs so raw-evidence links and deterministic
@@ -199,6 +205,8 @@ python examples/python/test_cma.py
 - [Room-ventilation optimization tutorial](tutorials/cfd-room-ventilation/README.md)
 - [Neural-controller policy-search tutorial](tutorials/neural-controller-policy-search/README.md)
 - [GTOC1 “Save the Earth” tutorial](tutorials/gtoc1/README.md)
+- [sindr circuit-design tutorial](tutorials/sindr-circuit-design/README.md)
+- [thevenin transient gate-driver tutorial](tutorials/thevenin-gate-driver/README.md)
 - [Optional PyO3 bindings](docs/python-bindings.md)
 - [Release history](CHANGELOG.md)
 - [Publishing checklist](RELEASING.md)

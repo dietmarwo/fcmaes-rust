@@ -8,7 +8,7 @@ callback or serialization boundary in the expensive path: a candidate is
 decoded and scored in Rust, and independent candidates are distributed across
 native worker threads.
 
-The ten applications deliberately cover different reasons for choosing
+The twelve applications deliberately cover different reasons for choosing
 gradient-free optimization:
 
 | Tutorial | Simulator | Problem property | Implemented formulations | QD decision |
@@ -23,14 +23,21 @@ gradient-free optimization:
 | [ML hyperparameter optimization](ml-hyperparameter-tuning/) | SmartCore decision trees | mixed variables, nested stochastic fitting, validation overfitting, and probability quality | BiteOpt retry + constrained MODE + MAP-Elites | rejected: coverage and diversity pass, niche retention fails |
 | [Neural controller policy search](neural-controller-policy-search/) | Native stochastic cart-pole model | 118-dimensional fixed-topology policy, randomized rollouts, and validation variance | PGPE + CR-FM-NES + active CMA-ES/BiteOpt comparison | omitted: one robust controller is the deliverable |
 | [GTOC1 “Save the Earth”](gtoc1/) | pykep-core astrodynamics | 87 variables, narrow equality constraints, two multi-revolution Lambert arcs, and low thrust | coordinated DE–CMA-ES + seeded CMA-ES/BiteOpt retry | omitted: one maximum-impact trajectory is the deliverable |
+| [Circuit design](sindr-circuit-design/) | sindr AC modified-nodal analysis | log-scaled components, interpolated Bode features, competing filter goals, and E12 discreteness | CMA/DE/Bite retry + constrained MODE + MAP-Elites | accepted: a robust frequency/gain catalogue is the deliverable |
+| [Transient gate driver](thevenin-gate-driver/) | thevenin transient modified-nodal analysis | interpolated edge measurements, ringing, current/settling constraints, and independent simulator validation | constrained MODE | omitted: one continuous engineering trade-off front is the deliverable |
 
 Each directory is a standalone Cargo workspace. This keeps large,
-simulator-specific dependency sets out of the main `fcmaes-rust` workspace
-while using the same local core:
+simulator-specific dependency sets out of the main `fcmaes-rust` workspace.
+Most use the same local core:
 
 ```toml
 fcmaes-core = { path = "../../crates/fcmaes-core" }
 ```
+
+The two circuit tutorials instead pin the published
+`fcmaes-core = "=0.1.3"` so their recorded pairings with the simulator crates
+are exact; each manifest includes the local path as a commented development
+override.
 
 Run commands from the repository root, for example:
 
@@ -602,7 +609,58 @@ background, multi-fidelity and split-brain architectures, mission
 transcription, objective construction, staged search, parallel retry commands,
 measured wall times, feasibility checks, and scoring limitation.
 
-## 12. Diffsol: why gradients are the better default
+## 12. sindr: smooth features and manufacturable circuit catalogues
+
+The [circuit-design tutorial](sindr-circuit-design/) puts `sindr` AC analysis
+inside three native optimization formulations. It first demonstrates why a
+sampled Bode-curve arg-max creates a staircase objective and replaces it with
+log-frequency peak and crossing interpolation. Parallel retry then compares
+CMA-ES, DE, and BiteOpt on the same requested budget.
+
+The second module uses constrained MODE to retain cutoff/ripple/capacitance
+trade-offs for a fourth-order low-pass. The third rounds continuous archive
+coordinates to explicit E12 tables and uses common ±5% tolerance draws to
+build a reproducible frequency/gain catalogue. A range study freezes the
+descriptor box before MAP-Elites runs; out-of-range responses are counted and
+rejected rather than hidden in boundary niches.
+
+![Native decode, sindr AC solve, smooth feature extraction, and three fcmaes result types](sindr-circuit-design/images/architecture.svg)
+
+```bash
+cd tutorials/sindr-circuit-design
+cargo run --release -- --preset smoke --mode all --workers 2 --no-output
+```
+
+See the [complete circuit-design tutorial](sindr-circuit-design/README.md) for
+the netlists, feature tests, objectives, E12 encoding, recorded evidence,
+deterministic visualizations, and the deliberately limited alpha-simulator
+scope.
+
+## 13. thevenin: validated transient gate-driver trade-offs
+
+The [gate-driver tutorial](thevenin-gate-driver/) keeps the optimization hot
+path pure Rust while adding the transient controls deliberately absent from the
+companion `sindr` tutorial. MODE trades 10–90% rise time against gate
+overshoot while enforcing peak-current and 2% settling constraints.
+
+The tutorial uses a single checked-in SPICE template for optimization and
+validation. Before publication, a boundary-inclusive 7×7 design grid is
+replayed independently through libngspice, all five metric-error limits must
+pass, and the 50 ps maximum timestep is checked against a 25 ps refinement.
+
+![Pure-Rust optimization plus a publication-only ngspice validation branch](thevenin-gate-driver/images/architecture.svg)
+
+```bash
+cd tutorials/thevenin-gate-driver
+cargo run --release -- --mode all --preset smoke --workers 2 --no-output
+```
+
+See the [complete transient tutorial](thevenin-gate-driver/README.md) for the
+circuit model, objectives, measurement interpolation, MODE front, scaling
+study, ngspice harness, validation limits, dependency notice, and exact
+publication commands.
+
+## 14. Diffsol: why gradients are the better default
 
 [Diffsol](https://github.com/martinjrobins/diffsol) is an MIT-licensed Rust
 ODE/DAE solver with explicit and implicit integration, event/root detection,

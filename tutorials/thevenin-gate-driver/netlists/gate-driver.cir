@@ -1,0 +1,11 @@
+Lumped MOSFET gate-input network
+VDRIVE drive 0 PULSE(0 {{DRIVE_VOLTAGE_V}} {{EDGE_START_S}} 1e-9 1e-9 200e-9 400e-9)
+RDRIVE drive trace {{RESISTANCE_OHM}}
+LTRACE trace gate {{TRACE_INDUCTANCE_H}}
+CGATE gate 0 {{BASE_GATE_CAPACITANCE_F}}
+RSNUB gate snub {{SNUBBER_RESISTANCE_OHM}}
+CSNUB snub 0 {{SNUBBER_CAPACITANCE_F}}
+RLEAK gate 0 1e6
+.options method=trap reltol=1e-7 abstol=1e-10 vntol=1e-8 chgtol=1e-16
+.tran {{STEP_S}} {{STOP_S}} 0 {{STEP_S}}
+.end

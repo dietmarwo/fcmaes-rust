@@ -1,0 +1,53 @@
+{
+  "ac_points": 201,
+  "actual_evaluations": 18265,
+  "arms": [
+    {
+      "actual_evaluations": 6138,
+      "best_objective": 0.0002675276541876277,
+      "completed_retries": 6,
+      "elapsed_seconds": 0.376810207,
+      "optimizer": "cma",
+      "requested_evaluations": 6000
+    },
+    {
+      "actual_evaluations": 6127,
+      "best_objective": 1.5768999043083439e-6,
+      "completed_retries": 6,
+      "elapsed_seconds": 0.379620787,
+      "optimizer": "de",
+      "requested_evaluations": 6000
+    },
+    {
+      "actual_evaluations": 6000,
+      "best_objective": 2.50092215217817e-6,
+      "completed_retries": 6,
+      "elapsed_seconds": 0.359368422,
+      "optimizer": "bite",
+      "requested_evaluations": 6000
+    }
+  ],
+  "artifacts": {
+    "feature_curve": "feature_curve.csv",
+    "feature_smoothness": "feature_smoothness.csv",
+    "so_best": "best.csv",
+    "so_convergence": "convergence.csv"
+  },
+  "budget_semantics": "requested and actual totals sum three equal-budget optimizer arms",
+  "command": "cargo run --release -- --preset publication --mode all --workers 16 --seed 42 --output results/publication",
+  "descriptors": [],
+  "elapsed_seconds": 1.115799416,
+  "formulation": "so-comparison",
+  "objectives": [
+    {
+      "column": "best_objective",
+      "label": "Weighted target error",
+      "unit": "1"
+    }
+  ],
+  "requested_evaluations": 18000,
+  "schema_version": 1,
+  "seed": 42,
+  "tutorial": "sindr-circuit-design",
+  "workers": 16
+}

@@ -34,7 +34,7 @@ examples, networking dependencies, and large example data are excluded from
 the Python package. Native Rust applications can depend only on `fcmaes-core`
 unless they need the internal GTOP catalog.
 
-The nine application directories below `tutorials/` are standalone Cargo
+The twelve application directories below `tutorials/` are standalone Cargo
 workspaces, not root members. This isolates application dependencies and
 result artifacts while reusing the local core. The room-ventilation tutorial
 demonstrates a purpose-built native simulation backend: each candidate owns its
@@ -125,8 +125,9 @@ The following are implemented in Rust:
   and Lotka-Volterra drivers.
 - Standalone application tutorials for NeXosim, Rapier, ReBop, Brahe,
   RustPower, SmartCore hyperparameter tuning, atmospheric dispersion, and room
-  ventilation, plus native neural-controller policy search. The ventilation
-  backend is deliberately educational and is
+  ventilation, plus native neural-controller policy search, pykep-core GTOC1,
+  sindr AC circuit design, and validated thevenin transient design. The
+  ventilation backend is deliberately educational and is
   accompanied by reference, held-out, and grid-sensitivity evidence rather
   than engineering claims.
 - Python bindings for the implemented optimizers, retry, MODE, QD, and GTOP.

@@ -1,0 +1,43 @@
+{
+  "ac_points": 201,
+  "actual_evaluations": 8192,
+  "artifacts": {
+    "mo_convergence": "convergence.csv",
+    "mo_pareto": "pareto.csv"
+  },
+  "command": "cargo run --release -- --preset publication --mode all --workers 16 --seed 42 --output results/publication",
+  "constraints": [
+    {
+      "column": "constraint_peak_db",
+      "feasible": "<= 0",
+      "label": "Peak above 3 dB",
+      "unit": "dB"
+    }
+  ],
+  "descriptors": [],
+  "elapsed_seconds": 0.33468649,
+  "formulation": "constrained-mo",
+  "objectives": [
+    {
+      "column": "objective_cutoff_error",
+      "label": "Cutoff error",
+      "unit": "decades"
+    },
+    {
+      "column": "objective_passband_ripple_db",
+      "label": "Pass-band ripple",
+      "unit": "dB"
+    },
+    {
+      "column": "objective_total_capacitance_nf",
+      "label": "Total capacitance",
+      "unit": "nF"
+    }
+  ],
+  "pareto_points": 128,
+  "requested_evaluations": 8192,
+  "schema_version": 1,
+  "seed": 42,
+  "tutorial": "sindr-circuit-design",
+  "workers": 16
+}

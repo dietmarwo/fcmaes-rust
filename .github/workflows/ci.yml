@@ -68,6 +68,8 @@ jobs:
           - ml-hyperparameter-tuning
           - neural-controller-policy-search
           - gtoc1
+          - sindr-circuit-design
+          - thevenin-gate-driver
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -87,6 +89,18 @@ jobs:
         run: >-
           cargo run --release
           --manifest-path tutorials/ml-hyperparameter-tuning/Cargo.toml --
+          --preset smoke --mode all --workers 2 --seed 42 --no-output
+      - name: Run circuit-design protocol smoke test
+        if: matrix.tutorial == 'sindr-circuit-design'
+        run: >-
+          cargo run --release
+          --manifest-path tutorials/sindr-circuit-design/Cargo.toml --
+          --preset smoke --mode all --workers 2 --seed 42 --no-output
+      - name: Run transient gate-driver protocol smoke test
+        if: matrix.tutorial == 'thevenin-gate-driver'
+        run: >-
+          cargo run --release
+          --manifest-path tutorials/thevenin-gate-driver/Cargo.toml --
           --preset smoke --mode all --workers 2 --seed 42 --no-output
 
   tutorial-artifacts:

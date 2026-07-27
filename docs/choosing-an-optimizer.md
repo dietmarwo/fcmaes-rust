@@ -199,7 +199,7 @@ It is a good fit when most of the following are true:
 - the required result is one robust design, a Pareto set, or a meaningful
   quality-diversity archive.
 
-The nine [application tutorials](../tutorials/README.md) cover different
+The twelve [application tutorials](../tutorials/README.md) cover different
 reasons for reaching this point: stochastic discrete events, mechanical
 discontinuities, intrinsic simulation noise, changing access windows,
 mixed-integer controls and solver failures, censored inverse inference,
