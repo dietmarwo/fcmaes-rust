@@ -11,10 +11,10 @@ The checked-in solution scores **1,850,730.667522** in this model, compared
 with the rounded 1,850,000 winning score reported for JPL. The difference is
 730.67 points, or only 0.04%. The stored vector is evaluated with the
 highest-precision VSOP2013 coefficient threshold exposed by `pykep-core`
-0.1.2.
+0.1.3.
 
 > **Model score, not a new official competition result.** GTOC1 required
-> DE405-equivalent planetary states. `pykep-core` 0.1.2 supplies VSOP2013 and
+> DE405-equivalent planetary states. `pykep-core` 0.1.3 supplies VSOP2013 and
 > represents Earth with the Earth-Moon barycentre. The score comparison is
 > therefore useful for reproducing the Rust optimization workflow, but an
 > official claim would require re-optimization and validation with the
@@ -589,7 +589,7 @@ numeric rows below; the first row uses the library's default constructor:
 From `1e-7` to `1e-9`, the score changes by only 0.06 points, so the
 730.67-point model-score difference is not caused by VSOP truncation. The
 constraint residuals, however, track the numerical resolution, and the Venus
-periapsis margin changes sign at `1e-8`. `pykep-core` 0.1.2 rejects thresholds
+periapsis margin changes sign at `1e-8`. `pykep-core` 0.1.3 rejects thresholds
 below `1e-9`, so this ephemeris cannot confirm that the positive 0.225 m margin
 is stable. The vector is numerically feasible only for the exact evaluator
 that produced it.

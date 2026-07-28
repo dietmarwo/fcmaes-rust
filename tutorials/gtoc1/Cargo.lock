@@ -236,9 +236,9 @@ dependencies = [
 
 [[package]]
 name = "pykep-core"
-version = "0.1.2"
+version = "0.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b7321a853bc8fc569938d837699bb5a33cd4a74196f97520fdf245ce4adcedd5"
+checksum = "ea287baea3163e5a5a177ddc197c6dbb72b08b120b44cffb0dfd978f9e9d1949"
 dependencies = [
  "differential-equations",
  "rayon",
