@@ -1,0 +1,85 @@
+{
+  "actual_evaluations": 256,
+  "artifacts": {
+    "convergence": "convergence.csv",
+    "qd_archive": "qd_archive.csv",
+    "replay_high_duty": "replay-high-duty.csv",
+    "replay_low_duty": "replay-low-duty.csv",
+    "replay_mid_duty": "replay-mid-duty.csv"
+  },
+  "command": "cargo run --release -- --preset smoke --mode all --workers 4 --seed 42",
+  "constraints": [
+    {
+      "column": "constraint_fall_m",
+      "feasible": "<= 0",
+      "label": "Fall-height deficit",
+      "unit": "m"
+    },
+    {
+      "column": "constraint_drift_m",
+      "feasible": "<= 0",
+      "label": "Lateral-drift excess",
+      "unit": "m"
+    }
+  ],
+  "coverage": 0.14,
+  "descriptor_bound_policy": "reject",
+  "descriptors": [
+    {
+      "bounds": [
+        0.0,
+        1.0
+      ],
+      "column": "descriptor_duty_factor",
+      "label": "Mean foot duty factor",
+      "unit": "fraction"
+    },
+    {
+      "bounds": [
+        0.0,
+        200.0
+      ],
+      "column": "descriptor_body_height_std_mm",
+      "label": "Torso-height standard deviation",
+      "unit": "mm"
+    }
+  ],
+  "elapsed_seconds": 2.827629956,
+  "formulation": "qd",
+  "invalid_evaluations": 152,
+  "objectives": [
+    {
+      "column": "quality_train",
+      "label": "Distance/work quality",
+      "unit": "1"
+    }
+  ],
+  "occupied": 14,
+  "qd": {
+    "grid_shape": [
+      10,
+      10
+    ],
+    "quality_label": "Distance/work quality (minimized)"
+  },
+  "qd_score": 1.46307755528533,
+  "rejected_out_of_bounds": 0,
+  "requested_evaluations": 256,
+  "rollout": {
+    "duration_s": 4.0,
+    "settle_s": 1.0,
+    "time_step_s": 0.004166666666666667
+  },
+  "schema_version": 1,
+  "seed": 42,
+  "simulation_seed": 17,
+  "tutorial": "rapier-quadruped-gait",
+  "validation_seeds": [
+    1001,
+    1002,
+    1003,
+    1004,
+    1005
+  ],
+  "workers": 4
+}

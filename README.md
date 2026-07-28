@@ -62,7 +62,7 @@ optimizer backend.
 | `fcmaes-gtop` | Internal native GTOP objective library shared by the examples and Python package |
 | `examples` (`fcmaes-examples`) | Native GTOP problems, application objectives, benchmarks, and executable examples |
 | `fcmaes-py` | Optional PyO3 extension for embedding the Rust implementation in a Python package |
-| `tutorials/*` | Standalone application workspaces using NeXosim, Rapier, ReBop, Brahe, RustPower, SmartCore, pykep-core astrodynamics, sindr AC analysis, thevenin transient analysis, native atmospheric dispersion, a custom educational ventilation backend, and native neural policy search |
+| `tutorials/*` | Standalone application workspaces using NeXosim, Rapier, ReBop, Brahe, RustPower, SmartCore, pykep-core astrodynamics, sindr AC analysis, thevenin transient analysis, native geometric optics, native atmospheric dispersion, a custom educational ventilation backend, and native neural policy search |
 
 Only two registry artifacts are published: `fcmaes-core` on crates.io and the
 `fcmaes-rust` binding distribution on PyPI. `fcmaes-gtop` is an internal
@@ -74,10 +74,11 @@ The application tutorials are intentionally not root workspace members. Each
 keeps its application-specific dependencies, artifacts, and lockfile isolated;
 run its Cargo commands from that tutorial directory.
 
-Ten application tutorials retain multi-objective optimization.
+Eleven application tutorials retain multi-objective optimization.
 MAP-Elites campaigns are
 implemented and recorded for NeXosim, Rapier, ReBop, Brahe, atmospheric source
-localization, room ventilation, RustPower, and sindr circuit design; the
+localization, room ventilation, RustPower, sindr circuit design, and Rapier
+quadruped locomotion; the
 SmartCore hyperparameter tutorial records a QD campaign that its own
 pre-registered criteria reject.
 That tutorial demonstrates an often missed part of optimizer benchmarking:
@@ -105,7 +106,12 @@ tutorial combines interpolated AC-response features, equal-budget retry,
 constrained MODE, and an E12 MAP-Elites catalogue. The twelfth tutorial uses
 thevenin transient simulation for a constrained
 rise-time/overshoot gate-driver front, admitted only after timestep refinement
-and a 49-design ngspice comparison passed. The
+and a 49-design ngspice comparison passed. The thirteenth implements and
+validates a dependency-free sequential geometric ray tracer before comparing
+scalar retries and a constrained Cooke-triplet front. The fourteenth makes
+quality diversity the primary result for an eight-motor Rapier quadruped and
+reports five-seed held-out terrain replay rather than treating training
+coverage as robustness. The
 [tutorial index](tutorials/README.md) includes commands, figures, validation
 results and the common result schema. Compact canonical result directories are
 version-controlled with generated SVGs so raw-evidence links and deterministic
@@ -207,6 +213,8 @@ python examples/python/test_cma.py
 - [GTOC1 “Save the Earth” tutorial](tutorials/gtoc1/README.md)
 - [sindr circuit-design tutorial](tutorials/sindr-circuit-design/README.md)
 - [thevenin transient gate-driver tutorial](tutorials/thevenin-gate-driver/README.md)
+- [Pure-Rust optical lens-design tutorial](tutorials/optical-lens-design/README.md)
+- [Rapier quadruped gait-repertoire tutorial](tutorials/rapier-quadruped-gait/README.md)
 - [Optional PyO3 bindings](docs/python-bindings.md)
 - [Release history](CHANGELOG.md)
 - [Publishing checklist](RELEASING.md)

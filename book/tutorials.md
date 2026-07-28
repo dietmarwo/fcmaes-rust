@@ -22,6 +22,8 @@ they cover:
 | GTOC1 “Save the Earth” | planet-order search, staged DE–CMA-ES, low thrust, split-brain architecture |
 | sindr circuit design | smooth AC features, equal-budget retry, constrained MODE, E12 MAP-Elites |
 | thevenin gate driver | transient measurement, constrained MODE, timestep and ngspice validation |
+| Pure-Rust optical lens design | validated sequential ray tracing, equal-budget retry, constrained MODE |
+| Rapier quadruped gait | contact-derived MAP-Elites repertoire, motor work, held-out terrain validation |
 
 The canonical, detailed [tutorial index](tutorials/README.md) retains the
 common experiment contract, comparison table, complete commands, and Diffsol

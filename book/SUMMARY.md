@@ -36,6 +36,8 @@
   - [sindr circuit design](tutorials/sindr-circuit-design/README.md)
   - [thevenin transient gate driver](tutorials/thevenin-gate-driver/README.md)
     - [Dependency notice](tutorials/thevenin-gate-driver/DEPENDENCY_NOTICE.md)
+  - [Pure-Rust optical lens design](tutorials/optical-lens-design/README.md)
+  - [Rapier quadruped gait repertoires](tutorials/rapier-quadruped-gait/README.md)
 - [Result artifact schema](tutorials/RESULT_SCHEMA.md)
 - [Figure and artifact tools](tutorials/python/README.md)
 

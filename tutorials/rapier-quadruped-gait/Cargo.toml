@@ -1,0 +1,23 @@
+[package]
+name = "rapier-quadruped-gait"
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+publish = false
+description = "Quadruped gait repertoire optimization with fcmaes-core and Rapier 3D"
+
+[workspace]
+
+[dependencies]
+fcmaes-core = { path = "../../crates/fcmaes-core" }
+rapier3d-f64 = { version = "=0.34.0", default-features = false, features = [
+    "dim3",
+    "f64",
+    "std",
+    "enhanced-determinism",
+] }
+serde_json = "1"
+
+[profile.release]
+codegen-units = 1
+lto = "thin"

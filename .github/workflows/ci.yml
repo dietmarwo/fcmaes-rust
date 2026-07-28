@@ -70,6 +70,8 @@ jobs:
           - gtoc1
           - sindr-circuit-design
           - thevenin-gate-driver
+          - optical-lens-design
+          - rapier-quadruped-gait
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -101,6 +103,18 @@ jobs:
         run: >-
           cargo run --release
           --manifest-path tutorials/thevenin-gate-driver/Cargo.toml --
+          --preset smoke --mode all --workers 2 --seed 42 --no-output
+      - name: Run optical-design protocol smoke test
+        if: matrix.tutorial == 'optical-lens-design'
+        run: >-
+          cargo run --release
+          --manifest-path tutorials/optical-lens-design/Cargo.toml --
+          --preset smoke --mode all --workers 2 --seed 42 --no-output
+      - name: Run quadruped-gait protocol smoke test
+        if: matrix.tutorial == 'rapier-quadruped-gait'
+        run: >-
+          cargo run --release
+          --manifest-path tutorials/rapier-quadruped-gait/Cargo.toml --
           --preset smoke --mode all --workers 2 --seed 42 --no-output
 
   tutorial-artifacts:

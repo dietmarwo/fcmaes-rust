@@ -1,0 +1,52 @@
+{
+  "actual_evaluations": 89155,
+  "arms": [
+    {
+      "actual_evaluations": 28954,
+      "best_objective": 18.592249784020453,
+      "elapsed_seconds": 1.227361096,
+      "feasible": true,
+      "optimizer": "cma",
+      "requested_evaluations": 30000
+    },
+    {
+      "actual_evaluations": 30201,
+      "best_objective": 14.975158555471321,
+      "elapsed_seconds": 1.22075877,
+      "feasible": true,
+      "optimizer": "de",
+      "requested_evaluations": 30000
+    },
+    {
+      "actual_evaluations": 30000,
+      "best_objective": 15.700411251399048,
+      "elapsed_seconds": 1.205333903,
+      "feasible": true,
+      "optimizer": "bite",
+      "requested_evaluations": 30000
+    }
+  ],
+  "artifacts": {
+    "so_best": "best.csv",
+    "so_convergence": "convergence.csv",
+    "spot_diagrams": "spot_diagrams.csv"
+  },
+  "command": "cargo run --release -- --preset publication --mode all --workers 16 --seed 42",
+  "descriptors": [],
+  "elapsed_seconds": 3.653453769,
+  "formulation": "so-comparison",
+  "grid_radius": 8,
+  "objectives": [
+    {
+      "column": "best_objective",
+      "label": "Penalized polychromatic RMS spot",
+      "unit": "um"
+    }
+  ],
+  "pupil_rays_per_field_wavelength": 197,
+  "requested_evaluations": 90000,
+  "schema_version": 1,
+  "seed": 42,
+  "tutorial": "optical-lens-design",
+  "workers": 16
+}

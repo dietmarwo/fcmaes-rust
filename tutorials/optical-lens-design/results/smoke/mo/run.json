@@ -1,0 +1,62 @@
+{
+  "actual_evaluations": 16384,
+  "artifacts": {
+    "mo_convergence": "convergence.csv",
+    "mo_pareto": "pareto.csv"
+  },
+  "command": "cargo run --release -- --preset smoke --mode all --workers 4 --seed 42",
+  "constraints": [
+    {
+      "column": "constraint_edge_thickness_mm",
+      "feasible": "<= 0",
+      "label": "Minimum edge thickness deficit",
+      "unit": "mm"
+    },
+    {
+      "column": "constraint_efl_mm",
+      "feasible": "<= 0",
+      "label": "EFL tolerance excess",
+      "unit": "mm"
+    },
+    {
+      "column": "constraint_lost_rays",
+      "feasible": "<= 0",
+      "label": "Lost rays",
+      "unit": "rays"
+    }
+  ],
+  "constraints_count": 3,
+  "descriptors": [],
+  "elapsed_seconds": 0.537246304,
+  "formulation": "constrained-mo",
+  "grid_radius": 4,
+  "initialization": {
+    "centre": "disclosed reference prescription",
+    "includes_exact_reference": true,
+    "relative_bound_half_width": 0.01
+  },
+  "objectives": [
+    {
+      "column": "objective_rms_spot_um",
+      "label": "Polychromatic RMS spot",
+      "unit": "um"
+    },
+    {
+      "column": "objective_track_length_mm",
+      "label": "Optical track length",
+      "unit": "mm"
+    },
+    {
+      "column": "objective_glass_volume_mm3",
+      "label": "Glass volume",
+      "unit": "mm3"
+    }
+  ],
+  "pareto_points": 145,
+  "pupil_rays_per_field_wavelength": 49,
+  "requested_evaluations": 16384,
+  "schema_version": 1,
+  "seed": 42,
+  "tutorial": "optical-lens-design",
+  "workers": 4
+}

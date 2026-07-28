@@ -1,0 +1,44 @@
+{
+  "actual_evaluations": 256,
+  "artifacts": {
+    "best": "best.csv",
+    "convergence": "convergence.csv",
+    "replay": "replay.csv"
+  },
+  "command": "cargo run --release -- --preset smoke --mode all --workers 4 --seed 42",
+  "constraints": [
+    {
+      "column": "constraint_fall_m",
+      "feasible": "<= 0",
+      "label": "Fall-height deficit",
+      "unit": "m"
+    },
+    {
+      "column": "constraint_drift_m",
+      "feasible": "<= 0",
+      "label": "Lateral-drift excess",
+      "unit": "m"
+    }
+  ],
+  "descriptors": [],
+  "elapsed_seconds": 2.460864382,
+  "formulation": "scalar-bite-retry",
+  "objectives": [
+    {
+      "column": "score",
+      "label": "Negative distance plus motor work",
+      "unit": "m + 0.002 J"
+    }
+  ],
+  "requested_evaluations": 256,
+  "rollout": {
+    "duration_s": 4.0,
+    "settle_s": 1.0,
+    "time_step_s": 0.004166666666666667
+  },
+  "schema_version": 1,
+  "seed": 42,
+  "simulation_seed": 17,
+  "tutorial": "rapier-quadruped-gait",
+  "workers": 4
+}

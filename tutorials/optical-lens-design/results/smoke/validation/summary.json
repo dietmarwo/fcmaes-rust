@@ -1,0 +1,41 @@
+{
+  "acceptance": {
+    "efl_relative_error_limit": 0.001,
+    "maximum_on_axis_spot_relative_error_limit": 0.2,
+    "paraxial_focus_relative_residual_limit": 0.001,
+    "production_and_two_finer_grid_relative_deviation_limit": 0.03
+  },
+  "checks": {
+    "efl": true,
+    "on_axis_spot": true,
+    "paraxial_focus": true,
+    "ray_convergence": true
+  },
+  "measured": {
+    "efl_relative_error": 0.00001220559681555082,
+    "maximum_on_axis_spot_relative_error": 0.102701725342508,
+    "paraxial_focus_relative_residual": 4.43370925910791e-12
+  },
+  "note": "The on-axis comparison can retain pupil-sampling differences; off-axis values additionally use different entrance-pupil/stop ray-aiming conventions and are not an equality gate.",
+  "passed": true,
+  "reference": {
+    "name": "Optiland Tutorial 5c final Cooke triplet",
+    "published_efl_mm": 50.002,
+    "published_on_axis_rms_mm": [
+      0.01444,
+      0.01076,
+      0.01108
+    ],
+    "url": "https://optiland.readthedocs.io/en/stable/examples/Tutorial_5c_Optimization_Case_Study.html"
+  },
+  "rust": {
+    "efl_mm": 50.00138969574803,
+    "on_axis_rms_mm": [
+      0.015923012913945815,
+      0.011517487619757452,
+      0.011867920932911419
+    ]
+  },
+  "schema_version": 1,
+  "tutorial": "optical-lens-design"
+}

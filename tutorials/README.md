@@ -8,7 +8,7 @@ callback or serialization boundary in the expensive path: a candidate is
 decoded and scored in Rust, and independent candidates are distributed across
 native worker threads.
 
-The twelve applications deliberately cover different reasons for choosing
+The fourteen applications deliberately cover different reasons for choosing
 gradient-free optimization:
 
 | Tutorial | Simulator | Problem property | Implemented formulations | QD decision |
@@ -25,6 +25,8 @@ gradient-free optimization:
 | [GTOC1 “Save the Earth”](gtoc1/) | pykep-core astrodynamics | 87 variables, narrow equality constraints, two multi-revolution Lambert arcs, and low thrust | coordinated DE–CMA-ES + seeded CMA-ES/BiteOpt retry | omitted: one maximum-impact trajectory is the deliverable |
 | [Circuit design](sindr-circuit-design/) | sindr AC modified-nodal analysis | log-scaled components, interpolated Bode features, competing filter goals, and E12 discreteness | CMA/DE/Bite retry + constrained MODE + MAP-Elites | accepted: a robust frequency/gain catalogue is the deliverable |
 | [Transient gate driver](thevenin-gate-driver/) | thevenin transient modified-nodal analysis | interpolated edge measurements, ringing, current/settling constraints, and independent simulator validation | constrained MODE | omitted: one continuous engineering trade-off front is the deliverable |
+| [Optical lens design](optical-lens-design/) | Pure-Rust sequential geometric ray tracer | multimodal bending, hard ray-loss boundaries, and a published prescription gate | CMA/DE/Bite retry + constrained MODE | omitted: a quality/size/material trade-off front is the deliverable |
+| [Quadruped gait](rapier-quadruped-gait/) | Rapier 3D | contacts, falls, actual motor work, and terrain overfitting | BiteOpt retry + MAP-Elites | accepted: behavior diversity is the primary deliverable |
 
 Each directory is a standalone Cargo workspace. This keeps large,
 simulator-specific dependency sets out of the main `fcmaes-rust` workspace.
@@ -660,7 +662,44 @@ circuit model, objectives, measurement interpolation, MODE front, scaling
 study, ngspice harness, validation limits, dependency notice, and exact
 publication commands.
 
-## 14. Diffsol: why gradients are the better default
+## 14. Pure-Rust optics: validated multimodal lens design
+
+The [optical-design tutorial](optical-lens-design/) implements the compact
+closed-form core of sequential geometric optics—sphere intersections, vector
+Snell refraction, Sellmeier dispersion, and paraxial first-order
+calculations—in Rust. A disclosed Optiland Cooke prescription and a pupil-grid
+study must pass before CMA-ES, DE, BiteOpt, or constrained MODE results are
+admitted.
+
+![A serial auditable ray trace feeds scalar retry or constrained MODE](optical-lens-design/images/architecture.svg)
+
+```bash
+cd tutorials/optical-lens-design
+cargo run --release -- --preset smoke --mode all --workers 4 --no-output
+```
+
+See the [complete optical tutorial](optical-lens-design/README.md) for the
+prescription, validation limits, spot diagrams, and spot/length/glass front.
+
+## 15. Rapier quadruped: contact-derived gait repertoires
+
+The [quadruped tutorial](rapier-quadruped-gait/) makes MAP-Elites the primary
+answer. A 25-variable CPG drives eight ideal motors in a deterministic
+9-body Rapier model. Duty factor comes from narrow-phase foot contacts,
+mechanical work comes from motor impulse and measured relative speed, and
+every elite is replayed on five terrain seeds excluded from training.
+
+![A CPG controls Rapier before MAP-Elites or BiteOpt consumes the measured rollout](rapier-quadruped-gait/images/architecture.svg)
+
+```bash
+cd tutorials/rapier-quadruped-gait
+cargo run --release -- --preset smoke --mode all --workers 4 --no-output
+```
+
+See the [complete gait tutorial](rapier-quadruped-gait/README.md) for the range
+study, contact strips, equal-budget scalar baseline, and held-out robustness.
+
+## 16. Diffsol: why gradients are the better default
 
 [Diffsol](https://github.com/martinjrobins/diffsol) is an MIT-licensed Rust
 ODE/DAE solver with explicit and implicit integration, event/root detection,
