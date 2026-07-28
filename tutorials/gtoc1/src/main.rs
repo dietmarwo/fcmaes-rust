@@ -11,14 +11,20 @@ use fcmaes_core::{
     AdvancedRetryConfig, BiteParams, Cmaes, CmaesParams, De, DeParams, Fitness, RetryConfig,
     RetryContext, RetryResult, RetryRunResult, advanced_retry, optimize_bite, retry,
 };
+use model::tour;
 use model::{
-    JPL_SCORE, WINNING_DECISION, bounds, evaluate, minimum_solar_distance_au, objective,
-    refinement_bounds,
+    JPL_SCORE, VALIDATED_DECISION, bounds, dop853_validation, evaluate, objective,
+    refinement_bounds, repair_zoh,
 };
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 enum Algorithm {
     Inspect,
+    ZohRepair,
+    TourInspect,
+    TourDeCma,
+    TourBite,
+    TourMesh,
     DeCma,
     Cma,
     Bite,
@@ -28,10 +34,19 @@ impl Algorithm {
     fn parse(value: &str) -> Result<Self, String> {
         match value {
             "inspect" => Ok(Self::Inspect),
+            "zoh-repair" => Ok(Self::ZohRepair),
+            "tour-inspect" => Ok(Self::TourInspect),
+            "tour-de-cma" => Ok(Self::TourDeCma),
+            "tour-bite" => Ok(Self::TourBite),
+            "tour-mesh" => Ok(Self::TourMesh),
             "de-cma" => Ok(Self::DeCma),
             "cma" => Ok(Self::Cma),
             "bite" => Ok(Self::Bite),
-            _ => Err("--algorithm must be inspect, de-cma, cma, or bite".to_owned()),
+            _ => Err(
+                "--algorithm must be inspect, zoh-repair, tour-inspect, tour-de-cma, \
+                 tour-bite, tour-mesh, de-cma, cma, or bite"
+                    .to_owned(),
+            ),
         }
     }
 }
@@ -39,6 +54,7 @@ impl Algorithm {
 #[derive(Clone, Debug)]
 struct Args {
     algorithm: Algorithm,
+    segments_per_leg: usize,
     broad: bool,
     fraction: f64,
     stages: usize,
@@ -54,6 +70,7 @@ impl Default for Args {
     fn default() -> Self {
         Self {
             algorithm: Algorithm::Inspect,
+            segments_per_leg: 5,
             broad: false,
             fraction: 0.01,
             stages: 1,
@@ -62,7 +79,7 @@ impl Default for Args {
             evaluations: 500_000,
             max_eval_fac: 20.0,
             seed: 900,
-            stop: -1_851_000.0,
+            stop: -1_843_301.0,
         }
     }
 }
@@ -85,6 +102,9 @@ impl Args {
                 .ok_or_else(|| format!("{argument} requires a value"))?;
             match argument.as_str() {
                 "--algorithm" => parsed.algorithm = Algorithm::parse(&value)?,
+                "--segments-per-leg" => {
+                    parsed.segments_per_leg = parse(&value, "--segments-per-leg")?
+                }
                 "--fraction" => parsed.fraction = parse(&value, "--fraction")?,
                 "--stages" => parsed.stages = parse(&value, "--stages")?,
                 "--workers" => parsed.workers = parse(&value, "--workers")?,
@@ -108,6 +128,9 @@ impl Args {
         if !parsed.stop.is_finite() {
             return Err("--stop must be finite".to_owned());
         }
+        if !(5..=8).contains(&parsed.segments_per_leg) {
+            return Err("--segments-per-leg must be in 5..=8".to_owned());
+        }
         if parsed.broad && parsed.algorithm != Algorithm::DeCma {
             return Err("--broad is supported only by de-cma".to_owned());
         }
@@ -123,16 +146,18 @@ fn help() {
     println!(
         "Real GTOC1 EVEEEJSJA Rust tutorial\n\
          \nUsage: cargo run --release -- [OPTIONS]\n\
-         \n  --algorithm NAME    inspect, de-cma, cma, or bite (inspect)\n\
+         \n  --algorithm NAME    inspect, zoh-repair, tour-inspect, tour-de-cma,\n\
+         \n                      tour-bite, tour-mesh, de-cma, cma, or bite (inspect)\n\
+         \n  --segments-per-leg N  whole-tour ZOH segments on each leg, 5..=8 (5)\n\
          \n  --broad             use the complete box with coordinated DE-CMA-ES\n\
          \n  --fraction N        incumbent refinement-box fraction (0.01)\n\
-         \n  --stages N          successive strict-improvement stages (1)\n\
+         \n  --stages N          optimization stages or ZOH repair iterations (1)\n\
          \n  --workers N         worker threads; 0 uses all logical CPUs (0)\n\
          \n  --retries N         parallel retry cap (128)\n\
          \n  --evaluations N     initial evaluations per retry (500000)\n\
          \n  --max-eval-fac N    coordinated retry maximum budget factor (20)\n\
          \n  --seed N            deterministic root seed (900)\n\
-         \n  --stop N            early-stop objective; must beat incumbent (-1851000)"
+         \n  --stop N            early-stop objective; must beat incumbent (-1843301)"
     );
 }
 
@@ -272,6 +297,7 @@ fn validate_stop(stop: f64, incumbent: f64) -> Result<(), String> {
 
 fn report(kind: &str, x: &[f64], wall_seconds: Option<f64>) -> Result<(), Box<dyn Error>> {
     let result = evaluate(x)?;
+    let validation = dop853_validation(x)?;
     println!(
         "{kind}_RESULT objective={:.12} score={:.12} beats_jpl={} final_mass_kg={:.9}",
         result.objective,
@@ -285,8 +311,15 @@ fn report(kind: &str, x: &[f64], wall_seconds: Option<f64>) -> Result<(), Box<dy
         result.mismatch_norm, result.powered_delta_v_km_s, result.minimum_periapsis_margin_km
     );
     println!(
+        "{kind}_VALIDATION taylor_mismatch_norm={:.12e} dop853_mismatch_norm={:.12e} \
+         maximum_backend_difference={:.12e}",
+        validation.taylor_mismatch_norm,
+        validation.dop853_mismatch_norm,
+        validation.maximum_backend_difference
+    );
+    println!(
         "{kind}_SOLAR minimum_distance_au={:.12}",
-        minimum_solar_distance_au(x)?
+        validation.minimum_solar_distance_au
     );
     println!("{kind}_EPOCHS mjd2000={:?}", result.epochs_mjd2000);
     if let Some(seconds) = wall_seconds {
@@ -312,13 +345,168 @@ fn report_stage(index: usize, result: &RetryResult) {
     }
 }
 
+fn report_tour(
+    kind: &str,
+    x: &[f64],
+    segments_per_leg: usize,
+    wall_seconds: Option<f64>,
+) -> Result<(), Box<dyn Error>> {
+    let validation = tour::validate_backends(x, segments_per_leg)?;
+    println!(
+        "{kind}_TOUR_RESULT segments_per_leg={} objective={:.12} score={:.12} \
+         final_mass_kg={:.9}",
+        segments_per_leg,
+        validation.taylor.objective,
+        validation.taylor.score,
+        validation.taylor.final_mass_kg
+    );
+    println!(
+        "{kind}_TOUR_FEASIBILITY taylor_position_mismatch={:.12e} \
+         dop853_position_mismatch={:.12e} maximum_component={:.12e} \
+         maximum_backend_difference={:.12e}",
+        validation.taylor.position_mismatch_norm,
+        validation.dop853.position_mismatch_norm,
+        validation.dop853.maximum_position_mismatch,
+        validation.maximum_backend_difference
+    );
+    if let Some(seconds) = wall_seconds {
+        println!("TIMING wall_seconds={seconds:.6}");
+    }
+    println!("{kind}_TOUR_DECISION x={x:?}");
+    Ok(())
+}
+
+fn optimize_tour(args: &Args, segments: usize, initial: &[f64]) -> RetryResult {
+    let limits = tour::bounds(segments);
+    let function = |x: &[f64]| tour::objective(x, segments);
+    let config = RetryConfig {
+        num_retries: args.retries,
+        workers: args.workers,
+        max_evaluations: args.evaluations,
+        seed: args
+            .seed
+            .wrapping_add(u64::try_from(segments - 5).expect("supported segment count fits u64")),
+        value_limit: f64::INFINITY,
+        stop_fitness: args.stop,
+        statistic_num: 100,
+        ..Default::default()
+    };
+    println!(
+        "TOUR_CONFIG algorithm={:?} segments_per_leg={} dimension={} workers={} \
+         retries={} evaluations={} seed={} stop={}",
+        args.algorithm,
+        segments,
+        tour::dimension(segments),
+        args.workers,
+        args.retries,
+        args.evaluations,
+        config.seed,
+        args.stop
+    );
+    let mut result = match args.algorithm {
+        Algorithm::TourDeCma | Algorithm::TourMesh => advanced_retry(
+            &function,
+            &limits,
+            &AdvancedRetryConfig {
+                retry: config,
+                check_interval: 100,
+                max_eval_fac: args.max_eval_fac,
+                ..Default::default()
+            },
+            |objective, context| de_cma_run(objective, context, Some(initial)),
+        ),
+        Algorithm::TourBite => retry(&function, &limits, &config, |objective, context| {
+            bite_run(objective, context, initial)
+        }),
+        _ => unreachable!("run_tour accepts only whole-tour algorithms"),
+    };
+    let incumbent = tour::objective(initial, segments);
+    let improved = result.y < incumbent;
+    if !improved {
+        result.y = incumbent;
+        result.x = initial.to_vec();
+    }
+    println!(
+        "TOUR_OPTIMIZATION objective={:.12} evaluations={} retries={} improved={improved}",
+        result.y, result.evaluations, result.runs,
+    );
+    result
+}
+
+fn run_tour(args: &Args) -> Result<(), Box<dyn Error>> {
+    let segments = args.segments_per_leg;
+    let initial = tour::seed(segments)?;
+    if args.algorithm == Algorithm::TourInspect {
+        return report_tour("SEED", &initial, segments, None);
+    }
+    let started = Instant::now();
+    if args.algorithm == Algorithm::TourMesh {
+        let mut mesh = 5;
+        let mut incumbent = tour::seed(mesh)?;
+        loop {
+            let stage_started = Instant::now();
+            let result = optimize_tour(args, mesh, &incumbent);
+            report_tour(
+                "MESH_STAGE",
+                &result.x,
+                mesh,
+                Some(stage_started.elapsed().as_secs_f64()),
+            )?;
+            if mesh == segments {
+                return report_tour(
+                    "OPTIMIZED",
+                    &result.x,
+                    mesh,
+                    Some(started.elapsed().as_secs_f64()),
+                );
+            }
+            let next_mesh = mesh + 1;
+            let resampled = tour::resample(&result.x, mesh, next_mesh)?;
+            let fresh = tour::seed(next_mesh)?;
+            let resampled_objective = tour::objective(&resampled, next_mesh);
+            let fresh_objective = tour::objective(&fresh, next_mesh);
+            let use_resampled = resampled_objective <= fresh_objective;
+            println!(
+                "MESH_TRANSFER from={} to={} resampled_objective={:.12} \
+                 fresh_objective={:.12} selected={}",
+                mesh,
+                next_mesh,
+                resampled_objective,
+                fresh_objective,
+                if use_resampled { "resampled" } else { "fresh" }
+            );
+            incumbent = if use_resampled { resampled } else { fresh };
+            mesh = next_mesh;
+        }
+    }
+    let result = optimize_tour(args, segments, &initial);
+    report_tour(
+        "OPTIMIZED",
+        &result.x,
+        segments,
+        Some(started.elapsed().as_secs_f64()),
+    )
+}
+
 fn main() -> Result<(), Box<dyn Error>> {
     let args = Args::parse()?;
+    if matches!(
+        args.algorithm,
+        Algorithm::TourInspect | Algorithm::TourDeCma | Algorithm::TourBite | Algorithm::TourMesh
+    ) {
+        return run_tour(&args);
+    }
     if args.algorithm == Algorithm::Inspect {
-        return report("STORED", &WINNING_DECISION, None);
+        return report("STORED", &VALIDATED_DECISION, None);
+    }
+    if args.algorithm == Algorithm::ZohRepair {
+        let started = Instant::now();
+        let repaired = repair_zoh(&VALIDATED_DECISION, args.stages)?;
+        return report("REPAIRED", &repaired, Some(started.elapsed().as_secs_f64()));
     }
 
-    let stored_objective = objective(&WINNING_DECISION);
+    let seed = repair_zoh(&VALIDATED_DECISION, 200)?;
+    let stored_objective = objective(&seed);
     validate_stop(args.stop, stored_objective)?;
     println!(
         "CONFIG algorithm={:?} broad={} workers={} seed={} stages={} retries={} \
@@ -335,7 +523,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         stored_objective
     );
     let started = Instant::now();
-    let mut incumbent = WINNING_DECISION.to_vec();
+    let mut incumbent = seed;
     let mut best = RetryResult {
         y: objective(&incumbent),
         x: incumbent.clone(),
@@ -401,7 +589,14 @@ fn main() -> Result<(), Box<dyn Error>> {
                     )
                 },
             ),
-            Algorithm::Inspect => unreachable!("inspect returned before optimization"),
+            Algorithm::Inspect
+            | Algorithm::ZohRepair
+            | Algorithm::TourInspect
+            | Algorithm::TourDeCma
+            | Algorithm::TourBite
+            | Algorithm::TourMesh => {
+                unreachable!("non-optimizer algorithms returned before retry")
+            }
         };
         let improved = result.y < best.y;
         println!(
@@ -442,6 +637,20 @@ mod tests {
     #[test]
     fn algorithm_names_are_explicit() {
         assert_eq!(Algorithm::parse("inspect").unwrap(), Algorithm::Inspect);
+        assert_eq!(
+            Algorithm::parse("zoh-repair").unwrap(),
+            Algorithm::ZohRepair
+        );
+        assert_eq!(
+            Algorithm::parse("tour-inspect").unwrap(),
+            Algorithm::TourInspect
+        );
+        assert_eq!(
+            Algorithm::parse("tour-de-cma").unwrap(),
+            Algorithm::TourDeCma
+        );
+        assert_eq!(Algorithm::parse("tour-bite").unwrap(), Algorithm::TourBite);
+        assert_eq!(Algorithm::parse("tour-mesh").unwrap(), Algorithm::TourMesh);
         assert_eq!(Algorithm::parse("de-cma").unwrap(), Algorithm::DeCma);
         assert_eq!(Algorithm::parse("cma").unwrap(), Algorithm::Cma);
         assert_eq!(Algorithm::parse("bite").unwrap(), Algorithm::Bite);
@@ -450,9 +659,9 @@ mod tests {
 
     #[test]
     fn stop_target_must_improve_the_stored_incumbent() {
-        let incumbent = objective(&WINNING_DECISION);
-        assert!(validate_stop(-1_851_000.0, incumbent).is_ok());
-        assert!(validate_stop(-1_850_001.0, incumbent).is_err());
+        let incumbent = objective(&VALIDATED_DECISION);
+        assert!(validate_stop(-1_843_301.0, incumbent).is_ok());
+        assert!(validate_stop(-1_843_300.0, incumbent).is_err());
         assert!(Args::default().stop < incumbent);
     }
 }

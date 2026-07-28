@@ -7,14 +7,19 @@ in native Rust. It first reproduces the continuous optimization and validation
 of a known planet order, then shows how the same tools can support a broader
 search for new orders.
 
-The checked-in solution scores **1,850,730.667522** in this model, compared
-with the rounded 1,850,000 winning score reported for JPL. The difference is
-730.67 points, or only 0.04%. The stored vector is evaluated with the
-highest-precision VSOP2013 coefficient threshold exposed by `pykep-core`
-0.1.3.
+The checked-in continuous-thrust solution scores **1,843,300.529365**, about
+6,699.47 points below the rounded 1,850,000 winning score reported for JPL.
+An earlier 24-impulse Sims–Flanagan approximation scored 1,850,730.667522, but
+direct finite-thrust propagation exposed a canonical endpoint mismatch of
+`3.23e-2`. That approximate score is retained as a useful warning, not claimed
+as a valid trajectory. The stored vector uses the accelerated Taylor ZOH
+system in `pykep-core` 0.1.4 and is independently repropagated with DOP853.
+An experimental second transcription propagates finite thrust on all eight
+legs with 5–8 segments **per leg**, so a global optimizer can change the
+complete tour instead of refining only the propelled Earth–Venus leg.
 
 > **Model score, not a new official competition result.** GTOC1 required
-> DE405-equivalent planetary states. `pykep-core` 0.1.3 supplies VSOP2013 and
+> DE405-equivalent planetary states. `pykep-core` 0.1.4 supplies VSOP2013 and
 > represents Earth with the Earth-Moon barycentre. The score comparison is
 > therefore useful for reproducing the Rust optimization workflow, but an
 > official claim would require re-optimization and validation with the
@@ -94,11 +99,11 @@ continuous problem. A practical campaign is a multi-fidelity funnel:
    Lambert arcs, gravity-assist checks, and an approximate mass or flyby-repair
    cost. This stage ranks many orders quickly; it does not prove low-thrust
    feasibility.
-3. **Compute valid low-thrust solutions.** Promote the strongest and most
-   diverse cheap candidates to a Sims–Flanagan or direct-propagation model.
-   Optimize thrust controls and mass, enforce every unpowered flyby and the
-   solar-distance limit, and validate the final trajectory independently at
-   higher resolution.
+3. **Compute valid low-thrust solutions.** Sims–Flanagan may initialize this
+   stage, but it cannot finish it. Promote the strongest and most diverse
+   candidates to bounded finite-thrust propagation, optimize controls and
+   mass, enforce every unpowered flyby and the solar-distance limit, and
+   validate the final trajectory with an independent integrator.
 
 The executable in this tutorial implements the third task for JPL's known
 `EVEEEJSJA` order. An unpublished companion implementation in the development
@@ -191,9 +196,10 @@ narrow continuous basins; and retry controllers distribute independent runs
 across native worker threads with explicit budgets.
 
 `pykep-core` supplies the trajectory kernels: ephemerides, Kepler propagation,
-multi-revolution Lambert solutions, gravity-assist utilities, and
-Sims–Flanagan low-thrust legs. Its Rust batch APIs can evaluate collections of
-propagations and Lambert problems without Python-call overhead.
+multi-revolution Lambert solutions, gravity-assist utilities, continuous ZOH
+low-thrust legs, and independently selectable Taylor and DOP853 integrators.
+Its Rust batch APIs can evaluate collections of propagations and Lambert
+problems without Python-call overhead.
 
 Together they keep the optimizer-to-physics hot path in compiled Rust. The
 type system helps make vector dimensions and interfaces explicit, and native
@@ -300,9 +306,11 @@ inner budget and serve as baselines for measuring whether the AI outer loop
 actually helps.
 
 This split-brain loop is a proposed extension; the checked-in tutorial
-executable remains the reproducible fixed-sequence low-thrust experiment. A
-production implementation should also key its cache by route encoding,
-ephemeris and fidelity settings, crate versions, optimizer budget, and seeds.
+executable still uses the fixed `EVEEEJSJA` sequence, although its whole-tour
+mode globally optimizes continuous controls and flyby geometry for that
+sequence. A production implementation should also key its cache by route
+encoding, ephemeris and fidelity settings, crate versions, optimizer budget,
+and seeds.
 
 ## Native evaluation pipeline
 
@@ -318,13 +326,15 @@ One objective evaluation is entirely Rust:
     ↓
 VSOP2013 planet states + Keplerian asteroid rotated into the planet frame
     ↓
-24-segment Sims-Flanagan Earth→Venus leg
+24-segment finite-thrust ZOH Earth→Venus leg, propagated with Taylor
     ↓
 seven selected Lambert arcs, two of them multi-revolution
     ↓
 unpowered-flyby constraints + impact score
     ↓
 penalized scalar objective for fcmaes
+    ↓
+independent DOP853 propagation + daily path sampling for the finalist
 ```
 
 There is no Python callback or foreign-function transition in the hot path.
@@ -333,10 +343,14 @@ runs; each trajectory evaluation is serial.
 
 The implementation is split into:
 
-- [`src/model.rs`](src/model.rs): ephemerides, Sims-Flanagan leg, Lambert
-  arcs, gravity assists, score, bounds, stored result, and validation;
+- [`src/model.rs`](src/model.rs): canonical scaling, Taylor ZOH leg, DOP853
+  validation, Lambert arcs, gravity assists, score, bounds, and stored result;
+- [`src/model/tour.rs`](src/model/tour.rs): coarse finite-thrust propagation on
+  every leg, exact unpowered-flyby maps, mesh resampling, and backend
+  cross-validation;
 - [`src/main.rs`](src/main.rs): coordinated DE–CMA-ES, regular parallel
-  CMA-ES/BiteOpt retry, strict incumbent retention, CLI, and reporting.
+  CMA-ES/BiteOpt retry, 5→8 mesh continuation, strict incumbent retention,
+  CLI, and reporting.
 
 The selected ballistic chain is `1L, 1R, 0, 0, 0, 0, 0`. Its flyby geometry
 is:
@@ -372,20 +386,30 @@ whereas the VSOP2013 states returned here use the planetary frame.
 before any Lambert solve. Rotating both sides, or neither side, silently
 changes the transfers.
 
-The Earth-Venus leg uses `SimsFlanaganLeg`. Its seven cut constraints are
-normalized as:
+The Earth-Venus leg uses `ZohKeplerLeg`, whose normalized Cartesian equations
+are
+
+```text
+r' = v
+v' = -r / |r|³ + thrust × direction / mass
+m' = -c × thrust
+```
+
+Position is scaled by one AU, time by `sqrt(AU³ / μ_sun)`, velocity by
+`AU / time_scale`, and mass by 1,500 kg. Physical thrust and exhaust velocity
+become:
 
 ```rust
-let normalized = [
-    mismatch[0] / AU_METRES,
-    mismatch[1] / AU_METRES,
-    mismatch[2] / AU_METRES,
-    mismatch[3] / VELOCITY_SCALE_M_S,
-    mismatch[4] / VELOCITY_SCALE_M_S,
-    mismatch[5] / VELOCITY_SCALE_M_S,
-    mismatch[6] / INITIAL_MASS_KG,
-];
+let maximum_thrust =
+    MAX_THRUST_NEWTONS * time_scale * time_scale
+    / INITIAL_MASS_KG / AU_METRES;
+let mass_flow = AU_METRES / time_scale / EXHAUST_VELOCITY_M_S;
 ```
+
+Each decision row supplies a throttle in `[0,1]` and a unit direction, so
+thrust remains bounded by 0.04 N throughout the segment. Position, velocity,
+and mass are continuous at switches; only acceleration may jump. The seven
+cut mismatches are already dimensionless in this canonical system.
 
 The following seven legs use fixed Lambert branch identities, but their dates
 remain optimization variables. Every intermediate encounter must conserve
@@ -408,42 +432,35 @@ shortfall against impact score. The threshold-sensitivity results below show
 why a sub-metre positive margin must not be treated as robust physical
 clearance.
 
-## Campaign record: identify and refine the basin
+## Campaign record: from an approximation to a propagated trajectory
 
-The stored result came from a continuation across earlier versions of the
-model, not one giant blind run:
+The stored result came from a deliberate fidelity transition:
 
 1. Start from JPL's encounter dates and enumerate Lambert families. The
    connected low-constraint path identifies the required left/right and
    multi-revolution branches.
-2. Use coordinated DE–CMA-ES on a 12-segment Sims-Flanagan transcription.
-   DE explores dates and control geometry; CMA-ES repairs the narrow equality
-   constraints around each promising point.
-3. Run incumbent-seeded CMA-ES through parallel regular retry. Each stage
-   recentres a bounded neighborhood on the best strictly improving result.
-4. Duplicate the twelve throttle intervals into a 24-segment mesh, repair its
-   cut mismatch, and continue CMA-ES refinement. The finer mesh recovered the
-   fuel needed to pass 1,850,000.
-5. Raise VSOP2013 from its fast default coefficient threshold to `1e-9` and
-   perform one final feasibility repair.
+2. Use the historical 12- and 24-impulse Sims–Flanagan transcription to locate
+   a promising control basin. Its best model score was 1,850,730.667522.
+3. Interpret those controls as bounded, piecewise-constant thrust and propagate
+   the seven physical states with the Taylor ZOH system. The unchanged impulse
+   incumbent misses the Venus endpoint by `3.2343e-2` in canonical norm, so its
+   score is not a continuous-thrust result.
+4. Run incumbent-seeded CMA-ES on the continuous transcription. Closing the
+   physical leg required reducing final mass from 1,442.454 kg to
+   1,436.663 kg; the corresponding score is 1,843,300.529365.
+5. Apply a damped minimum-norm correction derived from the ZOH mismatch
+   Jacobian. This reduces the Taylor cut mismatch to `1.58e-11` without
+   changing mass or encounter geometry.
+6. Repropagate with DOP853, sample the complete trajectory at no more than
+   one-day intervals, and accept the vector only if the independent mismatch,
+   flyby, flight-time, and solar-distance checks pass.
 
-This five-stage derivation is a historical campaign record, not a command
-sequence implemented by the current binary. The checked-in executable fixes
-the mesh at 24 segments and `VSOP_THRESHOLD` at `1e-9`; it has no
-`--segments` or `--vsop-threshold` option. Its optimizer modes can reproduce
-inspection and continue refinement from the stored 24-segment incumbent, but
-they cannot recreate the 12-to-24 mesh conversion.
-
-This distinction materially affects cost. A review measurement of the same
-objective found:
-
-| VSOP2013 configuration | Time per evaluation |
-|---|---:|
-| library default threshold | 16.9 µs |
-| threshold `1e-9` used by the shipped executable | 1,044.6 µs |
-
-Current exploratory commands therefore run roughly 62 times more expensive
-per evaluation than the historical fast-threshold stages.
+This history is the central lesson of the tutorial: mesh refinement inside an
+impulsive model cannot replace propagation of the physical finite-thrust
+equations. The stored known-route model fixes the Earth–Venus leg at 24 ZOH
+segments and `VSOP_THRESHOLD` at `1e-9`; it has no `--segments` or
+`--vsop-threshold` option. The separate whole-tour mode accepts
+`--segments-per-leg 5..=8`.
 
 The stage loop never replaces the incumbent with a weaker run:
 
@@ -461,9 +478,131 @@ vector, the final block is labelled `INCUMBENT_RESULT`, not
 `OPTIMIZED_RESULT`, so a failed search cannot look like a newly computed
 success.
 
-## Step 3: choose the retry algorithm
+## Coarse whole-tour global search
 
-Three modes are implemented.
+The stored result assumes that only Earth–Venus is propelled and follows
+selected Lambert arcs afterward. The experimental whole-tour transcription
+removes that assumption: each of the eight legs has its own bounded
+piecewise-constant thrust schedule. The requested mesh size is the number of
+segments on **each leg**, not the total number of thrust intervals.
+
+The decision vector contains:
+
+- launch epoch and eight leg durations;
+- launch excess magnitude and direction;
+- periapsis fraction and flyby-plane angle for each of seven unpowered
+  flybys; and
+- throttle, polar angle, and azimuth for every finite-thrust segment on every
+  leg.
+
+For `S` segments per leg the dimension is `26 + 8 × 3 × S`:
+
+| Segments per leg | Total thrust segments | Decision variables |
+|---:|---:|---:|
+| 5 | 40 | 146 |
+| 6 | 48 | 170 |
+| 7 | 56 | 194 |
+| 8 | 64 | 218 |
+
+Mass, position, and velocity are propagated continuously within each leg.
+At an encounter, three position residuals enforce arrival at the planet. The
+incoming velocity is passed through `flyby_outgoing_velocity`, which preserves
+planet-relative speed and applies the selected periapsis and flyby-plane
+angle; that outgoing velocity initializes the next leg. Position is reset to
+the planet only at this multiple-shooting node. Thus the 24 position residuals,
+rather than a hidden Lambert reset, determine whole-tour feasibility.
+
+The objective is:
+
+```text
+objective = 1e15 × Σ(24 canonical position residuals²) - impact_score
+```
+
+Taylor propagation is used in the optimizer. Every reported tour is
+repropagated with DOP853 and prints both residual norms and their maximum
+component difference. A converged candidate would still need a finer
+transcription and daily DOP853 path sampling before it could replace the
+stored validated result.
+
+The Lambert-based stored route supplies only an initial guess: its first-leg
+controls are conservatively averaged onto the coarse mesh, the other legs
+start at zero thrust, and its incoming/outgoing asymptotes initialize the
+flyby parameters. Three search modes are available:
+
+```bash
+# Evaluate the unoptimized five-segment-per-leg seed.
+cargo run --release -- \
+  --algorithm tour-inspect --segments-per-leg 5
+
+# Optimize one selected mesh with coordinated DE–CMA-ES or BiteOpt retry.
+cargo run --release -- \
+  --algorithm tour-de-cma --segments-per-leg 5 \
+  --workers 0 --retries 128 --evaluations 500000 --max-eval-fac 20
+
+cargo run --release -- \
+  --algorithm tour-bite --segments-per-leg 5 \
+  --workers 0 --retries 128 --evaluations 500000
+
+# Optimize at 5, then transfer through 6 and 7 to 8 segments per leg.
+cargo run --release -- \
+  --algorithm tour-mesh --segments-per-leg 8 \
+  --workers 0 --retries 128 --evaluations 500000 --max-eval-fac 20
+```
+
+`tour-mesh` always begins at five segments per leg and stops at the requested
+mesh. Each level receives the specified retry/evaluation budget. An
+underperforming stochastic run cannot replace its incumbent on the same mesh.
+At the next mesh, the driver compares the overlap-averaged incumbent with a
+fresh seed and selects the better starting objective.
+
+More continuous-thrust segments are **not automatically better for global
+search**. They add real switching controls and raise the dimension from 146
+to as much as 218. Moreover, the uniform 5-, 6-, 7-, and 8-segment grids are
+not nested, so transferring a control profile can worsen the residual before
+reoptimization. This differs from an impulsive Sims–Flanagan approximation:
+there, adding impulses is primarily a way to mimic continuous thrust more
+closely. Here every interval is already propagated with the finite-thrust
+equations, and a smaller control space may be much easier for the global
+optimizer. Independent `tour-de-cma` campaigns at each resolution are
+therefore at least as important as sequential `tour-mesh` refinement.
+
+A deliberately tiny deterministic smoke run used one worker, one retry, and
+5,000 evaluations at five segments per leg:
+
+```bash
+cargo run --release -- \
+  --algorithm tour-de-cma --segments-per-leg 5 \
+  --workers 1 --retries 1 --evaluations 5000 \
+  --max-eval-fac 1 --seed 43 --stop -1e30
+```
+
+On the development host it took 10.58 seconds and reduced the canonical
+position-residual norm from `19.0221` to `5.0321`; DOP853 reproduced the latter
+as `5.032105`. This proves that the global objective, optimizer, and
+independent backend are connected. It is emphatically **not feasible**, and
+its displayed score is not meaningful. A scientific campaign needs orders of
+magnitude more evaluations, several retries, resolution comparisons, and a
+final constraint-repair stage.
+
+## Step 3: choose the refinement algorithm
+
+The following modes refine the stored 24-segment Earth–Venus model. The
+whole-tour modes are described separately above.
+
+### ZOH feasibility repair
+
+`zoh-repair` uses the DOP853 ZOH mismatch Jacobian, applies the chain rule for
+the spherical control parameters, solves a damped seven-by-seven
+minimum-norm system, and accepts only corrections that reduce the
+Taylor-propagated mismatch:
+
+```bash
+cargo run --release -- --algorithm zoh-repair --stages 20
+```
+
+This is a fast local equality-constraint repair, not a global optimizer. The
+stored vector already satisfies its stopping tolerance, so the command mainly
+demonstrates the final campaign stage.
 
 ### Coordinated DE–CMA-ES
 
@@ -495,13 +634,14 @@ cargo run --release -- \
   --fraction 0.01 --stages 3 \
   --workers 0 --retries 128 \
   --evaluations 500000 --seed 900 \
-  --stop -1851000
+  --stop -1843301
 ```
 
-`--fraction` is relative to each complete bound width. Start around `0.05`
-while the score improves by hundreds of points per stage, then reduce it to
-`0.01` when the wider neighborhood plateaus. The default stop is `-1851000`;
-the CLI rejects any stop target that the stored incumbent already satisfies.
+In local mode, encounter dates and final mass stay fixed while
+`--fraction` controls the neighborhood for launch/Venus asymptote geometry
+and the 24 thrust controls. `--broad` restores the complete decision box for
+coordinated DE–CMA-ES. The default stop is `-1843301`; the CLI rejects any
+stop target that the stored incumbent already satisfies.
 
 ### Parallel BiteOpt retry
 
@@ -513,15 +653,14 @@ cargo run --release -- \
   --fraction 0.05 --stages 3 \
   --workers 0 --retries 128 \
   --evaluations 500000 --seed 600 \
-  --stop -1851000
+  --stop -1843301
 ```
 
-In the historical comparison, three BiteOpt stages used 192,000,000
-evaluations and improved the incumbent by about 35 points in 182.397487
-seconds at the faster default VSOP threshold. That threshold is not selectable
-in the current CLI. CMA-ES made materially larger improvements in this smooth,
-tightly constrained local basin. BiteOpt remains useful as an independent
-check that the result is not specific to one local method.
+In the historical impulsive-model comparison, CMA-ES made materially larger
+improvements in this smooth, tightly constrained local basin. That timing and
+score cannot be transferred to the continuous ZOH objective. BiteOpt remains
+useful as an independent check that the result is not specific to one local
+method.
 
 BiteOpt, CMA-ES, and DE–CMA-ES now all run their inner optimizer with no
 private early-stop threshold; the retry controller alone owns campaign
@@ -540,67 +679,53 @@ cargo run --release -- --algorithm inspect
 Expected key output:
 
 ```text
-STORED_RESULT objective=-1850730.649358771043 score=1850730.667522034608 beats_jpl=true final_mass_kg=1442.454287863
-STORED_FEASIBILITY mismatch_norm=3.575949540637e-9 powered_delta_v_km_s=4.589409741129e-9 minimum_periapsis_margin_km=0.000225
-STORED_SOLAR minimum_distance_au=0.671462804470
+STORED_RESULT objective=-1843300.523990307702 score=1843300.529365212889 beats_jpl=false final_mass_kg=1436.663259037
+STORED_FEASIBILITY mismatch_norm=1.582252379074e-11 powered_delta_v_km_s=4.586956592334e-9 minimum_periapsis_margin_km=0.000225
+STORED_VALIDATION taylor_mismatch_norm=1.582252379074e-11 dop853_mismatch_norm=1.502872426886e-10 maximum_backend_difference=8.835557285813e-11
+STORED_SOLAR minimum_distance_au=0.671522427923
 ```
 
-The recorded maximum-precision rerun stopped after 58 completed retries and
-17,239,999 objective evaluations in its first requested stage. It took
-899.410210 seconds on an AMD Ryzen 9 9950X with 16 physical cores and 32
-hardware threads. The run ended because its `-1850001` stopping threshold was
-met, not because all 128 retries, all eight requested stages, or a convergence
-test had completed. That historical target is weaker than the now-stored
-incumbent and the current CLI rejects it.
-
-There is intentionally no schema-v1 `run.json` for this historical campaign.
-The current executable can inspect and refine the 24-segment incumbent but
-cannot replay the earlier 12-to-24-segment derivation, so presenting that
-campaign as a reproducible current run would be misleading. A future fresh
-end-to-end campaign should emit the command, seed, budgets, actual evaluations,
-wall time, and resulting decision under the repository's result schema.
+The final Jacobian repair takes about 0.01 seconds on the development host once
+CMA-ES has supplied its near-feasible continuous candidate. The earlier global
+and local optimization stages were exploratory and did not emit a schema-v1
+`run.json`, so this tutorial does not present an unverifiable aggregate wall
+time as a reproducible benchmark. A fresh end-to-end campaign should emit the
+command, seed, budgets, actual evaluations, wall time, and resulting decision
+under the repository's result schema.
 
 | Quantity | Stored result |
 |---|---:|
-| Model impact score | 1,850,730.667522 |
-| Margin over reported JPL score | +730.667522 |
-| Final mass | 1,442.454287863 kg |
+| Continuous-model impact score | 1,843,300.529365 |
+| Difference from reported JPL score | −6,699.470635 |
+| Final mass | 1,436.663259037 kg |
 | Launch hyperbolic excess | 2.499999991 km/s |
-| Normalized low-thrust mismatch | 3.57595e-9 |
-| Equivalent powered flyby delta-v | 4.58941e-9 km/s |
+| Taylor ZOH mismatch | 1.58225e-11 |
+| DOP853 ZOH mismatch | 1.50287e-10 |
+| Maximum backend difference | 8.83556e-11 |
+| Equivalent powered flyby delta-v | 4.58696e-9 km/s |
 | Minimum flyby periapsis margin | +0.000225 km |
-| Sampled minimum solar distance | 0.671462804 AU |
+| Daily-sampled minimum solar distance | 0.671522428 AU |
 
 ## VSOP2013 threshold sensitivity
 
-The impact score is stable across the finer VSOP2013 truncations, but the
-sub-metre periapsis clearance is not. Re-evaluating the same stored decision
-after changing the single `VSOP_THRESHOLD` constant and rebuilding gives the
-numeric rows below; the first row uses the library's default constructor:
-
-| Threshold | Score | Mismatch norm | Powered Δv (km/s) | Minimum periapsis margin |
-|---|---:|---:|---:|---:|
-| library default | 1,850,751.415315 | 3.6896e-4 | 4.5654e-3 | +0.893447 km |
-| `1e-6` | 1,850,729.955037 | 1.6680e-5 | 1.5167e-4 | +0.096516 km |
-| `1e-7` | 1,850,730.726825 | 2.8242e-6 | 3.2466e-5 | +0.017396 km |
-| `1e-8` | 1,850,730.681603 | 1.0301e-7 | 7.9521e-6 | **−0.001275 km** |
-| `1e-9` | 1,850,730.667522 | 3.5759e-9 | 4.5894e-9 | +0.000225 km |
-
-From `1e-7` to `1e-9`, the score changes by only 0.06 points, so the
-730.67-point model-score difference is not caused by VSOP truncation. The
-constraint residuals, however, track the numerical resolution, and the Venus
-periapsis margin changes sign at `1e-8`. `pykep-core` 0.1.3 rejects thresholds
-below `1e-9`, so this ephemeris cannot confirm that the positive 0.225 m margin
-is stable. The vector is numerically feasible only for the exact evaluator
-that produced it.
+The active Venus periapsis margin is only 0.225 m at the selected `1e-9`
+threshold. It must therefore be treated as numerically fragile even though
+Taylor and DOP853 agree on the propagated spacecraft state. Changing the
+ephemeris changes the encounter states and defines a different optimization
+problem; a meaningful threshold or DE405 comparison must reoptimize or repair
+the controls rather than merely rescore the fixed vector. `pykep-core` rejects
+VSOP2013 thresholds below `1e-9`, so this model cannot establish robustness of
+that sub-metre margin.
 
 ## Validate before trusting the score
 
-The optimizer objective samples no trajectory points beyond those required by
-the Sims-Flanagan and Lambert calculations. A separate diagnostic reconstructs
-all 24 impulse-centred low-thrust coasts and samples every ballistic arc. This
-keeps thousands of validation propagations out of each optimizer evaluation
-while checking the 0.2 AU exclusion afterward.
+The optimizer propagates all 24 finite-thrust segments with accelerated
+Taylor integration but does not perform dense path sampling. The validator
+then repeats the complete low-thrust leg with DOP853, reports both endpoint
+mismatches and their maximum component difference, and samples the propelled
+and ballistic trajectory at intervals no longer than one day. This keeps
+thousands of validation samples out of each optimizer evaluation while
+checking the 0.2 AU exclusion afterward.
 
 Run the complete local checks:
 
@@ -610,33 +735,35 @@ cargo clippy --all-targets -- -D warnings
 cargo test
 ```
 
-The five tests reproduce the stored score; assert its official launch-window
-and flight-time limits, low-thrust mismatch, flyby feasibility, and solar
-distance; reject an unsupported asteroid flyby without an index panic; check
-algorithm names and stop-target validation; and confirm the finite optimizer
-penalty for invalid vectors. The `gtoc1` workspace is also part of the
-`simulator-tutorials` CI matrix.
+The nine tests reproduce the stored score; assert its launch-window and
+flight-time limits, Taylor/DOP853 mismatch agreement, flyby feasibility, and
+solar distance; reject an unsupported asteroid flyby without an index panic;
+check algorithm names and stop-target validation; confirm the finite optimizer
+penalty for invalid vectors; and exercise every 5–8-segment whole-tour
+dimension, seed, evaluation, and mesh-resampling path. The `gtoc1` workspace
+is also part of the `simulator-tutorials` CI matrix. One whole-tour test
+explicitly cross-checks the five-segment seed with Taylor and DOP853.
 
-## What “beat” means here
+## What the result means
 
-The tutorial demonstrates that native Rust can model and optimize a realistic
-high-dimensional interplanetary trajectory to a model score above the rounded
-competition-winning reference. The +730.67 comparison is only 0.04%, so it is
-also within the precision implied by reporting the reference as 1,850,000.
-Moreover, JPL later reoptimized Deimos Space's different
-`EVVEEVVEVEJSJA` sequence to a substantially higher objective. This tutorial
-does not beat that post-competition result.
+The tutorial demonstrates that native Rust can model, optimize, and
+cross-validate a realistic high-dimensional interplanetary trajectory. It
+also corrects its earlier conclusion: the 1,850,730 Sims–Flanagan score was an
+impulsive approximation, and the currently validated 24-segment
+continuous-thrust result scores 1,843,300. It therefore does **not** beat JPL.
+That negative result is scientifically more useful than preserving a claim
+which disappears under the physical propagation model.
 
 It also does **not** erase the ephemeris qualification:
 
 - the competition requested DE405-equivalent states;
 - VSOP2013 is an analytical planetary theory;
 - `earth_moon` is a barycentric state, not the Earth's centre; and
-- the active Venus periapsis margin is +0.225 m at `1e-9` but −1.275 m at
-  `1e-8`, so its sign is a truncation-sensitive numerical result.
+- the active Venus periapsis margin is only +0.225 m at `1e-9`.
 
 A next production step is therefore an ephemeris-provider abstraction backed
-by DE440/DE405-compatible kernels, followed by constraint repair in that
-model. The optimization architecture remains the same.
+by DE440/DE405-compatible kernels, followed by a higher-resolution
+continuous-thrust transcription and constraint repair in that model. The
+optimization architecture remains the same.
 
 [gtoc-portal]: https://sophia.estec.esa.int/gtoc_portal/
