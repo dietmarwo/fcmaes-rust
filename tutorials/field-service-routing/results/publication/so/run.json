@@ -1,0 +1,39 @@
+{
+  "actual_evaluations": 30311,
+  "artifacts": {
+    "arms": "arms.csv",
+    "convergence": "convergence.csv",
+    "routes": "routes.csv"
+  },
+  "baseline_evaluations": 1,
+  "command": "cargo run --release --locked -- --mode all --preset publication --workers 4 --seed 42 --output results/publication",
+  "constraints": [
+    {
+      "column": "constraint_capacity",
+      "feasible": "<=0"
+    },
+    {
+      "column": "constraint_lateness",
+      "feasible": "<=0"
+    },
+    {
+      "column": "constraint_shift",
+      "feasible": "<=0"
+    }
+  ],
+  "elapsed_seconds": 0.243910884,
+  "formulation": "robust-hard-window-so",
+  "objectives": [
+    {
+      "column": "worst_cost",
+      "label": "Worst scenario cost",
+      "unit": "currency"
+    }
+  ],
+  "preset": "publication",
+  "requested_evaluations": 30000,
+  "schema_version": 1,
+  "seed": 42,
+  "tutorial": "field-service-routing",
+  "workers": 4
+}

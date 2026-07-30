@@ -1,0 +1,10 @@
+name,set,solar_factor,wind_factor,load_factor,winter_boost,tariff_shift_hours,export_price_factor,battery_factor,resolution
+base_year,training,1.0,1.0,1.0,0.0,0,1.0,1.0,hourly
+low_solar_year,training,0.65,1.0,1.0,0.0,0,1.0,1.0,hourly
+high_load_winter,training,1.0,1.0,1.0,0.22,0,1.0,1.0,hourly
+tariff_peak_shifted,training,1.0,1.0,1.0,0.0,3,1.0,1.0,hourly
+export_price_zero,training,1.0,1.0,1.0,0.0,0,0.0,1.0,hourly
+wind_outage,holdout,1.0,0.45,1.0,0.0,0,1.0,1.0,hourly
+battery_derated_80pct,holdout,1.0,1.0,1.0,0.0,0,1.0,0.8,hourly
+load_growth_15pct,holdout,1.0,1.0,1.15,0.0,0,1.0,1.0,hourly
+quarter_hour_replay,holdout,1.0,1.0,1.0,0.0,0,1.0,1.0,quarter-hour

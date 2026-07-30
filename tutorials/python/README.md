@@ -31,6 +31,10 @@ manifests and invokes any tutorial-specific `plot_results.py --write` script.
 The room-ventilation and HPO tutorials use that extension because their
 publication figures combine evidence that is broader than one optimizer
 manifest.
+A tutorial whose artifact axes are incompatible with the common renderer may
+also add a `.custom-renderer` marker. Its manifests are then skipped by the
+common renderer while its deterministic `plot_results.py` remains part of the
+same write/check pass.
 `--check` renders into temporary directories and compares bytes, so volatile
 Matplotlib metadata cannot create silent documentation drift.
 `requirements-lock.txt` fixes the complete plotting stack used for regeneration

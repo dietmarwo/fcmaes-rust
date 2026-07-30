@@ -1,0 +1,11 @@
+{
+  "decoder_covered_separately_by_tests": true,
+  "expected_bit_exact": true,
+  "external_validation": false,
+  "limitation": "shared interpretation errors remain possible",
+  "max_absolute_discrepancy": 0.0,
+  "mean_absolute_discrepancy": 0.0,
+  "scope": "cost and constraint arithmetic for supplied decoded routes",
+  "supplied_routes": 1000,
+  "validator": "independent in-repository scorer2"
+}

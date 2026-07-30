@@ -1,0 +1,7 @@
+/results/ci-smoke/
+/results/smoke/
+/results/l1-smoke/
+/results/minimax-smoke/
+# A provider campaign remains local until it finishes and its complete
+# manifest/CSV bundle has been reviewed and frozen for publication.
+/results/minimax-large-no-me-ma/

@@ -1,0 +1,70 @@
+{
+  "actual_evaluations": 24336,
+  "angular_points": 4001,
+  "arms": [
+    {
+      "actual_evaluations": 8184,
+      "best_objective": -11.70495191065001,
+      "completed_retries": 8,
+      "elapsed_seconds": 3.573764693,
+      "optimizer": "cma",
+      "requested_evaluations": 8000
+    },
+    {
+      "actual_evaluations": 8152,
+      "best_objective": -11.23260253490708,
+      "completed_retries": 8,
+      "elapsed_seconds": 3.667845089,
+      "optimizer": "de",
+      "requested_evaluations": 8000
+    },
+    {
+      "actual_evaluations": 8000,
+      "best_objective": -12.029500766047079,
+      "completed_retries": 8,
+      "elapsed_seconds": 3.536316709,
+      "optimizer": "bite",
+      "requested_evaluations": 8000
+    }
+  ],
+  "artifacts": {
+    "best": "best.csv",
+    "convergence": "convergence.csv",
+    "failure_envelope": "failure_envelope.csv",
+    "pattern": "pattern.csv"
+  },
+  "command": "cargo run --release --locked --features fft -- --preset publication --mode all --workers 0 --seed 42 --output results/publication",
+  "constraints": [
+    {
+      "column": "constraint_pointing",
+      "feasible": "<= 0",
+      "unit": "deg"
+    },
+    {
+      "column": "constraint_psll",
+      "feasible": "<= 0",
+      "unit": "dB"
+    },
+    {
+      "column": "constraint_kernel",
+      "feasible": "<= 0",
+      "unit": "scaled"
+    }
+  ],
+  "descriptors": [],
+  "elapsed_seconds": 10.777926491,
+  "formulation": "so-comparison",
+  "objectives": [
+    {
+      "column": "best_objective",
+      "label": "Worst training PSLL plus feasibility penalties",
+      "unit": "dB"
+    }
+  ],
+  "requested_evaluations": 24000,
+  "requested_steer_deg": 20.0,
+  "schema_version": 1,
+  "seed": 42,
+  "tutorial": "phased-array-codebook",
+  "workers": 0
+}

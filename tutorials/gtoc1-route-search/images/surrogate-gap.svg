@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="520" viewBox="0 0 1000 520" role="img" aria-labelledby="title desc">
+  <title id="title">L0 and L1 surrogate gap</title>
+  <desc id="desc">Promoted route L0 estimates versus impulsive Sims-Flanagan L1 scores.</desc>
+  <rect width="1000" height="520" fill="#f7f9fc"/>
+  <text x="500" y="45" text-anchor="middle" font-family="system-ui" font-size="24" font-weight="700" fill="#132238">L0–L1 surrogate gap</text>
+  <text x="500" y="260" text-anchor="middle" font-family="system-ui" font-size="19" fill="#40556f">Status placeholder: zero L1 promotions and zero measured gaps.</text>
+</svg>

@@ -1,0 +1,47 @@
+{
+  "actual_evaluations": 12024,
+  "artifacts": {
+    "archive": "qd_archive.csv",
+    "codebook": "codebook.csv",
+    "convergence": "qd_convergence.csv",
+    "holdout_migration": "holdout_migration.csv"
+  },
+  "command": "cargo run --release --locked --features fft -- --preset publication --mode all --workers 0 --seed 42 --output results/publication",
+  "descriptors": [
+    {
+      "column": "descriptor_peak_deg_train",
+      "label": "Measured peak direction",
+      "unit": "deg"
+    },
+    {
+      "column": "descriptor_hpbw_deg_train",
+      "label": "Measured HPBW",
+      "unit": "deg"
+    }
+  ],
+  "elapsed_seconds": 3.364411795,
+  "formulation": "quality-diversity",
+  "objectives": [
+    {
+      "column": "quality_train",
+      "label": "Worst-case sidelobe ratio",
+      "unit": "linear"
+    }
+  ],
+  "qd": {
+    "capacity": 120,
+    "clamped_descriptors": 0,
+    "grid_shape": [
+      12,
+      10
+    ],
+    "infeasible_evaluations": 10579,
+    "invalid_evaluations": 539,
+    "occupied": 43
+  },
+  "requested_evaluations": 12000,
+  "schema_version": 1,
+  "seed": 42,
+  "tutorial": "phased-array-codebook",
+  "workers": 0
+}

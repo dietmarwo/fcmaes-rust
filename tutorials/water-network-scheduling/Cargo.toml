@@ -1,0 +1,21 @@
+[package]
+name = "water-network-scheduling"
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+publish = false
+description = "Robust pump scheduling and pressure management with epanet-rs and fcmaes-core"
+
+[workspace]
+
+[dependencies]
+epanet-rs = "=0.2.3"
+fcmaes-core = "=0.1.3"
+# Local development override:
+# fcmaes-core = { path = "../../crates/fcmaes-core" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[profile.release]
+codegen-units = 1
+lto = "thin"

@@ -1,0 +1,13 @@
+{
+  "artifacts": {
+    "metrics": "scenario_metrics.csv"
+  },
+  "command": "cargo run --release --locked -- --mode all --preset publication --workers 4 --seed 42 --output results/publication",
+  "dda_pda_objectives_aggregated": false,
+  "formulation": "named-scenarios",
+  "preset": "publication",
+  "schema_version": 1,
+  "seed": 42,
+  "tutorial": "water-network-scheduling",
+  "workers": 4
+}

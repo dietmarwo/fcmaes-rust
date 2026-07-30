@@ -68,10 +68,15 @@ jobs:
           - ml-hyperparameter-tuning
           - neural-controller-policy-search
           - gtoc1
+          - gtoc1-route-search
           - sindr-circuit-design
           - thevenin-gate-driver
           - optical-lens-design
           - rapier-quadruped-gait
+          - phased-array-codebook
+          - energy-hub-bilevel
+          - field-service-routing
+          - water-network-scheduling
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -86,6 +91,31 @@ jobs:
         run: cargo clippy --manifest-path tutorials/${{ matrix.tutorial }}/Cargo.toml --all-targets -- -D warnings
       - name: cargo test
         run: cargo test --manifest-path tutorials/${{ matrix.tutorial }}/Cargo.toml
+      - name: Check field-service API documentation coverage
+        if: matrix.tutorial == 'field-service-routing'
+        run: >-
+          env RUSTDOCFLAGS="-D warnings"
+          cargo doc --manifest-path tutorials/field-service-routing/Cargo.toml
+          --no-deps
+      - name: Check water-network API documentation
+        if: matrix.tutorial == 'water-network-scheduling'
+        run: >-
+          env RUSTDOCFLAGS="-D warnings"
+          cargo doc --manifest-path tutorials/water-network-scheduling/Cargo.toml
+          --no-deps
+      - name: Check phased-array FFT feature
+        if: matrix.tutorial == 'phased-array-codebook'
+        run: |
+          cargo clippy --manifest-path tutorials/phased-array-codebook/Cargo.toml \
+            --all-targets --features fft -- -D warnings
+          cargo test --manifest-path tutorials/phased-array-codebook/Cargo.toml \
+            --features fft
+      - name: Check phased-array API documentation
+        if: matrix.tutorial == 'phased-array-codebook'
+        run: >-
+          env RUSTDOCFLAGS="-D warnings -D missing_docs"
+          cargo doc --manifest-path tutorials/phased-array-codebook/Cargo.toml
+          --no-deps --document-private-items
       - name: Run HPO protocol smoke test
         if: matrix.tutorial == 'ml-hyperparameter-tuning'
         run: >-
@@ -116,6 +146,45 @@ jobs:
           cargo run --release
           --manifest-path tutorials/rapier-quadruped-gait/Cargo.toml --
           --preset smoke --mode all --workers 2 --seed 42 --no-output
+      - name: Run phased-array protocol smoke test
+        if: matrix.tutorial == 'phased-array-codebook'
+        run: >-
+          cargo run --release --locked
+          --manifest-path tutorials/phased-array-codebook/Cargo.toml --
+          --preset smoke --mode all --workers 2 --seed 42 --no-output
+      - name: Run energy-hub protocol smoke test
+        if: matrix.tutorial == 'energy-hub-bilevel'
+        run: >-
+          cargo run --release --locked
+          --manifest-path tutorials/energy-hub-bilevel/Cargo.toml --
+          --preset smoke --mode all --workers 2 --seed 42 --no-output
+      - name: Run field-service protocol smoke test
+        if: matrix.tutorial == 'field-service-routing'
+        run: >-
+          cargo run --release --locked
+          --manifest-path tutorials/field-service-routing/Cargo.toml --
+          --preset smoke --mode all --workers 2 --seed 42 --no-output
+      - name: Run water-network protocol smoke test
+        if: matrix.tutorial == 'water-network-scheduling'
+        run: >-
+          cargo run --release --locked
+          --manifest-path tutorials/water-network-scheduling/Cargo.toml --
+          --preset smoke --mode all --workers 2 --seed 42 --no-output
+      - name: Run GTOC1 route-search protocol smoke test
+        if: matrix.tutorial == 'gtoc1-route-search'
+        run: >-
+          cargo run --release --locked
+          --manifest-path tutorials/gtoc1-route-search/Cargo.toml --
+          --smoke --strategy agent
+          --agent-command-json '["python3","tutorials/gtoc1-route-search/agents/mock_agent.py"]'
+          --results tutorials/gtoc1-route-search/results/ci-smoke/agent
+      - name: Check GTOC1 route-search evidence and figures
+        if: matrix.tutorial == 'gtoc1-route-search'
+        working-directory: tutorials/gtoc1-route-search
+        run: |
+          python3 -m unittest agents/test_llm_agent.py
+          python3 compare_campaigns.py --check
+          python3 plot_results.py --check
 
   tutorial-artifacts:
     name: Tutorial artifacts and documentation

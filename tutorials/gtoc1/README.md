@@ -7,6 +7,10 @@ in native Rust. It first reproduces the continuous optimization and validation
 of a known planet order, then shows how the same tools can support a broader
 search for new orders.
 
+The executable implementation of that broader discrete search is the
+[split-brain GTOC1 route-search companion](../gtoc1-route-search/), with
+equal-budget agent, random, and evolutionary proposal arms.
+
 The checked-in continuous-thrust solution scores **1,843,300.529365**, about
 6,699.47 points below the rounded 1,850,000 winning score reported for JPL.
 An earlier 24-impulse Sims–Flanagan approximation scored 1,850,730.667522, but
@@ -106,11 +110,13 @@ continuous problem. A practical campaign is a multi-fidelity funnel:
    validate the final trajectory with an independent integrator.
 
 The executable in this tutorial implements the third task for JPL's known
-`EVEEEJSJA` order. An unpublished companion implementation in the development
-tree also uses fast Lambert scouts to investigate JPL and Deimos sequence
-families. The following numbers come from that companion and cannot be
-reproduced by this standalone tutorial. They are included because the
-experiments exposed the important failure mode behind the funnel: an excellent
+`EVEEEJSJA` order. The published
+[route-search companion](../gtoc1-route-search/) implements the first two
+tasks and the promotion handoff for variable-length orders. The following
+recorded outcomes predate its matched campaign. The companion retains their
+schedules and physics regressions, but they are historical model evidence,
+not results from the current equal-budget comparison. They remain useful
+because they expose the important failure mode behind the funnel: an excellent
 cheap score may disappear when thrust continuity and exact flyby feasibility
 are enforced.
 
@@ -208,109 +214,29 @@ important, the cheap and expensive models can share the same tested
 astrodynamics primitives, reducing accidental disagreement between search
 stages.
 
-## Split-brain search for planet orders
+## From a fixed sequence to route search
 
-The proposed architecture follows
-[`autoresearch-circuit`](https://github.com/dietmarwo/autoresearch-circuit).
-That project separates discrete biochemical-circuit topology from continuous
-kinetic parameters. Applied to GTOC1, an AI agent proposes *structure* and a
-numerical optimizer tunes *numbers*:
-
-| Responsibility | Circuit example | GTOC1 application |
-|---|---|---|
-| AI outer loop | regulatory topology | planet order and coarse route family |
-| `fcmaes` inner loop | kinetic parameters | launch epoch, encounter times, and cheap-model variables |
-| fast evaluator | short stochastic simulation | Lambert, flyby, and mass-surrogate model |
-| expensive validator | long stress tests | low-thrust optimization and strict propagation |
-| persistent memory | topology/niche archive | sequence archive with optimized timings and diagnostics |
+This tutorial owns continuous optimization and independent validation for the
+known `EVEEEJSJA` sequence. Its
+[route-search companion](../gtoc1-route-search/) owns the discrete outer
+question: proposing, deduplicating, optimizing, archiving, and comparing
+variable-length orders.
 
 ![Split-brain GTOC1 search: an agent proposes planet orders, fcmaes tunes timings, pykep scores and validates, and an archive closes the evidence loop](images/split-brain.svg)
 
-This separation avoids a misleading conclusion. If an agent proposes a
-promising order but guesses poor encounter dates, the order should not be
-recorded as bad. The agent should not guess those dates at all:
-`fcmaes-core` optimizes them under a fixed budget, and the resulting optimized
-score becomes the feedback for the structural decision.
+The shared design rule is simple: an outer proposer chooses only route
+structure, while deterministic Rust optimizes encounter timing and owns every
+score and feasibility decision. A promising order must not be rejected merely
+because an agent guessed poor dates. High-scoring and structurally diverse
+routes are promoted separately so surrogate error remains observable.
 
-### Candidate contract
-
-The agent emits only a compact, machine-checkable route:
-
-```json
-{
-  "bodies": [
-    "Earth",
-    "Venus",
-    "Venus",
-    "Earth",
-    "Jupiter",
-    "Saturn",
-    "Jupiter",
-    "TW229"
-  ],
-  "direction_hints": [
-    "prograde",
-    "prograde",
-    "prograde",
-    "prograde",
-    "prograde",
-    "retrograde",
-    "retrograde"
-  ],
-  "rationale": "Use inner-planet resonances before a Saturn reversal."
-}
-```
-
-A grammar validates Earth as the start, 2001 TW229 as the destination,
-supported flyby bodies, maximum sequence length, repetitions, and optional
-direction hints. It canonicalizes and deduplicates candidates before spending
-optimizer time. Exact Lambert branch selection normally stays inside the cheap
-evaluator, where all allowed families can be compared consistently.
-
-### Evaluation and feedback loop
-
-One split-brain iteration is:
-
-1. Give the agent a compact summary of best overall sequences, best
-   representatives of different route niches, recent evaluations, and failure
-   diagnostics.
-2. Ask it for a small batch of unseen grammar-valid orders. Store its rationale
-   for analysis, but never treat the rationale as physical evidence.
-3. Run the cheap Rust model for every order with the same DE–CMA-ES or BiteOpt
-   retry budget. Optimize dates and durations and enumerate the permitted
-   Lambert families.
-4. Archive the best continuous vector and diagnostics: proxy impact score,
-   estimated final mass, launch excess velocity, flyby repair cost, minimum
-   periapsis margin, total flight time, selected branches, evaluations, wall
-   time, and failure reason.
-5. Return a compressed archive summary to the agent so its next structural
-   proposals can use measured evidence from earlier orders.
-6. Promote a mixture of high-scoring and structurally diverse candidates to
-   medium- and high-resolution low-thrust optimization. Record cheap score and
-   expensive feasibility separately.
-7. Feed low-thrust failures back into later proposals and use them to calibrate
-   the cheap model. Only the strict numerical validator may mark a trajectory
-   feasible.
-
-Begin with a blind bootstrap of random or grammar-generated orders before
-showing scores to the agent. Later iterations can alternate exploration with
-exploitation. Preserve niche elites by sequence length, inner-planet encounter
-counts, outer-planet tail, direction-change pattern, and flight-time band so
-the archive does not collapse onto variants of the first strong family.
-
-Promotion should combine proxy score, feasibility margin, novelty, and
-uncertainty rather than selecting only the apparent leader. Occasional
-lower-ranked control promotions reveal systematic surrogate errors. Random
-order search and a simple evolutionary route mutation should receive the same
-inner budget and serve as baselines for measuring whether the AI outer loop
-actually helps.
-
-This split-brain loop is a proposed extension; the checked-in tutorial
-executable still uses the fixed `EVEEEJSJA` sequence, although its whole-tour
-mode globally optimizes continuous controls and flyby geometry for that
-sequence. A production implementation should also key its cache by route
-encoding, ephemeris and fidelity settings, crate versions, optimizer budget,
-and seeds.
+The companion contains the executable candidate schema, grammar, duration
+decoder, Lambert-family search, feasibility-first archive, promotion policy,
+provider boundary, random and evolutionary controls, persistence format, and
+reproduction commands. Keeping those details in one chapter avoids two
+slightly different protocol descriptions. Return here for the finite-thrust
+transcription, staged continuous optimization, and Taylor/DOP853 validation of
+a selected order.
 
 ## Native evaluation pipeline
 

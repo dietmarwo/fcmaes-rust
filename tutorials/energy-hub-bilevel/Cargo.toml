@@ -1,0 +1,22 @@
+[package]
+name = "energy-hub-bilevel"
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+publish = false
+description = "Bilevel energy-hub sizing with a pure-Rust inner LP"
+default-run = "energy-hub-bilevel"
+
+[workspace]
+
+[dependencies]
+fcmaes-core = "=0.1.3"
+# For development against this checkout, replace the line above with:
+# fcmaes-core = { path = "../../crates/fcmaes-core" }
+microlp = "=0.6.0"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[profile.release]
+codegen-units = 1
+lto = "thin"

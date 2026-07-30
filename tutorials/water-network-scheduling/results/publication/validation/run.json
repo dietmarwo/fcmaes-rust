@@ -1,0 +1,26 @@
+{
+  "analysis_type": "DDA",
+  "artifacts": {
+    "energy_accumulation": "energy_crosscheck.csv",
+    "energy_oracle": "energy_oracle_check.csv",
+    "override_trace": "override_trace.csv",
+    "trace": "trace.csv"
+  },
+  "checks": {
+    "analytic_pipe_relative_error": 5.417488350376434e-6,
+    "energy_accumulation_replay_relative_error": 0.0,
+    "energy_oracle_max_relative_error": 1.4855455184982462e-7,
+    "failed_at_step": null,
+    "max_continuity_residual_m3_s": 1.910132380956222e-9,
+    "override_witness_steps": 10
+  },
+  "command": "cargo run --release --locked -- --mode all --preset publication --workers 4 --seed 42 --output results/publication",
+  "energy_source": "tutorial_flow_head_integration",
+  "external_validation": false,
+  "formulation": "hydraulic-validation",
+  "preset": "publication",
+  "schema_version": 1,
+  "seed": 42,
+  "tutorial": "water-network-scheduling",
+  "workers": 4
+}

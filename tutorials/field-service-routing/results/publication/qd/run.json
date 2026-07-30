@@ -1,0 +1,12 @@
+{
+  "actual_evaluations": null,
+  "artifacts": {},
+  "command": "cargo run --release --locked -- --mode all --preset publication --workers 4 --seed 42 --output results/publication",
+  "formulation": "robust-hard-window-qd",
+  "reason": "pre-registered descriptor pilot rejected D1 and D2",
+  "schema_version": 1,
+  "seed": 42,
+  "status": "skipped",
+  "tutorial": "field-service-routing",
+  "workers": 4
+}

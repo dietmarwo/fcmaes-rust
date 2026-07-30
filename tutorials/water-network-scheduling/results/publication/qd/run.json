@@ -1,0 +1,14 @@
+{
+  "actual_evaluations": null,
+  "artifacts": {},
+  "command": "cargo run --release --locked -- --mode all --preset publication --workers 4 --seed 42 --output results/publication",
+  "formulation": "robust-dda-qd",
+  "preset": "publication",
+  "reason": "descriptor pilot rejected D1 and D2",
+  "requested_evaluations": 0,
+  "schema_version": 1,
+  "seed": 42,
+  "status": "skipped",
+  "tutorial": "water-network-scheduling",
+  "workers": 4
+}

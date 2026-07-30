@@ -29,6 +29,8 @@ def main() -> int:
         run = load_run(manifest)
         relative = manifest.relative_to(arguments.root)
         tutorial = arguments.root / relative.parts[0]
+        if (tutorial / ".custom-renderer").is_file():
+            continue
         run_name = "-".join(relative.parts[2:-1])
         output = tutorial / "images" / run_name
         if arguments.write:

@@ -1,0 +1,21 @@
+{
+  "command": "cargo run --release --locked -- --preset publication --mode all --workers 4 --seed 42 --output results/publication",
+  "formulation": "aggregate-protocol",
+  "horizon_limitation": "twelve independently cyclic representative days; no seasonal or hydrogen claim",
+  "preset": "publication",
+  "protocol": {
+    "annual_evaluations": 32,
+    "mo_evaluations": 384,
+    "mo_population": 64,
+    "pilot_samples_per_seed": 80,
+    "qd_capacity": 120,
+    "qd_evaluations": 256,
+    "representative_days": 12,
+    "so_evaluations_per_arm": 160,
+    "so_retries": 4
+  },
+  "schema_version": 1,
+  "seed": 42,
+  "tutorial": "energy-hub-bilevel",
+  "workers": 4
+}

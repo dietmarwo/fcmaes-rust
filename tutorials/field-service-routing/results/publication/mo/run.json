@@ -1,0 +1,34 @@
+{
+  "actual_evaluations": 12000,
+  "artifacts": {
+    "convergence": "convergence.csv",
+    "pareto": "pareto.csv"
+  },
+  "command": "cargo run --release --locked -- --mode all --preset publication --workers 4 --seed 42 --output results/publication",
+  "elapsed_seconds": 0.08081857,
+  "formulation": "soft-window-mo",
+  "objectives": [
+    {
+      "column": "objective_distance_km",
+      "unit": "km"
+    },
+    {
+      "column": "objective_vehicles",
+      "unit": "count"
+    },
+    {
+      "column": "objective_makespan_s",
+      "unit": "s"
+    },
+    {
+      "column": "objective_lateness_s",
+      "unit": "s"
+    }
+  ],
+  "preset": "publication",
+  "requested_evaluations": 12000,
+  "schema_version": 1,
+  "seed": 42,
+  "tutorial": "field-service-routing",
+  "workers": 4
+}

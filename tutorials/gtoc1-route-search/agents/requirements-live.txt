@@ -1,0 +1,2 @@
+# The OpenAI-/Anthropic-compatible adapter intentionally uses only the Python
+# standard library. There are no third-party provider dependencies to pin.

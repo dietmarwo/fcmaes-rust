@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1120" height="520" viewBox="0 0 1120 520" role="img" aria-labelledby="title desc">
+  <title id="title">Split-brain GTOC1 route-search architecture</title>
+  <desc id="desc">An external proposer sends route JSON to deterministic Rust grammar, optimization, physics, archive and promotion stages.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#40556f"/></marker>
+    <style>
+      .box{rx:14;stroke-width:2}.title{font:700 20px system-ui,sans-serif;fill:#132238}.body{font:15px system-ui,sans-serif;fill:#26384f}.small{font:13px system-ui,sans-serif;fill:#40556f}.edge{stroke:#40556f;stroke-width:2.5;fill:none;marker-end:url(#arrow)}
+    </style>
+  </defs>
+  <rect width="1120" height="520" fill="#f7f9fc"/>
+  <rect class="box" x="40" y="82" width="245" height="150" fill="#fff3d6" stroke="#c99118"/>
+  <text class="title" x="162" y="118" text-anchor="middle">Discrete proposer</text>
+  <text class="body" x="162" y="153" text-anchor="middle">agent · random · (1+1)-ES</text>
+  <text class="small" x="162" y="184" text-anchor="middle">bodies + clockwise bits</text>
+  <text class="small" x="162" y="208" text-anchor="middle">rationale is untrusted</text>
+  <rect class="box" x="360" y="42" width="300" height="215" fill="#e7f2ff" stroke="#2774ae"/>
+  <text class="title" x="510" y="78" text-anchor="middle">Deterministic Rust owner</text>
+  <text class="body" x="390" y="116">1. grammar + identity + diversity</text>
+  <text class="body" x="390" y="148">2. bounded duration decoder</text>
+  <text class="body" x="390" y="180">3. equal-budget fcmaes L0 search</text>
+  <text class="body" x="390" y="212">4. Lambert DP + diagnostics</text>
+  <text class="small" x="510" y="240" text-anchor="middle">no provider code in the hot path</text>
+  <rect class="box" x="735" y="62" width="330" height="175" fill="#e8f7ed" stroke="#2f855a"/>
+  <text class="title" x="900" y="98" text-anchor="middle">Crash-safe archive</text>
+  <text class="body" x="770" y="134">checksummed JSONL + atomic cache</text>
+  <text class="body" x="770" y="166">elites, niches, failure taxonomy</text>
+  <text class="body" x="770" y="198">replayable redacted request log</text>
+  <path class="edge" d="M285 150 H352"/>
+  <path class="edge" d="M660 150 H727"/>
+  <path class="edge" d="M900 245 C900 315 165 315 165 240"/>
+  <text class="small" x="530" y="302" text-anchor="middle">bounded observations; bootstrap withholds scores</text>
+  <rect class="box" x="240" y="365" width="640" height="110" fill="#f0eaff" stroke="#7656b5"/>
+  <text class="title" x="560" y="402" text-anchor="middle">Scheduled fidelity promotion</text>
+  <text class="body" x="560" y="436" text-anchor="middle">leader + diverse/control → L1 Sims–Flanagan → optional L2 Taylor/DOP853</text>
+  <text class="small" x="560" y="462" text-anchor="middle">budget exhaustion is reported as “not found,” never physical infeasibility</text>
+  <path class="edge" d="M900 237 C900 335 790 335 790 357"/>
+</svg>

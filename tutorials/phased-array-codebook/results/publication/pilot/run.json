@@ -1,0 +1,75 @@
+{
+  "actual_evaluations": 2160,
+  "artifacts": {
+    "pilot": "pilot.csv",
+    "verdict": "pilot.md"
+  },
+  "command": "cargo run --release --locked --features fft -- --preset publication --mode all --workers 0 --seed 42 --output results/publication",
+  "descriptors": [
+    {
+      "column": "peak_deg",
+      "label": "Measured peak direction",
+      "unit": "deg"
+    },
+    {
+      "column": "hpbw_deg",
+      "label": "Measured half-power beamwidth",
+      "unit": "deg"
+    }
+  ],
+  "elapsed_seconds": 8.847764792,
+  "formulation": "descriptor-pilot",
+  "objectives": [],
+  "qd": {
+    "capacity": 120,
+    "decision": "accepted",
+    "grid_shape": [
+      12,
+      10
+    ],
+    "summary": {
+      "attempted_candidates": 2160,
+      "coarse_holdout_niche_retention": 0.9684418145956607,
+      "coverage": 0.4083333333333333,
+      "d1_rank_correlation": -0.03144901078959489,
+      "d2_coverage": 0.6916666666666667,
+      "d2_holdout_niche_retention": 0.9723865877712031,
+      "d2_rank_correlation": -0.002058050447695722,
+      "d3_rank_correlation": -0.19392306529445463,
+      "decision": "accepted",
+      "efficiency_clipping": 0.0,
+      "elapsed_seconds": 8.847764792,
+      "feasible_candidates": 507,
+      "feasible_fraction": 0.23472222222222222,
+      "holdout_niche_retention": 0.9506903353057199,
+      "hpbw_clipping": 0.0,
+      "peak_clipping": 0.0,
+      "reason": "D1 clears correlation, clipping, coverage, and holdout-retention gates",
+      "seed_summaries": [
+        {
+          "attempted": 720,
+          "feasible": 175,
+          "feasible_fraction": 0.24305555555555555,
+          "seed": 42
+        },
+        {
+          "attempted": 720,
+          "feasible": 162,
+          "feasible_fraction": 0.225,
+          "seed": 4242
+        },
+        {
+          "attempted": 720,
+          "feasible": 170,
+          "feasible_fraction": 0.2361111111111111,
+          "seed": 424242
+        }
+      ]
+    }
+  },
+  "requested_evaluations": 2160,
+  "schema_version": 1,
+  "seed": 42,
+  "tutorial": "phased-array-codebook",
+  "workers": 0
+}

@@ -1,0 +1,14 @@
+{
+  "artifacts": {
+    "benchmark": "parallelism_benchmark.csv"
+  },
+  "command": "cargo run --release --locked -- --mode all --preset publication --workers 4 --seed 42 --output results/publication",
+  "formulation": "parallelism-ownership",
+  "network_variant": "tank-free-control-free",
+  "preset": "publication",
+  "real_network_rule": "candidate parallelism only",
+  "schema_version": 1,
+  "seed": 42,
+  "tutorial": "water-network-scheduling",
+  "workers": 4
+}

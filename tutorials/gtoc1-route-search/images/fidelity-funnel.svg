@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1040" height="500" viewBox="0 0 1040 500" role="img" aria-labelledby="title desc">
+  <title id="title">GTOC1 route-search fidelity funnel</title>
+  <desc id="desc">Forty cheap Lambert candidates narrow to scheduled Sims-Flanagan promotions and at most a few optional continuous-thrust finalists.</desc>
+  <style>
+    .label{font:700 23px system-ui,sans-serif;fill:#132238}.body{font:16px system-ui,sans-serif;fill:#26384f}.cost{font:700 15px system-ui,sans-serif;fill:#5a395f}
+  </style>
+  <rect width="1040" height="500" fill="#f7f9fc"/>
+  <path d="M80 55 H960 L825 190 H215 Z" fill="#dceeff" stroke="#2774ae" stroke-width="2"/>
+  <text class="label" x="520" y="100" text-anchor="middle">L0 · Lambert + branch DP + mass surrogate</text>
+  <text class="body" x="520" y="135" text-anchor="middle">all accepted routes · fixed continuous-optimizer budget</text>
+  <text class="cost" x="910" y="166" text-anchor="end">seconds</text>
+  <path d="M215 210 H825 L700 345 H340 Z" fill="#e8f7ed" stroke="#2f855a" stroke-width="2"/>
+  <text class="label" x="520" y="255" text-anchor="middle">L1 · impulsive Sims–Flanagan</text>
+  <text class="body" x="520" y="290" text-anchor="middle">scheduled leaders plus diverse/control promotions</text>
+  <text class="cost" x="775" y="322" text-anchor="end">minutes</text>
+  <path d="M340 365 H700 L625 455 H415 Z" fill="#f0eaff" stroke="#7656b5" stroke-width="2"/>
+  <text class="label" x="520" y="405" text-anchor="middle">L2 · Taylor + DOP853</text>
+  <text class="body" x="520" y="435" text-anchor="middle">optional finalists only</text>
+  <text class="cost" x="660" y="475" text-anchor="end">hours</text>
+</svg>

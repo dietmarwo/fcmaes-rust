@@ -1,0 +1,13 @@
+{
+  "artifacts": {
+    "comparison": "baseline_comparison.csv"
+  },
+  "command": "cargo run --release --locked -- --mode all --preset publication --workers 4 --seed 42 --output results/publication",
+  "formulation": "structural-baseline",
+  "instances": 10,
+  "preset": "publication",
+  "schema_version": 1,
+  "seed": 42,
+  "tutorial": "field-service-routing",
+  "workers": 1
+}

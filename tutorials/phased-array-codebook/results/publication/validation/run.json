@@ -1,0 +1,21 @@
+{
+  "actual_evaluations": 0,
+  "artifacts": {
+    "staircase": "staircase.csv",
+    "validation": "validation.csv"
+  },
+  "coarse_directivity_dbi": 23.19484962248053,
+  "command": "cargo run --release --locked --features fft -- --preset publication --mode all --workers 0 --seed 42 --output results/publication",
+  "descriptors": [],
+  "directivity_convention": "one-sided upper-hemisphere aperture; field is zero behind the array",
+  "elapsed_seconds": 0.0,
+  "fine_directivity_dbi": 23.21230194414347,
+  "formulation": "kernel-validation",
+  "objectives": [],
+  "requested_evaluations": 0,
+  "schema_version": 1,
+  "seed": 42,
+  "steering_memory_bytes": 66355200,
+  "tutorial": "phased-array-codebook",
+  "workers": 0
+}

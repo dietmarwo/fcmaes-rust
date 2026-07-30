@@ -1,0 +1,60 @@
+{
+  "actual_evaluations": 384,
+  "artifacts": {
+    "convergence": "convergence.csv",
+    "pareto": "pareto.csv"
+  },
+  "budget": {
+    "candidate_evaluations": 384,
+    "lp_solves": 1920,
+    "simplex_iterations": 1868436,
+    "solver_failures": 0
+  },
+  "command": "cargo run --release --locked -- --preset publication --mode all --workers 4 --seed 42 --output results/publication",
+  "constraints": [
+    {
+      "column": "constraint_self_sufficiency",
+      "feasible": "<= 0"
+    },
+    {
+      "column": "constraint_cycles",
+      "feasible": "<= 0"
+    },
+    {
+      "column": "constraint_lp_status",
+      "feasible": "<= 0"
+    }
+  ],
+  "descriptors": [],
+  "elapsed_seconds": 3.048920969,
+  "formulation": "constrained-mo",
+  "horizon_limitation": "twelve independently cyclic representative days; no seasonal or hydrogen claim",
+  "objectives": [
+    {
+      "column": "objective_annualized_capex",
+      "label": "Annualized CAPEX",
+      "unit": "currency/year"
+    },
+    {
+      "column": "objective_unserved_kwh",
+      "label": "Worst unserved electricity",
+      "unit": "kWh/year"
+    },
+    {
+      "column": "objective_co2_kg",
+      "label": "Mean grid CO2",
+      "unit": "kg/year"
+    },
+    {
+      "column": "objective_curtailed_kwh",
+      "label": "Mean curtailed renewable energy",
+      "unit": "kWh/year"
+    }
+  ],
+  "pareto_points": 51,
+  "requested_evaluations": 384,
+  "schema_version": 1,
+  "seed": 42,
+  "tutorial": "energy-hub-bilevel",
+  "workers": 4
+}

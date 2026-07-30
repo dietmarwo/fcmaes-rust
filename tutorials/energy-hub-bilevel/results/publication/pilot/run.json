@@ -1,0 +1,70 @@
+{
+  "actual_evaluations": 240,
+  "artifacts": {
+    "pilot": "pilot.csv",
+    "report": "pilot.md"
+  },
+  "command": "cargo run --release --locked -- --preset publication --mode all --workers 4 --seed 42 --output results/publication",
+  "descriptors": [],
+  "diagnostics": {
+    "d1": {
+      "clipping_axis_1": 0.0,
+      "clipping_axis_2": 0.0,
+      "coarse_holdout_retention": 0.7473684210526316,
+      "coverage": 0.4583333333333333,
+      "holdout_retention": 0.6105263157894737,
+      "minimum_seed_coverage": 0.2,
+      "rank_correlation": 0.19262976588392214
+    },
+    "d2": {
+      "clipping_axis_1": 0.0,
+      "clipping_axis_2": 0.0,
+      "coarse_holdout_retention": 0.9368421052631579,
+      "coverage": 0.19166666666666668,
+      "holdout_retention": 0.8421052631578947,
+      "minimum_seed_coverage": 0.09166666666666666,
+      "rank_correlation": -0.1490279285911926
+    },
+    "d3": {
+      "clipping_axis_1": 0.0,
+      "clipping_axis_2": 0.0,
+      "coarse_holdout_retention": 0.9157894736842105,
+      "coverage": 0.16666666666666666,
+      "holdout_retention": 0.7894736842105263,
+      "minimum_seed_coverage": 0.09166666666666666,
+      "rank_correlation": 0.24881128613784106
+    }
+  },
+  "elapsed_seconds": 7.356177866,
+  "formulation": "descriptor-pilot",
+  "horizon_limitation": "twelve independently cyclic representative days; no seasonal or hydrogen claim",
+  "objectives": [],
+  "qd": {
+    "capacity": 120,
+    "grid_row_lengths": [
+      12,
+      12,
+      12,
+      12,
+      12,
+      12,
+      12,
+      12,
+      12,
+      12
+    ],
+    "grid_shape": [
+      12,
+      10
+    ]
+  },
+  "qd_decision": "accepted",
+  "reason": "D1 clears correlation, clipping, coverage, and holdout-retention gates",
+  "requested_evaluations": 240,
+  "schema_version": 1,
+  "seed": 42,
+  "selected_pair": "d1",
+  "timestep_mean_normalized_shift": 0.00792893315517447,
+  "tutorial": "energy-hub-bilevel",
+  "workers": 4
+}

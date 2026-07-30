@@ -1,0 +1,31 @@
+{
+  "actual_evaluations": 8000,
+  "artifacts": {
+    "best": "best.csv",
+    "pattern": "pattern.csv"
+  },
+  "command": "cargo run --release --locked --features fft -- --preset publication --mode all --workers 0 --seed 42 --output results/publication",
+  "constraints": [
+    {
+      "column": "constraint_spacing",
+      "feasible": "<= 0",
+      "unit": "lambda"
+    }
+  ],
+  "descriptors": [],
+  "elapsed_seconds": 0.734894962,
+  "fft_supported": false,
+  "formulation": "nonuniform-geometry",
+  "objectives": [
+    {
+      "column": "objective",
+      "label": "PSLL plus feasibility penalties",
+      "unit": "dB"
+    }
+  ],
+  "requested_evaluations": 8000,
+  "schema_version": 1,
+  "seed": 42,
+  "tutorial": "phased-array-codebook",
+  "workers": 0
+}

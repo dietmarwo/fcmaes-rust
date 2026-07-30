@@ -1,0 +1,49 @@
+{
+  "actual_evaluations": 32,
+  "artifacts": {
+    "dispatch": "dispatch.csv",
+    "summary": "summary.csv"
+  },
+  "budget": {
+    "candidate_evaluations": 32,
+    "lp_solves": 37,
+    "selection_replays": 4,
+    "simplex_iterations": 337724,
+    "solver_failures": 0,
+    "validation_replays": 1
+  },
+  "command": "cargo run --release --locked -- --preset publication --mode all --workers 4 --seed 42 --output results/publication",
+  "constraints": [
+    {
+      "column": "constraint_self_sufficiency",
+      "feasible": "<= 0"
+    },
+    {
+      "column": "constraint_unserved",
+      "feasible": "<= 0"
+    }
+  ],
+  "descriptors": [],
+  "elapsed_seconds": 19.923189009,
+  "formulation": "chronological-annual-extension",
+  "hourly_validation": {
+    "hydrogen_amplitude_kwh": 2119.5539949608738,
+    "max_balance_residual_kw": 1.0616076906444505e-9,
+    "max_storage_residual_kwh": 1.6065371255535865e-9,
+    "objective": 0.051934856064658606
+  },
+  "objectives": [
+    {
+      "column": "delivered_energy_cost",
+      "label": "Combined delivered-energy cost",
+      "unit": "currency/kWh"
+    }
+  ],
+  "requested_evaluations": 32,
+  "schema_version": 1,
+  "seed": 42,
+  "sizing_steps": 1460,
+  "tutorial": "energy-hub-bilevel",
+  "validation_steps": 8760,
+  "workers": 1
+}

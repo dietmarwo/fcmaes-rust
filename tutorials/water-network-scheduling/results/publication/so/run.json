@@ -1,0 +1,24 @@
+{
+  "actual_evaluations": 12261,
+  "analysis_type": "DDA",
+  "artifacts": {
+    "arms": "arms.csv",
+    "convergence": "convergence.csv",
+    "pressure": "pressure_envelope.csv",
+    "schedule": "schedule.csv",
+    "tank": "tank_trace.csv"
+  },
+  "baseline_evaluations": 1,
+  "billing_resolution_s": 3600,
+  "command": "cargo run --release --locked -- --mode all --preset publication --workers 4 --seed 42 --output results/publication",
+  "energy_source": "tutorial_flow_head_integration",
+  "formulation": "robust-dda-so",
+  "hydraulic_timestep_s": 3600,
+  "preset": "publication",
+  "requested_evaluations": 12000,
+  "schema_version": 1,
+  "seed": 42,
+  "start_count_resolution_s": 3600,
+  "tutorial": "water-network-scheduling",
+  "workers": 4
+}

@@ -1,0 +1,97 @@
+{
+  "actual_evaluations": 615,
+  "arms": [
+    {
+      "actual_evaluations": 248,
+      "best_objective": 0.054025871558076644,
+      "budget": {
+        "candidate_evaluations": 248,
+        "lp_solves": 1240,
+        "simplex_iterations": 1399885,
+        "solver_failures": 0
+      },
+      "completed_retries": 4,
+      "elapsed_seconds": 2.150018341,
+      "feasible": true,
+      "optimizer": "cma",
+      "requested_evaluations": 160
+    },
+    {
+      "actual_evaluations": 207,
+      "best_objective": 0.04568314076278932,
+      "budget": {
+        "candidate_evaluations": 207,
+        "lp_solves": 1035,
+        "simplex_iterations": 881728,
+        "solver_failures": 0
+      },
+      "completed_retries": 4,
+      "elapsed_seconds": 1.59674257,
+      "feasible": true,
+      "optimizer": "de",
+      "requested_evaluations": 160
+    },
+    {
+      "actual_evaluations": 160,
+      "best_objective": 0.05012001343347635,
+      "budget": {
+        "candidate_evaluations": 160,
+        "lp_solves": 800,
+        "simplex_iterations": 854583,
+        "solver_failures": 0
+      },
+      "completed_retries": 4,
+      "elapsed_seconds": 1.294475326,
+      "feasible": true,
+      "optimizer": "bite",
+      "requested_evaluations": 160
+    }
+  ],
+  "artifacts": {
+    "best": "best.csv",
+    "convergence": "convergence.csv",
+    "dispatch": "dispatch.csv"
+  },
+  "budget": {
+    "candidate_evaluations": 615,
+    "lp_solves": 3075,
+    "simplex_iterations": 3136196,
+    "solver_failures": 0
+  },
+  "command": "cargo run --release --locked -- --preset publication --mode all --workers 4 --seed 42 --output results/publication",
+  "constraints": [
+    {
+      "column": "constraint_self_sufficiency",
+      "feasible": "<= 0"
+    },
+    {
+      "column": "constraint_unserved",
+      "feasible": "<= 0"
+    },
+    {
+      "column": "constraint_cycles",
+      "feasible": "<= 0"
+    },
+    {
+      "column": "constraint_lp_status",
+      "feasible": "<= 0"
+    }
+  ],
+  "descriptors": [],
+  "elapsed_seconds": 5.041236237,
+  "formulation": "so-comparison",
+  "horizon_limitation": "twelve independently cyclic representative days; no seasonal or hydrogen claim",
+  "objectives": [
+    {
+      "column": "objective",
+      "label": "Robust LCOE plus feasibility penalties",
+      "unit": "currency/kWh"
+    }
+  ],
+  "requested_evaluations": 480,
+  "schema_version": 1,
+  "seed": 42,
+  "selected_optimizer": "de",
+  "tutorial": "energy-hub-bilevel",
+  "workers": 4
+}

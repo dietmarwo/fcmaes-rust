@@ -1,0 +1,3 @@
+This tutorial's campaign artifacts use accepted candidates rather than the
+generic evaluations convergence axis. plot_results.py owns their deterministic
+rendering and is invoked by tutorials/python/render_all.py.

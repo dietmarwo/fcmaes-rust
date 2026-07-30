@@ -8,7 +8,7 @@ callback or serialization boundary in the expensive path: a candidate is
 decoded and scored in Rust, and independent candidates are distributed across
 native worker threads.
 
-The fourteen applications deliberately cover different reasons for choosing
+The nineteen applications deliberately cover different reasons for choosing
 gradient-free optimization:
 
 | Tutorial | Simulator | Problem property | Implemented formulations | QD decision |
@@ -23,10 +23,15 @@ gradient-free optimization:
 | [ML hyperparameter optimization](ml-hyperparameter-tuning/) | SmartCore decision trees | mixed variables, nested stochastic fitting, validation overfitting, and probability quality | BiteOpt retry + constrained MODE + MAP-Elites | rejected: coverage and diversity pass, niche retention fails |
 | [Neural controller policy search](neural-controller-policy-search/) | Native stochastic cart-pole model | 118-dimensional fixed-topology policy, randomized rollouts, and validation variance | PGPE + CR-FM-NES + active CMA-ES/BiteOpt comparison | omitted: one robust controller is the deliverable |
 | [GTOC1 “Save the Earth”](gtoc1/) | pykep-core astrodynamics | 87 variables, narrow equality constraints, two multi-revolution Lambert arcs, and low thrust | coordinated DE–CMA-ES + seeded CMA-ES/BiteOpt retry | omitted: one maximum-impact trajectory is the deliverable |
+| [Split-brain GTOC1 route search (work in progress)](gtoc1-route-search/) | pykep-core astrodynamics + provider-independent agent boundary | variable-length planet orders, multi-fidelity surrogate error, and unequal evaluation costs | equal-budget agent/random/(1+1)-ES outer search + DE–CMA-ES L0 + promoted Sims–Flanagan L1 | omitted: the deliverable is a ranked, diagnosed route archive; live comparisons remain incomplete |
 | [Circuit design](sindr-circuit-design/) | sindr AC modified-nodal analysis | log-scaled components, interpolated Bode features, competing filter goals, and E12 discreteness | CMA/DE/Bite retry + constrained MODE + MAP-Elites | accepted: a robust frequency/gain catalogue is the deliverable |
 | [Transient gate driver](thevenin-gate-driver/) | thevenin transient modified-nodal analysis | interpolated edge measurements, ringing, current/settling constraints, and independent simulator validation | constrained MODE | omitted: one continuous engineering trade-off front is the deliverable |
 | [Optical lens design](optical-lens-design/) | Pure-Rust sequential geometric ray tracer | multimodal bending, hard ray-loss boundaries, and a published prescription gate | CMA/DE/Bite retry + constrained MODE | omitted: a quality/size/material trade-off front is the deliverable |
 | [Quadruped gait](rapier-quadruped-gait/) | Rapier 3D | contacts, falls, actual motor work, and terrain overfitting | BiteOpt retry + MAP-Elites | accepted: behavior diversity is the primary deliverable |
+| [Phased-array codebook](phased-array-codebook/) | Pure-Rust direct/FFT array-factor model | hardware-quantized controls, worst-case failures, and machine-consumed register codes | CMA/DE/Bite retry + constrained MODE + MAP-Elites | accepted: peak/HPBW clears the corrected 12×10 archive gate |
+| [Bilevel energy hub](energy-hub-bilevel/) | Pure-Rust `microlp` dispatch inside each outer candidate | ratio objective, catalogue tiers, inclusion switches, named scenarios, and unequal LP work | CMA/DE/Bite retry + constrained MODE + descriptor-gated MAP-Elites + annual BiteOpt | accepted: corrected 12×10 pilot grid clears the frozen gates; full-archive retention is reported separately |
+| [Field-service routing](field-service-routing/) | Pure-Rust route decoder and forward pass | assignment/permutation plateaus, skill compatibility, task-set disruptions, and emergent fleet size | CMA/DE/Bite retry + constrained MODE + descriptor-gated MAP-Elites | rejected: native-grid coverage is 5.83% and all-holdout feasibility retention is zero |
+| [Water-network scheduling](water-network-scheduling/) | `epanet-rs` stepwise hydraulics | quantized pump levels, tank-state memory, safety-override plateaus, hydraulic failures, and DDA/PDA separation | CMA/DE/Bite retry + constrained MODE + descriptor-gated MAP-Elites | rejected: coverage reaches 38%, but unseen-demand same-niche retention is only 5.34% |
 
 Each directory is a standalone Cargo workspace. This keeps large,
 simulator-specific dependency sets out of the main `fcmaes-rust` workspace.
@@ -36,7 +41,8 @@ Most use the same local core:
 fcmaes-core = { path = "../../crates/fcmaes-core" }
 ```
 
-The two circuit tutorials instead pin the published
+The two circuit tutorials, energy-hub, field-service, and water-network tutorials
+instead pin the published
 `fcmaes-core = "=0.1.3"` so their recorded pairings with the simulator crates
 are exact; each manifest includes the local path as a commented development
 override.
@@ -110,7 +116,9 @@ replacement occupied 91. Descriptors must be jointly reachable and individually
 reproducible. See the
 [CVT-MAP-Elites and Diversifier guide](../docs/optimizers.md#cvt-map-elites-and-diversifier)
 for the batch APIs, the [result schema](RESULT_SCHEMA.md), and the
-[Python plotting package](python/) for reproducible figures.
+[descriptor-pilot](DESCRIPTOR_PILOT.md) and
+[robustness](ROBUSTNESS.md) protocols. The
+[Python plotting package](python/) creates reproducible figures.
 
 The recorded timings are reproducibility checks from one machine, not
 cross-library performance claims. Every detailed tutorial explains its model,
@@ -611,6 +619,25 @@ background, multi-fidelity and split-brain architectures, mission
 transcription, objective construction, staged search, parallel retry commands,
 measured wall times, feasibility checks, and scoring limitation.
 
+### 11.1 Split-brain planet-order search (work in progress)
+
+The [route-search companion](gtoc1-route-search/) executes the discrete outer
+loop described above. A provider-independent subprocess proposes body orders
+and direction flags, while deterministic Rust owns grammar, diversity,
+duration decoding, equal-budget Lambert optimization, failure taxonomy,
+crash-safe persistence, and scheduled Sims–Flanagan promotions. Random and
+route `(1+1)` baselines use the same numerical budget and promotion policy.
+
+The checked-in evidence is deliberately a protocol smoke test, not an agent
+performance claim. The work-in-progress chapter publishes the experiment
+contract, lists the missing matched arms and independent seeds, and gives
+commands for readers to run their own L0 or L1 studies. The tutorial preserves
+every claim ceiling: L0 is a surrogate, L1 is impulsive, and only optional
+Taylor plus independent DOP853 validation can support model-qualified
+continuous-thrust feasibility.
+
+![The route proposer is separated from deterministic Rust grammar, optimization, physics, archive, and fidelity promotion](gtoc1-route-search/images/architecture.svg)
+
 ## 12. sindr: smooth features and manufacturable circuit catalogues
 
 The [circuit-design tutorial](sindr-circuit-design/) puts `sindr` AC analysis
@@ -699,7 +726,138 @@ cargo run --release -- --preset smoke --mode all --workers 4 --no-output
 See the [complete gait tutorial](rapier-quadruped-gait/README.md) for the range
 study, contact strips, equal-budget scalar baseline, and held-out robustness.
 
-## 16. Diffsol: why gradients are the better default
+## 16. Quantized phased arrays: robust beams and register codebooks
+
+The [phased-array tutorial](phased-array-codebook/) implements direct-sum and
+native-node FFT array-factor kernels, then optimizes 6-bit phase and 5-bit
+attenuator registers. The physical objective is a staircase, and every
+candidate is replayed over 49 named training cases including all single
+failures and 24 distinct dual failures.
+
+Equal-budget CMA-ES, DE, and BiteOpt synthesize one robust 20° beam.
+Constrained MODE exposes gain, PSLL, active-element count, and degradation
+trade-offs. A pre-registered descriptor pilot prevents the MAP-Elites story
+from being chosen after seeing the archive: peak direction and HPBW reach
+40.83% coverage on the archive's actual 12×10 grid and retain 95.07% of
+comparable niches on representative holdout, so QD is accepted. The retained
+codebook exports exact register codes and records all held-out niche
+migrations.
+
+![Quantized controls, named failures, and three distinct result formulations](phased-array-codebook/images/architecture.svg)
+
+```bash
+cd tutorials/phased-array-codebook
+cargo run --release --locked -- \
+  --preset smoke --mode all --workers 2 --seed 42 --no-output
+```
+
+See the [complete phased-array tutorial](phased-array-codebook/README.md) for
+the kernel contract, metric validation, robustness scenarios, descriptor
+gate, measured results, non-uniform geometry arm, artifacts, and limitations.
+
+## 17. Bilevel energy hub: a global outer problem around a convex inner LP
+
+The [energy-hub tutorial](energy-hub-bilevel/) makes the optimizer boundary
+explicit. For fixed capacities, `microlp` solves electricity and storage
+dispatch to proven optimality; there is no reason to apply a global optimizer
+to that LP. The outer problem adds grid-catalogue steps, inclusion switches,
+and LCOE, then evaluates every candidate over five named scenarios.
+
+The first figure measures the convex continuous total-cost baseline before
+showing where the delivered objective crosses discrete pieces. Equal-budget
+CMA-ES, DE, and BiteOpt report outer calls, inner LP solves, pivots, and wall
+time. Constrained MODE exposes capital/emissions/curtailment trade-offs. The
+pre-registered battery-use/import descriptor clears its gates on the exact
+12×10 `fcmaes-core` archive grid, so the measured MAP-Elites arm runs; its
+lower full-archive holdout retention remains explicit. A focused chronological
+arm sizes hydrogen at six-hour resolution and validates the selected design
+over all 8,760 hours.
+
+![A global outer search repeatedly invokes a serial proven-optimal dispatch LP](energy-hub-bilevel/images/architecture.svg)
+
+```bash
+cd tutorials/energy-hub-bilevel
+cargo run --release --locked -- \
+  --preset smoke --mode all --workers 2 --seed 42 --no-output
+```
+
+See the [complete energy-hub tutorial](energy-hub-bilevel/README.md) for the LP
+formulation, invariants, solver gate, landscape evidence, descriptor verdict,
+annual H₂ extension, artifacts, and limitations.
+
+## 18. Field-service routing: random-key assignments and permutations
+
+The [field-service tutorial](field-service-routing/) maps two continuous key
+blocks to compatible vehicle assignments and a deterministic priority order.
+Its fixed 52-task superset lets cancellation, urgent insertion, and vehicle
+unavailability share one 104-coordinate optimizer vector.
+
+Tests prove exact-once active-task service, skill compatibility, flat
+equal-width assignment bins, deterministic ties, two single-coordinate
+plateau bounds, and serial/parallel batch equivalence. A separately written
+in-repository scorer agrees exactly on 1,000 supplied random routes.
+
+The publication protocol compares equal-budget CMA-ES, DE, and BiteOpt retry,
+then runs a soft-window constrained MODE front. An explicit seed baseline makes
+the scalar result auditable: BiteOpt improves robust cost from 1108.7515 to
+1100.6531, while CMA-ES and DE retain the seed. Its registered MAP-Elites axes
+are rejected: only 5.83% of the archive-native descriptor cells were reached
+and no sampled plan remained hard-feasible over every structurally different
+holdout. The QD implementation remains replay-tested, but its publication
+manifest is a schema-compliant skip.
+
+![Continuous keys produce exact-once routes before robust optimization consumes their metrics](field-service-routing/images/architecture.svg)
+
+```bash
+cd tutorials/field-service-routing
+cargo run --release --locked -- \
+  --mode all --preset publication --workers 4 --seed 42 \
+  --output results/publication
+```
+
+See the [complete field-service tutorial](field-service-routing/README.md) for
+the frozen cost specification, route maps, measured solver-choice discussion,
+and descriptor-gate evidence.
+
+## 19. Water networks: robust schedules around stateful hydraulics
+
+The [water-network tutorial](water-network-scheduling/) puts a stepwise
+`epanet-rs` extended-period simulation inside independent fcmaes candidates.
+Its 28 normalized coordinates decode to two quantized pump schedules, coupled
+tank thresholds, a pressure-reducing-valve setpoint, and a pump-priority rule.
+Tank safety overrides have one tested precedence function; feet/cfs solver
+state crosses one explicit SI boundary.
+
+The implementation does not pretend that unsupported EPANET sections exist.
+Energy is integrated from flow, head and a documented synthetic efficiency
+curve; excess pressure is labelled a proxy rather than leakage physics. Six
+DDA training scenarios share a robust objective, while PDA outage results are
+reported diagnostically and cannot enter that aggregate.
+
+The publication protocol passes conservation, analytical one-pipe, offline
+power-oracle, accumulation-replay and positive safety-override gates. BiteOpt
+retains the best scalar plan at 67.169 cost units. The corrected descriptor
+pilot rejects MAP-Elites: the primary pair reaches only 38% coverage and just
+5.34% of comparable plans remain in the same fine-grid niche under the unseen
+demand profile. The QD manifest records a skip rather than publishing a
+misleading catalogue. Constrained MODE retains 83 nondominated schedules. A
+legal tank-free benchmark measures candidate-owned parallelism at about six
+times internal EPS throughput on the publication machine.
+
+![The tutorial makes controls, hydraulic state, economics, and parallel ownership explicit](water-network-scheduling/images/architecture.svg)
+
+```bash
+cd tutorials/water-network-scheduling
+cargo run --release --locked -- \
+  --mode all --preset publication --workers 4 --seed 42 \
+  --output results/publication
+```
+
+See the [complete water-network tutorial](water-network-scheduling/README.md)
+for the synthetic network, M1 backend audit, DDA/PDA contract, validation
+limits, resolution study, measured optimization results and replay artifacts.
+
+## 20. Diffsol: why gradients are the better default
 
 [Diffsol](https://github.com/martinjrobins/diffsol) is an MIT-licensed Rust
 ODE/DAE solver with explicit and implicit integration, event/root detection,

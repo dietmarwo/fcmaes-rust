@@ -1,0 +1,60 @@
+{
+  "actual_evaluations": 256,
+  "artifacts": {
+    "archive": "qd_archive.csv",
+    "convergence": "qd_convergence.csv",
+    "holdout_migration": "holdout_migration.csv",
+    "portfolio": "portfolio.csv"
+  },
+  "budget": {
+    "candidate_evaluations": 256,
+    "lp_solves": 1280,
+    "simplex_iterations": 788522,
+    "solver_failures": 0
+  },
+  "command": "cargo run --release --locked -- --preset publication --mode all --workers 4 --seed 42 --output results/publication",
+  "descriptors": [
+    {
+      "bounds": [
+        0.0,
+        2.2
+      ],
+      "column": "descriptor_daily_battery_throughput_per_kwh_train",
+      "label": "daily_battery_throughput_per_kwh"
+    },
+    {
+      "bounds": [
+        0.0,
+        1.0
+      ],
+      "column": "descriptor_peak_import_ratio_train",
+      "label": "peak_import_ratio"
+    }
+  ],
+  "elapsed_seconds": 3.605088835,
+  "formulation": "quality-diversity",
+  "horizon_limitation": "twelve independently cyclic representative days; no seasonal or hydrogen claim",
+  "objectives": [
+    {
+      "column": "quality_train",
+      "label": "Robust mean LCOE",
+      "unit": "currency/kWh"
+    }
+  ],
+  "qd": {
+    "capacity": 120,
+    "clamped_descriptors": 0,
+    "descriptor_pair": "d1",
+    "grid_shape": [
+      12,
+      10
+    ],
+    "invalid_evaluations": 108,
+    "occupied": 64
+  },
+  "requested_evaluations": 256,
+  "schema_version": 1,
+  "seed": 42,
+  "tutorial": "energy-hub-bilevel",
+  "workers": 4
+}

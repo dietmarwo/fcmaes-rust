@@ -1,0 +1,16 @@
+{
+  "actual_evaluations": 6000,
+  "artifacts": {
+    "pareto": "mo_pareto.csv"
+  },
+  "command": "cargo run --release --locked -- --mode all --preset publication --workers 4 --seed 42 --output results/publication",
+  "elapsed_seconds": 7.869843397,
+  "formulation": "robust-dda-mode",
+  "pareto_points": 83,
+  "preset": "publication",
+  "requested_evaluations": 6000,
+  "schema_version": 1,
+  "seed": 42,
+  "tutorial": "water-network-scheduling",
+  "workers": 4
+}

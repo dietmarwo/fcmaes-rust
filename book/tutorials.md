@@ -5,8 +5,8 @@ domain models, then treat optimization as a complete experiment: define the
 decision vector and constraints, choose an execution model, keep independent
 validation cases, record raw evidence, and render deterministic figures.
 
-Use the chapters in the sidebar instead of reading one long index. Together
-they cover:
+Use the chapters in the sidebar instead of reading one long index. The
+nineteen application tutorials cover:
 
 | Tutorial | Main optimization ideas |
 |---|---|
@@ -20,10 +20,15 @@ they cover:
 | ML hyperparameter tuning | leakage-free evaluation, BiteOpt, MODE, QD diagnostics |
 | Neural-controller policy search | 118-dimensional PGPE and CR-FM-NES |
 | GTOC1 “Save the Earth” | planet-order search, staged DE–CMA-ES, low thrust, split-brain architecture |
+| Split-brain GTOC1 route search (work in progress) | provider-independent proposals, matched outer-search protocols, multi-fidelity route evidence |
 | sindr circuit design | smooth AC features, equal-budget retry, constrained MODE, E12 MAP-Elites |
 | thevenin gate driver | transient measurement, constrained MODE, timestep and ngspice validation |
 | Pure-Rust optical lens design | validated sequential ray tracing, equal-budget retry, constrained MODE |
 | Rapier quadruped gait | contact-derived MAP-Elites repertoire, motor work, held-out terrain validation |
+| Phased-array codebook | quantized controls, robust retry, constrained MODE, descriptor-gated MAP-Elites |
+| Bilevel energy hub | embedded pure-Rust LP, discrete outer sizing, robust retry, MODE, chronological H₂ replay |
+| Field-service routing | assignment and priority random keys, robust scenarios, constrained MODE, descriptor-gated MAP-Elites |
+| Water-network scheduling | stepwise hydraulics, quantized controls, safety overrides, constrained MODE, descriptor validation |
 
 The canonical, detailed [tutorial index](tutorials/README.md) retains the
 common experiment contract, comparison table, complete commands, and Diffsol

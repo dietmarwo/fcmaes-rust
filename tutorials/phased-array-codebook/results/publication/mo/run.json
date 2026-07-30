@@ -1,0 +1,49 @@
+{
+  "actual_evaluations": 8192,
+  "artifacts": {
+    "convergence": "convergence.csv",
+    "pareto": "pareto.csv"
+  },
+  "command": "cargo run --release --locked --features fft -- --preset publication --mode all --workers 0 --seed 42 --output results/publication",
+  "constraints": [
+    {
+      "column": "constraint_null_db",
+      "feasible": "<= 0"
+    },
+    {
+      "column": "constraint_kernel",
+      "feasible": "<= 0"
+    }
+  ],
+  "descriptors": [],
+  "elapsed_seconds": 2.50233888,
+  "formulation": "constrained-mo",
+  "objectives": [
+    {
+      "column": "objective_negative_peak_gain_db",
+      "label": "Negative peak gain",
+      "unit": "dB"
+    },
+    {
+      "column": "objective_psll_db",
+      "label": "Nominal PSLL",
+      "unit": "dB"
+    },
+    {
+      "column": "objective_active_count",
+      "label": "Active elements",
+      "unit": "count"
+    },
+    {
+      "column": "objective_robustness_margin_db",
+      "label": "Robustness degradation",
+      "unit": "dB"
+    }
+  ],
+  "pareto_points": 127,
+  "requested_evaluations": 8192,
+  "schema_version": 1,
+  "seed": 42,
+  "tutorial": "phased-array-codebook",
+  "workers": 0
+}

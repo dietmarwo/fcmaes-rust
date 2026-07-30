@@ -1,0 +1,101 @@
+{
+  "actual_evaluations": 2000,
+  "archive": {
+    "capacity": 120,
+    "row_lengths": [
+      12,
+      12,
+      12,
+      12,
+      12,
+      12,
+      12,
+      12,
+      12,
+      12
+    ]
+  },
+  "artifacts": {
+    "samples": "pilot.csv"
+  },
+  "command": "cargo run --release --locked -- --mode all --preset publication --workers 4 --seed 42 --output results/publication",
+  "descriptor_holdout": "geography_uniform",
+  "feasible_candidates": 134,
+  "formulation": "descriptor-pilot",
+  "generator": {
+    "local_attempted": 999,
+    "local_feasible": 134,
+    "uniform_attempted": 1001,
+    "uniform_feasible": 0
+  },
+  "hard_feasibility_holdout": "all four holdout scenarios",
+  "pairs": {
+    "D1": {
+      "clipping_axis_1": 0.0,
+      "clipping_axis_2": 0.0,
+      "coarse_holdout_niche_retention": 0.7014925373134329,
+      "coverage": 0.058333333333333334,
+      "holdout_feasible_fraction": 0.0,
+      "holdout_niche_retention": 0.6194029850746269,
+      "local_coverage": 0.058333333333333334,
+      "minimum_seed_coverage": 0.041666666666666664,
+      "rank_correlation": 0.40051577441759084,
+      "reachable_maximum": [
+        8.0,
+        0.571962923460735
+      ],
+      "reachable_minimum": [
+        7.0,
+        0.22325015417459762
+      ],
+      "uniform_coverage": 0.0
+    },
+    "D2": {
+      "clipping_axis_1": 0.0,
+      "clipping_axis_2": 0.0,
+      "coarse_holdout_niche_retention": 1.0,
+      "coverage": 0.025,
+      "holdout_feasible_fraction": 0.0,
+      "holdout_niche_retention": 0.9925373134328358,
+      "local_coverage": 0.025,
+      "minimum_seed_coverage": 0.016666666666666666,
+      "rank_correlation": 0.6424508373068546,
+      "reachable_maximum": [
+        8.0,
+        1367.5541704391999
+      ],
+      "reachable_minimum": [
+        7.0,
+        0.0
+      ],
+      "uniform_coverage": 0.0
+    },
+    "D3": {
+      "clipping_axis_1": 0.07462686567164178,
+      "clipping_axis_2": 0.0,
+      "coarse_holdout_niche_retention": 0.26119402985074625,
+      "coverage": 0.05,
+      "holdout_feasible_fraction": 0.0,
+      "holdout_niche_retention": 0.14925373134328357,
+      "local_coverage": 0.05,
+      "minimum_seed_coverage": 0.041666666666666664,
+      "rank_correlation": 0.6179242111606408,
+      "reachable_maximum": [
+        1153.889202195167,
+        8.0
+      ],
+      "reachable_minimum": [
+        560.0207444233306,
+        7.0
+      ],
+      "uniform_coverage": 0.0
+    }
+  },
+  "preset": "publication",
+  "qd_decision": "rejected",
+  "requested_evaluations": 2000,
+  "schema_version": 1,
+  "seed": 42,
+  "tutorial": "field-service-routing",
+  "workers": 4
+}

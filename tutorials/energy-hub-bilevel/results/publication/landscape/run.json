@@ -1,0 +1,28 @@
+{
+  "actual_evaluations": 501,
+  "artifacts": {
+    "landscape": "landscape.csv"
+  },
+  "boundary_probes": 50,
+  "boundary_sign_disagreements": 50,
+  "budget": {
+    "candidate_evaluations": 501,
+    "lp_solves": 703,
+    "simplex_iterations": 779375,
+    "solver_failures": 0
+  },
+  "command": "cargo run --release --locked -- --preset publication --mode all --workers 4 --seed 42 --output results/publication",
+  "convexity_max_relative_violation": -3.054188366617547e-7,
+  "derivative_probes": 100,
+  "derivative_sign_disagreements": 50,
+  "descriptors": [],
+  "elapsed_seconds": 3.65552265,
+  "formulation": "landscape",
+  "horizon_limitation": "twelve independently cyclic representative days; no seasonal or hydrogen claim",
+  "objectives": [],
+  "requested_evaluations": 501,
+  "schema_version": 1,
+  "seed": 42,
+  "tutorial": "energy-hub-bilevel",
+  "workers": 4
+}

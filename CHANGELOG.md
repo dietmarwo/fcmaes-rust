@@ -6,6 +6,52 @@ phase, with breaking changes called out explicitly.
 
 ## [Unreleased]
 
+### Added
+
+- Added the reviewed GTOC1 “Save the Earth” tutorial with the real
+  `EVEEEJSJA` sequence, staged global optimization, a finite-thrust ZOH
+  transcription, accelerated Taylor propagation, independent DOP853
+  validation, and a 5–8-segment-per-leg whole-tour formulation.
+- Added a work-in-progress split-brain GTOC1 route-search tutorial with a
+  provider-independent agent subprocess, deterministic grammar and duration
+  decoding, equal-budget random and evolutionary controls, crash-safe replay
+  artifacts, feasibility-first Lambert L0 evaluation, Sims–Flanagan L1
+  promotion, and optional Taylor/DOP853 L2 validation.
+- Added GitHub-only tutorials for `sindr` AC circuit design, `thevenin`
+  transient gate-driver design, pure-Rust optical lens design, and Rapier
+  quadruped gait repertoires.
+- Added GitHub-only tutorials for hardware-quantized phased-array codebooks,
+  bilevel energy-hub sizing with an embedded dispatch LP, robust random-key
+  field-service routing, and `epanet-rs` water-network pump scheduling.
+- Added shared result-schema, descriptor-pilot, and robustness/holdout
+  protocols for application tutorials, with deterministic custom renderers
+  and compact checked-in publication evidence.
+- Added dependency-policy files for application workspaces, including a
+  crate-specific MPL-2.0 exception and notice for the unmodified
+  `pykep-core` dependency used by GTOC1 route search.
+
+### Changed
+
+- Expanded the tutorial CI matrix, rendered guide, main index, and mdBook
+  navigation to cover all nineteen application tutorials.
+- Made result-driven figure checks use the CI-pinned plotting environment and
+  allow tutorials with domain-specific artifacts to opt into custom
+  renderers.
+- Upgraded GTOC1 to `pykep-core` 0.1.4 and separated the fixed-sequence
+  continuous-thrust chapter from the variable-order campaign protocol.
+- Reframed the checked-in route-search evidence as a mock transport/protocol
+  fixture, replaced score-first summaries with feasibility-first constraint
+  reporting, and documented the still-missing live baselines, independent
+  seeds, L1 promotions, and L2 validation.
+
+### Fixed
+
+- Prevented an infeasible high raw-score Earth–Saturn route from being
+  described or plotted as a campaign leader; its launch-excess violation is
+  now documented and result figures follow the Rust archive ordering.
+- Documented that unfinished provider campaigns have no final `run.json` or
+  CSV bundle and remain ignored local evidence until completion.
+
 ## [0.1.3] - 2026-07-25
 
 ### Added

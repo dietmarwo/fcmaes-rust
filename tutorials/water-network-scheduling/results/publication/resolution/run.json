@@ -1,0 +1,23 @@
+{
+  "artifacts": {
+    "study": "resolution_study.csv"
+  },
+  "billing_resolution_s": 3600,
+  "cases": [
+    "baseline",
+    "override-witness"
+  ],
+  "command": "cargo run --release --locked -- --mode all --preset publication --workers 4 --seed 42 --output results/publication",
+  "formulation": "resolution-study",
+  "hydraulic_timesteps_s": [
+    3600,
+    1800,
+    900,
+    300
+  ],
+  "preset": "publication",
+  "schema_version": 1,
+  "seed": 42,
+  "tutorial": "water-network-scheduling",
+  "workers": 4
+}

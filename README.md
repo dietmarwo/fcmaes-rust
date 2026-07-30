@@ -62,7 +62,7 @@ optimizer backend.
 | `fcmaes-gtop` | Internal native GTOP objective library shared by the examples and Python package |
 | `examples` (`fcmaes-examples`) | Native GTOP problems, application objectives, benchmarks, and executable examples |
 | `fcmaes-py` | Optional PyO3 extension for embedding the Rust implementation in a Python package |
-| `tutorials/*` | Standalone application workspaces using NeXosim, Rapier, ReBop, Brahe, RustPower, SmartCore, pykep-core astrodynamics, sindr AC analysis, thevenin transient analysis, native geometric optics, native atmospheric dispersion, a custom educational ventilation backend, and native neural policy search |
+| `tutorials/*` | Standalone application workspaces using NeXosim, Rapier, ReBop, Brahe, RustPower, SmartCore, pykep-core astrodynamics, sindr AC analysis, thevenin transient analysis, native geometric optics, native phased-array analysis, native atmospheric dispersion, a custom educational ventilation backend, and native neural policy search |
 
 Only two registry artifacts are published: `fcmaes-core` on crates.io and the
 `fcmaes-rust` binding distribution on PyPI. `fcmaes-gtop` is an internal
@@ -74,11 +74,12 @@ The application tutorials are intentionally not root workspace members. Each
 keeps its application-specific dependencies, artifacts, and lockfile isolated;
 run its Cargo commands from that tutorial directory.
 
-Eleven application tutorials retain multi-objective optimization.
+Twelve application tutorials retain multi-objective optimization.
 MAP-Elites campaigns are
 implemented and recorded for NeXosim, Rapier, ReBop, Brahe, atmospheric source
 localization, room ventilation, RustPower, sindr circuit design, and Rapier
-quadruped locomotion; the
+quadruped locomotion, with a secondary register-code archive in the phased-array
+tutorial; the
 SmartCore hyperparameter tutorial records a QD campaign that its own
 pre-registered criteria reject.
 That tutorial demonstrates an often missed part of optimizer benchmarking:
@@ -111,7 +112,25 @@ validates a dependency-free sequential geometric ray tracer before comparing
 scalar retries and a constrained Cooke-triplet front. The fourteenth makes
 quality diversity the primary result for an eight-motor Rapier quadruped and
 reports five-seed held-out terrain replay rather than treating training
-coverage as robustness. The
+coverage as robustness. The fifteenth tutorial publishes a work-in-progress
+split-brain GTOC1 planet-order loop with a provider-independent agent boundary,
+matched random and evolutionary protocols, and an explicit list of live
+experiments still required before comparative claims. The
+sixteenth implements validated direct/FFT array-factor kernels, hardware
+quantization, robust scalar retry, constrained MODE, and a descriptor-gated
+register codebook. Its QD result is explicitly primary-secondary because peak
+direction/HPBW coverage missed the pre-registered threshold. The
+seventeenth wraps a proven-optimal pure-Rust dispatch LP inside robust
+energy-hub sizing, measures the convex baseline before adding tiers and
+switches, and reports candidate calls, LP solves, and simplex pivots
+separately. Its descriptor gate rejects MAP-Elites before a chronological
+hydrogen arm performs an independent 8,760-hour replay. The eighteenth uses
+assignment and priority random keys for robust field-service routing, proves
+the decoder's exact-once and plateau bounds, and records a failed descriptor
+gate rather than publishing an unstable dispatch repertoire. The nineteenth
+uses stepwise `epanet-rs` hydraulics for quantized pump scheduling, distinguishes
+DDA optimization from PDA validation, and rejects its MAP-Elites repertoire
+after unseen-demand same-niche retention misses the declared gate. The
 [tutorial index](tutorials/README.md) includes commands, figures, validation
 results and the common result schema. Compact canonical result directories are
 version-controlled with generated SVGs so raw-evidence links and deterministic
@@ -207,14 +226,25 @@ python examples/python/test_cma.py
 - [Combinatorial encoding cookbook](docs/combinatorial-encodings.md)
 - [Buckingham–Pi dimensional-analysis example](docs/buckingham-pi.md)
 - [Native Rust application-optimization tutorials](tutorials/README.md)
-- [ML hyperparameter-optimization tutorial](tutorials/ml-hyperparameter-tuning/README.md)
+- [NeXosim production-line tutorial](tutorials/nexosim-production-line/README.md)
+- [Rapier trebuchet tutorial](tutorials/rapier-trebuchet/README.md)
+- [ReBop stochastic-oscillator tutorial](tutorials/rebop-oscillator/README.md)
+- [Brahe satellite-constellation tutorial](tutorials/brahe-constellation/README.md)
+- [RustPower voltage-control tutorial](tutorials/rustpower-voltage-control/README.md)
+- [Atmospheric source-localization tutorial](tutorials/dispersion-source-localization/README.md)
 - [Room-ventilation optimization tutorial](tutorials/cfd-room-ventilation/README.md)
+- [ML hyperparameter-optimization tutorial](tutorials/ml-hyperparameter-tuning/README.md)
 - [Neural-controller policy-search tutorial](tutorials/neural-controller-policy-search/README.md)
 - [GTOC1 “Save the Earth” tutorial](tutorials/gtoc1/README.md)
+- [Split-brain GTOC1 route-search tutorial (work in progress)](tutorials/gtoc1-route-search/README.md)
 - [sindr circuit-design tutorial](tutorials/sindr-circuit-design/README.md)
 - [thevenin transient gate-driver tutorial](tutorials/thevenin-gate-driver/README.md)
 - [Pure-Rust optical lens-design tutorial](tutorials/optical-lens-design/README.md)
 - [Rapier quadruped gait-repertoire tutorial](tutorials/rapier-quadruped-gait/README.md)
+- [Hardware-quantized phased-array codebook tutorial](tutorials/phased-array-codebook/README.md)
+- [Bilevel energy-hub sizing tutorial](tutorials/energy-hub-bilevel/README.md)
+- [Random-key field-service routing tutorial](tutorials/field-service-routing/README.md)
+- [Water-network pump-scheduling tutorial](tutorials/water-network-scheduling/README.md)
 - [Optional PyO3 bindings](docs/python-bindings.md)
 - [Release history](CHANGELOG.md)
 - [Publishing checklist](RELEASING.md)

@@ -1,0 +1,86 @@
+{
+  "archive": {
+    "capacity": 100,
+    "row_lengths": [
+      10,
+      10,
+      10,
+      10,
+      10,
+      10,
+      10,
+      10,
+      10,
+      10
+    ]
+  },
+  "artifacts": {
+    "samples": "pilot.csv"
+  },
+  "attempted": 1500,
+  "command": "cargo run --release --locked -- --mode all --preset publication --workers 4 --seed 42 --output results/publication",
+  "feasible_candidates": 674,
+  "formulation": "descriptor-pilot",
+  "pairs": {
+    "D1": {
+      "clipping_axis_1": 0.005934718100890208,
+      "clipping_axis_2": 0.002967359050445104,
+      "coarse_holdout_retention": 0.9362017804154302,
+      "coverage": 0.38,
+      "holdout_retention": 0.05341246290801187,
+      "minimum_seed_coverage": 0.19,
+      "rank_correlation": 0.40717220039692165,
+      "reachable_maximum": [
+        0.35768758328575584,
+        0.29531626318097504
+      ],
+      "reachable_minimum": [
+        0.1001944697533915,
+        0.09575958827148172
+      ],
+      "timestep_retention": 0.9747774480712166
+    },
+    "D2": {
+      "clipping_axis_1": 0.0,
+      "clipping_axis_2": 0.002967359050445104,
+      "coarse_holdout_retention": 0.9094955489614244,
+      "coverage": 0.29,
+      "holdout_retention": 0.025222551928783383,
+      "minimum_seed_coverage": 0.15,
+      "rank_correlation": -0.08448289224670281,
+      "reachable_maximum": [
+        0.3484366574216743,
+        0.29531626318097504
+      ],
+      "reachable_minimum": [
+        0.3093232615947745,
+        0.09575958827148172
+      ],
+      "timestep_retention": 0.9762611275964391
+    },
+    "D3": {
+      "clipping_axis_1": 0.0,
+      "clipping_axis_2": 0.005934718100890208,
+      "coarse_holdout_retention": 0.9747774480712166,
+      "coverage": 0.39,
+      "holdout_retention": 0.9614243323442137,
+      "minimum_seed_coverage": 0.17,
+      "rank_correlation": 0.029613911274278364,
+      "reachable_maximum": [
+        0.7208333333333333,
+        0.35768758328575584
+      ],
+      "reachable_minimum": [
+        0.5208333333333335,
+        0.1001944697533915
+      ],
+      "timestep_retention": 0.983679525222552
+    }
+  },
+  "preset": "publication",
+  "qd_decision": "rejected",
+  "schema_version": 1,
+  "seed": 42,
+  "tutorial": "water-network-scheduling",
+  "workers": 4
+}

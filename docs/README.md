@@ -24,7 +24,7 @@ API examples, and primary algorithm references are in the
 | [Examples](examples.md) | Every native binary, data input, GTOP problem, monitor, and benchmark |
 | [Combinatorial encodings](combinatorial-encodings.md) | Turning fixed real vectors into integers, categories, subsets, permutations, partitions, and repaired schedules |
 | [Buckingham–Pi](buckingham-pi.md) | Numerical dimensional analysis, holdout scoring, BiteOpt retry, and MODE |
-| [Application tutorials](../tutorials/README.md) | Twelve native optimization applications, including simulation, astrodynamics, circuit analysis, policy search, ML hyperparameter tuning, and custom-backend verification |
+| [Application tutorials](../tutorials/README.md) | Seventeen native optimization applications, including simulation, astrodynamics, circuit analysis, policy search, ML hyperparameter tuning, embedded LPs, and custom-backend verification |
 | [Development](development.md) | Formatting, linting, tests, coverage, rustdoc, and extension points |
 
 ## Implemented Rust surface
