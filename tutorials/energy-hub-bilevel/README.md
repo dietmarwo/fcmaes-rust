@@ -217,7 +217,8 @@ candidate calls caused 3,075 inner solves and 3,136,196 simplex pivots.
 
 ![Equal outer budgets produce different answers and different simplex work](images/so-comparison.svg)
 
-Full precision is in [`results/publication/so/`](results/publication/so/).
+Full precision is in
+[`results/publication/so/`](https://github.com/dietmarwo/fcmaes-rust/tree/main/tutorials/energy-hub-bilevel/results/publication/so).
 
 ## Pre-registered descriptor gate
 
@@ -296,8 +297,9 @@ the portfolio.
 
 ![The measured MAP-Elites archive and its full-budget coverage trace](images/qd-archive.svg)
 
-Full precision is in [`results/publication/qd/`](results/publication/qd/), and
-the pilot verdict is
+Full precision is in
+[`results/publication/qd/`](https://github.com/dietmarwo/fcmaes-rust/tree/main/tutorials/energy-hub-bilevel/results/publication/qd),
+and the pilot verdict is
 [`results/publication/pilot/pilot.md`](results/publication/pilot/pilot.md).
 
 ## Constrained MODE front
@@ -320,7 +322,7 @@ curtailment, and robust mean LCOE still trade off.
 ![The feasible front exposes capital, emissions, curtailment, and LCOE rather than hiding them in one weight](images/mo-pareto.svg)
 
 Full precision and selected extremes are in
-[`results/publication/mo/`](results/publication/mo/).
+[`results/publication/mo/`](https://github.com/dietmarwo/fcmaes-rust/tree/main/tutorials/energy-hub-bilevel/results/publication/mo).
 
 ## Chronological electricity and hydrogen extension
 

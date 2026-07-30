@@ -68,7 +68,7 @@ automatically a useful derivative of an objective that also contains:
 Events alone do not invalidate gradients. Diffsol supports forward and adjoint
 sensitivities, so smooth parameter fitting is naturally paired with a
 gradient-based optimizer. The
-[Diffsol discussion](../tutorials/README.md#11-diffsol-why-gradients-are-the-better-default)
+[Diffsol discussion](../tutorials/README.md#20-diffsol-why-gradients-are-the-better-default)
 explains the boundary. A gradient-free outer layer becomes attractive when
 discrete policies, resets, robust aggregation, or failures break the complete
 derivative path.
@@ -199,7 +199,7 @@ It is a good fit when most of the following are true:
 - the required result is one robust design, a Pareto set, or a meaningful
   quality-diversity archive.
 
-The twelve [application tutorials](../tutorials/README.md) cover different
+The nineteen [application tutorials](../tutorials/README.md) cover different
 reasons for reaching this point: stochastic discrete events, mechanical
 discontinuities, intrinsic simulation noise, changing access windows,
 mixed-integer controls and solver failures, censored inverse inference,

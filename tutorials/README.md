@@ -255,7 +255,7 @@ model, serious-run results, Pareto extremes and replay output.
 
 ## 4. ReBop: robust stochastic oscillator design
 
-[ReBop](https://github.com/Net-Mist/rebop) simulates well-mixed stochastic
+[ReBop](https://github.com/Armavica/rebop) simulates well-mixed stochastic
 chemical reaction networks. This tutorial optimizes the logarithms of all 15
 kinetic rates in the Vilar oscillator using its compiled macro DSL.
 

@@ -6,7 +6,7 @@ preserve every experiment and are the authoritative inputs for statistics.
 | Workload | Report | Raw samples |
 |---|---|---|
 | Coordinated retry, BiteOpt retry, and DE→CMA retry on GTOP | [`benchmark_gtop.md`](benchmark_gtop.md) | [`benchmark_gtop_100_raw.tsv`](benchmark_gtop_100_raw.tsv), [`benchmark_gtop_tandem_100_raw.tsv`](benchmark_gtop_tandem_100_raw.tsv), [`benchmark_biteopt_gtop_rust_100_raw.tsv`](benchmark_biteopt_gtop_rust_100_raw.tsv), [`benchmark_de_cma_gtop_rust_100_raw.tsv`](benchmark_de_cma_gtop_rust_100_raw.tsv) |
-| fcmaes versus independent Rust optimizer crates | [`optimizer-comparison/comparison.md`](optimizer-comparison/comparison.md) | [`optimizer-comparison/raw/`](optimizer-comparison/raw/) |
+| fcmaes versus independent Rust optimizer crates | [`optimizer-comparison/comparison.md`](optimizer-comparison/comparison.md) | [raw artifacts](https://github.com/dietmarwo/fcmaes-rust/tree/main/benchmarks/optimizer-comparison/raw) |
 
 Recreate the recorded native fcmaes workloads from the repository root:
 

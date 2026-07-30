@@ -222,7 +222,7 @@ fixed-scenario overfitting.
 ![Representative disjoint rollout of the best validated policy](images/publication/trajectory.svg)
 
 Raw result data and generated artifacts are retained in
-[`results/publication`](results/publication/):
+[`results/publication`](https://github.com/dietmarwo/fcmaes-rust/tree/main/tutorials/neural-controller-policy-search/results/publication):
 
 - `runs.csv` contains all 100 optimizer runs;
 - `convergence.csv` contains monitor histories;

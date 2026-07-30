@@ -64,7 +64,7 @@ on a better-scaled coordinate.
 ## Validation before optimization
 
 The reference is the final F/5 SK16–F2–SK16 prescription in
-[Optiland Tutorial 5c](https://optiland.readthedocs.io/en/stable/examples/Tutorial_5c_Optimization_Case_Study.html).
+[Optiland Tutorial 3d](https://optiland.readthedocs.io/en/latest/examples/Tutorial_3d_Optimization_Case_Study_Cooke_Triplet.html).
 The complete disclosed prescription is:
 
 | Surface | Radius | Thickness after surface | Medium after surface |
@@ -114,7 +114,7 @@ are not nested, which is why the gate covers three resolutions rather than
 only the last pair. Radius 8 is the declared cost/accuracy point used by every
 optimizer arm; the finer grids are independent validation replays.
 Full-precision evidence is in
-[`results/publication/validation/`](results/publication/validation/).
+[`results/publication/validation/`](https://github.com/dietmarwo/fcmaes-rust/tree/main/tutorials/optical-lens-design/results/publication/validation).
 
 ![Pupil-grid refinement checks the metric used by optimization](images/ray-convergence.svg)
 

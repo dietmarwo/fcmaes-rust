@@ -61,8 +61,8 @@ cargo run --release
 
 | Problem | Start here |
 |---|---|
-| General bounded scalar optimization | [`De`](https://docs.rs/fcmaes-core/latest/fcmaes_core/struct.De.html), [`Cmaes`](https://docs.rs/fcmaes-core/latest/fcmaes_core/struct.Cmaes.html), or [`BiteOpt`](https://docs.rs/fcmaes-core/latest/fcmaes_core/struct.BiteOpt.html) |
-| High-dimensional or noisy search | [`Pgpe`](https://docs.rs/fcmaes-core/latest/fcmaes_core/struct.Pgpe.html) or [`Crfmnes`](https://docs.rs/fcmaes-core/latest/fcmaes_core/struct.Crfmnes.html) |
+| General bounded scalar optimization | [`De`](https://docs.rs/fcmaes-core/latest/fcmaes_core/de/struct.De.html), [`Cmaes`](https://docs.rs/fcmaes-core/latest/fcmaes_core/cmaes/struct.Cmaes.html), or [`BiteOpt`](https://docs.rs/fcmaes-core/latest/fcmaes_core/biteopt/struct.BiteOpt.html) |
+| High-dimensional or noisy search | [`Pgpe`](https://docs.rs/fcmaes-core/latest/fcmaes_core/pgpe/struct.Pgpe.html) or [`Crfmnes`](https://docs.rs/fcmaes-core/latest/fcmaes_core/crfmnes/struct.Crfmnes.html) |
 | Independent or adaptive restarts | [`retry`](https://docs.rs/fcmaes-core/latest/fcmaes_core/retry/index.html) |
 | Several competing objectives | [`mode`](https://docs.rs/fcmaes-core/latest/fcmaes_core/mode/index.html) and [`moretry`](https://docs.rs/fcmaes-core/latest/fcmaes_core/moretry/index.html) |
 | Diverse high-quality solutions | [`mapelites`](https://docs.rs/fcmaes-core/latest/fcmaes_core/mapelites/index.html) |

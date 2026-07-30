@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import re
 import shutil
 import subprocess
 from pathlib import Path
@@ -14,8 +15,17 @@ STAGING = ROOT / "target" / "mdbook-src"
 SOURCE = STAGING / "src"
 OUTPUT = ROOT / "target" / "book"
 
-TOP_LEVEL_FILES = ("README.md", "CHANGELOG.md", "RELEASING.md", "ai-context.md")
+TOP_LEVEL_FILES = (
+    "README.md",
+    "CHANGELOG.md",
+    "RELEASING.md",
+    "ai-context.md",
+    "LICENSE",
+)
 SOURCE_DIRECTORIES = ("docs", "tutorials", "benchmarks", "examples", "crates")
+README_LINK = re.compile(
+    r"(?<=\()(?P<target>[^)\s]+README\.md)(?P<fragment>#[^)\s]*)?(?=\))"
+)
 IGNORED_NAMES = {
     ".git",
     ".mypy_cache",
@@ -43,6 +53,31 @@ def ignored(_directory: str, names: list[str]) -> set[str]:
     }
 
 
+def rewrite_readme_links() -> None:
+    """Point prose links at the index pages emitted for directory READMEs.
+
+    mdBook correctly treats a ``README.md`` listed in ``SUMMARY.md`` as the
+    directory's ``index.html`` chapter, but prose links to the same source are
+    otherwise rendered as nonexistent ``README.html`` URLs. Keep the canonical
+    Markdown convenient on GitHub and normalize only the staged book sources.
+    """
+
+    def replacement(match: re.Match[str]) -> str:
+        target = match.group("target")
+        if "://" in target:
+            return match.group(0)
+        directory = target[: -len("README.md")] or "./"
+        return f"{directory}{match.group('fragment') or ''}"
+
+    for document in SOURCE.rglob("*.md"):
+        if document.name == "SUMMARY.md":
+            continue
+        text = document.read_text(encoding="utf-8")
+        rendered = README_LINK.sub(replacement, text)
+        if rendered != text:
+            document.write_text(rendered, encoding="utf-8")
+
+
 def prepare() -> None:
     """Create a clean mdBook source tree without changing canonical files."""
 
@@ -64,6 +99,7 @@ def prepare() -> None:
             ignore=ignored,
             copy_function=shutil.copy2,
         )
+    rewrite_readme_links()
 
 
 def main() -> None:

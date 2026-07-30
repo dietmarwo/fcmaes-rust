@@ -237,7 +237,8 @@ shared machine and are descriptive only. Evaluation counts and local-search
 move attempts are the reproducibility budgets.
 
 The figures are generated only from checked-in CSV/JSON artifacts. Full
-precision lives under [`results/publication/`](results/publication/).
+precision lives under
+[`results/publication/`](https://github.com/dietmarwo/fcmaes-rust/tree/main/tutorials/field-service-routing/results/publication).
 [`DEPENDENCY_NOTICE.md`](DEPENDENCY_NOTICE.md) documents the one explicitly
 accepted unmaintained transitive macro crate; new advisories still fail
 `cargo deny`.

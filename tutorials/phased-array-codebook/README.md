@@ -149,7 +149,8 @@ Every candidate is evaluated against the same 49 checked-in training cases:
 
 The holdout changes perturbation kind, not merely random seed: four 10° phase
 draws, all 15 adjacent dual failures, two `0.02 lambda` spacing-error cases,
-and a grid twice as fine. The CSV perturbations in [`scenarios/`](scenarios/)
+and a grid twice as fine. The CSV perturbations in
+[`scenarios/`](https://github.com/dietmarwo/fcmaes-rust/tree/main/tutorials/phased-array-codebook/scenarios)
 are part of the experiment contract.
 
 ![The best scalar design is replayed under every single-element failure](images/failure-envelope.svg)
@@ -168,7 +169,8 @@ replayed from its exported codes.
 | BiteOpt | 8,000 | 19.803° | -23.18 dB | **-12.03 dB** | yes |
 
 The exact values, constraints, register codes, actual budgets, and wall times
-are in [`results/publication/so/`](results/publication/so/).
+are in
+[`results/publication/so/`](https://github.com/dietmarwo/fcmaes-rust/tree/main/tutorials/phased-array-codebook/results/publication/so).
 
 ![Equal requested budgets compare three optimizer families on the same quantized robust objective](images/so-convergence.svg)
 

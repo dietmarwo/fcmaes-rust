@@ -261,6 +261,7 @@ Build the rendered guide locally with mdBook 0.5.4:
 
 ```bash
 python scripts/build_book.py
+python scripts/check_book_links.py
 ```
 
 The builder stages canonical repository files under `target/`; it does not

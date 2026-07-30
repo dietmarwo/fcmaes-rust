@@ -51,7 +51,7 @@ entry point.
 ## Type checking and editor support
 
 The distribution ships a PEP 561 `py.typed` marker and a
-[`_fcmaes_ext.pyi`](../python/fcmaes_rust/_fcmaes_ext.pyi) stub, so editors and
+[`_fcmaes_ext.pyi`](https://github.com/dietmarwo/fcmaes-rust/blob/main/python/fcmaes_rust/_fcmaes_ext.pyi) stub, so editors and
 type checkers resolve the native surface without a plugin. No configuration is
 needed.
 

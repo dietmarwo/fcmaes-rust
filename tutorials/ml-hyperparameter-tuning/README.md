@@ -208,7 +208,7 @@ study produced 271 feasible designs spanning precision 0.2654–0.4648 and
 sharpness 0.1210–0.3987. The deliberately wider frozen rectangle remains
 precision 0.24–0.52 by sharpness 0.10–0.45. Raw candidates, manifests, and the
 derived summary are under
-[`results/publication/descriptor-study`](results/publication/descriptor-study).
+[`results/publication/descriptor-study`](https://github.com/dietmarwo/fcmaes-rust/tree/main/tutorials/ml-hyperparameter-tuning/results/publication/descriptor-study).
 
 The publication archive is accepted only if:
 

@@ -29,6 +29,7 @@ phase, with breaking changes called out explicitly.
 - Added dependency-policy files for application workspaces, including a
   crate-specific MPL-2.0 exception and notice for the unmodified
   `pykep-core` dependency used by GTOC1 route search.
+- Added a rendered-mdBook link and anchor validator to the GitHub Pages build.
 
 ### Changed
 
@@ -51,6 +52,10 @@ phase, with breaking changes called out explicitly.
   now documented and result figures follow the Rust archive ordering.
 - Documented that unfinished provider campaigns have no final `run.json` or
   CSV bundle and remain ignored local evidence until completion.
+- Fixed mdBook links to directory `README.md` chapters, published linked
+  supporting chapters, and replaced non-browsable artifact-directory links
+  with their GitHub tree targets.
+- Corrected moved docs.rs, ReBop, Optiland, and release-history links.
 
 ## [0.1.3] - 2026-07-25
 
@@ -157,5 +162,5 @@ Initial crates.io bootstrap release.
 
 [Unreleased]: https://github.com/dietmarwo/fcmaes-rust/compare/v0.1.3...HEAD
 [0.1.3]: https://github.com/dietmarwo/fcmaes-rust/compare/v0.1.2...v0.1.3
-[0.1.2]: https://github.com/dietmarwo/fcmaes-rust/compare/v0.1.1...v0.1.2
-[0.1.1]: https://github.com/dietmarwo/fcmaes-rust/releases/tag/v0.1.1
+[0.1.2]: https://github.com/dietmarwo/fcmaes-rust/releases/tag/v0.1.2
+[0.1.1]: https://crates.io/crates/fcmaes-core/0.1.1
