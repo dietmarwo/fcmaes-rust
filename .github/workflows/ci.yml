@@ -281,14 +281,13 @@ jobs:
           --preset smoke --mode all --workers 2 --seed 42 --no-output
       - name: Run oscillator topology-search protocol smoke test
         if: matrix.tutorial == 'oscillator-topology-search'
+        working-directory: tutorials/oscillator-topology-search
         run: |
-          python3 -m unittest \
-            tutorials/oscillator-topology-search/agents/test_llm_agent.py
+          python3 -m unittest agents/test_llm_agent.py
           cargo run --release --locked \
-            --manifest-path tutorials/oscillator-topology-search/Cargo.toml -- \
+            --manifest-path Cargo.toml -- \
             --mode all --preset smoke --seed 42 \
-            --agent-command \
-            'python3 tutorials/oscillator-topology-search/agents/mock_agent.py' \
+            --agent-command 'python3 agents/mock_agent.py' \
             --output /tmp/oscillator-topology-search-ci
       - name: Run GTOC1 route-search protocol smoke test
         if: matrix.tutorial == 'gtoc1-route-search'
