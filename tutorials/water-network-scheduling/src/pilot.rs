@@ -126,9 +126,9 @@ pub struct PairSummary {
     /// Fraction outside the second axis bounds.
     pub clipping_axis_2: f64,
     /// Same-niche retention under the unseen-demand holdout.
-    pub holdout_retention: f64,
+    pub holdout_niche_retention: f64,
     /// Holdout retention on an archive with one quarter the capacity.
-    pub coarse_holdout_retention: f64,
+    pub coarse_holdout_niche_retention: f64,
     /// Same-niche retention after halving the hydraulic timestep.
     pub timestep_retention: f64,
     /// Minimum observed training descriptors.
@@ -309,8 +309,8 @@ fn diagnostics(
             .fold(f64::INFINITY, f64::min),
         clipping_axis_1: clipping(0),
         clipping_axis_2: clipping(1),
-        holdout_retention: retention(&training, &holdout, &layout),
-        coarse_holdout_retention: retention(&training, &holdout, &coarse),
+        holdout_niche_retention: retention(&training, &holdout, &layout),
+        coarse_holdout_niche_retention: retention(&training, &holdout, &coarse),
         timestep_retention: retention(&resolution_baseline, &resolution_fine, &layout),
         reachable_minimum: [
             training
@@ -341,7 +341,7 @@ fn passes(summary: PairSummary) -> bool {
         && summary.clipping_axis_1 < 0.1
         && summary.clipping_axis_2 < 0.1
         && summary.coverage > 0.4
-        && summary.holdout_retention > 0.6
+        && summary.holdout_niche_retention > 0.6
 }
 
 /// Run three deterministic perturbation streams around the structured seed.
@@ -448,7 +448,7 @@ mod tests {
         assert_eq!(left.rows.len(), right.rows.len());
         assert_eq!(left.d1.rank_correlation, right.d1.rank_correlation);
         assert_eq!(left.archive_row_lengths, vec![7, 7, 7, 7, 6, 6]);
-        assert!((0.0..=1.0).contains(&left.d1.holdout_retention));
+        assert!((0.0..=1.0).contains(&left.d1.holdout_niche_retention));
         assert!((0.0..=1.0).contains(&left.d1.timestep_retention));
     }
 }

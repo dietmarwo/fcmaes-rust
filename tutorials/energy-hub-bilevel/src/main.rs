@@ -215,7 +215,7 @@ fn run_descriptor_pilot(
         summary.attempted_candidates,
         summary.d1.rank_correlation,
         100.0 * summary.d1.coverage,
-        100.0 * summary.d1.holdout_retention
+        100.0 * summary.d1.holdout_niche_retention
     );
     if args.write_output {
         write_pilot(

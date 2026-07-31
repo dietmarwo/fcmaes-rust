@@ -120,6 +120,10 @@ fn parse_args(arguments: &[String]) -> Result<CampaignConfig, Box<dyn Error>> {
             "--control-promotion-rate" => {
                 config.promotion.control_rate = parse(value, "--control-promotion-rate")?;
             }
+            "--promote-variants" => {
+                config.promotion.variants =
+                    value.split(',').map(str::trim).map(str::to_owned).collect();
+            }
             "--results" => {
                 config.results = PathBuf::from(value);
                 config.agent.log_path = config.results.join("agent_log.jsonl");
@@ -173,6 +177,7 @@ fn print_help() {
          \n  --promote-every N              L0 acceptance cadence for L1\n\
          \n  --promote-batch N              maximum L1 promotions per cadence\n\
          \n  --control-promotion-rate N     lower-ranked promotion probability\n\
+         \n  --promote-variants CSV         exact predeclared L1 variant order\n\
          \n  --results PATH                 arm-specific artifact directory\n\
          \n  --agent-command-json JSON      exact command argv array\n\
          \n  --agent-replay PATH            replay a prior agent log\n\

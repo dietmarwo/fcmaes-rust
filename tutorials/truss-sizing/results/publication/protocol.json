@@ -1,0 +1,25 @@
+{
+  "budgets": {
+    "mo_evaluations": 256,
+    "mo_population": 32,
+    "pilot_attempts_per_arm": 128,
+    "so_evaluations_per_arm": 2048,
+    "so_retries_per_arm": 8
+  },
+  "ground_structure": {
+    "active_member_bounds": [
+      8,
+      40
+    ],
+    "candidate_members": 75,
+    "decision_dimension": 171,
+    "movable_nodes": 10,
+    "nodes": 18
+  },
+  "model_limitation": "Educational linear-elastic pin-jointed 2-D truss; not a code-compliant structural design.",
+  "rcond_min": 1e-10,
+  "schema_version": 1,
+  "seed": 42,
+  "tutorial": "truss-sizing",
+  "workers": 0
+}

@@ -1,0 +1,5853 @@
+{
+  "results": [
+    {
+      "structure": {
+        "bodies": [
+          3,
+          2,
+          2,
+          3,
+          2,
+          2,
+          2,
+          2,
+          3,
+          2,
+          3,
+          10
+        ]
+      },
+      "variant": {
+        "structure": {
+          "bodies": [
+            3,
+            2,
+            2,
+            3,
+            2,
+            2,
+            2,
+            2,
+            3,
+            2,
+            3,
+            10
+          ]
+        },
+        "clockwise": [
+          false,
+          false,
+          false,
+          false,
+          false,
+          false,
+          false,
+          false,
+          true,
+          false,
+          false
+        ]
+      },
+      "structure_key": "3-2-2-3-2-2-2-2-3-2-3-10",
+      "variant_key": "3-2-2-3-2-2-2-2-3-2-3-10|00000000100",
+      "niche_key": "L12-I11-Tnone-R2-F14y",
+      "accepted_index": 0,
+      "proposal_attempt": 1,
+      "strategy": "random",
+      "rationale": "grammar-aware random baseline",
+      "l0": {
+        "evaluation_found": true,
+        "objective": -7005.532275063566,
+        "estimated_score": 7005.5327646904025,
+        "fixed_mass_score": 774685.4690889431,
+        "constraint": 4.8962683629048216e-14,
+        "launch_v_infinity_km_s": 2.5000000522836294,
+        "powered_delta_v_km_s": 110.2876780771908,
+        "endpoint_repair_delta_v_km_s": 116.32076986458355,
+        "minimum_periapsis_margin_km": -0.0013786652461931226,
+        "flight_days": 5231.589583908925,
+        "branches": [
+          {
+            "revolutions": 4,
+            "path": "left"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 3,
+            "path": "left"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 1,
+            "path": "left"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 2,
+            "path": "left"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 1,
+            "path": "left"
+          }
+        ],
+        "epochs_mjd2000": [
+          7816.279500357548,
+          9150.890373631048,
+          9164.891449750114,
+          10137.905150062692,
+          10380.557472662327,
+          10718.250549028153,
+          10732.250580428448,
+          10746.261385684902,
+          11592.483858547415,
+          11633.538920781855,
+          12052.873586003012,
+          13047.869084266473
+        ],
+        "optimizer_decision": [
+          7816.279500357548,
+          5231.589583908925,
+          0.6419443230873909,
+          -13.378299535717542,
+          0.321999992596567,
+          -1.1117027602909468,
+          -0.7641095965675602,
+          -16.91259855258981,
+          -11.071627922844977,
+          0.1801944321198549,
+          -3.2460312368395288,
+          -0.5391923084649909
+        ],
+        "physical_decision": {
+          "launch_mjd2000": 7816.279500357548,
+          "leg_days": [
+            1334.6108732734988,
+            14.001076119065718,
+            973.013700312578,
+            242.6523225996356,
+            337.6930763658241,
+            14.000031400297695,
+            14.010805256453272,
+            846.2224728625127,
+            41.05506223443989,
+            419.33466522115674,
+            994.9954982634616
+          ]
+        },
+        "requested_evaluations": 3520000,
+        "actual_evaluations": 2136904,
+        "resolved_workers": 32,
+        "worker_seconds": 2841.553180256,
+        "wall_seconds": 88.798536883,
+        "failures": {
+          "LambertUnavailable": 130,
+          "PropagationFailure": 2162
+        },
+        "failure_examples": [
+          {
+            "code": "LambertUnavailable",
+            "leg": null,
+            "value": null,
+            "message": "pykep evaluation failed: floating-point overflow in LambertProblem::time_of_flight"
+          },
+          {
+            "code": "PropagationFailure",
+            "leg": null,
+            "value": null,
+            "message": "invalid decision x[11]=10957.500000000004"
+          }
+        ]
+      },
+      "l1": {
+        "threshold_passed": false,
+        "final_mass_kg": null,
+        "score": null,
+        "maximum_normalized_mismatch": null,
+        "maximum_throttle_norm": null,
+        "powered_delta_v_km_s": null,
+        "minimum_periapsis_margin_km": null,
+        "minimum_solar_distance_au": null,
+        "leg_fuel_kg": [],
+        "controls": [],
+        "segments": 25,
+        "requested_evaluations": 448800000,
+        "actual_evaluations": 0,
+        "resolved_workers": 32,
+        "worker_seconds": 97.319596224,
+        "wall_seconds": 3.041237382,
+        "outcome": {
+          "code": "PropagationFailure",
+          "leg": null,
+          "value": null,
+          "message": "pykep evaluation failed: propagate_lagrangian_hyperbolic did not converge after 100 iterations"
+        }
+      },
+      "l2": null,
+      "surrogate_gap": null,
+      "cache_key": "de17093a2700fa0f8c8de1c426761c71b9d45cf95071147f75004bcf25067add",
+      "created_unix_ms": 1785433651042
+    },
+    {
+      "structure": {
+        "bodies": [
+          3,
+          5,
+          2,
+          6,
+          2,
+          6,
+          5,
+          10
+        ]
+      },
+      "variant": {
+        "structure": {
+          "bodies": [
+            3,
+            5,
+            2,
+            6,
+            2,
+            6,
+            5,
+            10
+          ]
+        },
+        "clockwise": [
+          false,
+          false,
+          false,
+          false,
+          false,
+          false,
+          false
+        ]
+      },
+      "structure_key": "3-5-2-6-2-6-5-10",
+      "variant_key": "3-5-2-6-2-6-5-10|0000000",
+      "niche_key": "L8-I3-TJSSJ-R0-F29y",
+      "accepted_index": 1,
+      "proposal_attempt": 2,
+      "strategy": "random",
+      "rationale": "grammar-aware random baseline",
+      "l0": {
+        "evaluation_found": true,
+        "objective": 392347487406.9162,
+        "estimated_score": 1123.6014130679298,
+        "fixed_mass_score": 230121.7410802936,
+        "constraint": 39.23474885305176,
+        "launch_v_infinity_km_s": 8.695822251452018,
+        "powered_delta_v_km_s": 103.32018569839516,
+        "endpoint_repair_delta_v_km_s": 125.23485097458676,
+        "minimum_periapsis_margin_km": -5807.276615073634,
+        "flight_days": 10817.843627903649,
+        "branches": [
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          }
+        ],
+        "epochs_mjd2000": [
+          10587.927136855116,
+          11689.154854744847,
+          12040.746370789167,
+          16017.156376627763,
+          16449.467088208214,
+          16849.467322769367,
+          21049.467322769367,
+          21405.770764758763
+        ],
+        "optimizer_decision": [
+          10587.927136855116,
+          10817.843627903649,
+          2.773002294875667,
+          0.9904338390181218,
+          4.151359114741761,
+          -0.5553568667259178,
+          -12.388549884809043,
+          6.290467989121505
+        ],
+        "physical_decision": {
+          "launch_mjd2000": 10587.927136855116,
+          "leg_days": [
+            1101.2277178897302,
+            351.59151604432043,
+            3976.410005838596,
+            432.3107115804491,
+            400.000234561155,
+            4200.0,
+            356.3034419893955
+          ]
+        },
+        "requested_evaluations": 3520000,
+        "actual_evaluations": 2018575,
+        "resolved_workers": 32,
+        "worker_seconds": 6576.568268064,
+        "wall_seconds": 205.517758377,
+        "failures": {
+          "PropagationFailure": 305
+        },
+        "failure_examples": [
+          {
+            "code": "PropagationFailure",
+            "leg": null,
+            "value": null,
+            "message": "invalid decision x[7]=10957.500000000002"
+          }
+        ]
+      },
+      "l1": null,
+      "l2": null,
+      "surrogate_gap": null,
+      "cache_key": "292f8bbc94760598069aa5ad2d84bcffaf49f0e2218348326163553a74dbd511",
+      "created_unix_ms": 1785433856587
+    },
+    {
+      "structure": {
+        "bodies": [
+          3,
+          2,
+          5,
+          6,
+          10
+        ]
+      },
+      "variant": {
+        "structure": {
+          "bodies": [
+            3,
+            2,
+            5,
+            6,
+            10
+          ]
+        },
+        "clockwise": [
+          false,
+          false,
+          false,
+          false
+        ]
+      },
+      "structure_key": "3-2-5-6-10",
+      "variant_key": "3-2-5-6-10|0000",
+      "niche_key": "L5-I2-TJS-R0-F15y",
+      "accepted_index": 2,
+      "proposal_attempt": 3,
+      "strategy": "random",
+      "rationale": "grammar-aware random baseline",
+      "l0": {
+        "evaluation_found": true,
+        "objective": -441619.9972913212,
+        "estimated_score": 441620.1495748289,
+        "fixed_mass_score": 912468.6383666368,
+        "constraint": 1.5228350773055845e-11,
+        "launch_v_infinity_km_s": 2.500003902351954,
+        "powered_delta_v_km_s": 14.9789530576496,
+        "endpoint_repair_delta_v_km_s": 18.743292382480767,
+        "minimum_periapsis_margin_km": 3368.746135166799,
+        "flight_days": 5651.46134769313,
+        "branches": [
+          {
+            "revolutions": 3,
+            "path": "left"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          }
+        ],
+        "epochs_mjd2000": [
+          5652.455552628162,
+          6678.666767700139,
+          7468.358431820184,
+          9803.916900321292,
+          11303.916900321292
+        ],
+        "optimizer_decision": [
+          5652.455552628162,
+          5651.46134769313,
+          -0.17707645059737614,
+          -0.7173691921044428,
+          0.521556502709878
+        ],
+        "physical_decision": {
+          "launch_mjd2000": 5652.455552628162,
+          "leg_days": [
+            1026.2112150719772,
+            789.6916641200453,
+            2335.558468501107,
+            1500.0
+          ]
+        },
+        "requested_evaluations": 3520000,
+        "actual_evaluations": 1785548,
+        "resolved_workers": 32,
+        "worker_seconds": 3691.20585696,
+        "wall_seconds": 115.35018303,
+        "failures": {},
+        "failure_examples": []
+      },
+      "l1": null,
+      "l2": null,
+      "surrogate_gap": null,
+      "cache_key": "23a15a0c85b8bf08c08cbf1ec737ee633721de32751d922b5bd06827e1a03d9d",
+      "created_unix_ms": 1785433971965
+    },
+    {
+      "structure": {
+        "bodies": [
+          3,
+          3,
+          5,
+          3,
+          6,
+          3,
+          2,
+          2,
+          3,
+          3,
+          5,
+          10
+        ]
+      },
+      "variant": {
+        "structure": {
+          "bodies": [
+            3,
+            3,
+            5,
+            3,
+            6,
+            3,
+            2,
+            2,
+            3,
+            3,
+            5,
+            10
+          ]
+        },
+        "clockwise": [
+          false,
+          false,
+          false,
+          true,
+          true,
+          true,
+          true,
+          true,
+          false,
+          false,
+          false
+        ]
+      },
+      "structure_key": "3-3-5-3-6-3-2-2-3-3-5-10",
+      "variant_key": "3-3-5-3-6-3-2-2-3-3-5-10|00011111000",
+      "niche_key": "L12-I8-TJSJ-R2-F20y",
+      "accepted_index": 3,
+      "proposal_attempt": 4,
+      "strategy": "random",
+      "rationale": "grammar-aware random baseline",
+      "l0": {
+        "evaluation_found": true,
+        "objective": -11461.019565678593,
+        "estimated_score": 11461.239973025267,
+        "fixed_mass_score": 506760.1957011634,
+        "constraint": 2.204073466743352e-11,
+        "launch_v_infinity_km_s": 0.00007138855927061524,
+        "powered_delta_v_km_s": 86.82069118774055,
+        "endpoint_repair_delta_v_km_s": 93.84662814667904,
+        "minimum_periapsis_margin_km": -2.6599314600462094,
+        "flight_days": 7429.918512644726,
+        "branches": [
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 1,
+            "path": "right"
+          },
+          {
+            "revolutions": 2,
+            "path": "left"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          }
+        ],
+        "epochs_mjd2000": [
+          7407.960438977881,
+          7421.986913267585,
+          8545.64026492433,
+          9058.180013416022,
+          10179.125265185903,
+          11252.207890841886,
+          12483.51417990294,
+          12932.911691477257,
+          13800.477476040787,
+          13814.477476041377,
+          14529.8204637462,
+          14837.878951622606
+        ],
+        "optimizer_decision": [
+          7407.960438977881,
+          7429.918512644726,
+          -5.718307147298877,
+          4.741610910175191,
+          3.658005725729725,
+          4.4938372701253515,
+          4.425142163725882,
+          5.017669806272598,
+          3.989533502989199,
+          4.662696684964188,
+          -23.337420855390704,
+          4.158106743998948
+        ],
+        "physical_decision": {
+          "launch_mjd2000": 7407.960438977881,
+          "leg_days": [
+            14.026474289704534,
+            1123.6533516567456,
+            512.5397484916912,
+            1120.9452517698826,
+            1073.0826256559812,
+            1231.306289061052,
+            449.3975115743186,
+            867.5657845635303,
+            14.00000000059012,
+            715.3429877048243,
+            308.05848787640593
+          ]
+        },
+        "requested_evaluations": 3520000,
+        "actual_evaluations": 2301326,
+        "resolved_workers": 32,
+        "worker_seconds": 6180.903949216,
+        "wall_seconds": 193.153248413,
+        "failures": {
+          "LambertUnavailable": 1547,
+          "PropagationFailure": 3081
+        },
+        "failure_examples": [
+          {
+            "code": "LambertUnavailable",
+            "leg": null,
+            "value": null,
+            "message": "pykep evaluation failed: floating-point overflow in LambertProblem::time_of_flight"
+          },
+          {
+            "code": "PropagationFailure",
+            "leg": null,
+            "value": null,
+            "message": "invalid decision x[11]=10957.500000000002"
+          }
+        ]
+      },
+      "l1": null,
+      "l2": null,
+      "surrogate_gap": null,
+      "cache_key": "5c6a633ef7777ee4ce5d0eebb24c4b484f43fcc65770491a7088b72dbb48b03a",
+      "created_unix_ms": 1785434165145
+    },
+    {
+      "structure": {
+        "bodies": [
+          3,
+          6,
+          6,
+          6,
+          6,
+          10
+        ]
+      },
+      "variant": {
+        "structure": {
+          "bodies": [
+            3,
+            6,
+            6,
+            6,
+            6,
+            10
+          ]
+        },
+        "clockwise": [
+          false,
+          true,
+          false,
+          true,
+          false
+        ]
+      },
+      "structure_key": "3-6-6-6-6-10",
+      "variant_key": "3-6-6-6-6-10|01010",
+      "niche_key": "L6-I1-TSSSS-R4-F25y",
+      "accepted_index": 4,
+      "proposal_attempt": 6,
+      "strategy": "random",
+      "rationale": "grammar-aware random baseline",
+      "l0": {
+        "evaluation_found": true,
+        "objective": 602500516074.1986,
+        "estimated_score": 55821.31183007007,
+        "fixed_mass_score": 621579.0110237492,
+        "constraint": 60.25005718955105,
+        "launch_v_infinity_km_s": 10.262091032031964,
+        "powered_delta_v_km_s": 36.332113650904105,
+        "endpoint_repair_delta_v_km_s": 52.27709936098112,
+        "minimum_periapsis_margin_km": 26861.04944727388,
+        "flight_days": 9358.884138271203,
+        "branches": [
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          }
+        ],
+        "epochs_mjd2000": [
+          4759.257342584154,
+          7346.76476019226,
+          9863.94815328873,
+          10163.94815342864,
+          12618.141480855358,
+          14118.141480855358
+        ],
+        "optimizer_decision": [
+          4759.257342584154,
+          9358.884138271203,
+          -0.58725917796341,
+          -0.5737842596124593,
+          -24.06004556239366,
+          -0.6026055806557019
+        ],
+        "physical_decision": {
+          "launch_mjd2000": 4759.257342584154,
+          "leg_days": [
+            2587.5074176081057,
+            2517.1833930964704,
+            300.00000013990973,
+            2454.193327426719,
+            1500.0
+          ]
+        },
+        "requested_evaluations": 3520000,
+        "actual_evaluations": 1684183,
+        "resolved_workers": 32,
+        "worker_seconds": 7066.661372832,
+        "wall_seconds": 220.833167901,
+        "failures": {
+          "PropagationFailure": 1570
+        },
+        "failure_examples": [
+          {
+            "code": "PropagationFailure",
+            "leg": null,
+            "value": null,
+            "message": "invalid decision x[5]=10957.500000000002"
+          }
+        ]
+      },
+      "l1": null,
+      "l2": null,
+      "surrogate_gap": null,
+      "cache_key": "b41202437038f375f4ebb8c2594739eecd023ca7c74df4f1f5291946730694f5",
+      "created_unix_ms": 1785434386012
+    },
+    {
+      "structure": {
+        "bodies": [
+          3,
+          5,
+          2,
+          3,
+          5,
+          3,
+          3,
+          10
+        ]
+      },
+      "variant": {
+        "structure": {
+          "bodies": [
+            3,
+            5,
+            2,
+            3,
+            5,
+            3,
+            3,
+            10
+          ]
+        },
+        "clockwise": [
+          false,
+          true,
+          false,
+          false,
+          false,
+          false,
+          false
+        ]
+      },
+      "structure_key": "3-5-2-3-5-3-3-10",
+      "variant_key": "3-5-2-3-5-3-3-10|0100000",
+      "niche_key": "L8-I5-TJJ-R2-F16y",
+      "accepted_index": 5,
+      "proposal_attempt": 7,
+      "strategy": "random",
+      "rationale": "grammar-aware random baseline",
+      "l0": {
+        "evaluation_found": true,
+        "objective": 388840977068.3258,
+        "estimated_score": 295.3121616100323,
+        "fixed_mass_score": 175808.96079484382,
+        "constraint": 38.88409773636379,
+        "launch_v_infinity_km_s": 8.705996320089138,
+        "powered_delta_v_km_s": 130.96463705801955,
+        "endpoint_repair_delta_v_km_s": 151.38516266183336,
+        "minimum_periapsis_margin_km": -3858.2839045581895,
+        "flight_days": 6208.283986866825,
+        "branches": [
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          }
+        ],
+        "epochs_mjd2000": [
+          10589.012118073177,
+          11719.126474122138,
+          14219.126474122138,
+          14379.41795746018,
+          15439.957849538465,
+          16376.30868908098,
+          16390.59137417041,
+          16797.29610494
+        ],
+        "optimizer_decision": [
+          10589.012118073177,
+          6208.283986866825,
+          2.1652420476470255,
+          6.279656253793471,
+          0.31553559821326094,
+          2.0874944793271712,
+          1.9316411948777057,
+          -5.933487253545537
+        ],
+        "physical_decision": {
+          "launch_mjd2000": 10589.012118073177,
+          "leg_days": [
+            1130.1143560489645,
+            2500.0,
+            160.29148333803963,
+            1060.5398920782854,
+            936.3508395425166,
+            14.2826850894302,
+            406.7047307695889
+          ]
+        },
+        "requested_evaluations": 3520000,
+        "actual_evaluations": 1883786,
+        "resolved_workers": 32,
+        "worker_seconds": 2664.385805248,
+        "wall_seconds": 83.262056414,
+        "failures": {
+          "LambertUnavailable": 1,
+          "PropagationFailure": 112
+        },
+        "failure_examples": [
+          {
+            "code": "LambertUnavailable",
+            "leg": null,
+            "value": null,
+            "message": "pykep evaluation failed: floating-point overflow in LambertProblem::time_of_flight"
+          },
+          {
+            "code": "PropagationFailure",
+            "leg": null,
+            "value": null,
+            "message": "invalid decision x[7]=10957.500000000002"
+          }
+        ]
+      },
+      "l1": null,
+      "l2": null,
+      "surrogate_gap": null,
+      "cache_key": "e85237bae03ee2ac6d30438e093d26f28efaa45f4f20e7cdadf74f64c431ca56",
+      "created_unix_ms": 1785434469303
+    },
+    {
+      "structure": {
+        "bodies": [
+          3,
+          3,
+          3,
+          2,
+          6,
+          10
+        ]
+      },
+      "variant": {
+        "structure": {
+          "bodies": [
+            3,
+            3,
+            3,
+            2,
+            6,
+            10
+          ]
+        },
+        "clockwise": [
+          false,
+          false,
+          false,
+          true,
+          true
+        ]
+      },
+      "structure_key": "3-3-3-2-6-10",
+      "variant_key": "3-3-3-2-6-10|00011",
+      "niche_key": "L6-I4-TS-R1-F17y",
+      "accepted_index": 6,
+      "proposal_attempt": 8,
+      "strategy": "random",
+      "rationale": "grammar-aware random baseline",
+      "l0": {
+        "evaluation_found": true,
+        "objective": -212995.6576052805,
+        "estimated_score": 212995.6576052805,
+        "fixed_mass_score": 1655497.2981620715,
+        "constraint": 0.0,
+        "launch_v_infinity_km_s": 0.0005871716202496449,
+        "powered_delta_v_km_s": 49.90118176793991,
+        "endpoint_repair_delta_v_km_s": 51.22491558121711,
+        "minimum_periapsis_margin_km": 0.00005988686461932957,
+        "flight_days": 6364.555230312144,
+        "branches": [
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 2,
+            "path": "right"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          }
+        ],
+        "epochs_mjd2000": [
+          8063.389666140421,
+          8392.556287003952,
+          8406.556631420746,
+          8727.944896452564,
+          12927.944896452564,
+          14427.944896452564
+        ],
+        "optimizer_decision": [
+          8063.389666140421,
+          6364.555230312144,
+          -10.176033066518016,
+          -23.902792542489777,
+          -10.201022865155473,
+          1.406111817486734
+        ],
+        "physical_decision": {
+          "launch_mjd2000": 8063.389666140421,
+          "leg_days": [
+            329.166620863532,
+            14.000344416794572,
+            321.38826503181696,
+            4200.0,
+            1500.0
+          ]
+        },
+        "requested_evaluations": 3520000,
+        "actual_evaluations": 1732504,
+        "resolved_workers": 32,
+        "worker_seconds": 2262.173548896,
+        "wall_seconds": 70.692923403,
+        "failures": {
+          "LambertUnavailable": 184,
+          "PropagationFailure": 142
+        },
+        "failure_examples": [
+          {
+            "code": "LambertUnavailable",
+            "leg": null,
+            "value": null,
+            "message": "pykep evaluation failed: floating-point overflow in LambertProblem::time_of_flight"
+          },
+          {
+            "code": "PropagationFailure",
+            "leg": null,
+            "value": null,
+            "message": "invalid decision x[5]=10957.500000000004"
+          }
+        ]
+      },
+      "l1": {
+        "threshold_passed": false,
+        "final_mass_kg": null,
+        "score": null,
+        "maximum_normalized_mismatch": null,
+        "maximum_throttle_norm": null,
+        "powered_delta_v_km_s": null,
+        "minimum_periapsis_margin_km": null,
+        "minimum_solar_distance_au": null,
+        "leg_fuel_kg": [],
+        "controls": [],
+        "segments": 25,
+        "requested_evaluations": 204000000,
+        "actual_evaluations": 0,
+        "resolved_workers": 32,
+        "worker_seconds": 3737.986773184,
+        "wall_seconds": 116.812086662,
+        "outcome": {
+          "code": "PropagationFailure",
+          "leg": null,
+          "value": null,
+          "message": "pykep evaluation failed: propagate_lagrangian_elliptic did not converge after 100 iterations"
+        }
+      },
+      "l2": null,
+      "surrogate_gap": null,
+      "cache_key": "25d4c1776a4a61f99ee89acb111c1a9416007b33f7a6a48adc789dfb07a2ab84",
+      "created_unix_ms": 1785434540023
+    },
+    {
+      "structure": {
+        "bodies": [
+          3,
+          2,
+          2,
+          6,
+          6,
+          2,
+          3,
+          5,
+          2,
+          6,
+          2,
+          10
+        ]
+      },
+      "variant": {
+        "structure": {
+          "bodies": [
+            3,
+            2,
+            2,
+            6,
+            6,
+            2,
+            3,
+            5,
+            2,
+            6,
+            2,
+            10
+          ]
+        },
+        "clockwise": [
+          false,
+          true,
+          false,
+          false,
+          false,
+          false,
+          false,
+          false,
+          false,
+          false,
+          false
+        ]
+      },
+      "structure_key": "3-2-2-6-6-2-3-5-2-6-2-10",
+      "variant_key": "3-2-2-6-6-2-3-5-2-6-2-10|01000000000",
+      "niche_key": "L12-I7-TSSJS-R2-F22y",
+      "accepted_index": 7,
+      "proposal_attempt": 10,
+      "strategy": "random",
+      "rationale": "grammar-aware random baseline",
+      "l0": {
+        "evaluation_found": true,
+        "objective": 14846160765.40193,
+        "estimated_score": 5.122175519755651e-7,
+        "fixed_mass_score": 181260.9310720271,
+        "constraint": 1.484616076540193,
+        "launch_v_infinity_km_s": 3.0997218077292956,
+        "powered_delta_v_km_s": 317.3177044827851,
+        "endpoint_repair_delta_v_km_s": 652.3029943614142,
+        "minimum_periapsis_margin_km": -6350.010156923839,
+        "flight_days": 8243.413867292858,
+        "branches": [
+          {
+            "revolutions": 2,
+            "path": "right"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 1,
+            "path": "right"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 1,
+            "path": "left"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          }
+        ],
+        "epochs_mjd2000": [
+          8195.678002797094,
+          8900.742968612618,
+          8914.742968630333,
+          9314.742968643544,
+          9655.764892128576,
+          10055.769807148868,
+          10676.440467694943,
+          11024.989794466965,
+          13524.989794466965,
+          15738.962297145028,
+          16138.962297155826,
+          16439.091870089953
+        ],
+        "optimizer_decision": [
+          8195.678002797094,
+          8243.41386729286,
+          8.58174519491978,
+          -15.805347907317415,
+          -16.0986498953564,
+          5.757618001412366,
+          -3.27194803875006,
+          8.451497433171046,
+          7.044428428374791,
+          11.147679817781334,
+          9.546785830641102,
+          -16.30048801527233
+        ],
+        "physical_decision": {
+          "launch_mjd2000": 8195.678002797094,
+          "leg_days": [
+            705.0649658155236,
+            14.000000017714909,
+            400.0000000132117,
+            341.0219234850321,
+            400.0049150202899,
+            620.6706605460773,
+            348.5493267720193,
+            2500.0,
+            2213.972502678065,
+            400.00000001079695,
+            300.12957293412893
+          ]
+        },
+        "requested_evaluations": 3520000,
+        "actual_evaluations": 2490636,
+        "resolved_workers": 32,
+        "worker_seconds": 10100.15333568,
+        "wall_seconds": 315.62979174,
+        "failures": {
+          "LambertUnavailable": 4,
+          "PropagationFailure": 27
+        },
+        "failure_examples": [
+          {
+            "code": "LambertUnavailable",
+            "leg": null,
+            "value": null,
+            "message": "pykep evaluation failed: floating-point overflow in LambertProblem::time_of_flight"
+          },
+          {
+            "code": "PropagationFailure",
+            "leg": null,
+            "value": null,
+            "message": "invalid decision x[11]=10957.500000000004"
+          }
+        ]
+      },
+      "l1": null,
+      "l2": null,
+      "surrogate_gap": null,
+      "cache_key": "a278d8e6d0015aeb72ab5e577af842df9aca3cdf99ad0eefcc08c946686acd3c",
+      "created_unix_ms": 1785434855688
+    },
+    {
+      "structure": {
+        "bodies": [
+          3,
+          2,
+          10
+        ]
+      },
+      "variant": {
+        "structure": {
+          "bodies": [
+            3,
+            2,
+            10
+          ]
+        },
+        "clockwise": [
+          false,
+          false
+        ]
+      },
+      "structure_key": "3-2-10",
+      "variant_key": "3-2-10|00",
+      "niche_key": "L3-I2-Tnone-R0-F4y",
+      "accepted_index": 8,
+      "proposal_attempt": 12,
+      "strategy": "random",
+      "rationale": "grammar-aware random baseline",
+      "l0": {
+        "evaluation_found": true,
+        "objective": -146719.0895784029,
+        "estimated_score": 146719.1292444973,
+        "fixed_mass_score": 197972.62275115345,
+        "constraint": 3.966609441242155e-12,
+        "launch_v_infinity_km_s": 2.500001970549716,
+        "powered_delta_v_km_s": 4.685407593807863,
+        "endpoint_repair_delta_v_km_s": 8.296885070218377,
+        "minimum_periapsis_margin_km": -0.001835683558965684,
+        "flight_days": 1766.574063381753,
+        "branches": [
+          {
+            "revolutions": 4,
+            "path": "left"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          }
+        ],
+        "epochs_mjd2000": [
+          7814.750826139909,
+          9150.996350722951,
+          9581.32488952166
+        ],
+        "optimizer_decision": [
+          7814.750826139909,
+          1766.574063381753,
+          2.317028241312401
+        ],
+        "physical_decision": {
+          "launch_mjd2000": 7814.750826139909,
+          "leg_days": [
+            1336.245524583043,
+            430.3285387987096
+          ]
+        },
+        "requested_evaluations": 3520000,
+        "actual_evaluations": 1709802,
+        "resolved_workers": 32,
+        "worker_seconds": 318.920415616,
+        "wall_seconds": 9.966262988,
+        "failures": {},
+        "failure_examples": []
+      },
+      "l1": null,
+      "l2": null,
+      "surrogate_gap": null,
+      "cache_key": "5e5173f0f1bd92a5d93e54d597b540e1743cdd71e08be7545de56f812093cf5c",
+      "created_unix_ms": 1785434865686
+    },
+    {
+      "structure": {
+        "bodies": [
+          3,
+          5,
+          10
+        ]
+      },
+      "variant": {
+        "structure": {
+          "bodies": [
+            3,
+            5,
+            10
+          ]
+        },
+        "clockwise": [
+          true,
+          false
+        ]
+      },
+      "structure_key": "3-5-10",
+      "variant_key": "3-5-10|10",
+      "niche_key": "L3-I1-TJ-R1-F4y",
+      "accepted_index": 9,
+      "proposal_attempt": 14,
+      "strategy": "random",
+      "rationale": "grammar-aware random baseline",
+      "l0": {
+        "evaluation_found": true,
+        "objective": 12853284538178.225,
+        "estimated_score": -46038.27098634352,
+        "fixed_mass_score": -481945.3097939323,
+        "constraint": 1285.328449213995,
+        "launch_v_infinity_km_s": 38.344715691540394,
+        "powered_delta_v_km_s": 8.055917971094459,
+        "endpoint_repair_delta_v_km_s": 22.68058071714354,
+        "minimum_periapsis_margin_km": -417768.15865723253,
+        "flight_days": 1558.2170845324863,
+        "branches": [
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          }
+        ],
+        "epochs_mjd2000": [
+          7019.60215212461,
+          8266.429664355743,
+          8577.819236657097
+        ],
+        "optimizer_decision": [
+          7019.60215212461,
+          1558.2170845324863,
+          4.520821226143633
+        ],
+        "physical_decision": {
+          "launch_mjd2000": 7019.60215212461,
+          "leg_days": [
+            1246.827512231132,
+            311.38957230135424
+          ]
+        },
+        "requested_evaluations": 3520000,
+        "actual_evaluations": 1578015,
+        "resolved_workers": 32,
+        "worker_seconds": 621.975204,
+        "wall_seconds": 19.436725125,
+        "failures": {},
+        "failure_examples": []
+      },
+      "l1": null,
+      "l2": null,
+      "surrogate_gap": null,
+      "cache_key": "3d3cad61f2fa183397c77af0d99ba1943d451acc9a6b5ef43413b918fb155a62",
+      "created_unix_ms": 1785434885154
+    },
+    {
+      "structure": {
+        "bodies": [
+          3,
+          3,
+          2,
+          3,
+          2,
+          3,
+          5,
+          3,
+          10
+        ]
+      },
+      "variant": {
+        "structure": {
+          "bodies": [
+            3,
+            3,
+            2,
+            3,
+            2,
+            3,
+            5,
+            3,
+            10
+          ]
+        },
+        "clockwise": [
+          false,
+          false,
+          false,
+          false,
+          false,
+          false,
+          false,
+          false
+        ]
+      },
+      "structure_key": "3-3-2-3-2-3-5-3-10",
+      "variant_key": "3-3-2-3-2-3-5-3-10|00000000",
+      "niche_key": "L9-I7-TJ-R0-F16y",
+      "accepted_index": 10,
+      "proposal_attempt": 15,
+      "strategy": "random",
+      "rationale": "grammar-aware random baseline",
+      "l0": {
+        "evaluation_found": true,
+        "objective": -462880.1806327649,
+        "estimated_score": 462880.3313119985,
+        "fixed_mass_score": 782646.1005490461,
+        "constraint": 1.506792335951676e-11,
+        "launch_v_infinity_km_s": 2.4999999986949315,
+        "powered_delta_v_km_s": 11.429301053504036,
+        "endpoint_repair_delta_v_km_s": 13.827920493271424,
+        "minimum_periapsis_margin_km": -0.02592227514469414,
+        "flight_days": 5970.436481770281,
+        "branches": [
+          {
+            "revolutions": 1,
+            "path": "left"
+          },
+          {
+            "revolutions": 2,
+            "path": "left"
+          },
+          {
+            "revolutions": 2,
+            "path": "right"
+          },
+          {
+            "revolutions": 2,
+            "path": "left"
+          },
+          {
+            "revolutions": 1,
+            "path": "right"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          }
+        ],
+        "epochs_mjd2000": [
+          8560.511108493283,
+          9064.397059853754,
+          9736.051586999938,
+          10492.072403311791,
+          11473.711500714617,
+          12258.433341621792,
+          13489.35061253768,
+          14225.619580184266,
+          14530.947590263566
+        ],
+        "optimizer_decision": [
+          8560.511108493283,
+          5970.436481770281,
+          4.521194786691373,
+          4.815701933717371,
+          4.936399472105803,
+          5.201881359498728,
+          4.9743497064374385,
+          5.265226414206048,
+          4.611658015522711
+        ],
+        "physical_decision": {
+          "launch_mjd2000": 8560.511108493283,
+          "leg_days": [
+            503.88595136047144,
+            671.6545271461837,
+            756.0208163118527,
+            981.6390974028254,
+            784.7218409071751,
+            1230.917270915887,
+            736.2689676465862,
+            305.3280100792994
+          ]
+        },
+        "requested_evaluations": 3520000,
+        "actual_evaluations": 2014476,
+        "resolved_workers": 32,
+        "worker_seconds": 2821.453138656,
+        "wall_seconds": 88.170410583,
+        "failures": {
+          "LambertUnavailable": 4,
+          "PropagationFailure": 1008
+        },
+        "failure_examples": [
+          {
+            "code": "LambertUnavailable",
+            "leg": null,
+            "value": null,
+            "message": "pykep evaluation failed: LambertProblem::householder did not converge after 15 iterations"
+          },
+          {
+            "code": "PropagationFailure",
+            "leg": null,
+            "value": null,
+            "message": "invalid decision x[8]=10957.500000000007"
+          }
+        ]
+      },
+      "l1": null,
+      "l2": null,
+      "surrogate_gap": null,
+      "cache_key": "242f5b152467b209bdc603e3c91f8c63f2298fd3c46e7476b05d3ff7661b83f3",
+      "created_unix_ms": 1785434973352
+    },
+    {
+      "structure": {
+        "bodies": [
+          3,
+          3,
+          3,
+          6,
+          10
+        ]
+      },
+      "variant": {
+        "structure": {
+          "bodies": [
+            3,
+            3,
+            3,
+            6,
+            10
+          ]
+        },
+        "clockwise": [
+          false,
+          false,
+          false,
+          false
+        ]
+      },
+      "structure_key": "3-3-3-6-10",
+      "variant_key": "3-3-3-6-10|0000",
+      "niche_key": "L5-I3-TS-R0-F19y",
+      "accepted_index": 11,
+      "proposal_attempt": 16,
+      "strategy": "random",
+      "rationale": "grammar-aware random baseline",
+      "l0": {
+        "evaluation_found": true,
+        "objective": -658588.7005913744,
+        "estimated_score": 658588.7005913744,
+        "fixed_mass_score": 915387.4982167116,
+        "constraint": 0.0,
+        "launch_v_infinity_km_s": 2.4999999894054614,
+        "powered_delta_v_km_s": 6.687578325211199,
+        "endpoint_repair_delta_v_km_s": 9.02354949255352,
+        "minimum_periapsis_margin_km": 703.5397301711055,
+        "flight_days": 6995.312709855203,
+        "branches": [
+          {
+            "revolutions": 3,
+            "path": "left"
+          },
+          {
+            "revolutions": 5,
+            "path": "right"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          }
+        ],
+        "epochs_mjd2000": [
+          6010.6955133467445,
+          7791.736878095614,
+          10791.736878095611,
+          11831.084207735556,
+          13006.008223201949
+        ],
+        "optimizer_decision": [
+          6010.6955133467445,
+          6995.312709855203,
+          0.7029248385177209,
+          13.597002675673457,
+          -0.3136891845509374
+        ],
+        "physical_decision": {
+          "launch_mjd2000": 6010.6955133467445,
+          "leg_days": [
+            1781.0413647488692,
+            3000.0,
+            1039.347329639944,
+            1174.924015466389
+          ]
+        },
+        "requested_evaluations": 3520000,
+        "actual_evaluations": 1598638,
+        "resolved_workers": 32,
+        "worker_seconds": 1937.663985408,
+        "wall_seconds": 60.551999544,
+        "failures": {
+          "LambertUnavailable": 2243,
+          "PropagationFailure": 1
+        },
+        "failure_examples": [
+          {
+            "code": "LambertUnavailable",
+            "leg": null,
+            "value": null,
+            "message": "pykep evaluation failed: LambertProblem::householder did not converge after 15 iterations"
+          },
+          {
+            "code": "PropagationFailure",
+            "leg": null,
+            "value": null,
+            "message": "invalid decision x[4]=10957.500000000002"
+          }
+        ]
+      },
+      "l1": {
+        "threshold_passed": false,
+        "final_mass_kg": 456.01604373357327,
+        "score": 289300.2879062708,
+        "maximum_normalized_mismatch": 1.0744403925520043,
+        "maximum_throttle_norm": 1.0286986062685417,
+        "powered_delta_v_km_s": 0.0,
+        "minimum_periapsis_margin_km": -9.094947017729282e-13,
+        "minimum_solar_distance_au": 0.8628086148214444,
+        "leg_fuel_kg": [
+          252.36963151699956,
+          319.57961796410325,
+          464.02537525944854,
+          8.009331525875382
+        ],
+        "controls": [
+          [
+            1.9358139304924264,
+            1.8104732157044512,
+            -0.5982168219602825,
+            1247.6303684830004,
+            -0.1573092991267172,
+            -0.9061185612206432,
+            -0.3926968555841935,
+            0.31340452209514447,
+            -0.8713021405243732,
+            -0.3776616986251955,
+            0.7926802393702356,
+            -0.5593633021120068,
+            -0.24247795113725823,
+            0.9970271180372384,
+            -0.07081846394539383,
+            -0.030730205935610537,
+            0.9904582745477436,
+            0.12652291273228108,
+            0.05474531971873993,
+            0.9351339439106692,
+            -0.32506405734142896,
+            -0.1409707511066757,
+            0.995295369348068,
+            0.08893419850476326,
+            0.03860245404419774,
+            0.8022729648139204,
+            -0.5477533349492629,
+            -0.23735064412993395,
+            0.8463971595790665,
+            -0.488636447492291,
+            -0.21180514555743496,
+            0.8847117032985274,
+            -0.4276751146710567,
+            -0.1854507391489025,
+            0.462133113014165,
+            -0.8136287116665692,
+            -0.35278652921034404,
+            0.9239797330204222,
+            -0.35091476898007684,
+            -0.15215264269281353,
+            0.8768402307670172,
+            0.4411279470576976,
+            0.1912590178546703,
+            0.6806758789339472,
+            0.6721034390164714,
+            0.29149161843891097,
+            0.7219332887882356,
+            -0.6349990594831291,
+            -0.2749412786865864,
+            -0.293722962887735,
+            -0.877025103906477,
+            -0.3802170419541075,
+            -0.10406008652559542,
+            -0.9125139501031804,
+            -0.39562132375647313,
+            0.5747646311852515,
+            -0.750819842227214,
+            -0.32552124918601477,
+            0.9920773821760972,
+            0.11545766350238083,
+            0.05003937703343148,
+            0.5881102230107975,
+            0.7420617748777026,
+            0.3217196435957067,
+            -0.059366958595394544,
+            0.915859364038656,
+            0.39710770405156154,
+            -0.9618761773136718,
+            0.2509174780014319,
+            0.10884299584671447,
+            -0.7659101611550163,
+            -0.5899184670986327,
+            -0.2557348427973897,
+            -0.29691092402691105,
+            -0.8761346752699503,
+            -0.3798348224241493,
+            0.3793053813707739,
+            -0.8489575293474414,
+            -0.3680603687824553
+          ],
+          [
+            928.0507505188972,
+            0.5149711323095961,
+            0.06860015170314684,
+            0.6013594579111743,
+            0.2417625337943468,
+            0.4079388977964668,
+            0.039756357009163815,
+            -0.028811909930659185,
+            -0.23592703713293273,
+            -0.03631597433808296,
+            0.3372804562849906,
+            -0.24186083568185657,
+            0.3921345236186937,
+            0.8887223601176755,
+            0.006233491448979835,
+            0.2113468743295647,
+            0.34940436180560547,
+            0.5286605047244278,
+            0.5343987235586178,
+            0.36002934618927573,
+            -0.5397814439911659,
+            0.5094931185624118,
+            0.4734637414528163,
+            -0.31043359801196296,
+            0.1832335792140059,
+            0.9873974236067228,
+            -0.05305886234738407,
+            -0.04612074112044331,
+            0.6960654168698325,
+            0.5903404549970992,
+            0.3891892609858176,
+            0.8747110324397178,
+            -0.029325156093114837,
+            -0.17868612888016389,
+            0.7888270110645267,
+            -0.305535832143544,
+            -0.46368162653149064,
+            0.7586496804799573,
+            -0.32010172735896825,
+            -0.2807098861411487,
+            0.9011443637205028,
+            -0.24983166597715464,
+            -0.12273331218169996,
+            0.8639835653197038,
+            0.3266306835831753,
+            0.020501167899943988,
+            0.24965258198771076,
+            0.23147713742137532,
+            0.1155177119151514,
+            -0.13061316846165377,
+            0.1314978860954805,
+            -0.1388494678685884,
+            0.22551961737322465,
+            -0.8813388114463404,
+            -0.3917085624929108,
+            0.7801452013592391,
+            -0.5340193973539393,
+            -0.1696057191421248,
+            0.6454372619055081,
+            0.6450359948698458,
+            0.3841026356692822,
+            0.6025906108378319,
+            0.4504429853219966,
+            0.4809053210439627,
+            -0.09346281944937894,
+            -0.26367172685774587,
+            -0.06433218634601474,
+            -0.32233129091707496,
+            -0.12840337299773494,
+            -0.23171389906189557,
+            0.016509671802415547,
+            -0.9335056731821316,
+            -0.10171349613524132,
+            0.7022499382472815,
+            -0.6890686303050286,
+            -0.02752094648511547
+          ],
+          [
+            464.02537525944865,
+            0.9484469827999874,
+            0.3782034077002488,
+            0.1250253004809818,
+            0.8002365803846149,
+            0.5940396285640857,
+            0.21618792503239545,
+            0.7450128770542123,
+            0.6462706496687793,
+            0.2365508554444221,
+            0.7518209791462496,
+            0.635813577918421,
+            0.22907364368313043,
+            0.7785159941986621,
+            0.6052369614586713,
+            0.21299372913256664,
+            0.8048906846705352,
+            0.5728307133320754,
+            0.19688470260618784,
+            0.8248035150194988,
+            0.5457647340749747,
+            0.18490660653209803,
+            0.8380742145223133,
+            0.5262722632718396,
+            0.17611046789516546,
+            0.8449665412133713,
+            0.5148955840318813,
+            0.17057816812117255,
+            0.8464032476541403,
+            0.5112744401473192,
+            0.16871053125380686,
+            0.8392316013960093,
+            0.5194415140917562,
+            0.17370240774661794,
+            0.8044044581171026,
+            0.563613438890123,
+            0.1942301813581224,
+            -0.5533175501849231,
+            0.7485397759537752,
+            0.3666091387402173,
+            -0.928220662598094,
+            -0.3636302250985868,
+            -0.09932661493265016,
+            -0.9038828795157358,
+            -0.41775619556722926,
+            -0.12425390842792834,
+            -0.8948318647661145,
+            -0.4376497297890302,
+            -0.133603474685917,
+            -0.8898911141324547,
+            -0.44972084652654326,
+            -0.13906506508315553,
+            -0.8860977914847845,
+            -0.4593841909041711,
+            -0.14333121518607847,
+            -0.8835685075687002,
+            -0.4666964395086653,
+            -0.14734346229059014,
+            -0.8811456986868555,
+            -0.4740421594257418,
+            -0.14999774267551266,
+            -0.8789031187198045,
+            -0.4805936284887342,
+            -0.1535035056769263,
+            -0.8768371151032475,
+            -0.4871640500118369,
+            -0.1561480822784897,
+            -0.8748817995390806,
+            -0.4932816202660397,
+            -0.15884607815836435,
+            -0.8729138053630001,
+            -0.4994447834202651,
+            -0.16170849818951125,
+            -0.8709603176938552,
+            -0.5055604430484724,
+            -0.16463211295474536
+          ],
+          [
+            456.01604373357327,
+            -0.2494411772270856,
+            -0.010088613275033177,
+            -0.011096594669513255,
+            -0.0008582063171273264,
+            0.0000815369578965112,
+            0.0003643031893577758,
+            0.06673858260687267,
+            -0.01782103291169503,
+            0.07077928531160198,
+            0.00887258783599534,
+            -0.03038733066268596,
+            -0.02240994680787524,
+            0.05536003683864864,
+            -0.0053952120404430134,
+            0.0031954445007957156,
+            0.00116650939163996,
+            -0.0016477502380497432,
+            0.0020085828522758763,
+            0.000010619681561676632,
+            8.58034825021007e-6,
+            0.000014776364984207336,
+            -0.000058033998910908415,
+            0.0000769219041178856,
+            -0.00005015701399225461,
+            0.059963268709710846,
+            -0.05728933631058847,
+            -0.06560266737183437,
+            -6.310818949702495e-7,
+            -2.2220090064257415e-6,
+            -5.158270646833315e-6,
+            0.1900586134833192,
+            0.04808924622028608,
+            0.07466342337509566,
+            0.05219910524315971,
+            -0.003564042143640448,
+            -0.0007471493912240325,
+            -0.1150659017873788,
+            0.17186640376248527,
+            -0.048907800521403574,
+            0.005981660999519821,
+            -0.00988007669377177,
+            -0.004418606758035726,
+            -0.008098627043879968,
+            0.007265067556315241,
+            3.971265982062196e-6,
+            0.005467539686450819,
+            0.007268609381398877,
+            0.0029392171264136834,
+            -7.435323946359771e-6,
+            -0.00001226383813664457,
+            5.990951187923313e-7,
+            -0.01973980282872108,
+            -0.013190709633699385,
+            0.006413627344780865,
+            2.9273198166524832e-6,
+            4.425443829184068e-7,
+            3.706889140615493e-7,
+            0.001423172909044575,
+            -0.0019307521276432644,
+            -0.01056226415163282,
+            6.6270955560194445e-6,
+            -0.000045753599136231107,
+            -2.4144387566156215e-6,
+            -0.0017249912972005185,
+            0.0005788253344420041,
+            -0.0003412355488865867,
+            0.000026519512880379928,
+            0.00002897419527911514,
+            -0.0000123043419164596,
+            0.0002616879487505187,
+            0.00038419258532277793,
+            -0.000144551948070071,
+            -0.09127870640581318,
+            -0.049811727408203915,
+            0.03950739579044831
+          ]
+        ],
+        "segments": 25,
+        "requested_evaluations": 163200000,
+        "actual_evaluations": 56052992,
+        "resolved_workers": 32,
+        "worker_seconds": 1393.095932568,
+        "wall_seconds": 45.842145786,
+        "outcome": {
+          "code": "RefinementNotClosed",
+          "leg": 2,
+          "value": 1.0744403925520043,
+          "message": "L1 threshold not found within the declared continuation budget"
+        }
+      },
+      "l2": null,
+      "surrogate_gap": 369288.4126851036,
+      "cache_key": "ef79e75f2ade44f8e96ac8cd6684dfbb3f6e7196bf568f1d459eeb65e8899137",
+      "created_unix_ms": 1785435033948
+    },
+    {
+      "structure": {
+        "bodies": [
+          3,
+          5,
+          3,
+          5,
+          6,
+          2,
+          10
+        ]
+      },
+      "variant": {
+        "structure": {
+          "bodies": [
+            3,
+            5,
+            3,
+            5,
+            6,
+            2,
+            10
+          ]
+        },
+        "clockwise": [
+          false,
+          false,
+          false,
+          false,
+          false,
+          false
+        ]
+      },
+      "structure_key": "3-5-3-5-6-2-10",
+      "variant_key": "3-5-3-5-6-2-10|000000",
+      "niche_key": "L7-I3-TJJS-R0-F29y",
+      "accepted_index": 12,
+      "proposal_attempt": 17,
+      "strategy": "random",
+      "rationale": "grammar-aware random baseline",
+      "l0": {
+        "evaluation_found": true,
+        "objective": 387346709069.41327,
+        "estimated_score": 11460.756286198786,
+        "fixed_mass_score": 306634.7144003235,
+        "constraint": 38.73467205301696,
+        "launch_v_infinity_km_s": 8.716055044673721,
+        "powered_delta_v_km_s": 67.10889254616266,
+        "endpoint_repair_delta_v_km_s": 75.31492802609343,
+        "minimum_periapsis_margin_km": -1960.924444465999,
+        "flight_days": 10817.747342036124,
+        "branches": [
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          }
+        ],
+        "epochs_mjd2000": [
+          6202.1437917730855,
+          7343.142878145133,
+          9562.975243543708,
+          12062.975243543708,
+          16262.975243543708,
+          16662.975337920736,
+          17019.891133809208
+        ],
+        "optimizer_decision": [
+          6202.1437917730855,
+          10817.747342036124,
+          2.805369258185056,
+          3.569196889037048,
+          13.738600241820288,
+          7.6375122758492,
+          -13.309785772405576
+        ],
+        "physical_decision": {
+          "launch_mjd2000": 6202.1437917730855,
+          "leg_days": [
+            1140.999086372048,
+            2219.832365398575,
+            2500.0,
+            4200.0,
+            400.000094377028,
+            356.91579588847213
+          ]
+        },
+        "requested_evaluations": 3520000,
+        "actual_evaluations": 1834499,
+        "resolved_workers": 32,
+        "worker_seconds": 5563.806503552,
+        "wall_seconds": 173.868953236,
+        "failures": {
+          "PropagationFailure": 4121
+        },
+        "failure_examples": [
+          {
+            "code": "PropagationFailure",
+            "leg": null,
+            "value": null,
+            "message": "invalid decision x[6]=10957.500000000002"
+          }
+        ]
+      },
+      "l1": null,
+      "l2": null,
+      "surrogate_gap": null,
+      "cache_key": "085728de8e7a1bd034df4b3758136bf363ac6e89de53dba6dac2c051ed93d244",
+      "created_unix_ms": 1785435207871
+    },
+    {
+      "structure": {
+        "bodies": [
+          3,
+          2,
+          5,
+          2,
+          3,
+          5,
+          2,
+          3,
+          10
+        ]
+      },
+      "variant": {
+        "structure": {
+          "bodies": [
+            3,
+            2,
+            5,
+            2,
+            3,
+            5,
+            2,
+            3,
+            10
+          ]
+        },
+        "clockwise": [
+          false,
+          false,
+          true,
+          false,
+          false,
+          false,
+          false,
+          false
+        ]
+      },
+      "structure_key": "3-2-5-2-3-5-2-3-10",
+      "variant_key": "3-2-5-2-3-5-2-3-10|00100000",
+      "niche_key": "L9-I6-TJJ-R2-F17y",
+      "accepted_index": 13,
+      "proposal_attempt": 18,
+      "strategy": "random",
+      "rationale": "grammar-aware random baseline",
+      "l0": {
+        "evaluation_found": true,
+        "objective": 6329902899.065598,
+        "estimated_score": 3032.8859403745255,
+        "fixed_mass_score": 276884.0038893452,
+        "constraint": 0.6329905931951538,
+        "launch_v_infinity_km_s": 2.5734850286690887,
+        "powered_delta_v_km_s": 84.29541236326219,
+        "endpoint_repair_delta_v_km_s": 111.54811397631046,
+        "minimum_periapsis_margin_km": -5016.864979970125,
+        "flight_days": 6261.986601541417,
+        "branches": [
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 1,
+            "path": "right"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          }
+        ],
+        "epochs_mjd2000": [
+          5622.695194939361,
+          5782.059709553065,
+          7632.487971443939,
+          7940.431524597181,
+          8311.346491629043,
+          10006.76206797924,
+          10563.06866541938,
+          10611.38180859604,
+          11884.681796480778
+        ],
+        "optimizer_decision": [
+          5622.695194939361,
+          6261.986601541417,
+          -1.901447865222194,
+          0.5280977388929636,
+          -2.1990839124813673,
+          -1.0031947811621835,
+          0.429467077703138,
+          -1.0049007580130649,
+          -3.345163883215818
+        ],
+        "physical_decision": {
+          "launch_mjd2000": 5622.695194939361,
+          "leg_days": [
+            159.36451461370433,
+            1850.428261890875,
+            307.94355315324185,
+            370.91496703186215,
+            1695.4155763501965,
+            556.3065974401406,
+            48.313143176659096,
+            1273.2999878847377
+          ]
+        },
+        "requested_evaluations": 3520000,
+        "actual_evaluations": 2115030,
+        "resolved_workers": 32,
+        "worker_seconds": 2986.961339552,
+        "wall_seconds": 93.342541861,
+        "failures": {
+          "PropagationFailure": 187
+        },
+        "failure_examples": [
+          {
+            "code": "PropagationFailure",
+            "leg": null,
+            "value": null,
+            "message": "invalid decision x[8]=10957.500000000004"
+          }
+        ]
+      },
+      "l1": null,
+      "l2": null,
+      "surrogate_gap": null,
+      "cache_key": "0fd90c587c42f57e4251d00a0a0cca5db7c0ec5fe3edeb2b976bc2eb883ca07d",
+      "created_unix_ms": 1785435301241
+    },
+    {
+      "structure": {
+        "bodies": [
+          3,
+          2,
+          2,
+          5,
+          2,
+          6,
+          6,
+          10
+        ]
+      },
+      "variant": {
+        "structure": {
+          "bodies": [
+            3,
+            2,
+            2,
+            5,
+            2,
+            6,
+            6,
+            10
+          ]
+        },
+        "clockwise": [
+          false,
+          false,
+          true,
+          true,
+          false,
+          false,
+          false
+        ]
+      },
+      "structure_key": "3-2-2-5-2-6-6-10",
+      "variant_key": "3-2-2-5-2-6-6-10|0011000",
+      "niche_key": "L8-I4-TJSS-R2-F15y",
+      "accepted_index": 14,
+      "proposal_attempt": 19,
+      "strategy": "random",
+      "rationale": "grammar-aware random baseline",
+      "l0": {
+        "evaluation_found": true,
+        "objective": 11906150.4839113,
+        "estimated_score": 55.78386493187986,
+        "fixed_mass_score": 313723.191336897,
+        "constraint": 0.0011906206267776232,
+        "launch_v_infinity_km_s": 2.534505370984495,
+        "powered_delta_v_km_s": 173.858036990559,
+        "endpoint_repair_delta_v_km_s": 212.6126917509121,
+        "minimum_periapsis_margin_km": 14.025711745173794,
+        "flight_days": 5629.523804520662,
+        "branches": [
+          {
+            "revolutions": 3,
+            "path": "left"
+          },
+          {
+            "revolutions": 3,
+            "path": "right"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          }
+        ],
+        "epochs_mjd2000": [
+          7433.768939777122,
+          8472.64502415752,
+          9233.779466100592,
+          9433.92512878152,
+          11636.274014859886,
+          12330.598259126598,
+          12637.362415639882,
+          13063.292744297789
+        ],
+        "optimizer_decision": [
+          7433.768939777122,
+          5629.523804520662,
+          2.0965981841165693,
+          1.780516337906176,
+          -6.7621905418396135,
+          2.7663474066021996,
+          0.8489532244176599,
+          -2.924091236931034
+        ],
+        "physical_decision": {
+          "launch_mjd2000": 7433.768939777122,
+          "leg_days": [
+            1038.8760843803982,
+            761.1344419430718,
+            200.145662680928,
+            2202.3488860783655,
+            694.3242442667117,
+            306.76415651328284,
+            425.9303286579057
+          ]
+        },
+        "requested_evaluations": 3520000,
+        "actual_evaluations": 2153320,
+        "resolved_workers": 32,
+        "worker_seconds": 6368.790846368,
+        "wall_seconds": 199.024713949,
+        "failures": {
+          "LambertUnavailable": 70,
+          "PropagationFailure": 554
+        },
+        "failure_examples": [
+          {
+            "code": "LambertUnavailable",
+            "leg": null,
+            "value": null,
+            "message": "pykep evaluation failed: floating-point overflow in LambertProblem::time_of_flight"
+          },
+          {
+            "code": "PropagationFailure",
+            "leg": null,
+            "value": null,
+            "message": "invalid decision x[7]=10957.500000000002"
+          }
+        ]
+      },
+      "l1": null,
+      "l2": null,
+      "surrogate_gap": null,
+      "cache_key": "6819ad1ef6f1839bb9d5179640406e2041c2922d200838eb7ea9237382746439",
+      "created_unix_ms": 1785435500293
+    },
+    {
+      "structure": {
+        "bodies": [
+          3,
+          3,
+          10
+        ]
+      },
+      "variant": {
+        "structure": {
+          "bodies": [
+            3,
+            3,
+            10
+          ]
+        },
+        "clockwise": [
+          true,
+          true
+        ]
+      },
+      "structure_key": "3-3-10",
+      "variant_key": "3-3-10|11",
+      "niche_key": "L3-I2-Tnone-R0-F7y",
+      "accepted_index": 15,
+      "proposal_attempt": 20,
+      "strategy": "random",
+      "rationale": "grammar-aware random baseline",
+      "l0": {
+        "evaluation_found": true,
+        "objective": 7146211354036.143,
+        "estimated_score": 24535.35212386428,
+        "fixed_mass_score": 376343.3038755453,
+        "constraint": 714.6211378571495,
+        "launch_v_infinity_km_s": 29.21546235876081,
+        "powered_delta_v_km_s": 13.510489261906017,
+        "endpoint_repair_delta_v_km_s": 41.175899062370824,
+        "minimum_periapsis_margin_km": -6353.613637774553,
+        "flight_days": 2595.7623386228233,
+        "branches": [
+          {
+            "revolutions": 5,
+            "path": "left"
+          },
+          {
+            "revolutions": 1,
+            "path": "left"
+          }
+        ],
+        "epochs_mjd2000": [
+          6322.901140009009,
+          7418.663478631833,
+          8918.663478631832
+        ],
+        "optimizer_decision": [
+          6322.901140009009,
+          2595.7623386228233,
+          -28.960489384929673
+        ],
+        "physical_decision": {
+          "launch_mjd2000": 6322.901140009009,
+          "leg_days": [
+            1095.762338622823,
+            1500.0
+          ]
+        },
+        "requested_evaluations": 3520000,
+        "actual_evaluations": 1541398,
+        "resolved_workers": 32,
+        "worker_seconds": 326.487583776,
+        "wall_seconds": 10.202736993,
+        "failures": {
+          "LambertUnavailable": 11362
+        },
+        "failure_examples": [
+          {
+            "code": "LambertUnavailable",
+            "leg": null,
+            "value": null,
+            "message": "pykep evaluation failed: floating-point overflow in LambertProblem::time_of_flight"
+          }
+        ]
+      },
+      "l1": null,
+      "l2": null,
+      "surrogate_gap": null,
+      "cache_key": "d9f35479875a724447c7e3550e698e577647c609eef3465b3a01851d2099d28f",
+      "created_unix_ms": 1785435510522
+    },
+    {
+      "structure": {
+        "bodies": [
+          3,
+          2,
+          3,
+          5,
+          5,
+          2,
+          3,
+          2,
+          2,
+          10
+        ]
+      },
+      "variant": {
+        "structure": {
+          "bodies": [
+            3,
+            2,
+            3,
+            5,
+            5,
+            2,
+            3,
+            2,
+            2,
+            10
+          ]
+        },
+        "clockwise": [
+          false,
+          false,
+          false,
+          false,
+          false,
+          false,
+          false,
+          false,
+          false
+        ]
+      },
+      "structure_key": "3-2-3-5-5-2-3-2-2-10",
+      "variant_key": "3-2-3-5-5-2-3-2-2-10|000000000",
+      "niche_key": "L10-I7-TJJ-R0-F17y",
+      "accepted_index": 16,
+      "proposal_attempt": 22,
+      "strategy": "random",
+      "rationale": "grammar-aware random baseline",
+      "l0": {
+        "evaluation_found": true,
+        "objective": -19102.204006120857,
+        "estimated_score": 19102.204006120857,
+        "fixed_mass_score": 312960.92331222474,
+        "constraint": 0.0,
+        "launch_v_infinity_km_s": 2.4999520260852783,
+        "powered_delta_v_km_s": 44.59814874850479,
+        "endpoint_repair_delta_v_km_s": 69.50670957315046,
+        "minimum_periapsis_margin_km": 0.04567332079659536,
+        "flight_days": 6331.526690928008,
+        "branches": [
+          {
+            "revolutions": 5,
+            "path": "right"
+          },
+          {
+            "revolutions": 5,
+            "path": "right"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 2,
+            "path": "right"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          }
+        ],
+        "epochs_mjd2000": [
+          8216.867980966264,
+          9824.395514376489,
+          11824.395514376489,
+          12342.02571112039,
+          12642.025711120408,
+          13199.36587475752,
+          13339.133036232282,
+          13672.527965327612,
+          14247.53351655351,
+          14548.394671894272
+        ],
+        "optimizer_decision": [
+          8216.867980966264,
+          6331.526690928009,
+          7.523185784108302,
+          8.187717536334002,
+          5.910368174586951,
+          -24.59221117899591,
+          6.028168539260634,
+          4.983912644453177,
+          5.915908731134218,
+          6.4792111725316515
+        ],
+        "physical_decision": {
+          "launch_mjd2000": 8216.867980966264,
+          "leg_days": [
+            1607.527533410224,
+            2000.0,
+            517.630196743901,
+            300.00000000001796,
+            557.3401636371128,
+            139.7671614747622,
+            333.39492909532913,
+            575.0055512258995,
+            300.8611553407619
+          ]
+        },
+        "requested_evaluations": 3520000,
+        "actual_evaluations": 2118112,
+        "resolved_workers": 32,
+        "worker_seconds": 3239.771825216,
+        "wall_seconds": 101.242869538,
+        "failures": {
+          "LambertUnavailable": 223,
+          "PropagationFailure": 174
+        },
+        "failure_examples": [
+          {
+            "code": "LambertUnavailable",
+            "leg": null,
+            "value": null,
+            "message": "pykep evaluation failed: floating-point overflow in LambertProblem::time_of_flight"
+          },
+          {
+            "code": "PropagationFailure",
+            "leg": null,
+            "value": null,
+            "message": "invalid decision x[9]=10957.500000000002"
+          }
+        ]
+      },
+      "l1": null,
+      "l2": null,
+      "surrogate_gap": null,
+      "cache_key": "139717b9c5fc87d109a315cbafe705adbbacd70d335e0586af1d52dc3bc0216a",
+      "created_unix_ms": 1785435611798
+    },
+    {
+      "structure": {
+        "bodies": [
+          3,
+          2,
+          2,
+          3,
+          2,
+          5,
+          6,
+          2,
+          6,
+          3,
+          2,
+          10
+        ]
+      },
+      "variant": {
+        "structure": {
+          "bodies": [
+            3,
+            2,
+            2,
+            3,
+            2,
+            5,
+            6,
+            2,
+            6,
+            3,
+            2,
+            10
+          ]
+        },
+        "clockwise": [
+          false,
+          false,
+          false,
+          false,
+          false,
+          false,
+          true,
+          false,
+          false,
+          false,
+          false
+        ]
+      },
+      "structure_key": "3-2-2-3-2-5-6-2-6-3-2-10",
+      "variant_key": "3-2-2-3-2-5-6-2-6-3-2-10|00000010000",
+      "niche_key": "L12-I8-TJSS-R2-F19y",
+      "accepted_index": 17,
+      "proposal_attempt": 23,
+      "strategy": "random",
+      "rationale": "grammar-aware random baseline",
+      "l0": {
+        "evaluation_found": true,
+        "objective": 9679675550.46079,
+        "estimated_score": 0.0004844265205753508,
+        "fixed_mass_score": 129011.2271144017,
+        "constraint": 0.9679675550461274,
+        "launch_v_infinity_km_s": 2.7242912544055824,
+        "powered_delta_v_km_s": 415.64975611839094,
+        "endpoint_repair_delta_v_km_s": 476.35461847784137,
+        "minimum_periapsis_margin_km": -67056.2364168476,
+        "flight_days": 6971.717141182134,
+        "branches": [
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 5,
+            "path": "left"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          }
+        ],
+        "epochs_mjd2000": [
+          6786.686411875754,
+          6909.517042298464,
+          6923.520445121419,
+          7215.268244485856,
+          7229.268244485912,
+          7651.506386402018,
+          8251.374573888654,
+          8658.217003031346,
+          9817.669841707566,
+          11452.946594490622,
+          13452.946594490622,
+          13758.403553057886
+        ],
+        "optimizer_decision": [
+          6786.686411875754,
+          6971.717141182134,
+          2.9929012288300343,
+          -7.380041506706685,
+          3.929821909817746,
+          -25.306694995438697,
+          3.706857922672143,
+          4.0064514074678845,
+          0.22625121081829896,
+          4.935706629292048,
+          5.422158719689408,
+          8.155686762772362
+        ],
+        "physical_decision": {
+          "launch_mjd2000": 6786.686411875754,
+          "leg_days": [
+            122.83063042270956,
+            14.003402822954502,
+            291.74779936443775,
+            14.000000000055769,
+            422.2381419161061,
+            599.8681874866364,
+            406.84242914269305,
+            1159.4528386762197,
+            1635.2767527830574,
+            2000.0,
+            305.45695856726365
+          ]
+        },
+        "requested_evaluations": 3520000,
+        "actual_evaluations": 2349352,
+        "resolved_workers": 32,
+        "worker_seconds": 6891.30077696,
+        "wall_seconds": 215.35314928,
+        "failures": {
+          "LambertUnavailable": 6,
+          "PropagationFailure": 761
+        },
+        "failure_examples": [
+          {
+            "code": "LambertUnavailable",
+            "leg": null,
+            "value": null,
+            "message": "pykep evaluation failed: floating-point overflow in LambertProblem::time_of_flight"
+          },
+          {
+            "code": "PropagationFailure",
+            "leg": null,
+            "value": null,
+            "message": "invalid decision x[11]=10957.500000000002"
+          }
+        ]
+      },
+      "l1": null,
+      "l2": null,
+      "surrogate_gap": null,
+      "cache_key": "57023012c7233a74f44c16278ed0e60fe4a07fe2d853970102423839dac0d101",
+      "created_unix_ms": 1785435827182
+    },
+    {
+      "structure": {
+        "bodies": [
+          3,
+          5,
+          6,
+          10
+        ]
+      },
+      "variant": {
+        "structure": {
+          "bodies": [
+            3,
+            5,
+            6,
+            10
+          ]
+        },
+        "clockwise": [
+          false,
+          true,
+          false
+        ]
+      },
+      "structure_key": "3-5-6-10",
+      "variant_key": "3-5-6-10|010",
+      "niche_key": "L4-I1-TJS-R2-F18y",
+      "accepted_index": 18,
+      "proposal_attempt": 24,
+      "strategy": "random",
+      "rationale": "grammar-aware random baseline",
+      "l0": {
+        "evaluation_found": true,
+        "objective": 383870844139.9712,
+        "estimated_score": -42591.7132656188,
+        "fixed_mass_score": -147131.89727157133,
+        "constraint": 38.38708015482579,
+        "launch_v_infinity_km_s": 8.69573080070671,
+        "powered_delta_v_km_s": 19.996211912708105,
+        "endpoint_repair_delta_v_km_s": 25.14828063297021,
+        "minimum_periapsis_margin_km": 745281.0199876274,
+        "flight_days": 6798.801294134611,
+        "branches": [
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          }
+        ],
+        "epochs_mjd2000": [
+          10587.800045359358,
+          11686.60133949397,
+          15886.60133949397,
+          17386.60133949397
+        ],
+        "optimizer_decision": [
+          10587.800045359358,
+          6798.801294134611,
+          -2.9401830640942745,
+          7.213533177801799
+        ],
+        "physical_decision": {
+          "launch_mjd2000": 10587.800045359358,
+          "leg_days": [
+            1098.801294134611,
+            4200.0,
+            1500.0
+          ]
+        },
+        "requested_evaluations": 3520000,
+        "actual_evaluations": 1594712,
+        "resolved_workers": 32,
+        "worker_seconds": 2003.977981088,
+        "wall_seconds": 62.624311909,
+        "failures": {},
+        "failure_examples": []
+      },
+      "l1": null,
+      "l2": null,
+      "surrogate_gap": null,
+      "cache_key": "a1428e2dbc834d55c9d9c391315abef1a2e58883cd8c0ea3784bebb89fa7aa48",
+      "created_unix_ms": 1785435889833
+    },
+    {
+      "structure": {
+        "bodies": [
+          3,
+          6,
+          3,
+          2,
+          6,
+          6,
+          6,
+          2,
+          10
+        ]
+      },
+      "variant": {
+        "structure": {
+          "bodies": [
+            3,
+            6,
+            3,
+            2,
+            6,
+            6,
+            6,
+            2,
+            10
+          ]
+        },
+        "clockwise": [
+          false,
+          false,
+          true,
+          false,
+          false,
+          false,
+          false,
+          false
+        ]
+      },
+      "structure_key": "3-6-3-2-6-6-6-2-10",
+      "variant_key": "3-6-3-2-6-6-6-2-10|00100000",
+      "niche_key": "L9-I4-TSSSS-R2-F18y",
+      "accepted_index": 19,
+      "proposal_attempt": 25,
+      "strategy": "random",
+      "rationale": "grammar-aware random baseline",
+      "l0": {
+        "evaluation_found": true,
+        "objective": 622694614234.1385,
+        "estimated_score": 1.318133602111138,
+        "fixed_mass_score": 699199.5601349889,
+        "constraint": 62.26946142354567,
+        "launch_v_infinity_km_s": 10.26209127156992,
+        "powered_delta_v_km_s": 136.98609863721896,
+        "endpoint_repair_delta_v_km_s": 316.35467372902167,
+        "minimum_periapsis_margin_km": -6562.612958609761,
+        "flight_days": 6698.144578394572,
+        "branches": [
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          }
+        ],
+        "epochs_mjd2000": [
+          4759.254169293101,
+          7346.646333270388,
+          7750.807699418733,
+          9750.807699418732,
+          10150.807699418732,
+          10450.80769941901,
+          10750.80769941901,
+          11150.807699419023,
+          11457.39874768767
+        ],
+        "optimizer_decision": [
+          4759.254169293101,
+          6698.144578394572,
+          5.804752915087853,
+          -0.4598689840554008,
+          7.634403348768286,
+          -30.0,
+          -23.88950013338635,
+          -30.0,
+          -26.890642792972603
+        ],
+        "physical_decision": {
+          "launch_mjd2000": 4759.254169293101,
+          "leg_days": [
+            2587.3921639772875,
+            404.1613661483452,
+            2000.0,
+            400.0000000000006,
+            300.0000000002779,
+            300.0000000000006,
+            400.0000000000138,
+            306.59104826864484
+          ]
+        },
+        "requested_evaluations": 3520000,
+        "actual_evaluations": 1795899,
+        "resolved_workers": 32,
+        "worker_seconds": 8147.433223488,
+        "wall_seconds": 254.607288234,
+        "failures": {
+          "PropagationFailure": 466
+        },
+        "failure_examples": [
+          {
+            "code": "PropagationFailure",
+            "leg": null,
+            "value": null,
+            "message": "invalid decision x[8]=10957.500000000004"
+          }
+        ]
+      },
+      "l1": null,
+      "l2": null,
+      "surrogate_gap": null,
+      "cache_key": "45dfad0abf181b983454c0e87d98993c991af6f83a4fcee20e6606d3af21051c",
+      "created_unix_ms": 1785436144469
+    },
+    {
+      "structure": {
+        "bodies": [
+          3,
+          3,
+          6,
+          5,
+          10
+        ]
+      },
+      "variant": {
+        "structure": {
+          "bodies": [
+            3,
+            3,
+            6,
+            5,
+            10
+          ]
+        },
+        "clockwise": [
+          true,
+          false,
+          false,
+          false
+        ]
+      },
+      "structure_key": "3-3-6-5-10",
+      "variant_key": "3-3-6-5-10|1000",
+      "niche_key": "L5-I2-TSJ-R1-F23y",
+      "accepted_index": 20,
+      "proposal_attempt": 26,
+      "strategy": "random",
+      "rationale": "grammar-aware random baseline",
+      "l0": {
+        "evaluation_found": true,
+        "objective": 7732248521986.959,
+        "estimated_score": -640.1297633629025,
+        "fixed_mass_score": -16703.19517319525,
+        "constraint": 773.2248521346829,
+        "launch_v_infinity_km_s": 30.290513985002367,
+        "powered_delta_v_km_s": 18.81043080073856,
+        "endpoint_repair_delta_v_km_s": 53.1264726620124,
+        "minimum_periapsis_margin_km": -6378.047934979099,
+        "flight_days": 8671.22949052745,
+        "branches": [
+          {
+            "revolutions": 5,
+            "path": "left"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          }
+        ],
+        "epochs_mjd2000": [
+          7115.249824990999,
+          7845.766489200794,
+          12045.766489200794,
+          14382.25088738876,
+          15786.479315518449
+        ],
+        "optimizer_decision": [
+          7115.249824990999,
+          8671.22949052745,
+          -0.43250061017965746,
+          1.4373631936441746,
+          0.6120781509960409
+        ],
+        "physical_decision": {
+          "launch_mjd2000": 7115.249824990999,
+          "leg_days": [
+            730.5166642097952,
+            4200.0,
+            2336.484398187966,
+            1404.2284281296884
+          ]
+        },
+        "requested_evaluations": 3520000,
+        "actual_evaluations": 1586263,
+        "resolved_workers": 32,
+        "worker_seconds": 2230.986650112,
+        "wall_seconds": 69.718332816,
+        "failures": {
+          "LambertUnavailable": 9223,
+          "PropagationFailure": 4
+        },
+        "failure_examples": [
+          {
+            "code": "LambertUnavailable",
+            "leg": null,
+            "value": null,
+            "message": "pykep evaluation failed: floating-point overflow in LambertProblem::time_of_flight"
+          },
+          {
+            "code": "PropagationFailure",
+            "leg": null,
+            "value": null,
+            "message": "invalid decision x[4]=10957.500000000002"
+          }
+        ]
+      },
+      "l1": null,
+      "l2": null,
+      "surrogate_gap": null,
+      "cache_key": "368ce3e13d57fa8f3edf005280c2dd6e69848c5e531a3cfd168cd0101ae515c3",
+      "created_unix_ms": 1785436214215
+    },
+    {
+      "structure": {
+        "bodies": [
+          3,
+          2,
+          3,
+          5,
+          2,
+          5,
+          2,
+          2,
+          5,
+          10
+        ]
+      },
+      "variant": {
+        "structure": {
+          "bodies": [
+            3,
+            2,
+            3,
+            5,
+            2,
+            5,
+            2,
+            2,
+            5,
+            10
+          ]
+        },
+        "clockwise": [
+          false,
+          true,
+          true,
+          false,
+          false,
+          false,
+          true,
+          false,
+          false
+        ]
+      },
+      "structure_key": "3-2-3-5-2-5-2-2-5-10",
+      "variant_key": "3-2-3-5-2-5-2-2-5-10|011000100",
+      "niche_key": "L10-I6-TJJJ-R4-F20y",
+      "accepted_index": 21,
+      "proposal_attempt": 29,
+      "strategy": "random",
+      "rationale": "grammar-aware random baseline",
+      "l0": {
+        "evaluation_found": true,
+        "objective": 11892677292.49723,
+        "estimated_score": 0.010492747438038168,
+        "fixed_mass_score": 312485.4586333039,
+        "constraint": 1.1892677292507725,
+        "launch_v_infinity_km_s": 2.6738400307372903,
+        "powered_delta_v_km_s": 314.6790267101257,
+        "endpoint_repair_delta_v_km_s": 422.6936721906635,
+        "minimum_periapsis_margin_km": -6334.93113466346,
+        "flight_days": 7318.1219153204365,
+        "branches": [
+          {
+            "revolutions": 3,
+            "path": "left"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          }
+        ],
+        "epochs_mjd2000": [
+          6892.074699338125,
+          7909.382948848982,
+          7984.364704565003,
+          8184.364865702872,
+          9989.178265886878,
+          12489.178265886878,
+          12707.614322509817,
+          12721.614322514915,
+          13821.18315178134,
+          14210.196614658562
+        ],
+        "optimizer_decision": [
+          6892.074699338125,
+          7318.1219153204365,
+          2.4222704416991423,
+          -0.37821289376024175,
+          -13.22203786217848,
+          2.891975140661985,
+          18.37674180203085,
+          -1.574479280397702,
+          -23.58221950097122,
+          2.3131279433609984
+        ],
+        "physical_decision": {
+          "launch_mjd2000": 6892.074699338125,
+          "leg_days": [
+            1017.3082495108564,
+            74.98175571602162,
+            200.00016113786813,
+            1804.813400184006,
+            2500.0,
+            218.43605662293635,
+            14.000000005103027,
+            1099.568829266423,
+            389.0134628772214
+          ]
+        },
+        "requested_evaluations": 3520000,
+        "actual_evaluations": 2295507,
+        "resolved_workers": 32,
+        "worker_seconds": 4993.817182432,
+        "wall_seconds": 156.056786951,
+        "failures": {
+          "LambertUnavailable": 4774,
+          "PropagationFailure": 114
+        },
+        "failure_examples": [
+          {
+            "code": "LambertUnavailable",
+            "leg": null,
+            "value": null,
+            "message": "pykep evaluation failed: LambertProblem::householder did not converge after 15 iterations"
+          },
+          {
+            "code": "PropagationFailure",
+            "leg": null,
+            "value": null,
+            "message": "invalid decision x[9]=10957.500000000002"
+          }
+        ]
+      },
+      "l1": null,
+      "l2": null,
+      "surrogate_gap": null,
+      "cache_key": "c2b36410dc5799569ac03158426f6d9b91126d16ff91b34c7881d554b2f5d0b3",
+      "created_unix_ms": 1785436370310
+    },
+    {
+      "structure": {
+        "bodies": [
+          3,
+          2,
+          6,
+          6,
+          6,
+          10
+        ]
+      },
+      "variant": {
+        "structure": {
+          "bodies": [
+            3,
+            2,
+            6,
+            6,
+            6,
+            10
+          ]
+        },
+        "clockwise": [
+          false,
+          false,
+          false,
+          false,
+          false
+        ]
+      },
+      "structure_key": "3-2-6-6-6-10",
+      "variant_key": "3-2-6-6-6-10|00000",
+      "niche_key": "L6-I2-TSSS-R0-F25y",
+      "accepted_index": 22,
+      "proposal_attempt": 30,
+      "strategy": "random",
+      "rationale": "grammar-aware random baseline",
+      "l0": {
+        "evaluation_found": true,
+        "objective": 74791246.94868246,
+        "estimated_score": 8731.506882367186,
+        "fixed_mass_score": 394768.0285534357,
+        "constraint": 0.007479997845556483,
+        "launch_v_infinity_km_s": 2.586486980786454,
+        "powered_delta_v_km_s": 85.85896700367931,
+        "endpoint_repair_delta_v_km_s": 94.30669908587656,
+        "minimum_periapsis_margin_km": 3556.5169367418875,
+        "flight_days": 9206.42498707664,
+        "branches": [
+          {
+            "revolutions": 1,
+            "path": "left"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          }
+        ],
+        "epochs_mjd2000": [
+          8377.084669305237,
+          8809.9849553847,
+          12783.502110618449,
+          16983.502110618447,
+          17283.50853572516,
+          17583.509656381877
+        ],
+        "optimizer_decision": [
+          8377.084669305237,
+          9206.42498707664,
+          12.83147332086838,
+          14.975145997314982,
+          19.005956484070317,
+          1.7462983706273874
+        ],
+        "physical_decision": {
+          "launch_mjd2000": 8377.084669305237,
+          "leg_days": [
+            432.9002860794632,
+            3973.517155233746,
+            4200.0,
+            300.0064251067127,
+            300.0011206567182
+          ]
+        },
+        "requested_evaluations": 3520000,
+        "actual_evaluations": 1941007,
+        "resolved_workers": 32,
+        "worker_seconds": 8494.293732416,
+        "wall_seconds": 265.446679138,
+        "failures": {},
+        "failure_examples": []
+      },
+      "l1": null,
+      "l2": null,
+      "surrogate_gap": null,
+      "cache_key": "56ae96c6d12d7f8bd0a389299d04a8671abdc5ab4448435490bb4eba1d98fbf9",
+      "created_unix_ms": 1785436635785
+    },
+    {
+      "structure": {
+        "bodies": [
+          3,
+          3,
+          3,
+          5,
+          2,
+          3,
+          6,
+          6,
+          2,
+          6,
+          3,
+          10
+        ]
+      },
+      "variant": {
+        "structure": {
+          "bodies": [
+            3,
+            3,
+            3,
+            5,
+            2,
+            3,
+            6,
+            6,
+            2,
+            6,
+            3,
+            10
+          ]
+        },
+        "clockwise": [
+          false,
+          true,
+          false,
+          false,
+          false,
+          true,
+          false,
+          false,
+          false,
+          false,
+          false
+        ]
+      },
+      "structure_key": "3-3-3-5-2-3-6-6-2-6-3-10",
+      "variant_key": "3-3-3-5-2-3-6-6-2-6-3-10|01000100000",
+      "niche_key": "L12-I7-TJSSS-R4-F16y",
+      "accepted_index": 23,
+      "proposal_attempt": 31,
+      "strategy": "random",
+      "rationale": "grammar-aware random baseline",
+      "l0": {
+        "evaluation_found": true,
+        "objective": 7870095352.905602,
+        "estimated_score": 3.349077650454436e-6,
+        "fixed_mass_score": 290464.0131320075,
+        "constraint": 0.7870095352905606,
+        "launch_v_infinity_km_s": 0.00003369243515442258,
+        "powered_delta_v_km_s": 594.3351402171892,
+        "endpoint_repair_delta_v_km_s": 618.4286950758111,
+        "minimum_periapsis_margin_km": -5634.198061380284,
+        "flight_days": 5859.724682418046,
+        "branches": [
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 3,
+            "path": "left"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          }
+        ],
+        "epochs_mjd2000": [
+          7055.125901330769,
+          7070.154862027135,
+          7085.457540134798,
+          7712.441227507646,
+          8241.892500519572,
+          9341.189762951906,
+          9741.189782336362,
+          10061.205682061378,
+          10461.205682061433,
+          11288.124859089246,
+          12613.756553432506,
+          12914.850583748814
+        ],
+        "optimizer_decision": [
+          7055.125901330769,
+          5859.724682418046,
+          -0.06131915487841939,
+          0.17455381317533286,
+          5.966877394575397,
+          5.707560046354765,
+          6.899740787992802,
+          -10.940907503503716,
+          2.906658528921055,
+          -23.729728009136977,
+          5.966726299297829,
+          6.740608002187524
+        ],
+        "physical_decision": {
+          "launch_mjd2000": 7055.125901330769,
+          "leg_days": [
+            15.028960696365695,
+            15.302678107663716,
+            626.9836873728473,
+            529.4512730119272,
+            1099.2972624323338,
+            400.0000193844552,
+            320.0158997250168,
+            400.0000000000541,
+            826.9191770278137,
+            1325.6316943432596,
+            301.09403031630853
+          ]
+        },
+        "requested_evaluations": 3520000,
+        "actual_evaluations": 2044763,
+        "resolved_workers": 32,
+        "worker_seconds": 7744.95189808,
+        "wall_seconds": 242.029746815,
+        "failures": {
+          "LambertUnavailable": 1966,
+          "PropagationFailure": 456
+        },
+        "failure_examples": [
+          {
+            "code": "LambertUnavailable",
+            "leg": null,
+            "value": null,
+            "message": "pykep evaluation failed: floating-point overflow in LambertProblem::time_of_flight"
+          },
+          {
+            "code": "PropagationFailure",
+            "leg": null,
+            "value": null,
+            "message": "invalid decision x[11]=10957.500000000002"
+          }
+        ]
+      },
+      "l1": null,
+      "l2": null,
+      "surrogate_gap": null,
+      "cache_key": "3c5f0ed48fda49c4857cd7963b6ed5278be4d0b76c5c6783e013e64b2ef0ee43",
+      "created_unix_ms": 1785436877853
+    },
+    {
+      "structure": {
+        "bodies": [
+          3,
+          3,
+          3,
+          3,
+          5,
+          6,
+          3,
+          6,
+          10
+        ]
+      },
+      "variant": {
+        "structure": {
+          "bodies": [
+            3,
+            3,
+            3,
+            3,
+            5,
+            6,
+            3,
+            6,
+            10
+          ]
+        },
+        "clockwise": [
+          false,
+          false,
+          true,
+          false,
+          true,
+          false,
+          false,
+          false
+        ]
+      },
+      "structure_key": "3-3-3-3-5-6-3-6-10",
+      "variant_key": "3-3-3-3-5-6-3-6-10|00101000",
+      "niche_key": "L9-I5-TJSS-R4-F23y",
+      "accepted_index": 24,
+      "proposal_attempt": 32,
+      "strategy": "random",
+      "rationale": "grammar-aware random baseline",
+      "l0": {
+        "evaluation_found": true,
+        "objective": 5890900195.979518,
+        "estimated_score": 0.0002722045694754801,
+        "fixed_mass_score": 381168.779715035,
+        "constraint": 0.589090019597979,
+        "launch_v_infinity_km_s": 8.284207640095705e-6,
+        "powered_delta_v_km_s": 497.0128423565976,
+        "endpoint_repair_delta_v_km_s": 517.2704937498155,
+        "minimum_periapsis_margin_km": -5125.511912145486,
+        "flight_days": 8749.509986010733,
+        "branches": [
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 1,
+            "path": "left"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          }
+        ],
+        "epochs_mjd2000": [
+          9707.7166560563,
+          9722.92257554016,
+          10299.580989176176,
+          10313.580989176444,
+          11595.680076118944,
+          15795.680076118944,
+          16195.680076119615,
+          17204.49775488013,
+          18457.22664206703
+        ],
+        "optimizer_decision": [
+          9707.7166560563,
+          8749.509986010733,
+          -6.67208804653543,
+          -0.5266576609699133,
+          -28.892222545895866,
+          0.12732765315269304,
+          5.778749378619892,
+          -27.978446298421527,
+          -0.44781153481584807
+        ],
+        "physical_decision": {
+          "launch_mjd2000": 9707.7166560563,
+          "leg_days": [
+            15.205919483858125,
+            576.6584136360161,
+            14.00000000026992,
+            1282.0990869425004,
+            4200.0,
+            400.0000000006731,
+            1008.817678760513,
+            1252.7288871869027
+          ]
+        },
+        "requested_evaluations": 3520000,
+        "actual_evaluations": 1870520,
+        "resolved_workers": 32,
+        "worker_seconds": 5626.854515968,
+        "wall_seconds": 175.839203624,
+        "failures": {
+          "LambertUnavailable": 195,
+          "PropagationFailure": 3613
+        },
+        "failure_examples": [
+          {
+            "code": "LambertUnavailable",
+            "leg": null,
+            "value": null,
+            "message": "pykep evaluation failed: floating-point overflow in LambertProblem::time_of_flight"
+          },
+          {
+            "code": "PropagationFailure",
+            "leg": null,
+            "value": null,
+            "message": "invalid decision x[8]=10957.500000000002"
+          }
+        ]
+      },
+      "l1": null,
+      "l2": null,
+      "surrogate_gap": null,
+      "cache_key": "edf5b9cbe68de793080aea09dce73daea6cefd67d9a05a9e46123393cb67ef21",
+      "created_unix_ms": 1785437053720
+    },
+    {
+      "structure": {
+        "bodies": [
+          3,
+          2,
+          6,
+          3,
+          6,
+          2,
+          3,
+          5,
+          2,
+          2,
+          10
+        ]
+      },
+      "variant": {
+        "structure": {
+          "bodies": [
+            3,
+            2,
+            6,
+            3,
+            6,
+            2,
+            3,
+            5,
+            2,
+            2,
+            10
+          ]
+        },
+        "clockwise": [
+          true,
+          false,
+          true,
+          false,
+          false,
+          false,
+          false,
+          false,
+          false,
+          false
+        ]
+      },
+      "structure_key": "3-2-6-3-6-2-3-5-2-2-10",
+      "variant_key": "3-2-6-3-6-2-3-5-2-2-10|1010000000",
+      "niche_key": "L11-I7-TSSJ-R3-F21y",
+      "accepted_index": 25,
+      "proposal_attempt": 33,
+      "strategy": "random",
+      "rationale": "grammar-aware random baseline",
+      "l0": {
+        "evaluation_found": true,
+        "objective": 6962240197730.433,
+        "estimated_score": 0.0012742959351358851,
+        "fixed_mass_score": 233353.5246942986,
+        "constraint": 696.2240197730433,
+        "launch_v_infinity_km_s": 28.798870622789657,
+        "powered_delta_v_km_s": 158.0340254915626,
+        "endpoint_repair_delta_v_km_s": 441.0978718434542,
+        "minimum_periapsis_margin_km": -598246.6823474956,
+        "flight_days": 7703.221292714064,
+        "branches": [
+          {
+            "revolutions": 5,
+            "path": "left"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          }
+        ],
+        "epochs_mjd2000": [
+          6091.364940318359,
+          6840.7888387709945,
+          7241.58013481996,
+          7641.580693969378,
+          11841.58069396938,
+          13038.849104482715,
+          13080.14819736636,
+          13280.148330645356,
+          13480.148330645903,
+          13494.186626929572,
+          13794.586233032423
+        ],
+        "optimizer_decision": [
+          6091.364940318359,
+          7703.221292714064,
+          7.51772302548309,
+          0.6831928504558196,
+          -6.571817864346568,
+          13.563750081330236,
+          7.5984673580737105,
+          4.224129433861396,
+          -8.005789948169744,
+          -20.40679119069111,
+          -2.3451264596729517
+        ],
+        "physical_decision": {
+          "launch_mjd2000": 6091.364940318359,
+          "leg_days": [
+            749.4238984526356,
+            400.79129604896576,
+            400.0005591494186,
+            4200.0,
+            1197.268410513337,
+            41.299092883642,
+            200.0001332789966,
+            200.00000000054837,
+            14.038296283670668,
+            300.3996061028496
+          ]
+        },
+        "requested_evaluations": 3520000,
+        "actual_evaluations": 2048522,
+        "resolved_workers": 32,
+        "worker_seconds": 5355.796362688,
+        "wall_seconds": 167.368636334,
+        "failures": {
+          "LambertUnavailable": 11,
+          "PropagationFailure": 50
+        },
+        "failure_examples": [
+          {
+            "code": "LambertUnavailable",
+            "leg": null,
+            "value": null,
+            "message": "pykep evaluation failed: floating-point overflow in LambertProblem::time_of_flight"
+          },
+          {
+            "code": "PropagationFailure",
+            "leg": null,
+            "value": null,
+            "message": "invalid decision x[10]=10957.500000000002"
+          }
+        ]
+      },
+      "l1": null,
+      "l2": null,
+      "surrogate_gap": null,
+      "cache_key": "8dc7485067bc8f01da83fae66f2d74d4d98cc412caaec90a725367d7f300b0fb",
+      "created_unix_ms": 1785437221117
+    },
+    {
+      "structure": {
+        "bodies": [
+          3,
+          5,
+          10
+        ]
+      },
+      "variant": {
+        "structure": {
+          "bodies": [
+            3,
+            5,
+            10
+          ]
+        },
+        "clockwise": [
+          false,
+          true
+        ]
+      },
+      "structure_key": "3-5-10",
+      "variant_key": "3-5-10|01",
+      "niche_key": "L3-I1-TJ-R1-F4y",
+      "accepted_index": 26,
+      "proposal_attempt": 34,
+      "strategy": "random",
+      "rationale": "grammar-aware random baseline",
+      "l0": {
+        "evaluation_found": true,
+        "objective": 383870563924.52625,
+        "estimated_score": 237623.72407287307,
+        "fixed_mass_score": 612924.3236973047,
+        "constraint": 38.38708015482503,
+        "launch_v_infinity_km_s": 8.695730800706647,
+        "powered_delta_v_km_s": 17.695818296361857,
+        "endpoint_repair_delta_v_km_s": 17.98656528529479,
+        "minimum_periapsis_margin_km": 54869700.30856198,
+        "flight_days": 1625.9918320252582,
+        "branches": [
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          }
+        ],
+        "epochs_mjd2000": [
+          10587.800047185963,
+          11686.601342245156,
+          12213.79187921122
+        ],
+        "optimizer_decision": [
+          10587.800047185963,
+          1625.9918320252582,
+          1.3752729458839053
+        ],
+        "physical_decision": {
+          "launch_mjd2000": 10587.800047185963,
+          "leg_days": [
+            1098.8012950591922,
+            527.190536966066
+          ]
+        },
+        "requested_evaluations": 3520000,
+        "actual_evaluations": 1672798,
+        "resolved_workers": 32,
+        "worker_seconds": 697.469936608,
+        "wall_seconds": 21.795935519,
+        "failures": {},
+        "failure_examples": []
+      },
+      "l1": null,
+      "l2": null,
+      "surrogate_gap": null,
+      "cache_key": "d5bebe83b21358d25e71f1ed8a25239c7b855008d9feb71478ba01efab7409d4",
+      "created_unix_ms": 1785437242940
+    },
+    {
+      "structure": {
+        "bodies": [
+          3,
+          3,
+          3,
+          3,
+          5,
+          2,
+          2,
+          3,
+          10
+        ]
+      },
+      "variant": {
+        "structure": {
+          "bodies": [
+            3,
+            3,
+            3,
+            3,
+            5,
+            2,
+            2,
+            3,
+            10
+          ]
+        },
+        "clockwise": [
+          false,
+          false,
+          false,
+          false,
+          false,
+          false,
+          false,
+          false
+        ]
+      },
+      "structure_key": "3-3-3-3-5-2-2-3-10",
+      "variant_key": "3-3-3-3-5-2-2-3-10|00000000",
+      "niche_key": "L9-I7-TJ-R0-F15y",
+      "accepted_index": 27,
+      "proposal_attempt": 36,
+      "strategy": "random",
+      "rationale": "grammar-aware random baseline",
+      "l0": {
+        "evaluation_found": true,
+        "objective": -280910.0994942356,
+        "estimated_score": 280910.0994942356,
+        "fixed_mass_score": 427564.4061215704,
+        "constraint": 0.0,
+        "launch_v_infinity_km_s": 0.0003013094702491822,
+        "powered_delta_v_km_s": 11.0749106115775,
+        "endpoint_repair_delta_v_km_s": 11.250198144611415,
+        "minimum_periapsis_margin_km": 353.7174633040904,
+        "flight_days": 5781.261612120997,
+        "branches": [
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 1,
+            "path": "right"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 1,
+            "path": "right"
+          },
+          {
+            "revolutions": 3,
+            "path": "left"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          }
+        ],
+        "epochs_mjd2000": [
+          7210.231899224531,
+          7301.838202049165,
+          7769.724916625074,
+          7799.587101620407,
+          8944.18442632637,
+          9647.57313297786,
+          10438.926113080828,
+          12438.926113080828,
+          12991.493511345529
+        ],
+        "optimizer_decision": [
+          7210.231899224531,
+          5781.261612120997,
+          -1.1800294910603966,
+          0.586169502620197,
+          -2.767740162525053,
+          1.3190805883420338,
+          0.6896845113865517,
+          1.124216396139703,
+          8.119670885086027
+        ],
+        "physical_decision": {
+          "launch_mjd2000": 7210.231899224531,
+          "leg_days": [
+            91.606302824634,
+            467.8867145759084,
+            29.862184995333703,
+            1144.5973247059635,
+            703.388706651489,
+            791.3529801029697,
+            2000.0,
+            552.5673982646985
+          ]
+        },
+        "requested_evaluations": 3520000,
+        "actual_evaluations": 1919438,
+        "resolved_workers": 32,
+        "worker_seconds": 3665.179027264,
+        "wall_seconds": 114.536844602,
+        "failures": {
+          "LambertUnavailable": 12,
+          "PropagationFailure": 101
+        },
+        "failure_examples": [
+          {
+            "code": "LambertUnavailable",
+            "leg": null,
+            "value": null,
+            "message": "pykep evaluation failed: LambertProblem::householder did not converge after 15 iterations"
+          },
+          {
+            "code": "PropagationFailure",
+            "leg": null,
+            "value": null,
+            "message": "invalid decision x[8]=10957.500000000002"
+          }
+        ]
+      },
+      "l1": null,
+      "l2": null,
+      "surrogate_gap": null,
+      "cache_key": "b456e73a2d94eb33946574db7d63c1ed0899b70c17571b193cc7c9ddaf034b81",
+      "created_unix_ms": 1785437357510
+    },
+    {
+      "structure": {
+        "bodies": [
+          3,
+          3,
+          5,
+          2,
+          3,
+          10
+        ]
+      },
+      "variant": {
+        "structure": {
+          "bodies": [
+            3,
+            3,
+            5,
+            2,
+            3,
+            10
+          ]
+        },
+        "clockwise": [
+          false,
+          false,
+          false,
+          true,
+          false
+        ]
+      },
+      "structure_key": "3-3-5-2-3-10",
+      "variant_key": "3-3-5-2-3-10|00010",
+      "niche_key": "L6-I4-TJ-R2-F21y",
+      "accepted_index": 28,
+      "proposal_attempt": 38,
+      "strategy": "random",
+      "rationale": "grammar-aware random baseline",
+      "l0": {
+        "evaluation_found": true,
+        "objective": -238379.89353122012,
+        "estimated_score": 238379.89353122012,
+        "fixed_mass_score": 842669.4211901616,
+        "constraint": 0.0,
+        "launch_v_infinity_km_s": 0.00012694726764050438,
+        "powered_delta_v_km_s": 31.69357067984788,
+        "endpoint_repair_delta_v_km_s": 31.90885996548912,
+        "minimum_periapsis_margin_km": 6169.927738618495,
+        "flight_days": 7736.861405197811,
+        "branches": [
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 1,
+            "path": "right"
+          },
+          {
+            "revolutions": 1,
+            "path": "left"
+          },
+          {
+            "revolutions": 1,
+            "path": "right"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          }
+        ],
+        "epochs_mjd2000": [
+          6827.078852948927,
+          6857.024205851262,
+          9357.024205851263,
+          11857.024205851263,
+          13511.942614042864,
+          14563.940258146738
+        ],
+        "optimizer_decision": [
+          6827.078852948927,
+          7736.861405197812,
+          -3.85356575841088,
+          19.004076601974127,
+          17.015990382051818,
+          0.7802781779644998
+        ],
+        "physical_decision": {
+          "launch_mjd2000": 6827.078852948927,
+          "leg_days": [
+            29.945352902334633,
+            2500.0,
+            2500.0,
+            1654.9184081916017,
+            1051.9976441038748
+          ]
+        },
+        "requested_evaluations": 3520000,
+        "actual_evaluations": 1683493,
+        "resolved_workers": 32,
+        "worker_seconds": 1460.058468032,
+        "wall_seconds": 45.626827126,
+        "failures": {
+          "LambertUnavailable": 473,
+          "PropagationFailure": 1
+        },
+        "failure_examples": [
+          {
+            "code": "LambertUnavailable",
+            "leg": null,
+            "value": null,
+            "message": "pykep evaluation failed: LambertProblem::householder did not converge after 15 iterations"
+          },
+          {
+            "code": "PropagationFailure",
+            "leg": null,
+            "value": null,
+            "message": "invalid decision x[5]=10957.500000000002"
+          }
+        ]
+      },
+      "l1": null,
+      "l2": null,
+      "surrogate_gap": null,
+      "cache_key": "fa3fdf084fefb53cfa81168edc255ed606322a3a6c71472dc482bdb9088e4c28",
+      "created_unix_ms": 1785437403173
+    },
+    {
+      "structure": {
+        "bodies": [
+          3,
+          5,
+          5,
+          3,
+          2,
+          3,
+          10
+        ]
+      },
+      "variant": {
+        "structure": {
+          "bodies": [
+            3,
+            5,
+            5,
+            3,
+            2,
+            3,
+            10
+          ]
+        },
+        "clockwise": [
+          false,
+          false,
+          false,
+          false,
+          false,
+          false
+        ]
+      },
+      "structure_key": "3-5-5-3-2-3-10",
+      "variant_key": "3-5-5-3-2-3-10|000000",
+      "niche_key": "L7-I4-TJJ-R0-F21y",
+      "accepted_index": 29,
+      "proposal_attempt": 40,
+      "strategy": "random",
+      "rationale": "grammar-aware random baseline",
+      "l0": {
+        "evaluation_found": true,
+        "objective": 386393322076.02313,
+        "estimated_score": 81078.54169148144,
+        "fixed_mass_score": 232514.22810462047,
+        "constraint": 38.63934031545648,
+        "launch_v_infinity_km_s": 8.716055044435858,
+        "powered_delta_v_km_s": 16.647506261252765,
+        "endpoint_repair_delta_v_km_s": 20.564513921997527,
+        "minimum_periapsis_margin_km": 310.8576018328122,
+        "flight_days": 7824.323803203397,
+        "branches": [
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 1,
+            "path": "right"
+          },
+          {
+            "revolutions": 1,
+            "path": "right"
+          }
+        ],
+        "epochs_mjd2000": [
+          6202.143617348962,
+          7343.138125456244,
+          7783.129242719649,
+          8526.467420552359,
+          10526.46742055236,
+          12526.46742055236,
+          14026.46742055236
+        ],
+        "optimizer_decision": [
+          6202.143617348962,
+          7824.323803203397,
+          -2.3917711553711727,
+          -4.2971294862313645,
+          -2.9409765373597443,
+          -1.50349316937021,
+          5.981243102558498
+        ],
+        "physical_decision": {
+          "launch_mjd2000": 6202.143617348962,
+          "leg_days": [
+            1140.994508107282,
+            439.9911172634048,
+            743.3381778327097,
+            2000.0,
+            2000.0,
+            1500.0
+          ]
+        },
+        "requested_evaluations": 3520000,
+        "actual_evaluations": 1855729,
+        "resolved_workers": 32,
+        "worker_seconds": 2653.359315168,
+        "wall_seconds": 82.917478599,
+        "failures": {
+          "PropagationFailure": 86
+        },
+        "failure_examples": [
+          {
+            "code": "PropagationFailure",
+            "leg": null,
+            "value": null,
+            "message": "invalid decision x[6]=10957.500000000002"
+          }
+        ]
+      },
+      "l1": null,
+      "l2": null,
+      "surrogate_gap": null,
+      "cache_key": "79f0ef2863573865480b3f59691d1bd039957edbfccdc45d87f08d244137c9c0",
+      "created_unix_ms": 1785437486121
+    },
+    {
+      "structure": {
+        "bodies": [
+          3,
+          3,
+          3,
+          10
+        ]
+      },
+      "variant": {
+        "structure": {
+          "bodies": [
+            3,
+            3,
+            3,
+            10
+          ]
+        },
+        "clockwise": [
+          false,
+          false,
+          false
+        ]
+      },
+      "structure_key": "3-3-3-10",
+      "variant_key": "3-3-3-10|000",
+      "niche_key": "L4-I3-Tnone-R0-F11y",
+      "accepted_index": 30,
+      "proposal_attempt": 42,
+      "strategy": "random",
+      "rationale": "grammar-aware random baseline",
+      "l0": {
+        "evaluation_found": true,
+        "objective": -210582.36610448032,
+        "estimated_score": 210582.36610448032,
+        "fixed_mass_score": 242053.78342228517,
+        "constraint": 0.0,
+        "launch_v_infinity_km_s": 2.499999999999989,
+        "powered_delta_v_km_s": 2.145058361624983,
+        "endpoint_repair_delta_v_km_s": 4.366244525544915,
+        "minimum_periapsis_margin_km": 3886.342814114046,
+        "flight_days": 4156.405570271925,
+        "branches": [
+          {
+            "revolutions": 4,
+            "path": "right"
+          },
+          {
+            "revolutions": 1,
+            "path": "right"
+          },
+          {
+            "revolutions": 1,
+            "path": "left"
+          }
+        ],
+        "epochs_mjd2000": [
+          7326.46703721707,
+          9198.399246402792,
+          9982.872607488996,
+          11482.872607488996
+        ],
+        "optimizer_decision": [
+          7326.46703721707,
+          4156.405570271925,
+          -4.2516927117602545,
+          -5.131907063941011
+        ],
+        "physical_decision": {
+          "launch_mjd2000": 7326.46703721707,
+          "leg_days": [
+            1871.9322091857216,
+            784.4733610862036,
+            1500.0
+          ]
+        },
+        "requested_evaluations": 3520000,
+        "actual_evaluations": 1633883,
+        "resolved_workers": 32,
+        "worker_seconds": 592.140043296,
+        "wall_seconds": 18.504376353,
+        "failures": {
+          "LambertUnavailable": 116
+        },
+        "failure_examples": [
+          {
+            "code": "LambertUnavailable",
+            "leg": null,
+            "value": null,
+            "message": "pykep evaluation failed: floating-point overflow in LambertProblem::time_of_flight"
+          }
+        ]
+      },
+      "l1": null,
+      "l2": null,
+      "surrogate_gap": null,
+      "cache_key": "a94d2e093b8e97adf2d2372e368c9ea6e31c2e085b0cd1d1b122ce5d601227fa",
+      "created_unix_ms": 1785437504658
+    },
+    {
+      "structure": {
+        "bodies": [
+          3,
+          2,
+          5,
+          2,
+          2,
+          5,
+          6,
+          5,
+          10
+        ]
+      },
+      "variant": {
+        "structure": {
+          "bodies": [
+            3,
+            2,
+            5,
+            2,
+            2,
+            5,
+            6,
+            5,
+            10
+          ]
+        },
+        "clockwise": [
+          false,
+          false,
+          false,
+          false,
+          false,
+          false,
+          false,
+          false
+        ]
+      },
+      "structure_key": "3-2-5-2-2-5-6-5-10",
+      "variant_key": "3-2-5-2-2-5-6-5-10|00000000",
+      "niche_key": "L9-I4-TJJSJ-R0-F28y",
+      "accepted_index": 31,
+      "proposal_attempt": 43,
+      "strategy": "random",
+      "rationale": "grammar-aware random baseline",
+      "l0": {
+        "evaluation_found": true,
+        "objective": 96543804.54599214,
+        "estimated_score": 187.6740702168311,
+        "fixed_mass_score": 152078.5459918332,
+        "constraint": 0.009654399222006236,
+        "launch_v_infinity_km_s": 2.598256802421034,
+        "powered_delta_v_km_s": 140.3183381463771,
+        "endpoint_repair_delta_v_km_s": 165.0519995172542,
+        "minimum_periapsis_margin_km": 1156.6191206597314,
+        "flight_days": 10358.35388139947,
+        "branches": [
+          {
+            "revolutions": 4,
+            "path": "left"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          }
+        ],
+        "epochs_mjd2000": [
+          3774.5662948426807,
+          5101.726818055877,
+          5301.726820039047,
+          7662.766782741079,
+          7676.766784283265,
+          7876.846625702816,
+          8456.890772056367,
+          12656.890772056367,
+          14132.92017624215
+        ],
+        "optimizer_decision": [
+          3774.5662948426807,
+          10358.353881399473,
+          0.1102929919512125,
+          -20.20071294253438,
+          0.6084457173200806,
+          -20.452208231149665,
+          -9.597611998904524,
+          -1.4349518754155866,
+          1.3899434997989522
+        ],
+        "physical_decision": {
+          "launch_mjd2000": 3774.5662948426807,
+          "leg_days": [
+            1327.160523213196,
+            200.0000019831703,
+            2361.039962702032,
+            14.000001542186876,
+            200.07984141955023,
+            580.0441463535515,
+            4200.0,
+            1476.0294041857835
+          ]
+        },
+        "requested_evaluations": 3520000,
+        "actual_evaluations": 2205019,
+        "resolved_workers": 32,
+        "worker_seconds": 5811.79460096,
+        "wall_seconds": 181.61858128,
+        "failures": {
+          "LambertUnavailable": 4,
+          "PropagationFailure": 63
+        },
+        "failure_examples": [
+          {
+            "code": "LambertUnavailable",
+            "leg": null,
+            "value": null,
+            "message": "pykep evaluation failed: floating-point overflow in LambertProblem::time_of_flight"
+          },
+          {
+            "code": "PropagationFailure",
+            "leg": null,
+            "value": null,
+            "message": "invalid decision x[8]=10957.500000000002"
+          }
+        ]
+      },
+      "l1": null,
+      "l2": null,
+      "surrogate_gap": null,
+      "cache_key": "a78590eef1b532e8022d77f59e151085fa247ae661620a07d61b259164d74002",
+      "created_unix_ms": 1785437686314
+    },
+    {
+      "structure": {
+        "bodies": [
+          3,
+          5,
+          5,
+          10
+        ]
+      },
+      "variant": {
+        "structure": {
+          "bodies": [
+            3,
+            5,
+            5,
+            10
+          ]
+        },
+        "clockwise": [
+          false,
+          false,
+          false
+        ]
+      },
+      "structure_key": "3-5-5-10",
+      "variant_key": "3-5-5-10|000",
+      "niche_key": "L4-I1-TJJ-R0-F14y",
+      "accepted_index": 32,
+      "proposal_attempt": 44,
+      "strategy": "random",
+      "rationale": "grammar-aware random baseline",
+      "l0": {
+        "evaluation_found": true,
+        "objective": 383870449013.54834,
+        "estimated_score": 352534.7061101185,
+        "fixed_mass_score": 1179592.3935583215,
+        "constraint": 38.38708015482545,
+        "launch_v_infinity_km_s": 8.69573080070668,
+        "powered_delta_v_km_s": 24.35622324529664,
+        "endpoint_repair_delta_v_km_s": 24.36633316041102,
+        "minimum_periapsis_margin_km": 1068866991113.4574,
+        "flight_days": 5294.58651638704,
+        "branches": [
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          }
+        ],
+        "epochs_mjd2000": [
+          10587.800048564564,
+          11686.601355504055,
+          14964.705629492655,
+          15882.3865649516
+        ],
+        "optimizer_decision": [
+          10587.800048564564,
+          5294.58651638704,
+          0.3750899559326797,
+          1.5730701889309189
+        ],
+        "physical_decision": {
+          "launch_mjd2000": 10587.800048564564,
+          "leg_days": [
+            1098.801306939493,
+            3278.1042739886,
+            917.6809354589464
+          ]
+        },
+        "requested_evaluations": 3520000,
+        "actual_evaluations": 1588732,
+        "resolved_workers": 32,
+        "worker_seconds": 1284.367346496,
+        "wall_seconds": 40.136479578,
+        "failures": {},
+        "failure_examples": []
+      },
+      "l1": null,
+      "l2": null,
+      "surrogate_gap": null,
+      "cache_key": "27900839238932e80f04c72c735818328b17cea0adff90ea2a854efe7d739dd0",
+      "created_unix_ms": 1785437726478
+    },
+    {
+      "structure": {
+        "bodies": [
+          3,
+          3,
+          6,
+          5,
+          3,
+          10
+        ]
+      },
+      "variant": {
+        "structure": {
+          "bodies": [
+            3,
+            3,
+            6,
+            5,
+            3,
+            10
+          ]
+        },
+        "clockwise": [
+          false,
+          false,
+          false,
+          false,
+          false
+        ]
+      },
+      "structure_key": "3-3-6-5-3-10",
+      "variant_key": "3-3-6-5-3-10|00000",
+      "niche_key": "L6-I3-TSJ-R0-F15y",
+      "accepted_index": 33,
+      "proposal_attempt": 46,
+      "strategy": "random",
+      "rationale": "grammar-aware random baseline",
+      "l0": {
+        "evaluation_found": true,
+        "objective": -541415.561444513,
+        "estimated_score": 541415.6288112624,
+        "fixed_mass_score": 886690.9920352763,
+        "constraint": 6.7366749426212935e-12,
+        "launch_v_infinity_km_s": 0.0000144414021084888,
+        "powered_delta_v_km_s": 13.006213716567435,
+        "endpoint_repair_delta_v_km_s": 13.045772618086255,
+        "minimum_periapsis_margin_km": -0.017332819359580753,
+        "flight_days": 5801.888744012192,
+        "branches": [
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 1,
+            "path": "right"
+          }
+        ],
+        "epochs_mjd2000": [
+          8511.533252623,
+          8528.499816069394,
+          10231.756880005478,
+          12539.470076224718,
+          13413.325984968887,
+          14313.421996635192
+        ],
+        "optimizer_decision": [
+          8511.533252623,
+          5801.888744012193,
+          -5.3096854677438605,
+          0.7755321820216569,
+          1.207661978184015,
+          0.11592664095270552
+        ],
+        "physical_decision": {
+          "launch_mjd2000": 8511.533252623,
+          "leg_days": [
+            16.966563446394105,
+            1703.2570639360836,
+            2307.71319621924,
+            873.8559087441704,
+            900.0960116663038
+          ]
+        },
+        "requested_evaluations": 3520000,
+        "actual_evaluations": 1657926,
+        "resolved_workers": 32,
+        "worker_seconds": 2570.832802368,
+        "wall_seconds": 80.338525074,
+        "failures": {
+          "LambertUnavailable": 90,
+          "PropagationFailure": 36
+        },
+        "failure_examples": [
+          {
+            "code": "LambertUnavailable",
+            "leg": null,
+            "value": null,
+            "message": "pykep evaluation failed: floating-point overflow in LambertProblem::time_of_flight"
+          },
+          {
+            "code": "PropagationFailure",
+            "leg": null,
+            "value": null,
+            "message": "invalid decision x[5]=10957.500000000002"
+          }
+        ]
+      },
+      "l1": null,
+      "l2": null,
+      "surrogate_gap": null,
+      "cache_key": "2c0b282f4cf5f22083874e0ae53c3d977f22fd2b9bf2f2a972ad6a458c48c574",
+      "created_unix_ms": 1785437806849
+    },
+    {
+      "structure": {
+        "bodies": [
+          3,
+          3,
+          2,
+          3,
+          5,
+          3,
+          2,
+          2,
+          10
+        ]
+      },
+      "variant": {
+        "structure": {
+          "bodies": [
+            3,
+            3,
+            2,
+            3,
+            5,
+            3,
+            2,
+            2,
+            10
+          ]
+        },
+        "clockwise": [
+          false,
+          false,
+          false,
+          false,
+          false,
+          false,
+          true,
+          false
+        ]
+      },
+      "structure_key": "3-3-2-3-5-3-2-2-10",
+      "variant_key": "3-3-2-3-5-3-2-2-10|00000010",
+      "niche_key": "L9-I7-TJ-R2-F29y",
+      "accepted_index": 34,
+      "proposal_attempt": 47,
+      "strategy": "random",
+      "rationale": "grammar-aware random baseline",
+      "l0": {
+        "evaluation_found": true,
+        "objective": -84480.3752416242,
+        "estimated_score": 84480.37739610327,
+        "fixed_mass_score": 607423.5963065642,
+        "constraint": 2.1544790632435026e-13,
+        "launch_v_infinity_km_s": 0.0019022316659307952,
+        "powered_delta_v_km_s": 47.93011097393881,
+        "endpoint_repair_delta_v_km_s": 49.31561393905084,
+        "minimum_periapsis_margin_km": -0.0029479034255928127,
+        "flight_days": 10957.482567736512,
+        "branches": [
+          {
+            "revolutions": 2,
+            "path": "left"
+          },
+          {
+            "revolutions": 5,
+            "path": "right"
+          },
+          {
+            "revolutions": 1,
+            "path": "left"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          }
+        ],
+        "epochs_mjd2000": [
+          3775.578876050733,
+          4819.258584722139,
+          6819.258584722139,
+          8529.62168985037,
+          9290.183133281378,
+          11313.566229508737,
+          13200.957262352107,
+          13233.061443787245,
+          14733.061443787245
+        ],
+        "optimizer_decision": [
+          3775.578876050733,
+          10957.482567736512,
+          -6.857833646045178,
+          -6.19781155969255,
+          -6.358594828013428,
+          -7.46589785741571,
+          -6.286387817815941,
+          -6.259331262259563,
+          -10.89869378634821
+        ],
+        "physical_decision": {
+          "launch_mjd2000": 3775.578876050733,
+          "leg_days": [
+            1043.6797086714066,
+            2000.0,
+            1710.363105128231,
+            760.561443431008,
+            2023.3830962273585,
+            1887.3910328433717,
+            32.10418143513495,
+            1500.0
+          ]
+        },
+        "requested_evaluations": 3520000,
+        "actual_evaluations": 2001520,
+        "resolved_workers": 32,
+        "worker_seconds": 2385.05966384,
+        "wall_seconds": 74.533114495,
+        "failures": {
+          "LambertUnavailable": 656,
+          "PropagationFailure": 2457
+        },
+        "failure_examples": [
+          {
+            "code": "LambertUnavailable",
+            "leg": null,
+            "value": null,
+            "message": "pykep evaluation failed: floating-point overflow in LambertProblem::time_of_flight"
+          },
+          {
+            "code": "PropagationFailure",
+            "leg": null,
+            "value": null,
+            "message": "invalid decision x[8]=10957.500000000004"
+          }
+        ]
+      },
+      "l1": null,
+      "l2": null,
+      "surrogate_gap": null,
+      "cache_key": "d6a14d1a581ba3cb046db8ea74bc74e8299446946a6f3c886c4602df3e77a63b",
+      "created_unix_ms": 1785437881409
+    },
+    {
+      "structure": {
+        "bodies": [
+          3,
+          3,
+          2,
+          5,
+          6,
+          10
+        ]
+      },
+      "variant": {
+        "structure": {
+          "bodies": [
+            3,
+            3,
+            2,
+            5,
+            6,
+            10
+          ]
+        },
+        "clockwise": [
+          true,
+          true,
+          true,
+          false,
+          false
+        ]
+      },
+      "structure_key": "3-3-2-5-6-10",
+      "variant_key": "3-3-2-5-6-10|11100",
+      "niche_key": "L6-I3-TJS-R1-F20y",
+      "accepted_index": 35,
+      "proposal_attempt": 48,
+      "strategy": "random",
+      "rationale": "grammar-aware random baseline",
+      "l0": {
+        "evaluation_found": true,
+        "objective": 7722955126910.714,
+        "estimated_score": -1907.844850215327,
+        "fixed_mass_score": -519633.89552872186,
+        "constraint": 772.2955125002869,
+        "launch_v_infinity_km_s": 30.290205333899333,
+        "powered_delta_v_km_s": 101.86516301907793,
+        "endpoint_repair_delta_v_km_s": 110.62968838676798,
+        "minimum_periapsis_margin_km": 1745.61628208593,
+        "flight_days": 7454.692535660701,
+        "branches": [
+          {
+            "revolutions": 5,
+            "path": "left"
+          },
+          {
+            "revolutions": 4,
+            "path": "right"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          }
+        ],
+        "epochs_mjd2000": [
+          6020.593510889557,
+          6751.1029799592725,
+          8751.102979959272,
+          8952.082648204436,
+          13152.082648204436,
+          13475.286046550258
+        ],
+        "optimizer_decision": [
+          6020.593510889557,
+          7454.692535660701,
+          3.4300927145413365,
+          7.533926986723655,
+          -3.164840038341324,
+          7.797468312245754
+        ],
+        "physical_decision": {
+          "launch_mjd2000": 6020.593510889557,
+          "leg_days": [
+            730.5094690697149,
+            2000.0,
+            200.9796682451641,
+            4200.0,
+            323.2033983458217
+          ]
+        },
+        "requested_evaluations": 3520000,
+        "actual_evaluations": 1616940,
+        "resolved_workers": 32,
+        "worker_seconds": 2537.788410464,
+        "wall_seconds": 79.305887827,
+        "failures": {
+          "LambertUnavailable": 8993
+        },
+        "failure_examples": [
+          {
+            "code": "LambertUnavailable",
+            "leg": null,
+            "value": null,
+            "message": "pykep evaluation failed: LambertProblem::householder did not converge after 15 iterations"
+          }
+        ]
+      },
+      "l1": null,
+      "l2": null,
+      "surrogate_gap": null,
+      "cache_key": "50bca9403ab2525da5907016ec94334e3c20d53d10e97bd2578a3e8bd4568a9d",
+      "created_unix_ms": 1785437960743
+    },
+    {
+      "structure": {
+        "bodies": [
+          3,
+          3,
+          5,
+          3,
+          3,
+          6,
+          3,
+          3,
+          5,
+          2,
+          6,
+          3,
+          3,
+          10
+        ]
+      },
+      "variant": {
+        "structure": {
+          "bodies": [
+            3,
+            3,
+            5,
+            3,
+            3,
+            6,
+            3,
+            3,
+            5,
+            2,
+            6,
+            3,
+            3,
+            10
+          ]
+        },
+        "clockwise": [
+          false,
+          false,
+          false,
+          false,
+          false,
+          false,
+          true,
+          true,
+          false,
+          false,
+          false,
+          false,
+          false
+        ]
+      },
+      "structure_key": "3-3-5-3-3-6-3-3-5-2-6-3-3-10",
+      "variant_key": "3-3-5-3-3-6-3-3-5-2-6-3-3-10|0000001100000",
+      "niche_key": "L14-I9-TJSJS-R2-F29y",
+      "accepted_index": 36,
+      "proposal_attempt": 49,
+      "strategy": "random",
+      "rationale": "grammar-aware random baseline",
+      "l0": {
+        "evaluation_found": true,
+        "objective": 8573549415.890167,
+        "estimated_score": 2.9063066771908868,
+        "fixed_mass_score": 272604.48043072416,
+        "constraint": 0.8573549418796473,
+        "launch_v_infinity_km_s": 0.00007681243541608976,
+        "powered_delta_v_km_s": 202.4815965205513,
+        "endpoint_repair_delta_v_km_s": 281.6397377676301,
+        "minimum_periapsis_margin_km": -6182.380871298661,
+        "flight_days": 10622.853443960874,
+        "branches": [
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          }
+        ],
+        "epochs_mjd2000": [
+          8778.088022232092,
+          8799.944585060917,
+          11299.944585060915,
+          11499.944585061134,
+          11513.945722616902,
+          12140.512514380822,
+          13751.68692380031,
+          15199.934150668763,
+          16487.423366107574,
+          16727.927842920915,
+          17686.24012009214,
+          19072.070484077987,
+          19086.17773838902,
+          19400.94146619297
+        ],
+        "optimizer_decision": [
+          8778.088022232092,
+          10622.853443960876,
+          -0.630824136861128,
+          5.650879449569239,
+          -24.942855743220807,
+          -9.471046729789006,
+          2.730866439300114,
+          4.4071724056461035,
+          4.576222061446263,
+          4.299453497548334,
+          1.0092391580771158,
+          3.632745093823317,
+          4.2013109466347,
+          -4.924725874425654
+        ],
+        "physical_decision": {
+          "launch_mjd2000": 8778.088022232092,
+          "leg_days": [
+            21.85656282882532,
+            2500.0,
+            200.00000000021709,
+            14.001137555768302,
+            626.5667917639198,
+            1611.1744094194885,
+            1448.247226868456,
+            1287.489215438808,
+            240.50447681334128,
+            958.3122771712248,
+            1385.830363985844,
+            14.107254311029973,
+            314.76372780395184
+          ]
+        },
+        "requested_evaluations": 3520000,
+        "actual_evaluations": 2432701,
+        "resolved_workers": 32,
+        "worker_seconds": 9461.659992032,
+        "wall_seconds": 295.676874751,
+        "failures": {
+          "LambertUnavailable": 2200,
+          "PropagationFailure": 1161
+        },
+        "failure_examples": [
+          {
+            "code": "LambertUnavailable",
+            "leg": null,
+            "value": null,
+            "message": "pykep evaluation failed: floating-point overflow in LambertProblem::time_of_flight"
+          },
+          {
+            "code": "PropagationFailure",
+            "leg": null,
+            "value": null,
+            "message": "invalid decision x[13]=10957.500000000002"
+          }
+        ]
+      },
+      "l1": null,
+      "l2": null,
+      "surrogate_gap": null,
+      "cache_key": "4c889450c4d3f94e0bef6ebe12297cb4961447796996043e9c0d97d408112fb8",
+      "created_unix_ms": 1785438256447
+    },
+    {
+      "structure": {
+        "bodies": [
+          3,
+          3,
+          3,
+          3,
+          2,
+          3,
+          10
+        ]
+      },
+      "variant": {
+        "structure": {
+          "bodies": [
+            3,
+            3,
+            3,
+            3,
+            2,
+            3,
+            10
+          ]
+        },
+        "clockwise": [
+          false,
+          false,
+          false,
+          false,
+          false,
+          false
+        ]
+      },
+      "structure_key": "3-3-3-3-2-3-10",
+      "variant_key": "3-3-3-3-2-3-10|000000",
+      "niche_key": "L7-I6-Tnone-R0-F8y",
+      "accepted_index": 37,
+      "proposal_attempt": 50,
+      "strategy": "random",
+      "rationale": "grammar-aware random baseline",
+      "l0": {
+        "evaluation_found": true,
+        "objective": -257885.79931224664,
+        "estimated_score": 257885.79931224664,
+        "fixed_mass_score": 317001.5206885874,
+        "constraint": 0.0,
+        "launch_v_infinity_km_s": 0.000034257979925652356,
+        "powered_delta_v_km_s": 3.612283037990456,
+        "endpoint_repair_delta_v_km_s": 6.01147285032242,
+        "minimum_periapsis_margin_km": 2.768938429653645e-7,
+        "flight_days": 3081.7968973897714,
+        "branches": [
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 4,
+            "path": "left"
+          },
+          {
+            "revolutions": 1,
+            "path": "left"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          }
+        ],
+        "epochs_mjd2000": [
+          6730.758471132563,
+          6744.758471142782,
+          6758.765424625678,
+          6813.241480391395,
+          8100.44751619731,
+          9512.55440375518,
+          9812.555368522337
+        ],
+        "optimizer_decision": [
+          6730.758471132563,
+          3081.7968973897714,
+          -11.455389980349285,
+          1.9751111669646384,
+          10.64433435938757,
+          14.092917211828077,
+          14.186498153124884
+        ],
+        "physical_decision": {
+          "launch_mjd2000": 6730.758471132563,
+          "leg_days": [
+            14.000000010219036,
+            14.006953482896058,
+            54.47605576571775,
+            1287.206035805914,
+            1412.1068875578692,
+            300.0009647671551
+          ]
+        },
+        "requested_evaluations": 3520000,
+        "actual_evaluations": 1689057,
+        "resolved_workers": 32,
+        "worker_seconds": 1563.287190688,
+        "wall_seconds": 48.852724709,
+        "failures": {
+          "LambertUnavailable": 2276,
+          "PropagationFailure": 2
+        },
+        "failure_examples": [
+          {
+            "code": "LambertUnavailable",
+            "leg": null,
+            "value": null,
+            "message": "pykep evaluation failed: LambertProblem::householder did not converge after 15 iterations"
+          },
+          {
+            "code": "PropagationFailure",
+            "leg": null,
+            "value": null,
+            "message": "invalid decision x[6]=10957.500000000002"
+          }
+        ]
+      },
+      "l1": null,
+      "l2": null,
+      "surrogate_gap": null,
+      "cache_key": "20c8ba5a389f76e8d636a90ed9b2af0e3344a595d5f644a6b1e956d05b20c452",
+      "created_unix_ms": 1785438305326
+    },
+    {
+      "structure": {
+        "bodies": [
+          3,
+          2,
+          6,
+          10
+        ]
+      },
+      "variant": {
+        "structure": {
+          "bodies": [
+            3,
+            2,
+            6,
+            10
+          ]
+        },
+        "clockwise": [
+          false,
+          false,
+          false
+        ]
+      },
+      "structure_key": "3-2-6-10",
+      "variant_key": "3-2-6-10|000",
+      "niche_key": "L4-I2-TS-R0-F16y",
+      "accepted_index": 38,
+      "proposal_attempt": 52,
+      "strategy": "random",
+      "rationale": "grammar-aware random baseline",
+      "l0": {
+        "evaluation_found": true,
+        "objective": -123763.30685914872,
+        "estimated_score": 123763.38166512144,
+        "fixed_mass_score": 331159.0486588594,
+        "constraint": 7.480597271162909e-12,
+        "launch_v_infinity_km_s": 2.499985834508057,
+        "powered_delta_v_km_s": 18.12812134419834,
+        "endpoint_repair_delta_v_km_s": 25.081423561998943,
+        "minimum_periapsis_margin_km": -0.017370417223901313,
+        "flight_days": 5847.845791917338,
+        "branches": [
+          {
+            "revolutions": 4,
+            "path": "left"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          }
+        ],
+        "epochs_mjd2000": [
+          10740.77370833484,
+          12069.144264014662,
+          15088.619500252178,
+          16588.619500252178
+        ],
+        "optimizer_decision": [
+          10740.77370833484,
+          5847.845791917338,
+          -26.40572411653652,
+          -25.716107996487796
+        ],
+        "physical_decision": {
+          "launch_mjd2000": 10740.77370833484,
+          "leg_days": [
+            1328.3705556798216,
+            3019.475236237516,
+            1500.0
+          ]
+        },
+        "requested_evaluations": 3520000,
+        "actual_evaluations": 1737840,
+        "resolved_workers": 32,
+        "worker_seconds": 1933.517935136,
+        "wall_seconds": 60.422435473,
+        "failures": {},
+        "failure_examples": []
+      },
+      "l1": null,
+      "l2": null,
+      "surrogate_gap": null,
+      "cache_key": "f3d15cc0730fd05a506cc8e92dba1fc0f6d1929cd9d997c6f2bf67ce7a0c3836",
+      "created_unix_ms": 1785438365781
+    },
+    {
+      "structure": {
+        "bodies": [
+          3,
+          3,
+          6,
+          3,
+          6,
+          5,
+          5,
+          2,
+          10
+        ]
+      },
+      "variant": {
+        "structure": {
+          "bodies": [
+            3,
+            3,
+            6,
+            3,
+            6,
+            5,
+            5,
+            2,
+            10
+          ]
+        },
+        "clockwise": [
+          false,
+          false,
+          false,
+          false,
+          true,
+          false,
+          false,
+          false
+        ]
+      },
+      "structure_key": "3-3-6-3-6-5-5-2-10",
+      "variant_key": "3-3-6-3-6-5-5-2-10|00001000",
+      "niche_key": "L9-I4-TSSJJ-R2-F20y",
+      "accepted_index": 39,
+      "proposal_attempt": 53,
+      "strategy": "random",
+      "rationale": "grammar-aware random baseline",
+      "l0": {
+        "evaluation_found": true,
+        "objective": 5814182841.452242,
+        "estimated_score": 155.68666861686893,
+        "fixed_mass_score": 97049.10083295044,
+        "constraint": 0.581418299713891,
+        "launch_v_infinity_km_s": 0.00005610938042665665,
+        "powered_delta_v_km_s": 126.29202592044132,
+        "endpoint_repair_delta_v_km_s": 158.71908573748445,
+        "minimum_periapsis_margin_km": -5092.027765621273,
+        "flight_days": 7326.532921365668,
+        "branches": [
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          }
+        ],
+        "epochs_mjd2000": [
+          4512.823159644511,
+          4527.333151858574,
+          6716.644585568976,
+          7116.644585585491,
+          8113.161654766726,
+          10730.526302498623,
+          11030.526302498623,
+          11539.34761184193,
+          11839.35608101018
+        ],
+        "optimizer_decision": [
+          4512.823159644511,
+          7326.532921365668,
+          4.097963154656123,
+          12.260909125504554,
+          -13.147726692299427,
+          11.162430831268583,
+          12.519508865884266,
+          -26.25951749493688,
+          10.50408579729105
+        ],
+        "physical_decision": {
+          "launch_mjd2000": 4512.823159644511,
+          "leg_days": [
+            14.5099922140625,
+            2189.311433710403,
+            400.00000001651415,
+            996.5170691812356,
+            2617.364647731896,
+            300.00000000000006,
+            508.8213093433058,
+            300.0084691682507
+          ]
+        },
+        "requested_evaluations": 3520000,
+        "actual_evaluations": 1824998,
+        "resolved_workers": 32,
+        "worker_seconds": 5407.063912448,
+        "wall_seconds": 168.970747264,
+        "failures": {
+          "LambertUnavailable": 214,
+          "PropagationFailure": 536
+        },
+        "failure_examples": [
+          {
+            "code": "LambertUnavailable",
+            "leg": null,
+            "value": null,
+            "message": "pykep evaluation failed: floating-point overflow in LambertProblem::time_of_flight"
+          },
+          {
+            "code": "PropagationFailure",
+            "leg": null,
+            "value": null,
+            "message": "invalid decision x[8]=10957.500000000004"
+          }
+        ]
+      },
+      "l1": null,
+      "l2": null,
+      "surrogate_gap": null,
+      "cache_key": "3d178ba3bbf32176e0b437f89c52b57544a601786ada847276c0cd4bfa040304",
+      "created_unix_ms": 1785438534780
+    }
+  ]
+}

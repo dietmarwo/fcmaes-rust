@@ -62,7 +62,8 @@ optimizer backend.
 | `fcmaes-gtop` | Internal native GTOP objective library shared by the examples and Python package |
 | `examples` (`fcmaes-examples`) | Native GTOP problems, application objectives, benchmarks, and executable examples |
 | `fcmaes-py` | Optional PyO3 extension for embedding the Rust implementation in a Python package |
-| `tutorials/*` | Standalone application workspaces using NeXosim, Rapier, ReBop, Brahe, RustPower, SmartCore, pykep-core astrodynamics, sindr AC analysis, thevenin transient analysis, native geometric optics, native phased-array analysis, native atmospheric dispersion, a custom educational ventilation backend, and native neural policy search |
+| `foundations/` | Standalone standard suites, Lennard-Jones scaling, audited quality indicators, and seven compact lessons |
+| `tutorials/*` | Twenty-two standalone application workspaces spanning simulation, astrodynamics, circuits, mechanics, energy, routing, hydraulics, ML, and other domains; see the [tutorial index](tutorials/README.md) |
 
 Only two registry artifacts are published: `fcmaes-core` on crates.io and the
 `fcmaes-rust` binding distribution on PyPI. `fcmaes-gtop` is an internal
@@ -74,12 +75,25 @@ The application tutorials are intentionally not root workspace members. Each
 keeps its application-specific dependencies, artifacts, and lockfile isolated;
 run its Cargo commands from that tutorial directory.
 
-Twelve application tutorials retain multi-objective optimization.
+New users can start with the
+[Foundations guide](foundations/README.md): eight classic scalar functions,
+ZDT1–4/ZDT6, DTLZ1–7, a Lennard-Jones scaling study, a seven-step lesson ladder, and exact/typed-sampled
+multi-objective quality indicators. `foundations/` is a user guide rather than
+an application tutorial, so the simulator-in-the-loop tutorial count remains
+twenty-two.
+
+The [optimizer-boundary guide](docs/optimizer-boundary.md) records why the
+core stops at bounded gradient-free global methods and evidence utilities.
+Corrected paired experiments keep Nelder–Mead, Bayesian optimization, and
+gradient solvers behind the retry adapter boundary instead of adding them as
+core algorithms or dependencies.
+
+Seventeen application tutorials retain multi-objective optimization.
 MAP-Elites campaigns are
 implemented and recorded for NeXosim, Rapier, ReBop, Brahe, atmospheric source
-localization, room ventilation, RustPower, sindr circuit design, and Rapier
-quadruped locomotion, with a secondary register-code archive in the phased-array
-tutorial; the
+localization, room ventilation, RustPower, sindr circuit design, Rapier
+quadruped locomotion, phased-array register codebooks, and energy-hub sizing;
+the
 SmartCore hyperparameter tutorial records a QD campaign that its own
 pre-registered criteria reject.
 That tutorial demonstrates an often missed part of optimizer benchmarking:
@@ -96,41 +110,55 @@ were decision variables and reached only 4% coverage, while emergent behavior
 coordinates measured from the solved scenarios reached 68% mean coverage over
 three seeds at the identical 100k-evaluation budget. Constrained MODE stays the
 primary formulation there, because the near-unique asset architecture the
-original pilot found survives the descriptor fix. The ninth tutorial is an
+original pilot found survives the descriptor fix. The neural-controller
+tutorial is an
 intentional scalar showcase for PGPE and CR-FM-NES on a 118-parameter neural
 controller, with fixed and rotating common scenarios, disjoint validation, and
-a frozen 1,024-scenario final test. The tenth tutorial uses coordinated
+a frozen 1,024-scenario final test. The fixed-sequence GTOC1 tutorial uses coordinated
 DE–CMA-ES and incumbent-seeded parallel retry on the real 87-variable GTOC1
 EVEEEJSJA low-thrust trajectory, and documents why its VSOP2013 score above
-the historical reference is not an official DE405 re-scoring. The eleventh
+the historical reference is not an official DE405 re-scoring. The sindr
 tutorial combines interpolated AC-response features, equal-budget retry,
-constrained MODE, and an E12 MAP-Elites catalogue. The twelfth tutorial uses
-thevenin transient simulation for a constrained
+constrained MODE, and an E12 MAP-Elites catalogue. The transient gate-driver
+tutorial uses thevenin transient simulation for a constrained
 rise-time/overshoot gate-driver front, admitted only after timestep refinement
-and a 49-design ngspice comparison passed. The thirteenth implements and
+and a 49-design ngspice comparison passed. The optical-lens tutorial implements and
 validates a dependency-free sequential geometric ray tracer before comparing
-scalar retries and a constrained Cooke-triplet front. The fourteenth makes
+scalar retries and a constrained Cooke-triplet front. The quadruped-gait tutorial makes
 quality diversity the primary result for an eight-motor Rapier quadruped and
 reports five-seed held-out terrain replay rather than treating training
-coverage as robustness. The fifteenth tutorial publishes a work-in-progress
-split-brain GTOC1 planet-order loop with a provider-independent agent boundary,
-matched random and evolutionary protocols, and an explicit list of live
-experiments still required before comparative claims. The
-sixteenth implements validated direct/FFT array-factor kernels, hardware
+coverage as robustness. The GTOC1 route-search tutorial publishes a work-in-progress
+split-brain GTOC1 planet-order loop with a provider-independent agent boundary.
+Its completed seed-42 L0 audit finds 15 L0-admissible random routes, 24 from
+the repaired evolutionary arm, and none from MiniMax-M3. A predeclared
+random-arm L1 follow-up promotes the leader and two admissible controls; none
+passes closure. Independent seeds, matched three-arm L1 promotion, and a
+validated L2 finalist remain required before comparative or trajectory claims.
+The phased-array tutorial implements validated direct/FFT array-factor kernels, hardware
 quantization, robust scalar retry, constrained MODE, and a descriptor-gated
-register codebook. Its QD result is explicitly primary-secondary because peak
-direction/HPBW coverage missed the pre-registered threshold. The
-seventeenth wraps a proven-optimal pure-Rust dispatch LP inside robust
+register codebook. After correction to the archive's actual 12×10 grid, its
+peak-direction/HPBW pilot passes with 40.83% coverage and 95.07% holdout niche
+retention, so QD is accepted. The energy-hub tutorial wraps a proven-optimal pure-Rust dispatch LP inside robust
 energy-hub sizing, measures the convex baseline before adding tiers and
 switches, and reports candidate calls, LP solves, and simplex pivots
-separately. Its descriptor gate rejects MAP-Elites before a chronological
-hydrogen arm performs an independent 8,760-hour replay. The eighteenth uses
+separately. Its corrected native-grid descriptor pilot is accepted, followed
+by a 64-elite MAP-Elites portfolio; a chronological hydrogen arm then performs
+an independent 8,760-hour replay. The field-service tutorial uses
 assignment and priority random keys for robust field-service routing, proves
 the decoder's exact-once and plateau bounds, and records a failed descriptor
-gate rather than publishing an unstable dispatch repertoire. The nineteenth
-uses stepwise `epanet-rs` hydraulics for quantized pump scheduling, distinguishes
+gate rather than publishing an unstable dispatch repertoire. The water-network
+tutorial uses stepwise `epanet-rs` hydraulics for quantized pump scheduling, distinguishes
 DDA optimization from PDA validation, and rejects its MAP-Elites repertoire
-after unseen-demand same-niche retention misses the declared gate. The
+after unseen-demand same-niche retention misses the declared gate. The truss
+tutorial implements exact-k truss topology and catalogue-section sizing over a validated
+native FEM, reports typed mechanism and conditioning failures, and rejects its
+removal-survival QD descriptors after the frozen coverage gate fails. The
+network-coverage tutorial combines a linear-storage edge/group coverage kernel
+with separate cardinality and weighted vertex-cover certificates, exact tiny
+ILPs, a 4,000-variable throughput gate, and integer-aware DE/MODE. Its
+marginal-greedy prefix frontier dominates every finite MODE-generated point,
+so the tutorial recommends the specialist method for the frozen submodular
+formulation rather than manufacturing a generic-search win. The
 [tutorial index](tutorials/README.md) includes commands, figures, validation
 results and the common result schema. Compact canonical result directories are
 version-controlled with generated SVGs so raw-evidence links and deterministic
@@ -229,6 +257,7 @@ python examples/python/test_cma.py
 - [NeXosim production-line tutorial](tutorials/nexosim-production-line/README.md)
 - [Rapier trebuchet tutorial](tutorials/rapier-trebuchet/README.md)
 - [ReBop stochastic-oscillator tutorial](tutorials/rebop-oscillator/README.md)
+- [Split-brain oscillator topology-search tutorial](tutorials/oscillator-topology-search/README.md)
 - [Brahe satellite-constellation tutorial](tutorials/brahe-constellation/README.md)
 - [RustPower voltage-control tutorial](tutorials/rustpower-voltage-control/README.md)
 - [Atmospheric source-localization tutorial](tutorials/dispersion-source-localization/README.md)
@@ -245,6 +274,8 @@ python examples/python/test_cma.py
 - [Bilevel energy-hub sizing tutorial](tutorials/energy-hub-bilevel/README.md)
 - [Random-key field-service routing tutorial](tutorials/field-service-routing/README.md)
 - [Water-network pump-scheduling tutorial](tutorials/water-network-scheduling/README.md)
+- [Truss topology and catalogue-section sizing tutorial](tutorials/truss-sizing/README.md)
+- [Weighted network-coverage tutorial](tutorials/network-coverage/README.md)
 - [Optional PyO3 bindings](docs/python-bindings.md)
 - [Release history](CHANGELOG.md)
 - [Publishing checklist](RELEASING.md)
@@ -260,6 +291,7 @@ cargo doc --workspace --no-deps --open
 Build the rendered guide locally with mdBook 0.5.4:
 
 ```bash
+python scripts/check_doc_consistency.py
 python scripts/build_book.py
 python scripts/check_book_links.py
 ```

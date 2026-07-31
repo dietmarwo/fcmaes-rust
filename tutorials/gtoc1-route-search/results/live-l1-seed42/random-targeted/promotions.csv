@@ -1,0 +1,4 @@
+variant_key,l0_estimated_score,l1_score,surrogate_gap,l1_threshold_passed,failure,requested_evaluations,actual_evaluations,worker_seconds
+3-2-2-3-2-2-2-2-3-2-3-10|00000000100,7005.5327646904025,,,false,PropagationFailure,448800000,0,97.319596224
+3-3-3-2-6-10|00011,212995.6576052805,,,false,PropagationFailure,204000000,0,3737.986773184
+3-3-3-6-10|0000,658588.7005913744,289300.2879062708,369288.4126851036,false,RefinementNotClosed,163200000,56052992,1393.095932568

@@ -106,16 +106,20 @@ cargo install mdbook --no-default-features --features search \
 Then assemble and build the site from the canonical repository content:
 
 ```bash
+python scripts/check_doc_consistency.py
 python scripts/build_book.py
 python scripts/check_book_links.py
 ```
 
-This writes staged input to `target/mdbook-src` and rendered HTML to
-`target/book`. The `book/SUMMARY.md` file controls navigation. Do not edit the
-staged files; change the corresponding README, guide, tutorial, or benchmark
-instead. The rendered-link check validates pages, assets, and anchors after
-mdBook has applied its output-path rules. The documentation workflow checks
-the build on pull requests and deploys `main` through GitHub Pages. Repository
+The consistency check derives tutorial and package counts from the tree and
+verifies the repeated inventories, registry-pin count, MODE count, release-tag
+command, and workspace lockfile versions. The build writes staged input to
+`target/mdbook-src` and rendered HTML to `target/book`. The `book/SUMMARY.md`
+file controls navigation. Do not edit the staged files; change the
+corresponding README, guide, tutorial, or benchmark instead. The rendered-link
+check validates pages, assets, and anchors after mdBook has applied its
+output-path rules. The documentation workflow checks the build on pull
+requests and deploys `main` through GitHub Pages. Repository
 administrators need to select
 **GitHub Actions** once under **Settings → Pages → Build and deployment →
 Source**.

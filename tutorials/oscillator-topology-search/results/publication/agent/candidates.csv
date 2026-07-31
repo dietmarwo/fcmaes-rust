@@ -1,0 +1,1 @@
+proposal,topology,active_edges,dimension,motifs,exact_reference,training_score,validation_score,generalization_gap,period_train,period_validation,amplitude_train,amplitude_validation,participation_validation,failure_fraction_validation,requested_evaluations,actual_evaluations,wall_seconds

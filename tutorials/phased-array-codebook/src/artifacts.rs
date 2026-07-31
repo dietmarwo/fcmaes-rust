@@ -18,7 +18,7 @@ use crate::pilot::{
     DESCRIPTOR_LOWER, DESCRIPTOR_UPPER, PUBLICATION_CAPACITY, PilotRow, PilotSummary,
 };
 use crate::qd::QdResult;
-use crate::so::{BeamContext, ELEMENTS, SoArmResult, analytic_seed};
+use crate::so::{BeamContext, ELEMENTS, SoArmResult, analytic_seed, evaluate_beam};
 
 /// Metadata common to schema-v1 manifests.
 pub struct RunMetadata<'a> {
@@ -63,8 +63,57 @@ pub fn write_so(
     fs::create_dir_all(metadata.directory)?;
     let mut convergence = String::from("optimizer,evaluations,elapsed_seconds,best_objective\n");
     let mut best = String::from(
-        "optimizer,feasible,objective,peak_deg,hpbw_deg,nominal_psll_db,worst_psll_db,taper_efficiency,constraint_pointing,constraint_psll,constraint_kernel,phase_codes,attenuator_codes\n",
+        "optimizer,feasible,objective,peak_deg,hpbw_deg,nominal_psll_db,worst_psll_db,taper_efficiency,constraint_pointing,constraint_psll,constraint_kernel,delta_vs_seed,phase_codes,attenuator_codes\n",
     );
+    // Every retry starts from `analytic_seed` at a taper drawn from
+    // [0.35, 0.95]. The published baseline is the best seed over a
+    // deterministic sweep of that same range, so it upper-bounds what seeding
+    // alone provides. An arm whose `delta_vs_seed` is zero did not improve on
+    // its own starting point.
+    let seed_context = BeamContext::stage_a(metadata.points);
+    let seed = (0..13)
+        .filter_map(|index| {
+            let taper = 0.35 + 0.6 * f64::from(index) / 12.0;
+            evaluate_beam(
+                &analytic_seed(requested_deg, taper),
+                &seed_context,
+                requested_deg,
+            )
+        })
+        .min_by(|left, right| left.objective.total_cmp(&right.objective))
+        .ok_or("no analytic seed could be replayed for the baseline row")?;
+    writeln!(
+        best,
+        "seed,{},{:.17},{:.17},{:.17},{:.17},{:.17},{:.17},{:.17},{:.17},{:.17},{:.17},\"{}\",\"{}\"",
+        usize::from(
+            seed.constraint_pointing <= 0.0
+                && seed.constraint_psll <= 0.0
+                && seed.constraint_kernel <= 0.0
+        ),
+        seed.objective,
+        seed.robust.nominal.peak_theta_deg,
+        seed.robust.nominal.hpbw_deg,
+        seed.robust.nominal.psll_db,
+        seed.robust.worst_psll_db,
+        seed.robust.nominal.taper_efficiency,
+        seed.constraint_pointing,
+        seed.constraint_psll,
+        seed.constraint_kernel,
+        0.0,
+        seed.excitation
+            .phase_codes
+            .iter()
+            .map(ToString::to_string)
+            .collect::<Vec<_>>()
+            .join(";"),
+        seed.excitation
+            .attenuator_codes
+            .iter()
+            .map(ToString::to_string)
+            .collect::<Vec<_>>()
+            .join(";")
+    )?;
+    let seed_objective = seed.objective;
     for arm in arms {
         if arm.improvements.is_empty() {
             writeln!(
@@ -92,7 +141,7 @@ pub fn write_so(
             && arm.best.constraint_kernel <= 0.0;
         writeln!(
             best,
-            "{},{},{},{},{},{},{},{},{},{},{},\"{}\",\"{}\"",
+            "{},{},{},{},{},{},{},{},{},{},{},{:.17},\"{}\",\"{}\"",
             arm.optimizer.name(),
             usize::from(feasible),
             arm.best.objective,
@@ -104,6 +153,7 @@ pub fn write_so(
             arm.best.constraint_pointing,
             arm.best.constraint_psll,
             arm.best.constraint_kernel,
+            arm.best.objective - seed_objective,
             join_codes(&arm.best.excitation.phase_codes),
             join_codes(&arm.best.excitation.attenuator_codes)
         )?;

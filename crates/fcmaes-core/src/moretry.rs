@@ -406,6 +406,7 @@ where
             let sdev = vec![0.05 + 0.05 * worker_rng.uniform01(); bounds.dim()];
             let context = RetryContext {
                 run_id,
+                run_seed: crate::retry::retry_run_seed(config.retry.seed, run_id),
                 seed: worker_rng.next_u64(),
                 bounds: bounds.clone(),
                 guess: None,

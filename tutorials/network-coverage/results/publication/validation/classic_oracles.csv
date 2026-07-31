@@ -1,0 +1,9 @@
+instance,objective,method,selected,cover_value,lower_bound,ratio,verified,exact_status,exact_optimum
+tiny,cardinality,maximal-matching-endpoints,9,9,7,1.28571428571428581,1,optimal,9.00000000000000000
+tiny,weighted,primal-dual,10,3.20517582396146183,2.50634798754730515,1.27882314821655108,1,optimal,3.08359966077375969
+small,cardinality,maximal-matching-endpoints,43,43,30,1.43333333333333335,1,not-attempted,
+small,weighted,primal-dual,44,8.34517451084128759,6.33099959060300499,1.31814485081121924,1,not-attempted,
+reference-1k,cardinality,maximal-matching-endpoints,789,789,500,1.57800000000000007,1,not-attempted,
+reference-1k,weighted,primal-dual,818,156.26144972800315713,102.72565310448015907,1.52115313950910425,1,not-attempted,
+reference-4k,cardinality,maximal-matching-endpoints,3174,3174,2000,1.58699999999999997,1,not-attempted,
+reference-4k,weighted,primal-dual,3297,464.18713618272425947,300.28173829598182465,1.54583871405854234,1,not-attempted,

@@ -1,0 +1,65 @@
+{
+  "atoms": 38,
+  "bounds": [
+    [
+      0.25,
+      0.75
+    ],
+    [
+      0.0,
+      12.0
+    ]
+  ],
+  "candidates_per_arm": 64,
+  "coarse_grid": [
+    6,
+    6
+  ],
+  "coarse_holdout_niche_retention": 1.0,
+  "coverage_by_seed_arm": [
+    0.027777777777777776,
+    0.034722222222222224,
+    0.027777777777777776
+  ],
+  "cutoff_sensitivity_retention": 0.8489583333333334,
+  "descriptor_pair": [
+    "radius_gyration_normalized",
+    "mean_coordination"
+  ],
+  "fallback_pair": [
+    "radius_gyration_normalized",
+    "overlap_pairs"
+  ],
+  "fine_grid": [
+    12,
+    12
+  ],
+  "gates": {
+    "absolute_rank_correlation_max": 0.9,
+    "clipping_fraction_max": 0.05,
+    "coarse_holdout_niche_retention_min": 0.75,
+    "cutoff_sensitivity_retention_min": 0.6,
+    "holdout_niche_retention_min": 0.6,
+    "mean_coverage_min": 0.08
+  },
+  "generator": "compact-separated-initializer",
+  "holdout": "independent N(0, 0.01) coordinate perturbation",
+  "holdout_niche_retention": 0.9270833333333334,
+  "lower_upper_clipping_fraction": 0.0,
+  "mean_coverage": 0.03009259259259259,
+  "rank_correlation": -0.6455197193644459,
+  "reachable": [
+    [
+      0.5785916079550344,
+      0.6664266156743301
+    ],
+    [
+      2.0526315789473686,
+      3.5789473684210527
+    ]
+  ],
+  "schema_version": 1,
+  "seed_arms": 3,
+  "status": "completed",
+  "verdict": "rejected"
+}

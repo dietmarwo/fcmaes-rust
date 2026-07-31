@@ -1,8 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1000" height="520" viewBox="0 0 1000 520" role="img" aria-labelledby="title desc">
-  <title id="title">Closest protocol route structure</title>
-  <desc id="desc">Body-order diagram of the lowest-violation L0 route in the mock protocol fixture.</desc>
+  <title id="title">Leading L0 route structure</title>
+  <desc id="desc">Body-order diagram of the feasibility-first leading L0 route across the supplied campaign arms.</desc>
   <rect width="1000" height="520" fill="#f7f9fc"/>
-  <text x="500" y="45" text-anchor="middle" font-family="system-ui" font-size="24" font-weight="700" fill="#132238">Lowest-violation mock-arm route structure</text>
+  <text x="500" y="45" text-anchor="middle" font-family="system-ui" font-size="24" font-weight="700" fill="#132238">Feasibility-first leading L0 route structure</text>
   <text x="500" y="83" text-anchor="middle" font-family="system-ui" font-size="15" fill="#a14d00">structure diagram, not a propagated trajectory</text>
   <circle cx="80.00" cy="270" r="24" fill="#e7f2ff" stroke="#2774ae" stroke-width="2"/>
   <text x="80.00" y="277" text-anchor="middle" font-family="system-ui" font-size="15" font-weight="700" fill="#132238">E</text>
@@ -30,6 +30,6 @@
   <path d="M837.00 270 H898.00" stroke="#40556f" stroke-width="3"/>
   <circle cx="920.00" cy="270" r="24" fill="#e7f2ff" stroke="#2774ae" stroke-width="2"/>
   <text x="920.00" y="277" text-anchor="middle" font-family="system-ui" font-size="15" font-weight="700" fill="#132238">A</text>
-  <text x="500" y="355" text-anchor="middle" font-family="system-ui" font-size="17" fill="#26384f">variant 3-2-3-3-3-5-6-5-10|00000011</text>
+  <text x="500" y="355" text-anchor="middle" font-family="system-ui" font-size="17" fill="#26384f">agent arm · variant 3-2-3-3-3-5-6-5-10|00000011</text>
   <text x="500" y="390" text-anchor="middle" font-family="system-ui" font-size="17" fill="#26384f">L0 constraint violation 0.552495; diagnostic score 111.366</text>
 </svg>

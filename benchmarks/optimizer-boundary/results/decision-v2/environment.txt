@@ -1,0 +1,22 @@
+Recorded: 2026-07-31
+Host: Linux 6.8.0-136-generic x86_64 GNU/Linux
+CPU: AMD Ryzen 9 9950X 16-Core Processor
+Topology: 1 socket, 16 physical cores, 2 threads per core, 32 logical CPUs
+Rust: rustc 1.97.1 (8bab26f4f 2026-07-14)
+Rust host: x86_64-unknown-linux-gnu
+Rust LLVM: 22.1.6
+
+Commands:
+  cargo run --release --locked -- --mode refiner --seeds 20 --output results/decision-v2
+  cargo run --release --locked -- --mode bo --seeds 20 --output results/decision-v2
+  python3 analyze.py --results results/decision-v2 --output results/decision-v2/comparison.md
+
+Artifact checksums (SHA-256):
+  7f1fdf18a73ad8a98e3e60811e231753c4bff0e98d7f11995538fd84658b08f2  refiner-raw.tsv
+  4eb8ebfb80b15ec4da5c6c38ce12e2674fc74a6f9bd18c99de54a87215105ae9  bo-trace.tsv
+
+Notes:
+  - The timing-sensitive Bayesian run was executed without a concurrent
+    CPU-intensive campaign.
+  - Wall times are machine-specific; scores and paired comparisons are the
+    primary evidence.

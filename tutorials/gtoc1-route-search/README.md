@@ -6,12 +6,12 @@
 > solution. Only the optional L2 Taylor transcription plus independent DOP853
 > repropagation may support model-qualified feasibility language.
 
-> **Work in progress.** The implementation, offline protocol evidence, and
-> experiment contract are published before the matched live campaign is
-> complete. This makes the machinery inspectable and lets readers run their
-> own providers and baselines, but it is not an agent-performance claim or a
-> new GTOC1 solution. A result directory is final only when its `run.json`
-> records `status: "completed"`.
+> **Work in progress.** The first live seed-42 L0 audit is now complete for
+> MiniMax-M3, random, and the repaired evolutionary control. A predeclared
+> random-arm follow-up promoted the L0 leader plus median and lowest admissible
+> controls to L1; none passed the closure threshold. No arm ran L2. One seed
+> is neither an agent-performance claim nor a new GTOC1 solution. A result
+> directory is final only when its `run.json` records its terminal status.
 
 The tutorial source is MIT-licensed. Its direct MPL-2.0 `pykep-core`
 dependency and the narrow `cargo deny` exception are documented in the
@@ -103,7 +103,7 @@ failed inner optimization means only that no complete chain was found within
 the declared budget.
 
 Raw estimated score must never be sorted independently of the constraint. A
-diagnostic example from the unfinished MiniMax campaign makes this concrete:
+diagnostic example from the completed seed-42 MiniMax arm makes this concrete:
 `ESJVEJA` (`3-6-5-2-3-5-10|010101`) has an estimated L0 score of about
 160,627, but its Earth–Saturn departure requires `10.327 km/s` hyperbolic
 excess. The competition permits `2.5 km/s`, so the squared launch violation
@@ -162,8 +162,15 @@ variant cap never consume an inner budget.
 The baselines are:
 
 - random grammar-valid variable-length routes and independent direction bits;
-- a route `(1+1)` strategy using substitution, insertion, deletion, adjacent
-  swap, outer-tail resampling, and one direction-bit flip.
+- an evolutionary strategy with independent grammar-random bootstrap seeds,
+  random immigrants during exploration, and feasibility-first elite
+  exploitation using substitution, insertion, deletion, adjacent swap,
+  outer-tail resampling, and one direction-bit flip.
+
+The random immigrants are protocol-critical, not a tuning embellishment.
+One-edit children cannot clear the exploration distance-three gate, and a
+mutation-only elite pool eventually saturates the exact-variant and
+per-structure caps.
 
 After every eight accepted L0 candidates, the default policy promotes one
 leader and one diverse niche elite—or, with probability 0.2, a lower-ranked
@@ -325,19 +332,23 @@ Allocated worker-seconds are `wall × resolved workers`, not measured CPU time.
 Parallel coordinated retry is not claimed bit-reproducible; fixed-seed
 single-worker regression and replay are.
 
-## Work-in-progress evidence
+## Evidence status
 
-The committed fixture is only a transport, persistence, and protocol smoke
+The original committed fixture is only a transport, persistence, and protocol smoke
 check. Its deterministic mock emits the historical JPL, JPL2, and Jena routes
 as its first three proposals; it is not a language model and its table is not
 an agent-versus-baseline capability comparison. The table deliberately omits
 route scores and instead reports constraint status, accounting, and coverage.
 
-The first live experiment uses MiniMax-M3, root seed 42, a 20,000-token
-response cap, 40 accepted candidates, and a 120-attempt ceiling. It was
-deliberately launched at L0 only. Its incremental local archive is operational
-evidence, not checked-in publication evidence: no `run.json` exists until the
-campaign terminates and writes its final manifest/CSV bundle.
+The reviewed live evidence uses MiniMax-M3, root seed 42, a 20,000-token
+response cap, a 40-candidate target, and a 120-attempt ceiling. It was
+deliberately launched at L0 only. The compact final bundles—without optimizer
+cache files—are checked in under
+[`results/live-l0-seed42/`](https://github.com/dietmarwo/fcmaes-rust/tree/main/tutorials/gtoc1-route-search/results/live-l0-seed42).
+They retain the final manifests, archives, proposal/provider logs, convergence,
+and empty promotion tables. The original one-route failure and the
+bootstrap-only 39-route rerun remain beside the completed repaired arm instead
+of being overwritten.
 
 The exact offline evidence is retained in
 [`results/protocol-evidence/comparison.md`](results/protocol-evidence/comparison.md);
@@ -356,34 +367,108 @@ supply the gap distribution. The
 mock fixture's lowest-violation body order and explicitly is not a propagated
 trajectory.
 
-No L2 success is required for an honest L1 comparison. If L2 is not run, the
-abstract and conclusion must continue to say “Lambert and impulsive
-Sims–Flanagan route-proposal comparison,” never “new feasible GTOC1
-solution.”
+### Live seed-42 L0 audit
+
+The three configurations requested the same root seed, 40 accepted candidates,
+120 proposal attempts, L0 inner budget, variant cap, worker allocation, and
+promotion policy. All three final arms completed:
+
+| Arm | Status | Accepted | L0 admissible | Lowest violation | Niches |
+|---|---|---:|---:|---:|---:|
+| MiniMax-M3 | completed | 40 / 40 | 0 | 0.342919 | 36 |
+| random | completed | 40 / 40 | 15 | 0 | 39 |
+| evolutionary | completed | 40 / 40 | 24 | 0 | 39 |
+
+“L0 admissible” means only `constraint_l0 <= 1e-8`: launch excess and
+periapsis checks in the Lambert endpoint-repair screen pass. It does not mean
+that the thrust history, mass continuity, solar-distance constraint, or final
+intercept is realizable.
+
+![Random and the repaired evolutionary arm reach zero L0 violation while MiniMax does not in this seed](images/live-l0-seed42/convergence.svg)
+
+The random arm's leading L0-admissible route is
+`3-3-3-6-10|0000` (`EEESA`). Its diagnostic estimated score is
+`658,588.701`, with `2.500 km/s` launch v-infinity, `6.688 km/s` powered flyby
+change, `9.024 km/s` endpoint repair, and 6,995.3 flight days. Those numbers
+make it a useful L1 challenge candidate, not a GTOC1 solution or score. No
+MiniMax proposal passed the L0 constraint threshold in this seed.
+
+![The feasibility-first leading seed-42 structure comes from random search and remains only a Lambert-screen candidate](images/live-l0-seed42/best-route-structure.svg)
+
+The numerical work was of the same order across the completed arms: MiniMax
+used 74,005,732 actual L0 evaluations and 45.333 allocated worker-hours;
+random used 75,743,371 and 44.190 worker-hours; evolutionary used 81,822,640
+and 51.776 worker-hours. Wall time was 8.697 h, 1.381 h, and 1.618 h,
+respectively. The agent made 94 provider calls, consumed 944,365 reported
+tokens, encountered 10 transport failures, and had 43 diversity rejections.
+These are accounting observations, not cost-normalized model-quality claims.
+
+![Random and evolutionary each occupy 39 structural niches while MiniMax occupies 36](images/live-l0-seed42/niche-coverage.svg)
+
+The evolutionary repair was incremental and its failed attempts remain useful
+protocol evidence:
+
+1. the original arm stopped at 1/40 because every post-seed one-edit bootstrap
+   mutation failed the distance-three gate;
+2. keeping independent samples through the six-route bootstrap fixed that
+   deadlock, but the mutation-only exploration/exploitation pool saturated at
+   39/40 after 120 attempts; and
+3. using independent random immigrants for exploration while retaining elite
+   mutations for exploitation completed 40/40 in 58 attempts and occupied 39
+   niches.
+
+The generated, feasibility-first table is
+[`results/live-l0-seed42/comparison.md`](results/live-l0-seed42/comparison.md).
+Both tables and both figure sets are regenerated and checked independently.
+
+### Predeclared random-arm L1 follow-up
+
+Before inspecting any L1 output, the follow-up selected the leader, median,
+and lowest route among the 15 L0-admissible random candidates: ranks 1, 8, and
+15. Exact variant keys and order are stored in `run.json`. This design tests
+the top surrogate prediction and two controls without spending the controls
+on routes already disqualified by L0 launch/periapsis constraints.
+
+![The random-arm L0 leader and two lower-ranked admissible controls were promoted; none passed L1](images/live-l1-seed42/targeted-promotions.svg)
+
+No promotion passed:
+
+- rank 1 `3-3-3-6-10|0000` returned a finite L1 score of `289,300.288`,
+  versus `658,588.701` at L0, but maximum normalized mismatch remained
+  `1.07444` rather than at most `1e-7`; maximum throttle was also `1.02870`;
+- rank 8 `3-3-3-2-6-10|00011` encountered a typed elliptic Kepler propagation
+  convergence failure; and
+- rank 15 `3-2-2-3-2-2-2-2-3-2-3-10|00000000100` encountered a typed
+  hyperbolic Kepler propagation convergence failure.
+
+The complete generated table is
+[`results/live-l1-seed42/comparison.md`](results/live-l1-seed42/comparison.md).
+The recorded L1 work is 56,052,992 observed objective calls and 5,228.4
+worker-seconds. A zero actual-evaluation count on a propagation failure means
+the exception escaped before the retry layer returned its counter; it does not
+mean that no compute was consumed. The requested caps and measured
+worker-seconds remain recorded.
+
+No L2 success is required for an honest L1 comparison. Here there is no
+threshold-passing L1 candidate to promote. The abstract and conclusion must
+continue to say “Lambert and impulsive Sims–Flanagan route-proposal
+comparison,” never “new feasible GTOC1 solution.”
 
 ### What is still missing?
 
 The following items deliberately remain open:
 
-- finish and freeze the first live L0 agent arm, including its generated
-  `run.json`, CSV summaries, append-only archive, provider log, and failure
-  counts;
-- run grammar-aware random and route `(1+1)` baselines with the same root seed,
-  accepted-candidate target, numerical budget, worker allocation, and L0
-  fidelity;
-- repeat the matched three-arm experiment for a predeclared set of independent
-  root seeds rather than drawing a conclusion from seed 42;
-- start separate, matched L1 campaigns if the comparison is to discuss
-  Sims–Flanagan promotion or L0–L1 surrogate error;
+- repeat all three arms for a predeclared set of independent root seeds rather
+  than drawing a capability conclusion from seed 42;
+- run matched, predeclared L1 promotions for agent and evolutionary archives
+  before comparing strategy-specific surrogate error;
+- diagnose the two control-route Kepler convergence failures and improve L1
+  accounting so an interrupted retry reports its exact objective count;
 - report feasibility-first results: positive L0 constraint values are
   violations, so their estimated and fixed-mass scores are diagnostic values,
   not valid mission scores;
-- quantify proposal rejections, provider failures, token consumption,
-  requested and actual objective evaluations, worker-seconds, and wall time;
-- regenerate the comparison table and all result-driven SVGs from the frozen
-  directories, then verify them from a clean clone; and
-- use L2 Taylor transcription plus independent DOP853 repropagation before
-  making any continuous-thrust-feasibility statement.
+- obtain a threshold-passing L1 candidate before considering L2 Taylor
+  transcription and independent DOP853 repropagation.
 
 Publishing this list is intentional. It separates a useful, reproducible
 workbench from conclusions that the evidence does not yet support.
@@ -433,6 +518,23 @@ root such as `results/my-live-l1-seed42`. L1 is substantially more expensive:
 the checked-in refinement schedule reaches 25 impulses and 1.2 million
 evaluations in its last continuation stage. L2 remains an explicitly selected
 follow-on for a few finalists, not part of the broad route-order campaign.
+
+To reproduce the targeted random-arm follow-up without altering the completed
+L0 bundle, copy only its append-only archive and promote the exact predeclared
+variants:
+
+```bash
+mkdir -p results/my-live-l1-seed42/random-targeted
+cp results/live-l0-seed42/random/archive.jsonl \
+  results/my-live-l1-seed42/random-targeted/archive.jsonl
+
+cargo run --release --locked -- \
+  --mode campaign --config config.live.example.json \
+  --strategy random --max-level l1 --seed 42 \
+  --promote-variants \
+  '3-3-3-6-10|0000,3-3-3-2-6-10|00011,3-2-2-3-2-2-2-2-3-2-3-10|00000000100' \
+  --results results/my-live-l1-seed42/random-targeted
+```
 
 Parallel coordinated retry is not bit-reproducible even with a fixed root
 seed. Preserve the raw archives and report distributions across seeds. Use

@@ -15,8 +15,10 @@ API examples, and primary algorithm references are in the
 | Document | Read this for |
 |---|---|
 | [AI problem-solving context](../ai-context.md) | Selecting algorithms, parameters, budgets, encodings, and validation for a new user problem |
+| [Foundations](../foundations/README.md) | Seven compact lessons, standard academic suites, Lennard-Jones scaling with a required gradient reference, analytic fronts, and audited indicators |
 | [Getting started](getting-started.md) | Building, testing, generating rustdoc, and running a first optimizer |
 | [Choosing an optimizer](choosing-an-optimizer.md) | Deciding whether fcmaes-rust, a structured solver, gradients, a surrogate, or another search representation fits the problem |
+| [The optimizer boundary](optimizer-boundary.md) | Why local, Bayesian, gradient, and structured solvers remain external, with corrected DE/NM/BO experiments |
 | [Architecture](architecture.md) | Workspace layout, execution paths, concurrency, and scope |
 | [Optimizers](optimizers.md) | Pure-Rust optimizer APIs, defaults, one-shot operation, and ask/tell operation |
 | [Retry](retry.md) | Basic, coordinated, and multi-objective retry |
@@ -24,7 +26,7 @@ API examples, and primary algorithm references are in the
 | [Examples](examples.md) | Every native binary, data input, GTOP problem, monitor, and benchmark |
 | [Combinatorial encodings](combinatorial-encodings.md) | Turning fixed real vectors into integers, categories, subsets, permutations, partitions, and repaired schedules |
 | [Buckingham–Pi](buckingham-pi.md) | Numerical dimensional analysis, holdout scoring, BiteOpt retry, and MODE |
-| [Application tutorials](../tutorials/README.md) | Nineteen native optimization applications, including simulation, astrodynamics, circuit analysis, policy search, ML hyperparameter tuning, embedded LPs, and custom-backend verification |
+| [Application tutorials](../tutorials/README.md) | Twenty-two native optimization applications, including simulation, astrodynamics, circuit analysis, structural topology, policy search, ML hyperparameter tuning, embedded LPs, and custom-backend verification |
 | [Development](development.md) | Formatting, linting, tests, coverage, rustdoc, and extension points |
 
 ## Implemented Rust surface
@@ -41,12 +43,16 @@ API examples, and primary algorithm references are in the
   damped control, F-8, and Lotka-Volterra.
 - Tested real-vector decoders for integers, categories, Booleans, random-key
   permutations, fixed-cardinality subsets, partitions, and ordered times.
-- Twelve standalone native application tutorials, including a PGPE/CR-FM-NES
+- Twenty-two standalone native application tutorials, including a PGPE/CR-FM-NES
   neural policy-search showcase, staged pykep-core GTOC1 optimization,
   validated thevenin transient gate-driver optimization,
   validation-aware SmartCore hyperparameter optimization, and robust
   room-ventilation optimization with a purpose-built D2Q9/D2Q5 backend,
   held-out releases, MODE, and MAP-Elites.
+- A standalone foundations workspace with classic, ZDT, DTLZ, and
+  Lennard-Jones suites,
+  explicit CEC/WFG/BBOB evidence gates, and exact or typed Monte Carlo quality
+  indicators.
 - An optional PyO3 extension distributed through the `fcmaes_rust` Python
   facade.
 

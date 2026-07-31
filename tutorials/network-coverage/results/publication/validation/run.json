@@ -1,0 +1,17 @@
+{
+  "actual_evaluations": 0,
+  "artifacts": {
+    "classic_oracles": "classic_oracles.csv",
+    "group_weight_sensitivity": "group_weight_sensitivity.csv",
+    "instances": "instances.csv"
+  },
+  "command": "cargo run --release --locked -- --mode all --preset publication --workers 0 --output results/publication",
+  "exact_scope": "tiny only; larger rows carry certified lower bounds, not exact labels",
+  "formulation": "validation",
+  "group_weight_exponent": 0.5,
+  "requested_evaluations": 0,
+  "schema_version": 1,
+  "seed": 42,
+  "tutorial": "network-coverage",
+  "workers": 0
+}

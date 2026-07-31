@@ -22,8 +22,8 @@ use crate::route_agent::{
     AgentClient, AgentConfig, AgentLogEntry, AgentPhase, AgentUsage, build_request,
 };
 use crate::route_archive::{
-    BranchChoice, L0Result, ProposalEvent, ProposalEventKind, RouteArchive, SearchResult, Strategy,
-    append_archive, append_proposal_event, load_archive, snapshot_archive,
+    BranchChoice, L0Result, ProposalEvent, ProposalEventKind, RefinementResult, RouteArchive,
+    SearchResult, Strategy, append_archive, append_proposal_event, load_archive, snapshot_archive,
 };
 use crate::route_grammar::{
     GrammarConfig, GrammarRng, clears_diversity, mutate_route, sample_route,
@@ -63,6 +63,13 @@ pub struct PromotionConfig {
     pub batch: usize,
     /// Probability of a deliberately lower-ranked control promotion.
     pub control_rate: f64,
+    /// Optional predeclared variant keys promoted in this exact order.
+    ///
+    /// A non-empty list replaces cadence-based selection. It is intended for
+    /// auditable follow-up experiments that promote a leader and controls
+    /// chosen from a completed L0 archive before any L1 result is observed.
+    #[serde(default)]
+    pub variants: Vec<String>,
 }
 
 impl Default for PromotionConfig {
@@ -71,6 +78,7 @@ impl Default for PromotionConfig {
             every: 8,
             batch: 2,
             control_rate: 0.2,
+            variants: Vec::new(),
         }
     }
 }
@@ -195,6 +203,18 @@ impl CampaignConfig {
         {
             return Err(RouteSearchError::Grammar(
                 "promotion cadence, batch, and control rate are invalid".to_owned(),
+            ));
+        }
+        let unique_promotions = self
+            .promotion
+            .variants
+            .iter()
+            .collect::<std::collections::BTreeSet<_>>();
+        if unique_promotions.len() != self.promotion.variants.len()
+            || self.promotion.variants.iter().any(String::is_empty)
+        {
+            return Err(RouteSearchError::Grammar(
+                "predeclared promotion variants must be non-empty and unique".to_owned(),
             ));
         }
         if self.maximum_level >= MaximumLevel::L1 {
@@ -418,7 +438,7 @@ pub fn run_campaign(config: &CampaignConfig) -> Result<CampaignOutcome, RouteSea
                     rationale: "grammar-aware random baseline".to_owned(),
                 })
             }
-            Strategy::Evolutionary => evolutionary_proposal(&archive, config, &mut rng),
+            Strategy::Evolutionary => evolutionary_proposal(phase, &archive, config, &mut rng),
             Strategy::Seed => Err(RouteSearchError::Grammar(
                 "seed is not a campaign strategy".to_owned(),
             )),
@@ -657,14 +677,23 @@ fn accumulate_usage(counters: &mut CampaignCounters, usage: &AgentUsage) {
 }
 
 fn evolutionary_proposal(
+    phase: AgentPhase,
     archive: &RouteArchive,
     config: &CampaignConfig,
     rng: &mut GrammarRng,
 ) -> Result<RouteProposal, RouteSearchError> {
-    if archive.is_empty() {
+    // The feedback-blind bootstrap is an initial population, not a (1+1)
+    // generation. A one-edit child cannot satisfy the default edit-distance-3
+    // bootstrap gate relative to its only parent, so keep sampling independent
+    // grammar-valid routes until the population is complete.
+    if archive.len() < config.bootstrap_candidates || phase == AgentPhase::Explore {
         return sample_route(&config.grammar, rng).map(|variant| RouteProposal {
             variant,
-            rationale: "evolutionary bootstrap sample".to_owned(),
+            rationale: if phase == AgentPhase::Bootstrap {
+                "evolutionary bootstrap sample".to_owned()
+            } else {
+                "evolutionary random immigrant".to_owned()
+            },
         });
     }
     let elites = archive.top(archive.len().min(8));
@@ -684,7 +713,11 @@ fn run_due_promotions(
     archive_path: &Path,
     snapshot_path: &Path,
 ) -> Result<(), RouteSearchError> {
-    let due = (archive.len() / config.promotion.every).saturating_mul(config.promotion.batch);
+    let due = if config.promotion.variants.is_empty() {
+        (archive.len() / config.promotion.every).saturating_mul(config.promotion.batch)
+    } else {
+        config.promotion.variants.len()
+    };
     while archive
         .results
         .iter()
@@ -693,15 +726,40 @@ fn run_due_promotions(
         < due
     {
         let Some(index) = select_promotion(archive, config, rng) else {
+            if !config.promotion.variants.is_empty() {
+                let completed = archive
+                    .results
+                    .iter()
+                    .filter(|result| result.l1.is_some())
+                    .count();
+                let variant = config
+                    .promotion
+                    .variants
+                    .get(completed)
+                    .map_or("<missing>", String::as_str);
+                return Err(RouteSearchError::Grammar(format!(
+                    "predeclared L1 variant {variant} is absent, unevaluated, or already promoted"
+                )));
+            }
             break;
         };
         let mut promoted = archive.results[index].clone();
-        let refinement = refine_route(
+        let refinement_started = Instant::now();
+        let refinement = match refine_route(
             &promoted,
             &config.derivation,
             &config.refinement,
             config.root_seed,
-        )?;
+        ) {
+            Ok(refinement) => refinement,
+            Err(error @ RouteSearchError::Gtoc1(_)) => failed_refinement(
+                &promoted,
+                &config.refinement,
+                &error,
+                refinement_started.elapsed().as_secs_f64(),
+            ),
+            Err(error) => return Err(error),
+        };
         counters.l1_promotions += 1;
         counters.l1_threshold_passed += usize::from(refinement.threshold_passed);
         counters.l1_requested_evaluations = counters
@@ -722,11 +780,60 @@ fn run_due_promotions(
     Ok(())
 }
 
+#[allow(clippy::cast_precision_loss)]
+fn failed_refinement(
+    result: &SearchResult,
+    config: &RefinementConfig,
+    error: &RouteSearchError,
+    wall_seconds: f64,
+) -> RefinementResult {
+    let final_stage = config
+        .stages
+        .last()
+        .expect("validated refinement has a final stage");
+    let legs = result.variant.structure.bodies.len().saturating_sub(1);
+    let workers = resolved_workers(config.workers, final_stage.retries);
+    RefinementResult {
+        threshold_passed: false,
+        final_mass_kg: None,
+        score: None,
+        maximum_normalized_mismatch: None,
+        maximum_throttle_norm: None,
+        powered_delta_v_km_s: None,
+        minimum_periapsis_margin_km: None,
+        minimum_solar_distance_au: None,
+        leg_fuel_kg: Vec::new(),
+        controls: Vec::new(),
+        segments: final_stage.segments,
+        requested_evaluations: config.requested_evaluations(legs),
+        actual_evaluations: 0,
+        resolved_workers: workers,
+        worker_seconds: wall_seconds * workers as f64,
+        wall_seconds,
+        outcome: Some(FailureObservation {
+            code: FailureCode::PropagationFailure,
+            leg: None,
+            value: None,
+            message: Some(error.to_string().chars().take(300).collect()),
+        }),
+    }
+}
+
 fn select_promotion(
     archive: &RouteArchive,
     config: &CampaignConfig,
     rng: &mut GrammarRng,
 ) -> Option<usize> {
+    let completed = archive
+        .results
+        .iter()
+        .filter(|result| result.l1.is_some())
+        .count();
+    if let Some(variant_key) = config.promotion.variants.get(completed) {
+        return archive.results.iter().position(|result| {
+            result.variant_key == *variant_key && result.l0.evaluation_found && result.l1.is_none()
+        });
+    }
     let candidates = archive
         .results
         .iter()
@@ -737,11 +844,6 @@ fn select_promotion(
     if candidates.is_empty() {
         return None;
     }
-    let completed = archive
-        .results
-        .iter()
-        .filter(|result| result.l1.is_some())
-        .count();
     let slot = completed % config.promotion.batch;
     if slot == 0 {
         return candidates.into_iter().max_by(|&left, &right| {
@@ -1409,6 +1511,7 @@ fn reconstruct_counters(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::route_archive::SearchResult;
     use crate::route_grammar::body_edit_distance;
     use crate::route_search::RouteVariant;
     use crate::sequences::JPL;
@@ -1438,6 +1541,176 @@ mod tests {
         assert_eq!(agent.maximum_level, MaximumLevel::L0);
         agent.validate().unwrap();
         random.validate().unwrap();
+    }
+
+    #[test]
+    fn evolutionary_bootstrap_keeps_sampling_after_the_first_seed() {
+        let config = CampaignConfig {
+            strategy: Strategy::Evolutionary,
+            bootstrap_candidates: 6,
+            ..CampaignConfig::default()
+        };
+        let variant = RouteVariant::from_sequence_case(JPL);
+        let route = RouteCase::derive(variant.clone(), config.derivation.clone()).unwrap();
+        let l0 = optimize_route(
+            &route,
+            &InnerBudget {
+                retries: 1,
+                initial_evaluations: 200,
+                maximum_evaluation_factor: 1.0,
+                workers: 1,
+            },
+            42,
+        )
+        .unwrap();
+        let archive = RouteArchive {
+            results: vec![
+                SearchResult::new(
+                    variant,
+                    0,
+                    1,
+                    Strategy::Evolutionary,
+                    None,
+                    l0,
+                    "bootstrap-regression".to_owned(),
+                    0,
+                )
+                .unwrap(),
+            ],
+        };
+        let mut rng = GrammarRng::new(42);
+        let proposal =
+            evolutionary_proposal(AgentPhase::Bootstrap, &archive, &config, &mut rng).unwrap();
+        assert_eq!(proposal.rationale, "evolutionary bootstrap sample");
+    }
+
+    #[test]
+    fn evolutionary_exploration_uses_random_immigrants() {
+        let mut config = CampaignConfig {
+            strategy: Strategy::Evolutionary,
+            bootstrap_candidates: 1,
+            ..CampaignConfig::default()
+        };
+        let variant = RouteVariant::from_sequence_case(JPL);
+        let route = RouteCase::derive(variant.clone(), config.derivation.clone()).unwrap();
+        let l0 = optimize_route(
+            &route,
+            &InnerBudget {
+                retries: 1,
+                initial_evaluations: 200,
+                maximum_evaluation_factor: 1.0,
+                workers: 1,
+            },
+            44,
+        )
+        .unwrap();
+        let archive = RouteArchive {
+            results: vec![
+                SearchResult::new(
+                    variant,
+                    0,
+                    1,
+                    Strategy::Evolutionary,
+                    None,
+                    l0,
+                    "exploration-regression".to_owned(),
+                    0,
+                )
+                .unwrap(),
+            ],
+        };
+        let mut rng = GrammarRng::new(42);
+        let explore =
+            evolutionary_proposal(AgentPhase::Explore, &archive, &config, &mut rng).unwrap();
+        assert_eq!(explore.rationale, "evolutionary random immigrant");
+
+        config.bootstrap_candidates = 0;
+        let exploit =
+            evolutionary_proposal(AgentPhase::Exploit, &archive, &config, &mut rng).unwrap();
+        assert!(exploit.rationale.starts_with("route (1+1)-ES mutation"));
+    }
+
+    #[test]
+    fn exact_promotion_order_is_selected_before_rank_policy() {
+        let mut config = CampaignConfig::default();
+        let variant = RouteVariant::from_sequence_case(JPL);
+        let route = RouteCase::derive(variant.clone(), config.derivation.clone()).unwrap();
+        let l0 = optimize_route(
+            &route,
+            &InnerBudget {
+                retries: 1,
+                initial_evaluations: 200,
+                maximum_evaluation_factor: 1.0,
+                workers: 1,
+            },
+            43,
+        )
+        .unwrap();
+        let key = variant.variant_key();
+        let archive = RouteArchive {
+            results: vec![
+                SearchResult::new(
+                    variant,
+                    0,
+                    1,
+                    Strategy::Random,
+                    None,
+                    l0,
+                    "promotion-selection".to_owned(),
+                    0,
+                )
+                .unwrap(),
+            ],
+        };
+        config.promotion.variants = vec![key];
+        let mut rng = GrammarRng::new(42);
+        assert_eq!(select_promotion(&archive, &config, &mut rng), Some(0));
+    }
+
+    #[test]
+    fn numerical_refinement_error_becomes_an_archived_failure() {
+        let config = RefinementConfig::default();
+        let result = SearchResult::new(
+            RouteVariant::from_sequence_case(JPL),
+            0,
+            1,
+            Strategy::Random,
+            None,
+            optimize_route(
+                &RouteCase::derive(
+                    RouteVariant::from_sequence_case(JPL),
+                    RouteDerivationConfig::default(),
+                )
+                .unwrap(),
+                &InnerBudget {
+                    retries: 1,
+                    initial_evaluations: 200,
+                    maximum_evaluation_factor: 1.0,
+                    workers: 1,
+                },
+                45,
+            )
+            .unwrap(),
+            "failed-refinement".to_owned(),
+            0,
+        )
+        .unwrap();
+        let failure = failed_refinement(
+            &result,
+            &config,
+            &RouteSearchError::Gtoc1(Gtoc1Error::Numerical("test refinement")),
+            2.0,
+        );
+        assert!(!failure.threshold_passed);
+        assert_eq!(failure.score, None);
+        assert_eq!(
+            failure.outcome.as_ref().unwrap().code,
+            FailureCode::PropagationFailure
+        );
+        assert_eq!(
+            failure.requested_evaluations,
+            config.requested_evaluations(JPL.bodies.len() - 1)
+        );
     }
 
     #[test]

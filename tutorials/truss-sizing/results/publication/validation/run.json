@@ -1,0 +1,50 @@
+{
+  "actual_evaluations": 0,
+  "artifacts": {
+    "condition_sensitivity": "condition_sensitivity.csv",
+    "oracle": "oracle.csv"
+  },
+  "baseline": {
+    "active_count": 40,
+    "carbon_kg_co2e_indicative": 7123.641534929275,
+    "compliance_j": 1005.9741394012524,
+    "constraints": [
+      -1.0,
+      -1.0,
+      -7.609576467218252,
+      -0.7932163196966262,
+      -0.9708799386039606,
+      -0.9380136006473859
+    ],
+    "depth_to_span": 0.3333333333333333,
+    "failed_removals": null,
+    "failure": null,
+    "feasible": true,
+    "mass_kg": 4190.377373487806,
+    "max_buckling_ratio": 0.02912006139603943,
+    "max_displacement_m": 0.003099319967630705,
+    "max_stress_ratio": 0.2067836803033738,
+    "objective": 4190.377373487806,
+    "rcond": 0.004069831859572241,
+    "redundancy_degradation": null,
+    "removal_survival": null
+  },
+  "command": "cargo run --release --locked -- --mode all --preset publication --workers 0 --output results/publication",
+  "descriptors": [],
+  "elapsed_seconds": 0.0,
+  "formulation": "validation",
+  "model_limitation": "Educational linear-elastic pin-jointed 2-D truss; not a code-compliant structural design.",
+  "objectives": [],
+  "oracle_work": {
+    "candidate_evaluations": 0,
+    "factorizations": 1,
+    "fem_solves": 1
+  },
+  "rcond_min": 1e-10,
+  "reference_dimension": 171,
+  "requested_evaluations": 0,
+  "schema_version": 1,
+  "seed": 42,
+  "tutorial": "truss-sizing",
+  "workers": 0
+}

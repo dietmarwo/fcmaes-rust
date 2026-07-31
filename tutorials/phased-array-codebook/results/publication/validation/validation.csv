@@ -2,7 +2,7 @@ metric,value,unit
 coarse_planar_directivity,23.19484962248053,dBi
 fine_planar_directivity,23.21230194414347,dBi
 steering_matrix_memory,66355200,bytes
-direct_linear,30.57725,us
-direct_planar,2.7372723999999997,ms
-fft_linear,2.81486,us
-fft_planar,11.6672,us
+direct_linear,32.052550000000004,us
+direct_planar,2.5776132,ms
+fft_linear,2.91705,us
+fft_planar,12.23125,us

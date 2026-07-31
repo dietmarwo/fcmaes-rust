@@ -1,0 +1,60 @@
+{
+  "schema_version": 1,
+  "tutorial": "oscillator-topology-search",
+  "formulation": "random",
+  "status": "complete",
+  "strategy": "random",
+  "preset": "publication",
+  "command": "cargo run --release --locked -- --mode all --preset publication --inner-retries 1 --workers 1 --output results/publication",
+  "seed": 42,
+  "protocol": {
+    "candidates_per_arm": 20,
+    "inner_retries": 1,
+    "workers": 1,
+    "inner_evaluations": 480,
+    "training_replications": 2,
+    "validation_replications": 5,
+    "bite_depth": 6
+  },
+  "resolved_workers": 1,
+  "proposal_attempts": 21,
+  "accepted_candidates": 20,
+  "duplicates_or_invalid": 1,
+  "transport_failures": 0,
+  "input_tokens": 0,
+  "output_tokens": 0,
+  "best_validation_score": 2.8168550922970024,
+  "best_topology": "212010220",
+  "exact_rediscoveries": {
+    "goodwin-like": 0,
+    "positive-cycle": 0,
+    "repressilator": 0,
+    "toggle-control": 0
+  },
+  "motif_classes": [
+    "goodwin-like",
+    "mixed-cycle",
+    "positive-cycle",
+    "repressilator",
+    "toggle-core"
+  ],
+  "message": null,
+  "artifacts": {
+    "archive": {
+      "kind": "jsonl",
+      "path": "candidates.jsonl"
+    },
+    "best_trace": {
+      "kind": "table",
+      "path": "best_trace.csv"
+    },
+    "candidates": {
+      "kind": "table",
+      "path": "candidates.csv"
+    },
+    "convergence": {
+      "kind": "table",
+      "path": "convergence.csv"
+    }
+  }
+}

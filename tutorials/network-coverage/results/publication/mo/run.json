@@ -1,0 +1,54 @@
+{
+  "actual_evaluations": 8192,
+  "artifacts": {
+    "budget_sensitivity": "budget_sensitivity.csv",
+    "convergence": "convergence.csv",
+    "greedy_front": "greedy_front.csv",
+    "greedy_prefixes": "greedy_prefixes.csv",
+    "pareto": "pareto.csv"
+  },
+  "budget_sensitivity": [
+    {
+      "actual_evaluations": 8192,
+      "campaign": "publication",
+      "elapsed_seconds": 3.106542297,
+      "mode_front_size": 64,
+      "mode_generated_not_dominated_by_greedy": 0,
+      "mode_generated_points": 62,
+      "mode_points_not_dominated_by_greedy": 2,
+      "mode_retained_initial_points": 2,
+      "requested_evaluations": 8192
+    },
+    {
+      "actual_evaluations": 200000,
+      "campaign": "high-budget",
+      "elapsed_seconds": 8.761703239,
+      "mode_front_size": 64,
+      "mode_generated_not_dominated_by_greedy": 0,
+      "mode_generated_points": 63,
+      "mode_points_not_dominated_by_greedy": 1,
+      "mode_retained_initial_points": 1,
+      "requested_evaluations": 200000
+    }
+  ],
+  "command": "cargo run --release --locked -- --mode all --preset publication --workers 0 --output results/publication",
+  "elapsed_seconds": 3.106542297,
+  "formulation": "mo",
+  "greedy_front_size": 3985,
+  "greedy_prefix_count": 4001,
+  "input": {
+    "dropped_self_loops": 0,
+    "external_edges": false
+  },
+  "instance": "reference-4k",
+  "mode_front_size": 64,
+  "objectives": [
+    "normalized_cost",
+    "one_minus_roi"
+  ],
+  "requested_evaluations": 8192,
+  "schema_version": 1,
+  "seed": 42,
+  "tutorial": "network-coverage",
+  "workers": 0
+}

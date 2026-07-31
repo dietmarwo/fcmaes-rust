@@ -51,6 +51,82 @@ jobs:
       - name: cargo doc
         run: cargo doc --workspace --no-deps
 
+  foundations:
+    name: Foundations suites and lessons
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: foundations
+      - name: cargo fmt
+        run: cargo fmt --manifest-path foundations/Cargo.toml --all -- --check
+      - name: cargo clippy
+        run: cargo clippy --manifest-path foundations/Cargo.toml --all-targets --all-features --locked -- -D warnings
+      - name: cargo test
+        run: cargo test --manifest-path foundations/Cargo.toml --all-targets --all-features --locked
+      - name: Foundations API documentation
+        run: >-
+          env RUSTDOCFLAGS="-D warnings"
+          cargo doc --manifest-path foundations/Cargo.toml
+          --all-features --no-deps --locked
+      - name: Check dependency licenses and sources
+        uses: EmbarkStudios/cargo-deny-action@v2
+        with:
+          manifest-path: foundations/Cargo.toml
+          command: check
+      - name: Run the smoke campaign
+        run: >-
+          cargo run --release --locked
+          --manifest-path foundations/Cargo.toml --
+          --campaign --preset smoke --workers 2 --seed 42
+          --output /tmp/fcmaes-foundations-smoke
+      - name: Run the Lennard-Jones smoke campaign
+        run: >-
+          cargo run --release --locked
+          --manifest-path foundations/Cargo.toml
+          --features gradient-reference --
+          --lj-campaign --preset smoke --workers 2 --seed 42
+          --output /tmp/fcmaes-foundations-lj-smoke
+
+  optimizer-boundary:
+    name: Optimizer-boundary evidence
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: benchmarks/optimizer-boundary
+      - name: cargo fmt
+        run: >-
+          cargo fmt --manifest-path benchmarks/optimizer-boundary/Cargo.toml
+          --all -- --check
+      - name: cargo clippy
+        run: >-
+          cargo clippy --release --locked --all-targets
+          --manifest-path benchmarks/optimizer-boundary/Cargo.toml -- -D warnings
+      - name: cargo test
+        run: >-
+          cargo test --release --locked
+          --manifest-path benchmarks/optimizer-boundary/Cargo.toml
+      - name: Re-render checked-in decision evidence
+        run: |
+          python benchmarks/optimizer-boundary/analyze.py \
+            --results benchmarks/optimizer-boundary/results/decision-v2 \
+            --output /tmp/optimizer-boundary-comparison.md
+          diff -u \
+            benchmarks/optimizer-boundary/results/decision-v2/comparison.md \
+            /tmp/optimizer-boundary-comparison.md
+
   simulator-tutorials:
     name: Tutorial · ${{ matrix.tutorial }}
     runs-on: ubuntu-latest
@@ -61,6 +137,7 @@ jobs:
           - nexosim-production-line
           - rapier-trebuchet
           - rebop-oscillator
+          - oscillator-topology-search
           - brahe-constellation
           - rustpower-voltage-control
           - dispersion-source-localization
@@ -77,6 +154,8 @@ jobs:
           - energy-hub-bilevel
           - field-service-routing
           - water-network-scheduling
+          - truss-sizing
+          - network-coverage
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -116,6 +195,24 @@ jobs:
           env RUSTDOCFLAGS="-D warnings -D missing_docs"
           cargo doc --manifest-path tutorials/phased-array-codebook/Cargo.toml
           --no-deps --document-private-items
+      - name: Check truss-sizing API documentation
+        if: matrix.tutorial == 'truss-sizing'
+        run: >-
+          env RUSTDOCFLAGS="-D warnings -D missing_docs"
+          cargo doc --manifest-path tutorials/truss-sizing/Cargo.toml
+          --no-deps
+      - name: Check network-coverage API documentation
+        if: matrix.tutorial == 'network-coverage'
+        run: >-
+          env RUSTDOCFLAGS="-D warnings -D missing_docs"
+          cargo doc --manifest-path tutorials/network-coverage/Cargo.toml
+          --no-deps
+      - name: Check oscillator topology-search API documentation
+        if: matrix.tutorial == 'oscillator-topology-search'
+        run: >-
+          env RUSTDOCFLAGS="-D warnings"
+          cargo doc --manifest-path tutorials/oscillator-topology-search/Cargo.toml
+          --no-deps
       - name: Run HPO protocol smoke test
         if: matrix.tutorial == 'ml-hyperparameter-tuning'
         run: >-
@@ -170,6 +267,29 @@ jobs:
           cargo run --release --locked
           --manifest-path tutorials/water-network-scheduling/Cargo.toml --
           --preset smoke --mode all --workers 2 --seed 42 --no-output
+      - name: Run truss-sizing protocol smoke test
+        if: matrix.tutorial == 'truss-sizing'
+        run: >-
+          cargo run --release --locked
+          --manifest-path tutorials/truss-sizing/Cargo.toml --
+          --preset smoke --mode all --workers 2 --seed 42 --no-output
+      - name: Run network-coverage protocol smoke test
+        if: matrix.tutorial == 'network-coverage'
+        run: >-
+          cargo run --release --locked
+          --manifest-path tutorials/network-coverage/Cargo.toml --
+          --preset smoke --mode all --workers 2 --seed 42 --no-output
+      - name: Run oscillator topology-search protocol smoke test
+        if: matrix.tutorial == 'oscillator-topology-search'
+        run: |
+          python3 -m unittest \
+            tutorials/oscillator-topology-search/agents/test_llm_agent.py
+          cargo run --release --locked \
+            --manifest-path tutorials/oscillator-topology-search/Cargo.toml -- \
+            --mode all --preset smoke --seed 42 \
+            --agent-command \
+            'python3 tutorials/oscillator-topology-search/agents/mock_agent.py' \
+            --output /tmp/oscillator-topology-search-ci
       - name: Run GTOC1 route-search protocol smoke test
         if: matrix.tutorial == 'gtoc1-route-search'
         run: >-
@@ -185,6 +305,12 @@ jobs:
           python3 -m unittest agents/test_llm_agent.py
           python3 compare_campaigns.py --check
           python3 plot_results.py --check
+          python3 compare_campaigns.py \
+            --results results/live-l0-seed42 --check
+          python3 plot_results.py \
+            --results results/live-l0-seed42 \
+            --output images/live-l0-seed42 --check
+          python3 summarize_promotions.py --check
 
   tutorial-artifacts:
     name: Tutorial artifacts and documentation
@@ -205,6 +331,9 @@ jobs:
       - name: Check generated figures
         working-directory: tutorials/python
         run: python render_all.py --check
+      - name: Check foundations publication figures
+        working-directory: foundations
+        run: python plot_results.py --check
       - name: Check local documentation links
         working-directory: tutorials/python
         run: python check_docs.py

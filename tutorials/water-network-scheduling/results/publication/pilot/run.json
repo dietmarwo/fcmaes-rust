@@ -25,9 +25,9 @@
     "D1": {
       "clipping_axis_1": 0.005934718100890208,
       "clipping_axis_2": 0.002967359050445104,
-      "coarse_holdout_retention": 0.9362017804154302,
+      "coarse_holdout_niche_retention": 0.9362017804154302,
       "coverage": 0.38,
-      "holdout_retention": 0.05341246290801187,
+      "holdout_niche_retention": 0.05341246290801187,
       "minimum_seed_coverage": 0.19,
       "rank_correlation": 0.40717220039692165,
       "reachable_maximum": [
@@ -43,9 +43,9 @@
     "D2": {
       "clipping_axis_1": 0.0,
       "clipping_axis_2": 0.002967359050445104,
-      "coarse_holdout_retention": 0.9094955489614244,
+      "coarse_holdout_niche_retention": 0.9094955489614244,
       "coverage": 0.29,
-      "holdout_retention": 0.025222551928783383,
+      "holdout_niche_retention": 0.025222551928783383,
       "minimum_seed_coverage": 0.15,
       "rank_correlation": -0.08448289224670281,
       "reachable_maximum": [
@@ -61,9 +61,9 @@
     "D3": {
       "clipping_axis_1": 0.0,
       "clipping_axis_2": 0.005934718100890208,
-      "coarse_holdout_retention": 0.9747774480712166,
+      "coarse_holdout_niche_retention": 0.9747774480712166,
       "coverage": 0.39,
-      "holdout_retention": 0.9614243323442137,
+      "holdout_niche_retention": 0.9614243323442137,
       "minimum_seed_coverage": 0.17,
       "rank_correlation": 0.029613911274278364,
       "reachable_maximum": [

@@ -1,0 +1,67 @@
+{
+  "actual_evaluations": 5,
+  "all_match": true,
+  "artifacts": {},
+  "audits": [
+    {
+      "absolute_error": 4.1873466471997745e-7,
+      "coordinate_sha256": "6397b7e9c06f5da94dbfcefe80d122ba068097517ef14454fdf2f2f31699d416",
+      "coordinate_source": "https://www-wales.ch.cam.ac.uk/~jon/structures/LJ/points/13",
+      "local_file_name": "13",
+      "matches": true,
+      "measured_energy": -44.32680141873467,
+      "n_atoms": 13,
+      "target_energy": -44.326801,
+      "tolerance": 1e-6
+    },
+    {
+      "absolute_error": 4.88210559979052e-7,
+      "coordinate_sha256": "61be40be128a801f1f2e8b8c7c047c87e66676d65831957424a132e95ab58454",
+      "coordinate_source": "https://www-wales.ch.cam.ac.uk/~jon/structures/LJ/points/38",
+      "local_file_name": "38",
+      "matches": true,
+      "measured_energy": -173.92842651178944,
+      "n_atoms": 38,
+      "target_energy": -173.928427,
+      "tolerance": 1e-6
+    },
+    {
+      "absolute_error": 3.081426029893919e-7,
+      "coordinate_sha256": "43f5c2568c7de4fc03273427d4c2772a9104e727f22a7dfb60c87d2d333be7fa",
+      "coordinate_source": "https://www-wales.ch.cam.ac.uk/~jon/structures/LJ/points/55",
+      "local_file_name": "55",
+      "matches": true,
+      "measured_energy": -279.2484703081426,
+      "n_atoms": 55,
+      "target_energy": -279.24847,
+      "tolerance": 1e-6
+    },
+    {
+      "absolute_error": 3.1889680940366816e-7,
+      "coordinate_sha256": "dcacf738fc99d1bd81cc3de45c6bc3f208af094cb2a035b12cb0e880fe47dd10",
+      "coordinate_source": "https://www-wales.ch.cam.ac.uk/~jon/structures/LJ/points/75",
+      "local_file_name": "75",
+      "matches": true,
+      "measured_energy": -397.49233068110317,
+      "n_atoms": 75,
+      "target_energy": -397.492331,
+      "tolerance": 1e-6
+    },
+    {
+      "absolute_error": 2.291037617396796e-7,
+      "coordinate_sha256": "593f5533da1a01aaeb7a01e314660eff3c6477249d7aee650dbdb1481b200c11",
+      "coordinate_source": "https://www-wales.ch.cam.ac.uk/~jon/structures/LJ/points/98",
+      "local_file_name": "98",
+      "matches": true,
+      "measured_energy": -543.6653607708962,
+      "n_atoms": 98,
+      "target_energy": -543.665361,
+      "tolerance": 1e-6
+    }
+  ],
+  "coordinate_files_redistributed": false,
+  "schema_version": 1,
+  "source": "https://www-wales.ch.cam.ac.uk/~jon/structures/LJ/tables.150.html",
+  "status": "completed",
+  "tolerance": 1e-6
+}

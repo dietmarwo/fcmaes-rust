@@ -8,6 +8,36 @@ phase, with breaking changes called out explicitly.
 
 ### Added
 
+- Added a standalone Foundations guide with seven compact, size-tested
+  lessons; eight classic scalar functions; ZDT1–4/ZDT6 and DTLZ1–7 with
+  deterministic analytic fronts; a strict local CEC transform loader; and
+  explicit WFG/BBOB evidence-gate skip artifacts.
+- Added reusable `fcmaes-core::indicators` APIs for hypervolume, IGD/IGD+,
+  GD/GD+, additive epsilon, spacing, and spread, including exact-vs-sampled
+  provenance, explicit reference points, sampling uncertainty, and front
+  cleanup accounting.
+- Added schedule-independent `RetryContext::run_seed`, exact ragged
+  `GridLayout` reporting for MAP-Elites, strict/excluding hypervolume
+  reference-box policies with exclusion counts, and public non-dominated-sort
+  and crowding-distance utilities.
+- Added a dependency-isolated, 20-seed optimizer-boundary experiment with
+  exact wall-resource accounting, held-out stochastic validation, equal-wall
+  DE/EGO traces, and raw per-seed artifacts. Its public guide defines retry's
+  closure as the supported adapter point for external local, Bayesian,
+  gradient, and structured solvers.
+- Added schema-v2 Foundations conformance evidence with equal-budget random
+  controls, initial-population baselines, stored front decisions,
+  deterministic same-evaluator rechecks, recorded normalization extrema, MODE
+  convergence checkpoints, and four deterministic explanatory/result SVGs.
+- Extended Foundations with a 33–294-dimensional Lennard-Jones cluster study:
+  analytic gradients, finite C1 overlap handling, free and fixed-frame
+  encodings, independently audited source-cited putative targets without
+  redistributed coordinates, schedule-independent retry arms, external
+  `argmin` L-BFGS and basin-hopping references, tiered target attainment,
+  explicit pair/population accounting, a CR-FM-NES configuration sensitivity
+  check, ten-seed scaling evidence, and a pre-registered descriptor-pilot
+  rejection with an explicit QD skip.
+
 - Added the reviewed GTOC1 “Save the Earth” tutorial with the real
   `EVEEEJSJA` sequence, staged global optimization, a finite-thrust ZOH
   transcription, accelerated Taylor propagation, independent DOP853
@@ -17,12 +47,33 @@ phase, with breaking changes called out explicitly.
   decoding, equal-budget random and evolutionary controls, crash-safe replay
   artifacts, feasibility-first Lambert L0 evaluation, Sims–Flanagan L1
   promotion, and optional Taylor/DOP853 L2 validation.
+- Added the reviewed MiniMax-M3 seed-42 L0 audit bundles: all three arms
+  complete 40 candidates after repairing evolutionary bootstrap and
+  exploration, random supplies 15 L0-admissible routes, and evolutionary
+  supplies 24.
+- Added a predeclared random-arm L1 follow-up promoting L0 ranks 1, 8, and 15;
+  none passes closure, the leader yields a finite surrogate-gap diagnostic,
+  and both lower-ranked controls retain typed propagation failures.
 - Added GitHub-only tutorials for `sindr` AC circuit design, `thevenin`
   transient gate-driver design, pure-Rust optical lens design, and Rapier
   quadruped gait repertoires.
 - Added GitHub-only tutorials for hardware-quantized phased-array codebooks,
   bilevel energy-hub sizing with an embedded dispatch LP, robust random-key
   field-service routing, and `epanet-rs` water-network pump scheduling.
+- Added a GitHub-only truss topology and catalogue-section sizing tutorial
+  with exact-k decoding, a validated native FEM, typed mechanism/conditioning
+  failures, equal-budget scalar retry, constrained MODE, removal reanalysis,
+  and a pre-registered descriptor-gate rejection.
+- Added a GitHub-only weighted network-coverage tutorial with deterministic
+  synthetic fixtures, exact native group-pair scoring, separate matching and
+  primal-dual certificates, exact tiny ILPs, a pre-optimization throughput
+  gate, integer-aware DE/MODE, and an honestly dominant marginal-greedy
+  baseline.
+- Added a GitHub-only split-brain oscillator topology-search tutorial with a
+  signed three-gene grammar, runtime ReBop Hill propensities, variable
+  10–18-dimensional fixed-budget BiteOpt tuning, held-out motif rediscovery,
+  equal-budget random/evolutionary controls, an optional live-agent boundary,
+  and a fresh descriptor-pilot rejection with explicit QD skip.
 - Added shared result-schema, descriptor-pilot, and robustness/holdout
   protocols for application tutorials, with deterministic custom renderers
   and compact checked-in publication evidence.
@@ -33,29 +84,84 @@ phase, with breaking changes called out explicitly.
 
 ### Changed
 
+- Bumped the unreleased Rust workspace version to 0.1.4 for the additive core
+  evidence and reproducibility APIs. `Archive::grid_shape()` remains as a
+  compatibility convenience, while exact rendering uses
+  `Archive::grid_layout()`; refreshed standalone local-path tutorial lockfiles
+  while leaving deliberate crates.io `=0.1.3` reproduction pins unchanged.
+- Marked `RetryContext` as non-exhaustive while adding `run_seed`. Normal retry
+  closures are unaffected, but downstream direct struct literals must be
+  removed; retry owns construction of this input context.
+- Kept Nelder–Mead, Bayesian optimization, gradient solvers, and their
+  dependencies outside `fcmaes-core` after the corrected boundary experiment
+  found no general DE→NM advantage and only a narrow low-budget BO regime.
+
 - Expanded the tutorial CI matrix, rendered guide, main index, and mdBook
-  navigation to cover all nineteen application tutorials.
+  navigation to cover all twenty-two application tutorials.
 - Made result-driven figure checks use the CI-pinned plotting environment and
   allow tutorials with domain-specific artifacts to opt into custom
   renderers.
 - Upgraded GTOC1 to `pykep-core` 0.1.4 and separated the fixed-sequence
   continuous-thrust chapter from the variable-order campaign protocol.
-- Reframed the checked-in route-search evidence as a mock transport/protocol
-  fixture, replaced score-first summaries with feasibility-first constraint
-  reporting, and documented the still-missing live baselines, independent
-  seeds, L1 promotions, and L2 validation.
+- Extended the route-search evidence from its mock transport fixture to a
+  feasibility-first completed live seed-42 L0 audit and targeted random-arm
+  L1 controls, while retaining independent seeds, matched three-arm L1
+  promotions, and L2 validation as open requirements.
+- Hardened the oscillator-topology descriptor pilot with an explicit
+  two-of-three-arm failure, observed ranges and bound fractions, 6×6 coarse
+  retention, and an additive eight-replication sensitivity measurement.
+- Added deterministic worker-budgeted parallel BiteOpt retry inside each
+  oscillator topology while preserving sequential agent/evolutionary feedback,
+  fixed seeds, and explicit per-retry versus total evaluation accounting;
+  physical-core retry and worker counts are the default.
 
 ### Fixed
+
+- Replaced degenerate partial-front Foundations hypervolume with one
+  union-front reference shared by every arm and checkpoint of a problem;
+  retained fixed `[1.1; m]` hypervolume as a nullable secondary field without
+  filtering points, and labeled same-evaluator repeats as deterministic
+  rechecks rather than independent validation.
+- Marked the one-seed Foundations `publication` preset as conformance evidence,
+  completed WFG/BBOB skip manifests with command/protocol fields, and
+  documented that the initial scalar baseline is nested in the random stream.
 
 - Prevented an infeasible high raw-score Earth–Saturn route from being
   described or plotted as a campaign leader; its launch-excess violation is
   now documented and result figures follow the Rust archive ordering.
-- Documented that unfinished provider campaigns have no final `run.json` or
-  CSV bundle and remain ignored local evidence until completion.
+- Diagnosed the seed-42 evolutionary control as a protocol failure: one-edit
+  mutations cannot clear the edit-distance-3 gate while the archive remains
+  below its six-route bootstrap threshold.
+- Repaired evolutionary route search with independent bootstrap seeds and
+  random exploration immigrants, preserving elite mutations for exploitation;
+  numerical L1 propagation failures now become archived promotion outcomes
+  instead of aborting the campaign.
+- Repaired oscillator evolutionary search to sample eight ranked elites plus
+  deterministic 20% random immigrants instead of exhausting one incumbent's
+  one-edit neighborhood, and added schema-v2 resume validation for the seed,
+  optimizer protocol, worker count, proposal policy, and candidate budgets.
+- Added an oscillator `--mode report` path that validates completed matched
+  arms, preserves their manifests and archives, retains agent usage accounting,
+  and writes only the comparison and descriptor-gate reports without launching
+  optimization, an agent, or QD.
+- Hardened the oscillator agent boundary with a no-request configuration
+  preflight, typed transport versus response errors, format repair only for
+  malformed responses, a persistent three-failure circuit breaker with the
+  final diagnostic, and cumulative attempts/failures/tokens across resume.
+- Replaced the oscillator tutorial's visibility-patch claim with an accurate
+  reduced-ReBop compatibility notice and a dual-source upstream replay test;
+  its skipped-QD manifest, comparison direction, rediscovery cells, and exact
+  random-sampling prior now match the shared documentation contracts.
 - Fixed mdBook links to directory `README.md` chapters, published linked
   supporting chapters, and replaced non-browsable artifact-directory links
   with their GitHub tree targets.
 - Corrected moved docs.rs, ReBop, Optiland, and release-history links.
+- Reconciled all 22 tutorial inventories, corrected stale architecture and AI
+  context counts, removed drift-prone tutorial ordinals, aligned the
+  phased-array and energy-hub QD summaries with their accepted native-grid
+  pilots, and made release commands derive the workspace version. Added a CI
+  consistency check for tutorial inventories, repeated counts, registry pins,
+  MODE-using tutorial counts, and workspace lockfile versions.
 
 ## [0.1.3] - 2026-07-25
 

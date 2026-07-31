@@ -89,10 +89,11 @@ TestPyPI using a short-lived test credential or a dedicated trusted workflow.
 Install with the production index available only for dependencies:
 
 ```bash
+release_version="$(python scripts/package_version.py)"
 python -m pip install \
   --index-url https://test.pypi.org/simple/ \
   --extra-index-url https://pypi.org/simple/ \
-  fcmaes-rust==0.1.3
+  "fcmaes-rust==${release_version}"
 ```
 
 If testing requires changing an artifact, increment the version. Registry
@@ -103,8 +104,9 @@ files cannot be replaced.
 After both trusted publishers are configured and all pre-release checks pass:
 
 ```bash
-git tag -a v0.1.3 -m "Release fcmaes-rust 0.1.3"
-git push origin v0.1.3
+release_version="$(python scripts/package_version.py)"
+git tag -a "v${release_version}" -m "Release fcmaes-rust ${release_version}"
+git push origin "v${release_version}"
 ```
 
 The tag must exactly equal `v` plus the Cargo package version. The Python

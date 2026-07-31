@@ -13,7 +13,7 @@
     }
   ],
   "descriptors": [],
-  "elapsed_seconds": 0.734894962,
+  "elapsed_seconds": 0.725077017,
   "fft_supported": false,
   "formulation": "nonuniform-geometry",
   "objectives": [

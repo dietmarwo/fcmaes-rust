@@ -1,0 +1,3 @@
+campaign,requested_evaluations,actual_evaluations,elapsed_seconds,mode_front_size,mode_generated_points,mode_retained_initial_points,mode_points_not_dominated_by_greedy,mode_generated_not_dominated_by_greedy
+publication,8192,8192,3.10654229699999984,64,62,2,2,0
+high-budget,200000,200000,8.76170323899999914,64,63,1,1,0

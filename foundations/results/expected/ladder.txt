@@ -1,0 +1,7 @@
+L1 first run | retries=3 evaluations=1320 best=3.920261e-7
+L2 equal budget | cma=3.524898e1 de=2.089413e1 bite=0.000000e0 crfmnes=3.540577e1
+L3 deterministic workers | runs=8 identical=true best=6.672241e-5
+L4 explicit constraint | feasible=true objective=1.003493e0 violation=-1.745208e-3
+L5 measured front | points=51 hv=7.859218e-1 fixed_status=not-applicable fixed_outside=14 igd_plus=1.862360e-1
+L6 mixed variables | integer_mask=true decoded_category=3 raw=3.471144 continuous=0.248819 objective=1.394406e-6
+L7 native archive | shape=12x10 cells=120 capacity=120 occupied=120

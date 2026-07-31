@@ -129,9 +129,9 @@ pub struct PairDiagnostics {
     /// Minimum coverage across the three seed arms.
     pub minimum_seed_coverage: f64,
     /// Same-niche battery-derating holdout retention.
-    pub holdout_retention: f64,
+    pub holdout_niche_retention: f64,
     /// Same-niche retention on an archive with one quarter as many cells.
-    pub coarse_holdout_retention: f64,
+    pub coarse_holdout_niche_retention: f64,
 }
 
 /// Complete pilot outcome and frozen rule verdict.
@@ -263,8 +263,8 @@ fn diagnostics(rows: &[PilotRow], pair: DescriptorPair, capacity: usize) -> Pair
             .into_iter()
             .map(|seed| coverage_for(Some(seed), &layout))
             .fold(f64::INFINITY, f64::min),
-        holdout_retention: retention(&layout),
-        coarse_holdout_retention: retention(&coarse_layout),
+        holdout_niche_retention: retention(&layout),
+        coarse_holdout_niche_retention: retention(&coarse_layout),
     }
 }
 
@@ -291,7 +291,7 @@ fn passes(row: PairDiagnostics) -> bool {
         && row.clipping_axis_1 < 0.1
         && row.clipping_axis_2 < 0.1
         && row.coverage > 0.4
-        && row.holdout_retention > 0.6
+        && row.holdout_niche_retention > 0.6
 }
 
 /// Execute the structured pilot across three deterministic seed arms.
@@ -413,7 +413,7 @@ mod tests {
         let (rows, summary) = run_pilot(12, Preset::Smoke, 60);
         assert!(rows.len() >= 10, "retained only {} rows", rows.len());
         assert!(summary.d1.rank_correlation.is_finite());
-        assert!((0.0..=1.0).contains(&summary.d1.holdout_retention));
+        assert!((0.0..=1.0).contains(&summary.d1.holdout_niche_retention));
         assert!((0.0..=1.0).contains(&summary.d2.coverage));
         assert!(summary.timestep_mean_normalized_shift.is_finite());
     }

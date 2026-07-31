@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="520" viewBox="0 0 1000 520" role="img" aria-labelledby="title desc">
+  <title id="title">Route niche coverage</title>
+  <desc id="desc">Number of structural route niches occupied by each protocol arm.</desc>
+  <rect width="1000" height="520" fill="#f7f9fc"/>
+  <text x="500" y="45" text-anchor="middle" font-family="system-ui" font-size="24" font-weight="700" fill="#132238">Occupied route niches</text>
+  <path d="M100 440 H940" stroke="#40556f" stroke-width="2"/>
+  <rect x="180" y="153.85" width="130" height="286.15" rx="8" fill="#2774ae"/>
+  <text x="245" y="138.85" text-anchor="middle" font-family="system-ui" font-size="22" font-weight="700" fill="#132238">36</text>
+  <text x="245" y="475" text-anchor="middle" font-family="system-ui" font-size="16" fill="#26384f">agent</text>
+  <rect x="450" y="130.00" width="130" height="310.00" rx="8" fill="#c99118"/>
+  <text x="515" y="115.00" text-anchor="middle" font-family="system-ui" font-size="22" font-weight="700" fill="#132238">39</text>
+  <text x="515" y="475" text-anchor="middle" font-family="system-ui" font-size="16" fill="#26384f">random</text>
+  <rect x="720" y="130.00" width="130" height="310.00" rx="8" fill="#7656b5"/>
+  <text x="785" y="115.00" text-anchor="middle" font-family="system-ui" font-size="22" font-weight="700" fill="#132238">39</text>
+  <text x="785" y="475" text-anchor="middle" font-family="system-ui" font-size="16" fill="#26384f">evolutionary</text>
+</svg>

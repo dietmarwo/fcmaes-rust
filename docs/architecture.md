@@ -24,15 +24,18 @@ examples, networking dependencies, and large example data are excluded from
 the Python package. Native Rust applications can depend only on `fcmaes-core`
 unless they need the internal GTOP catalog.
 
-The twelve application directories below `tutorials/` are standalone Cargo
+The twenty-two application directories below `tutorials/` are standalone Cargo
 workspaces, not root members. This isolates application dependencies and
-result artifacts while reusing the local core. The room-ventilation tutorial
-demonstrates a purpose-built native simulation backend: each candidate owns its
-D2Q9 flow and D2Q5 pollutant state, so population parallelism remains at the
-fcmaes layer. The ML tutorial similarly keeps every tree fit and probability
-prediction in Rust while using disjoint tuning, selection, and final datasets.
-The neural-controller tutorial keeps stochastic rollout evaluation in Rust and
-uses PGPE and CR-FM-NES for fixed-topology direct policy search.
+result artifacts while reusing the local core. Their complete, canonical list
+is the [tutorial index](../tutorials/README.md); keeping the list there avoids
+an incomplete architecture inventory as applications are added. The
+room-ventilation tutorial demonstrates a purpose-built native simulation
+backend: each candidate owns its D2Q9 flow and D2Q5 pollutant state, so
+population parallelism remains at the fcmaes layer. The ML tutorial similarly
+keeps every tree fit and probability prediction in Rust while using disjoint
+tuning, selection, and final datasets. The neural-controller tutorial keeps
+stochastic rollout evaluation in Rust and uses PGPE and CR-FM-NES for
+fixed-topology direct policy search.
 
 ## Core module map
 
@@ -49,10 +52,17 @@ uses PGPE and CR-FM-NES for fixed-topology direct policy search.
 | `retry` | `retry`, `advanced_retry`, configurations, contexts, bounds, and results |
 | `moretry` | weighted scalarization retry, vector result retention, Pareto indices |
 | `mode` | constrained multi-objective DE/NSGA-II ask/tell optimizer |
-| `mapelites` | CVT archive, MAP-Elites emitters, and Diversifier |
+| `indicators` | hypervolume and distance/diversity indicators, non-dominated sorting, and crowding distance |
+| `mapelites` | CVT/regular archive, exact grid layout, MAP-Elites emitters, and Diversifier |
 
 The crate root re-exports the main types, so users normally import from
 `fcmaes_core` rather than individual modules.
+
+The algorithm boundary is intentional. Gradient methods, local simplex search,
+and Bayesian surrogate modelling use different problem and execution
+contracts; they remain external and can be driven through the retry closure.
+The [optimizer-boundary decision](optimizer-boundary.md) records the supporting
+experiment and the adapter contract.
 
 ## Objective and fitness flow
 
@@ -113,11 +123,8 @@ The following are implemented in Rust:
   material-flow, flexible job-shop/harvesting, spherical t-design,
   transfer-scheduling, Buckingham–Pi dimensional analysis, damp-control, F-8,
   and Lotka-Volterra drivers.
-- Standalone application tutorials for NeXosim, Rapier, ReBop, Brahe,
-  RustPower, SmartCore hyperparameter tuning, atmospheric dispersion, and room
-  ventilation, plus native neural-controller policy search, pykep-core GTOC1,
-  sindr AC circuit design, and validated thevenin transient design. The
-  ventilation backend is deliberately educational and is
+- Twenty-two standalone application tutorials covering the domains listed in
+  the [tutorial index](../tutorials/README.md). The ventilation backend is deliberately educational and is
   accompanied by reference, held-out, and grid-sensitivity evidence rather
   than engineering claims.
 - Python bindings for the implemented optimizers, retry, MODE, QD, and GTOP.

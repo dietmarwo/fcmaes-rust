@@ -4,7 +4,8 @@ This file is operational context for an AI that must design and implement an
 optimization solution with this repository. It is not a claim that one
 optimizer is universally best. Use the problem structure, evaluation cost, and
 the user's desired output to choose a small set of defensible candidates, then
-compare them under the same evaluation budget.
+compare them under the same declared objective-call and compute-resource
+protocol.
 
 The repository is a Rust 2024 Cargo workspace. `fcmaes-core` is a 100% native
 Rust optimizer implementation; it does not wrap, link, load, or invoke the
@@ -53,7 +54,7 @@ cannot be inferred and would materially change the solution.
 | Is the objective smooth, discontinuous, noisy, stochastic, or multimodal? | Distribution search, ranking, restart strategy, and stopping tolerances differ. |
 | For a stochastic objective, can simulations accept explicit seeds? | Fixed common-random-number seed sets make candidate comparisons fair; disjoint seeds are needed for validation. |
 | How long does one evaluation take, and is it thread-safe? | This determines inner batch parallelism versus outer retry parallelism. |
-| What is the evaluation, wall-time, memory, and core budget? | An evaluation budget is the fairest algorithm comparison unit. |
+| What is the evaluation, wall-time, memory, and core budget? | Equal calls alone can favor a sequential method or hide surrogate overhead; declare both call and resource accounting. |
 | Is a target value known? | Set `stop_fitness`; do not confuse it with `value_limit`. |
 | Does the user need one solution, a Pareto front, or diverse behavior niches? | The output requirement is part of the algorithm choice. |
 
@@ -100,7 +101,14 @@ are naturally paired with L-BFGS or another gradient-based optimizer. Consider
 fcmaes around such a model only when discrete policies, resets, robust maxima,
 solver failures, or other end-to-end discontinuities make those sensitivities
 misleading or unavailable. See
-`tutorials/README.md#11-diffsol-why-gradients-are-the-better-default`.
+[`tutorials/README.md#23-diffsol-why-gradients-are-the-better-default`](tutorials/README.md#23-diffsol-why-gradients-are-the-better-default).
+
+The core boundary is intentional. Standalone local derivative-free methods,
+Bayesian optimization, and gradient solvers remain external and can be driven
+through retry's optimizer closure. The corrected 20-seed
+[optimizer-boundary experiment](docs/optimizer-boundary.md) found no general
+DE→Nelder–Mead advantage and only a narrow, small-budget BO regime. Do not add
+an optimizer dependency to core merely because one application needs it.
 
 ## Fast algorithm-selection decision tree
 
@@ -136,8 +144,10 @@ misleading or unavailable. See
    retry. Use coordinated advanced retry when retained elites can usefully
    generate local crossover boxes and increasing budgets.
 6. Benchmark at least two plausible choices with identical bounds, objective,
-   total evaluations, seeds, and worker resources. A good general comparison
-   is BiteOpt versus DE followed by CMA-ES.
+   seeds, and a declared call/wall-resource protocol. A good general
+   comparison is BiteOpt versus DE followed by CMA-ES. When algorithms have
+   materially different sequential overhead or parallelism, equal objective
+   calls are not an equal wall-time comparison.
 
 ## Choose the integration surface
 
@@ -450,7 +460,9 @@ generations. `DiversifierParams` defaults are 100,000 evaluations, population
 Archive guidance:
 
 - In two descriptor dimensions, `samples_per_niche = 0` selects the fast
-  rectangular grid with O(1) lookup.
+  regular grid with O(1) lookup. Non-factorable capacities have ragged rows;
+  use `Archive::grid_layout()` for rendering and `Archive::capacity()` for the
+  coverage denominator rather than multiplying `grid_shape()` dimensions.
 - Positive `samples_per_niche` selects k-means CVT centers and nearest-center
   lookup. Use it for non-grid or higher-dimensional descriptor spaces.
 - Capacity controls resolution and memory. More niches also require more
@@ -469,7 +481,7 @@ Archive guidance:
 
 ## Lessons from the application tutorials
 
-The nine standalone tutorials are implementation references for expensive
+The twenty-two standalone tutorials are implementation references for expensive
 native objectives. They keep application dependencies outside the root
 workspace and demonstrate these transferable choices:
 
@@ -478,12 +490,25 @@ workspace and demonstrate these transferable choices:
 | NeXosim production line | Stochastic discrete events and mixed controls | Compare outer candidate parallelism with simulator-internal parallelism; use common random numbers and holdout seeds. |
 | Rapier trebuchet | Contact and release discontinuities | Use BiteOpt retry for one target, MODE for engineering trade-offs, and QD only for meaningful trajectory behaviors. |
 | ReBop oscillator | Intrinsic stochastic simulation noise | Fix candidate-comparison seeds, report true simulation counts, and validate Pareto/QD results on disjoint paths. |
+| Oscillator topology search | Discrete signed graphs around variable-dimensional stochastic inner problems | Keep the agent or evolutionary proposer outside deterministic grammar, optimization, persistence, and held-out motif scoring; match random and evolutionary controls. |
 | Brahe constellation | Access-window discontinuities and worst-gap aggregation | Keep feasibility explicit and assign either fcmaes or the simulator ownership of parallelism. |
 | RustPower voltage control | Mixed-integer controls, contingencies, and solver failures | Return calibrated constraint violations for failed power flows; reject a QD formulation when descriptors do not produce an informative archive. |
 | Atmospheric source localization | Censored inverse inference, model mismatch, and non-identifiability | Use robust residuals and disjoint sensors/weather; keep MODE for error/emission trade-offs and interpret a source-centroid QD map as alternative hypotheses, not a confidence region. |
 | Room ventilation | Custom numerical backend, variable geometry, and grid sensitivity | A purpose-built backend can keep objective state isolated and fast, but then solver verification, held-out scenarios, constraint margins, and resolution sensitivity are part of the optimization evidence. |
 | SmartCore hyperparameter tuning | Mixed variables, nested stochastic fitting, and validation overfitting | Use probability-aware objectives, common folds and model seeds, disjoint candidate selection, and a frozen final test; report model-fit cost as well as optimizer calls. |
 | Neural controller policy search | 118-dimensional fixed-topology policy and randomized rollouts | Use PGPE or CR-FM-NES when full covariance is unattractive; use common per-population scenarios, rotate them deterministically, validate disjoint plants, and reserve a frozen final test. |
+| GTOC1 “Save the Earth” | Narrow low-thrust closure constraints and model-fidelity differences | Use a staged fidelity ladder, repropagate the final continuous-thrust solution independently, and keep ephemeris/model qualifications attached to every score claim. |
+| GTOC1 route search | Agent-proposed variable planet orders with unequal fidelity costs | Let deterministic Rust own grammar and equal-budget controls; archive failures and promote candidates through predeclared L0/L1/L2 gates before making trajectory claims. |
+| sindr circuit design | Smooth circuit features plus discrete catalogue realization | Interpolate peaks and crossings instead of optimizing sampled arg-max staircases; validate the final catalogue under component tolerances. |
+| thevenin gate driver | Transient thresholds, ringing, and simulator disagreement | Interpolate time-domain metrics and require timestep refinement plus an independent ngspice comparison before accepting a front. |
+| Optical lens design | Multimodal ray tracing with hard ray-loss regions | Verify the native ray tracer independently, retain typed invalid designs, and benchmark global search rather than assuming a local simplex can cross penalty cliffs. |
+| Rapier quadruped gait | Contact-driven behavior repertoires and terrain overfitting | Treat QD as the primary output only when descriptors remain meaningful and elites survive disjoint terrain replay. |
+| Phased-array codebook | Quantized phase/attenuation registers and element failures | Cross-check direct and FFT kernels, optimize hardware codes rather than ideal phases, and apply the descriptor gate on the archive's exact native layout. |
+| Bilevel energy hub | Discontinuous sizing around a convex dispatch problem | Solve the inner LP to optimality, optimize only the outer nonconvex choices, and report candidate calls, LP solves, and pivots separately. |
+| Field-service routing | Assignment/permutation plateaus and disrupted task sets | Prove decoder invariants, validate hard feasibility on disrupted scenarios, and skip QD when coverage or retention fails. |
+| Water-network scheduling | Quantized controls with hydraulic state memory | Separate DDA optimization from PDA validation, record hydraulic failures, and reject repertoires that migrate under unseen demand. |
+| Truss topology and sizing | Exact-cardinality topology plus mechanisms and conditioning | Decode exact-k structures, classify FEM failures, and test removal robustness instead of replacing mechanisms with arbitrary large stresses. |
+| Network coverage | Large binary submodular structure with available certificates | Run exact tiny oracles and specialist greedy/certificate baselines before generic search; publish the specialist win when MODE is dominated. |
 
 MODE and MAP-Elites are complementary, not substitutes. Keep MODE when the
 user needs objective trade-offs, and add MAP-Elites only when descriptor-space
@@ -538,7 +563,9 @@ The optimizer closure must use:
 - `context.guess`, when present;
 - `context.sdev`, as per-coordinate fractional step information;
 - `context.max_evaluations`, which grows with retry progress;
-- `context.seed` and `context.run_id`;
+- `context.run_seed` when a run must reproduce independently of worker
+  scheduling; `context.seed` retains the older worker-stream behavior;
+- `context.run_id`;
 - `context.value_limit`, which for crossover may require beating a parent.
 
 Ignoring these fields defeats coordinated retry. Start with basic retry for a
@@ -573,9 +600,12 @@ independent deterministic seed. Python callbacks must reacquire the GIL and
 may not scale for cheap Python objective bodies.
 
 Single-worker retry is exactly repeatable. Multi-worker retry owns independent
-PCG streams, but operating-system scheduling can change which logical worker
-claims later retries, so repeated runs need not be bit-identical. Ordered
-parallel population batches are deterministic for a deterministic objective.
+PCG streams, so the compatibility `context.seed` depends on which logical
+worker claims a run. `context.run_seed`, by contrast, depends only on the root
+seed and `run_id`; use it for worker-count-independent objective randomness.
+Timing-dependent early stopping can still change which run IDs are started.
+Ordered parallel population batches are deterministic for a deterministic
+objective.
 
 ## Budget and parameter-setting procedure
 
@@ -690,7 +720,9 @@ Before declaring success, the AI should:
 - Run `cargo test --workspace` and use `--release` for timings.
 - Record algorithm, all non-default parameters, bounds, seed, workers,
   configured budget, actual evaluations, and wall time.
-- Compare algorithms using the same objective calls and resource limits.
+- Compare algorithms using the same declared objective-call and resource
+  limits; use equal wall deadlines when sequential overhead or parallel slot
+  utilization differs materially.
 - Use multiple seeds and report at least best, median or mean, standard
   deviation, and success/feasibility rate.
 - For multi-objective runs, report feasible Pareto points and a suitable front

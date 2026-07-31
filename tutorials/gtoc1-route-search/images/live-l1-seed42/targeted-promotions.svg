@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="480" viewBox="0 0 1000 480" role="img" aria-labelledby="title desc">
+  <title id="title">Predeclared random-arm L1 promotions</title>
+  <desc id="desc">L0 leader, median, and lowest admissible routes were promoted; none passed the L1 closure threshold.</desc>
+  <defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L7,3 z" fill="#657a92"/></marker></defs>
+  <rect width="1000" height="480" fill="#f7f9fc"/>
+  <text x="500" y="48" text-anchor="middle" font-family="system-ui" font-size="25" font-weight="700" fill="#132238">Predeclared random-arm L1 follow-up</text>
+  <text x="500" y="82" text-anchor="middle" font-family="system-ui" font-size="15" fill="#40556f">leader + median admissible control + lowest admissible control</text>
+  <rect x="40" y="125" width="280" height="285" rx="16" fill="#ffffff" stroke="#b86500" stroke-width="3"/>
+  <text x="180" y="170" text-anchor="middle" font-family="system-ui" font-size="22" font-weight="700" fill="#132238">L0 rank 1</text>
+  <text x="180" y="212" text-anchor="middle" font-family="system-ui" font-size="17" fill="#40556f">L0 658589</text>
+  <path d="M180 230 V275" stroke="#657a92" stroke-width="3" marker-end="url(#arrow)"/>
+  <text x="180" y="315" text-anchor="middle" font-family="system-ui" font-size="16" font-weight="700" fill="#b86500">L1 289300 · mismatch 1.074</text>
+  <text x="180" y="350" text-anchor="middle" font-family="system-ui" font-size="14" fill="#40556f">1393.1 worker-s</text>
+  <text x="180" y="380" text-anchor="middle" font-family="system-ui" font-size="13" fill="#40556f">threshold not passed</text>
+  <rect x="360" y="125" width="280" height="285" rx="16" fill="#ffffff" stroke="#a63838" stroke-width="3"/>
+  <text x="500" y="170" text-anchor="middle" font-family="system-ui" font-size="22" font-weight="700" fill="#132238">L0 rank 8</text>
+  <text x="500" y="212" text-anchor="middle" font-family="system-ui" font-size="17" fill="#40556f">L0 212996</text>
+  <path d="M500 230 V275" stroke="#657a92" stroke-width="3" marker-end="url(#arrow)"/>
+  <text x="500" y="315" text-anchor="middle" font-family="system-ui" font-size="16" font-weight="700" fill="#a63838">L1 PropagationFailure</text>
+  <text x="500" y="350" text-anchor="middle" font-family="system-ui" font-size="14" fill="#40556f">3738.0 worker-s</text>
+  <text x="500" y="380" text-anchor="middle" font-family="system-ui" font-size="13" fill="#40556f">threshold not passed</text>
+  <rect x="680" y="125" width="280" height="285" rx="16" fill="#ffffff" stroke="#a63838" stroke-width="3"/>
+  <text x="820" y="170" text-anchor="middle" font-family="system-ui" font-size="22" font-weight="700" fill="#132238">L0 rank 15</text>
+  <text x="820" y="212" text-anchor="middle" font-family="system-ui" font-size="17" fill="#40556f">L0 7006</text>
+  <path d="M820 230 V275" stroke="#657a92" stroke-width="3" marker-end="url(#arrow)"/>
+  <text x="820" y="315" text-anchor="middle" font-family="system-ui" font-size="16" font-weight="700" fill="#a63838">L1 PropagationFailure</text>
+  <text x="820" y="350" text-anchor="middle" font-family="system-ui" font-size="14" fill="#40556f">97.3 worker-s</text>
+  <text x="820" y="380" text-anchor="middle" font-family="system-ui" font-size="13" fill="#40556f">threshold not passed</text>
+</svg>

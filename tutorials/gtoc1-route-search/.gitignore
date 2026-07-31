@@ -2,6 +2,6 @@
 /results/smoke/
 /results/l1-smoke/
 /results/minimax-smoke/
-# A provider campaign remains local until it finishes and its complete
-# manifest/CSV bundle has been reviewed and frozen for publication.
+# Raw provider work directories, including caches, remain local. Reviewed
+# compact bundles are copied to a separately named publication directory.
 /results/minimax-large-no-me-ma/

@@ -26,7 +26,7 @@
     }
   ],
   "descriptors": [],
-  "elapsed_seconds": 3.048920969,
+  "elapsed_seconds": 3.26878685,
   "formulation": "constrained-mo",
   "horizon_limitation": "twelve independently cyclic representative days; no seasonal or hydrogen claim",
   "objectives": [

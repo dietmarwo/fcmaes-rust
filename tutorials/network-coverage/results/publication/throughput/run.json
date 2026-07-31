@@ -1,0 +1,16 @@
+{
+  "actual_evaluations": 8192,
+  "artifacts": {
+    "throughput": "throughput.csv"
+  },
+  "command": "cargo run --release --locked -- --mode all --preset publication --workers 0 --output results/publication",
+  "formulation": "throughput",
+  "gate": "reference-4k only when its serial kernel reaches 20,000 candidates/s",
+  "interpretation": "implementation diagnostic; not a cross-library benchmark",
+  "requested_evaluations": 8192,
+  "schema_version": 1,
+  "seed": 42,
+  "selected_publication_instance": "reference-4k",
+  "tutorial": "network-coverage",
+  "workers": 0
+}

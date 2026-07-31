@@ -51,8 +51,8 @@ let result = retry(&sphere, &bounds, &config, |objective, context| {
     );
     let params = DeParams {
         max_evaluations: context.max_evaluations,
-        seed: context.seed,
-        runid: context.run_id as i64,
+        seed: context.run_seed,
+        runid: 0,
         ..Default::default()
     };
     let mut optimizer = De::new(fitness, &[], &[], None, &params);
@@ -96,7 +96,7 @@ let result = moretry(&objective, &bounds, &config, |weighted, context| {
     );
     let parameters = DeParams {
         max_evaluations: context.max_evaluations,
-        seed: context.seed,
+        seed: context.run_seed,
         ..Default::default()
     };
     let run = De::new(fitness, &[], &[], None, &parameters).optimize(weighted);
@@ -113,7 +113,8 @@ the non-dominated row indices for a requested objective prefix.
 The coordinator creates its worker streams before scheduling. Weight draws,
 step-size draws, and optimizer seeds all come from the owning persistent
 stream, so logical workers remain statistically independent and reproducible
-for a fixed configuration.
+for a fixed configuration. `context.run_seed` is additionally stable across
+worker counts and scheduling.
 
 ## Coordinated advanced retry
 
@@ -137,6 +138,7 @@ An advanced optimizer closure should consume every relevant context field:
 - Interpret `context.sdev` as per-coordinate step information.
 - Use `context.max_evaluations`, not only the base configuration.
 - Return the actual evaluation count.
+- Use `context.run_seed` when the run must replay independently of scheduling.
 
 Ignoring the guess and local bounds makes advanced retry behave much more like
 expensive independent retry. The DE→CMA implementation in
@@ -179,13 +181,46 @@ persistent generator.
 
 A single-worker run is exactly repeatable for a fixed root seed. With multiple
 workers, operating-system scheduling can change how many retries each worker
-stream consumes. The streams remain independent, but repeated parallel runs
-need not be bit-for-bit identical.
+stream consumes. `context.seed` therefore remains scheduling-dependent.
+`context.run_seed`, by contrast, is derived only from the campaign root seed
+and `run_id`; using it for the child optimizer makes each claimed run replayable
+at a different worker count. Completion order and early stopping can still
+change which runs finish before a target is reached.
 
 Native objective functions can evaluate concurrently on all retry worker
 threads. Objectives supplied through the optional PyO3 extension must acquire
 the Python GIL for each callback, so cheap callbacks may not scale with the
 worker count.
+
+## External optimizer and adapter contract
+
+The retry closure is the supported plugin point for an optimizer implemented
+by another Rust crate. `fcmaes-core` deliberately does not depend on gradient,
+local-search, or Bayesian frameworks. An adapter can still participate in
+independent or coordinated retry when it obeys the same small contract:
+
+1. Seed the external optimizer with `context.run_seed` when results must be
+   invariant to worker scheduling. Use `context.seed` only when a persistent
+   worker stream is intentionally desired.
+2. Optimize strictly within `context.bounds`, including the local bounds of an
+   advanced-retry crossover run.
+3. Treat `context.max_evaluations` as the campaign target and return the actual
+   number of objective calls in `RetryRunResult::evaluations`. Initialization,
+   temporal-locality probes, final rechecks, and an indivisible final
+   population batch count. If an external solver rounds a budget to a complete
+   batch, document its maximum overshoot.
+4. Consume `context.guess` and `context.sdev` when the external method supports
+   an initial point or scale. If it does not, document that limitation rather
+   than silently claiming coordinated refinement.
+5. Return a decoded point whose dimension and finite score agree with the
+   objective. The retry store rejects malformed results, but rejection cannot
+   repair dishonest evaluation accounting.
+
+This makes small, dependency-isolated adapters possible without forcing a
+universal optimizer trait over incompatible scalar, gradient, population,
+multi-objective, and surrogate state machines. See
+[Optimizer scope and interoperation](optimizer-boundary.md) for the project
+boundary and the experiment motivating it.
 
 ## Value limit versus stop fitness
 

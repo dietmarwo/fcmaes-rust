@@ -17,7 +17,7 @@
       "unit": "deg"
     }
   ],
-  "elapsed_seconds": 8.847764792,
+  "elapsed_seconds": 8.967312666,
   "formulation": "descriptor-pilot",
   "objectives": [],
   "qd": {
@@ -38,7 +38,7 @@
       "d3_rank_correlation": -0.19392306529445463,
       "decision": "accepted",
       "efficiency_clipping": 0.0,
-      "elapsed_seconds": 8.847764792,
+      "elapsed_seconds": 8.967312666,
       "feasible_candidates": 507,
       "feasible_fraction": 0.23472222222222222,
       "holdout_niche_retention": 0.9506903353057199,

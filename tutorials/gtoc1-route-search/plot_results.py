@@ -17,9 +17,26 @@ BODY = {"1": "Me", "2": "V", "3": "E", "4": "Ma", "5": "J", "6": "S", "10": "A"}
 L0_CONSTRAINT_THRESHOLD = 1.0e-8
 
 
+def arm_directory(root: Path, arm: str) -> Path:
+    """Prefer the completed repaired evolutionary arm when it is present."""
+
+    repaired = root / "evolutionary-repaired"
+    if arm == "evolutionary" and repaired.is_dir():
+        return repaired
+    return root / arm
+
+
 def read_csv(path: Path) -> list[dict[str, str]]:
     with path.open(encoding="utf-8", newline="") as stream:
         return list(csv.DictReader(stream))
+
+
+def read_runs(root: Path) -> dict[str, dict[str, object]]:
+    runs = {}
+    for arm in ARMS:
+        with (arm_directory(root, arm) / "run.json").open(encoding="utf-8") as stream:
+            runs[arm] = json.load(stream)
+    return runs
 
 
 def svg_document(body: str, title: str, description: str) -> str:
@@ -44,7 +61,10 @@ def feasibility_key(row: dict[str, str]) -> tuple[float, float, float]:
 
 
 def convergence(root: Path) -> str:
-    archives = {arm: read_csv(root / arm / "archive.csv") for arm in ARMS}
+    archives = {
+        arm: read_csv(arm_directory(root, arm) / "archive.csv") for arm in ARMS
+    }
+    runs = read_runs(root)
     series = {}
     for arm, rows in archives.items():
         best = None
@@ -62,6 +82,7 @@ def convergence(root: Path) -> str:
     maximum = max(transformed, default=1.0)
     minimum = min(transformed, default=0.0)
     span = max(maximum - minimum, 1.0)
+    maximum_candidates = max((len(values) for values in series.values()), default=1)
     body = [
         '  <text x="500" y="42" text-anchor="middle" '
         'font-family="system-ui" font-size="24" font-weight="700" fill="#132238">'
@@ -71,20 +92,26 @@ def convergence(root: Path) -> str:
     for arm, values in series.items():
         points = []
         for index, value in enumerate(values):
-            x = 90 + 860 * index / max(len(values) - 1, 1)
+            x = 90 + 860 * index / max(maximum_candidates - 1, 1)
             scaled = math.log10(1.0 + max(value, 0.0))
             y = 450 - 350 * (scaled - minimum) / span
             points.append(f"{x:.2f},{y:.2f}")
-        body.append(
-            f'  <polyline points="{" ".join(points)}" fill="none" '
-            f'stroke="{COLORS[arm]}" stroke-width="4"/>\n'
-        )
+        if len(points) > 1:
+            body.append(
+                f'  <polyline points="{" ".join(points)}" fill="none" '
+                f'stroke="{COLORS[arm]}" stroke-width="4"/>\n'
+            )
+        if points:
+            x, y = points[-1].split(",")
+            body.append(
+                f'  <circle cx="{x}" cy="{y}" r="6" fill="{COLORS[arm]}"/>\n'
+            )
     for index, arm in enumerate(ARMS):
         x = 260 + index * 230
         body.append(
             f'  <rect x="{x}" y="475" width="24" height="5" fill="{COLORS[arm]}"/>'
             f'<text x="{x + 34}" y="484" font-family="system-ui" font-size="15" '
-            f'fill="#26384f">{arm}</text>\n'
+            f'fill="#26384f">{arm} ({runs[arm]["status"]})</text>\n'
         )
     body.append(
         '  <text x="520" y="510" text-anchor="middle" font-family="system-ui" '
@@ -99,15 +126,13 @@ def convergence(root: Path) -> str:
         "".join(body),
         "Route-search constraint convergence",
         "Lowest feasibility-first L0 constraint violation by accepted candidate "
-        "for three protocol-fixture arms.",
+        "for three configured campaign arms; failed arms retain their partial "
+        "archive.",
     )
 
 
 def niche_coverage(root: Path) -> str:
-    runs = {}
-    for arm in ARMS:
-        with (root / arm / "run.json").open(encoding="utf-8") as stream:
-            runs[arm] = json.load(stream)
+    runs = read_runs(root)
     body = [
         '  <text x="500" y="45" text-anchor="middle" font-family="system-ui" '
         'font-size="24" font-weight="700" fill="#132238">Occupied route niches</text>\n',
@@ -139,7 +164,7 @@ def niche_coverage(root: Path) -> str:
 def surrogate_gap(root: Path) -> str:
     points = []
     for arm in ARMS:
-        for row in read_csv(root / arm / "promotions.csv"):
+        for row in read_csv(arm_directory(root, arm) / "promotions.csv"):
             if row["l1_score"] and row["surrogate_gap"]:
                 points.append(
                     (
@@ -184,14 +209,18 @@ def surrogate_gap(root: Path) -> str:
 
 
 def best_structure(root: Path) -> str:
-    rows = read_csv(root / "agent" / "archive.csv")
-    best = min(rows, key=feasibility_key)
+    candidates = [
+        (arm, row)
+        for arm in ARMS
+        for row in read_csv(arm_directory(root, arm) / "archive.csv")
+    ]
+    arm, best = min(candidates, key=lambda item: feasibility_key(item[1]))
     bodies = best["structure_key"].split("-")
     labels = [BODY.get(body, body) for body in bodies]
     body = [
         '  <text x="500" y="45" text-anchor="middle" font-family="system-ui" '
         'font-size="24" font-weight="700" fill="#132238">'
-        "Lowest-violation mock-arm route structure</text>\n",
+        "Feasibility-first leading L0 route structure</text>\n",
         '  <text x="500" y="83" text-anchor="middle" font-family="system-ui" '
         'font-size="15" fill="#a14d00">structure diagram, not a propagated trajectory</text>\n',
     ]
@@ -214,7 +243,8 @@ def best_structure(root: Path) -> str:
         )
     body.append(
         f'  <text x="500" y="355" text-anchor="middle" font-family="system-ui" '
-        f'font-size="17" fill="#26384f">variant {html.escape(best["variant_key"])}</text>\n'
+        f'font-size="17" fill="#26384f">{arm} arm · variant '
+        f'{html.escape(best["variant_key"])}</text>\n'
     )
     body.append(
         f'  <text x="500" y="390" text-anchor="middle" font-family="system-ui" '
@@ -224,8 +254,9 @@ def best_structure(root: Path) -> str:
     )
     return svg_document(
         "".join(body),
-        "Closest protocol route structure",
-        "Body-order diagram of the lowest-violation L0 route in the mock protocol fixture.",
+        "Leading L0 route structure",
+        "Body-order diagram of the feasibility-first leading L0 route across "
+        "the supplied campaign arms.",
     )
 
 

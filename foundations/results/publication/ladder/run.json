@@ -1,0 +1,13 @@
+{
+  "artifacts": {
+    "output": "output.txt"
+  },
+  "formulation": "seven-lesson-ladder",
+  "lessons": 7,
+  "preset": "publication",
+  "schema_version": 2,
+  "seed": 42,
+  "status": "completed",
+  "tutorial": "foundations",
+  "workers": 2
+}

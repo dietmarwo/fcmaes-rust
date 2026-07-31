@@ -1,0 +1,29 @@
+{
+  "arms": [
+    "initial",
+    "random",
+    "mode"
+  ],
+  "artifacts": {
+    "convergence": "convergence.csv",
+    "fronts": "fronts.csv",
+    "indicators": "indicators.csv"
+  },
+  "claim_scope": "deterministic-conformance-demonstration",
+  "deterministic_recheck": "same-evaluator repeatability/bookkeeping check, not independent model validation",
+  "fixed_hypervolume_policy": "null when any arm-front point lies outside; points are never filtered",
+  "fixed_hypervolume_reference_point": "[1.1; objectives] after analytic-front normalization",
+  "formulation": "analytic-front-multi-objective",
+  "hypervolume_reference_point": "shared per-problem union-front nadir plus 10% of max(observed range, 1) after analytic-front normalization",
+  "normalization": "analytic-reference-set ideal/nadir",
+  "preset": "publication",
+  "problems": 12,
+  "reference_points": 2001,
+  "requested_evaluations_per_control_or_optimizer": 4096,
+  "schema_version": 2,
+  "seed": 42,
+  "seed_count": 1,
+  "status": "completed",
+  "tutorial": "foundations",
+  "workers": 2
+}

@@ -1,0 +1,6 @@
+{
+  "name": "reference-1k",
+  "seed": 42,
+  "blocks": 10,
+  "external_edges": false
+}

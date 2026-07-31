@@ -1,0 +1,2 @@
+accepted_index,structure_key,variant_key,niche,strategy,evaluation_found,objective_l0,constraint_l0,estimated_score_l0,fixed_mass_score_l0,flight_days,requested_evaluations,actual_evaluations,worker_seconds,l1_promoted,l1_threshold_passed,l1_score,surrogate_gap
+0,3-2-2-3-2-2-2-2-3-2-3-10,3-2-2-3-2-2-2-2-3-2-3-10|00000000100,L12-I11-Tnone-R2-F13y,Evolutionary,true,17254058.720610563,0.0017254058720610561,0.0000000005170194054639253,233440.95183961876,5080.004427829574,3520000,2181747,2840.380827392,false,false,,

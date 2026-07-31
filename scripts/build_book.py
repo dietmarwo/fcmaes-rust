@@ -22,7 +22,14 @@ TOP_LEVEL_FILES = (
     "ai-context.md",
     "LICENSE",
 )
-SOURCE_DIRECTORIES = ("docs", "tutorials", "benchmarks", "examples", "crates")
+SOURCE_DIRECTORIES = (
+    "docs",
+    "foundations",
+    "tutorials",
+    "benchmarks",
+    "examples",
+    "crates",
+)
 README_LINK = re.compile(
     r"(?<=\()(?P<target>[^)\s]+README\.md)(?P<fragment>#[^)\s]*)?(?=\))"
 )

@@ -1,0 +1,20 @@
+[package]
+name = "optimizer-boundary-experiment"
+version = "0.1.0"
+edition = "2024"
+publish = false
+description = "Decision experiment for the fcmaes-core optimizer boundary"
+
+[workspace]
+
+[dependencies]
+fcmaes-core = { path = "../../crates/fcmaes-core" }
+cfd-room-ventilation = { path = "../../tutorials/cfd-room-ventilation" }
+optical-lens-design = { path = "../../tutorials/optical-lens-design" }
+rebop-oscillator = { path = "../../tutorials/rebop-oscillator" }
+egobox-ego = "0.38"
+ndarray = "0.16"
+
+[profile.release]
+codegen-units = 1
+lto = "thin"

@@ -77,6 +77,7 @@ def main() -> int:
         {
             *public_root.glob("*.md"),
             *(public_root / "docs").rglob("*.md"),
+            *(public_root / "foundations").rglob("*.md"),
             *(public_root / "benchmarks").rglob("*.md"),
             *(public_root / "crates").rglob("*.md"),
             *(public_root / "examples" / "data").rglob("*.md"),

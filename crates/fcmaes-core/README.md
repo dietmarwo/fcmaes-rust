@@ -53,6 +53,8 @@ cargo run --release
 - Differential Evolution, active CMA-ES, CR-FM-NES, PGPE and Dual Annealing
 - BiteOpt and batched ask/tell optimization
 - MODE multi-objective optimization
+- exact and sampled hypervolume, IGD/IGD+, GD/GD+, epsilon, spacing, spread,
+  non-dominated sorting, and crowding distance
 - independent, coordinated and weighted multi-objective retry
 - CVT MAP-Elites, quality-diversity search and the Diversifier
 - native multithreading and parallel batch evaluation
@@ -65,6 +67,7 @@ cargo run --release
 | High-dimensional or noisy search | [`Pgpe`](https://docs.rs/fcmaes-core/latest/fcmaes_core/pgpe/struct.Pgpe.html) or [`Crfmnes`](https://docs.rs/fcmaes-core/latest/fcmaes_core/crfmnes/struct.Crfmnes.html) |
 | Independent or adaptive restarts | [`retry`](https://docs.rs/fcmaes-core/latest/fcmaes_core/retry/index.html) |
 | Several competing objectives | [`mode`](https://docs.rs/fcmaes-core/latest/fcmaes_core/mode/index.html) and [`moretry`](https://docs.rs/fcmaes-core/latest/fcmaes_core/moretry/index.html) |
+| Audit a multi-objective front | [`indicators`](https://docs.rs/fcmaes-core/latest/fcmaes_core/indicators/index.html) |
 | Diverse high-quality solutions | [`mapelites`](https://docs.rs/fcmaes-core/latest/fcmaes_core/mapelites/index.html) |
 | External, GPU, service, or custom batch evaluator | the ask/tell methods on DE, CMA-ES, CR-FM-NES, PGPE, BiteOpt, and MODE |
 
@@ -79,6 +82,7 @@ at compile time.
 - [Rendered user guide](https://dietmarwo.github.io/fcmaes-rust/)
 - [Getting started](https://dietmarwo.github.io/fcmaes-rust/docs/getting-started.html)
 - [Choosing an optimizer](https://dietmarwo.github.io/fcmaes-rust/docs/choosing-an-optimizer.html)
+- [Optimizer scope and interoperation](https://dietmarwo.github.io/fcmaes-rust/docs/optimizer-boundary.html)
 - [Optimizer guide](https://dietmarwo.github.io/fcmaes-rust/docs/optimizers.html)
 - [Retry guide](https://dietmarwo.github.io/fcmaes-rust/docs/retry.html)
 

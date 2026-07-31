@@ -1,0 +1,16 @@
+{
+  "actual_evaluations": null,
+  "artifacts": {},
+  "command": "cargo run --release --locked -- --mode all --preset publication --workers 0 --output results/publication",
+  "descriptors": [],
+  "elapsed_seconds": 0.0,
+  "formulation": "quality-diversity",
+  "objectives": [],
+  "reason": "descriptor pilot rejected both emergent pairs",
+  "requested_evaluations": 0,
+  "schema_version": 1,
+  "seed": 42,
+  "status": "skipped",
+  "tutorial": "truss-sizing",
+  "workers": 0
+}

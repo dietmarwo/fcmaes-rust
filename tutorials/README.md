@@ -8,14 +8,22 @@ callback or serialization boundary in the expensive path: a candidate is
 decoded and scored in Rust, and independent candidates are distributed across
 native worker threads.
 
-The nineteen applications deliberately cover different reasons for choosing
+The twenty-two applications deliberately cover different reasons for choosing
 gradient-free optimization:
+
+For a smaller on-ramp, use [`foundations/`](../foundations/): it contains
+standard academic suites, measured analytic fronts, and seven lessons. The
+boundary is intentional: `foundations/` answers “how do I start?”,
+[`examples/`](../examples/) answers “what does a realistic objective look
+like?”, and this directory answers “how do I run a defensible application
+campaign end to end?”. Foundations does not change the application count.
 
 | Tutorial | Simulator | Problem property | Implemented formulations | QD decision |
 |---|---|---|---|---|
 | [Production line](nexosim-production-line/) | NeXosim | stochastic discrete events and mixed controls | MODE + MAP-Elites | accepted |
 | [Trebuchet](rapier-trebuchet/) | Rapier | contact, release and joint-limit discontinuities | BiteOpt retry + MODE + MAP-Elites | accepted |
 | [Biochemical oscillator](rebop-oscillator/) | ReBop | intrinsically noisy stochastic reaction paths | BiteOpt retry + MODE + MAP-Elites | accepted |
+| [Oscillator topology search](oscillator-topology-search/) | ReBop runtime SSA + signed grammar | variable-dimension nested search, noisy motif evidence, and an optional agent proposer | deterministic parallel BiteOpt retry + random/evolutionary/agent outer controls + descriptor gate | rejected: two of three arms, 4.17% minimum coverage, and 12.5% eight-replication retention; QD skipped |
 | [Satellite constellation](brahe-constellation/) | Brahe | access-window appearance/disappearance and worst-gap aggregation | BiteOpt retry + constrained MODE + MAP-Elites | accepted |
 | [Voltage control](rustpower-voltage-control/) | RustPower | mixed-integer controls, contingencies and power-flow failures | constrained MODE + MAP-Elites | MODE primary, QD secondary |
 | [Atmospheric source localization](dispersion-source-localization/) | ISC-3-derived native model | inverse inference, censoring, model mismatch, and non-identifiability | BiteOpt advanced retry + MODE + MAP-Elites | accepted |
@@ -23,7 +31,7 @@ gradient-free optimization:
 | [ML hyperparameter optimization](ml-hyperparameter-tuning/) | SmartCore decision trees | mixed variables, nested stochastic fitting, validation overfitting, and probability quality | BiteOpt retry + constrained MODE + MAP-Elites | rejected: coverage and diversity pass, niche retention fails |
 | [Neural controller policy search](neural-controller-policy-search/) | Native stochastic cart-pole model | 118-dimensional fixed-topology policy, randomized rollouts, and validation variance | PGPE + CR-FM-NES + active CMA-ES/BiteOpt comparison | omitted: one robust controller is the deliverable |
 | [GTOC1 “Save the Earth”](gtoc1/) | pykep-core astrodynamics | 87 variables, narrow equality constraints, two multi-revolution Lambert arcs, and low thrust | coordinated DE–CMA-ES + seeded CMA-ES/BiteOpt retry | omitted: one maximum-impact trajectory is the deliverable |
-| [Split-brain GTOC1 route search (work in progress)](gtoc1-route-search/) | pykep-core astrodynamics + provider-independent agent boundary | variable-length planet orders, multi-fidelity surrogate error, and unequal evaluation costs | equal-budget agent/random/(1+1)-ES outer search + DE–CMA-ES L0 + promoted Sims–Flanagan L1 | omitted: the deliverable is a ranked, diagnosed route archive; live comparisons remain incomplete |
+| [Split-brain GTOC1 route search (work in progress)](gtoc1-route-search/) | pykep-core astrodynamics + provider-independent agent boundary | variable-length planet orders, multi-fidelity surrogate error, unequal evaluation costs, and repaired control protocols | agent/random/evolutionary outer search + DE–CMA-ES L0 + promoted Sims–Flanagan L1 | omitted: one seed only; random and evolutionary pass L0 while MiniMax does not, but no targeted random L1 promotion closes |
 | [Circuit design](sindr-circuit-design/) | sindr AC modified-nodal analysis | log-scaled components, interpolated Bode features, competing filter goals, and E12 discreteness | CMA/DE/Bite retry + constrained MODE + MAP-Elites | accepted: a robust frequency/gain catalogue is the deliverable |
 | [Transient gate driver](thevenin-gate-driver/) | thevenin transient modified-nodal analysis | interpolated edge measurements, ringing, current/settling constraints, and independent simulator validation | constrained MODE | omitted: one continuous engineering trade-off front is the deliverable |
 | [Optical lens design](optical-lens-design/) | Pure-Rust sequential geometric ray tracer | multimodal bending, hard ray-loss boundaries, and a published prescription gate | CMA/DE/Bite retry + constrained MODE | omitted: a quality/size/material trade-off front is the deliverable |
@@ -32,6 +40,8 @@ gradient-free optimization:
 | [Bilevel energy hub](energy-hub-bilevel/) | Pure-Rust `microlp` dispatch inside each outer candidate | ratio objective, catalogue tiers, inclusion switches, named scenarios, and unequal LP work | CMA/DE/Bite retry + constrained MODE + descriptor-gated MAP-Elites + annual BiteOpt | accepted: corrected 12×10 pilot grid clears the frozen gates; full-archive retention is reported separately |
 | [Field-service routing](field-service-routing/) | Pure-Rust route decoder and forward pass | assignment/permutation plateaus, skill compatibility, task-set disruptions, and emergent fleet size | CMA/DE/Bite retry + constrained MODE + descriptor-gated MAP-Elites | rejected: native-grid coverage is 5.83% and all-holdout feasibility retention is zero |
 | [Water-network scheduling](water-network-scheduling/) | `epanet-rs` stepwise hydraulics | quantized pump levels, tank-state memory, safety-override plateaus, hydraulic failures, and DDA/PDA separation | CMA/DE/Bite retry + constrained MODE + descriptor-gated MAP-Elites | rejected: coverage reaches 38%, but unseen-demand same-niche retention is only 5.34% |
+| [Truss topology and sizing](truss-sizing/) | Native linear-elastic 2-D truss FEM | exact-k topology, catalogue sections, mechanisms, conditioning, settlement, and removal reanalysis | CMA/DE/Bite retry + constrained MODE + descriptor-gated QD | rejected: both emergent pairs miss the frozen minimum per-arm coverage gate |
+| [Network coverage](network-coverage/) | Native graph/group kernel + `microlp` tiny oracle | 4,000 binary variables, certified ordinary-edge covers, implicit group pairs, and specialist-baseline comparison | certified matching/primal-dual + DE retry + MODE + marginal greedy | omitted: a Pareto front is the deliverable; marginal greedy dominates finite MODE |
 
 Each directory is a standalone Cargo workspace. This keeps large,
 simulator-specific dependency sets out of the main `fcmaes-rust` workspace.
@@ -41,11 +51,13 @@ Most use the same local core:
 fcmaes-core = { path = "../../crates/fcmaes-core" }
 ```
 
-The two circuit tutorials, energy-hub, field-service, and water-network tutorials
-instead pin the published
-`fcmaes-core = "=0.1.3"` so their recorded pairings with the simulator crates
-are exact; each manifest includes the local path as a commented development
-override.
+Ten tutorials—the two circuit studies, phased-array codebook, energy hub,
+field service, water network, truss sizing, network coverage, oscillator
+topology search, and GTOC1 route search—instead pin the published
+`fcmaes-core = "=0.1.3"` so their recorded pairings
+with the simulator crates are exact; each manifest includes the local path as
+a commented development override. Oscillator topology search also carries a
+documented narrow ReBop 0.9.7 runtime-expression compatibility patch.
 
 Run commands from the repository root, for example:
 
@@ -292,7 +304,45 @@ signal metrics, training/holdout results and reaction-rate bounds.
 
 ![Common training paths, period-amplitude repertoire search, and disjoint stochastic validation](rebop-oscillator/images/architecture.svg)
 
-## 5. Brahe: constellation access optimization
+## 5. ReBop runtime networks: split-brain oscillator topology search
+
+The [oscillator-topology-search tutorial](oscillator-topology-search/) moves
+the design decision from fixed Vilar rates to a signed three-gene topology.
+An outer grammar proposes nine activation/inhibition/absence slots; BiteOpt
+tunes a variable 10–18-dimensional kinetic vector for every accepted
+topology. Independent deterministic BiteOpt retries can use all requested
+worker cores without making the evolutionary or agent proposal history stale.
+Native ReBop Gillespie paths share training random streams and use disjoint
+validation streams.
+
+Four held-out structural references are optimized separately. At the frozen
+seed-42 publication budget, the repressilator reference reaches a 2.262
+holdout score, while random and a simple `(1+1)` evolutionary control reach
+2.817 and 2.874. Neither control exactly rediscovers a reference in 20
+proposals. The live-agent arm is explicitly `not-run`: the checked mock tests
+transport only and is excluded from scientific comparison.
+
+Period × amplitude is re-piloted rather than inherited from the fixed Vilar
+model. The pair reaches only 4.17% minimum per-arm coverage, 5% coarse-grid
+retention, and 12.5% native-grid retention even after increasing training from
+two to eight replications. Only two of three required arms are available, so
+the tutorial records QD as skipped.
+
+![Discrete topology proposals are separated from fixed-budget stochastic evidence](oscillator-topology-search/images/architecture.svg)
+
+```bash
+cd tutorials/oscillator-topology-search
+cargo run --release --locked -- \
+  --mode all --preset publication \
+  --inner-retries 16 --workers 16 --evaluations 1000 \
+  --output results/local/parallel-r16-seed42
+```
+
+See the [complete split-brain oscillator tutorial](oscillator-topology-search/README.md)
+for the runtime model, compatibility notice, score contract, agent boundary,
+publication evidence, descriptor verdict and limitations.
+
+## 6. Brahe: constellation access optimization
 
 [Brahe](https://github.com/duncaneddy/brahe) provides orbit propagation,
 ground-station data and access-window calculations. The tutorial chooses the
@@ -335,7 +385,7 @@ selection, access rules, thread-pool ownership and validation limitations.
 
 ![Four-satellite propagation, access aggregation, MODE and the accepted architecture archive](brahe-constellation/images/architecture.svg)
 
-## 6. RustPower: robust mixed-integer voltage control
+## 7. RustPower: robust mixed-integer voltage control
 
 [RustPower](https://github.com/chengts95/rustpower) performs steady-state AC
 power-flow analysis. The tutorial uses its embedded IEEE-39 case and pure-Rust
@@ -381,7 +431,7 @@ recorded Pareto result.
 
 ![Six-scenario voltage-control evaluation, constrained MODE, and the recorded MAP-Elites archive](rustpower-voltage-control/images/architecture.svg)
 
-## 7. Atmospheric dispersion: robust source localization
+## 8. Atmospheric dispersion: robust source localization
 
 The [dispersion tutorial](dispersion-source-localization/) is an inverse
 problem rather than another forward engineering design. A native Rust
@@ -431,7 +481,7 @@ budgets, QD interpretation, and limitations.
 
 ![Receptor observations feed a native inverse model, three complementary optimization formulations, and disjoint holdout validation](dispersion-source-localization/images/architecture.svg)
 
-## 8. Room ventilation: optimization with a purpose-built backend
+## 9. Room ventilation: optimization with a purpose-built backend
 
 The [room-ventilation tutorial](cfd-room-ventilation/) demonstrates a case
 where the objective needs a small simulation kernel tailored to optimization.
@@ -470,7 +520,7 @@ verification evidence, and deterministic figure regeneration.
 
 ![Baseline and optimized velocity and pollutant fields from the custom Rust backend](cfd-room-ventilation/images/flow-fields.svg)
 
-## 9. ML hyperparameter optimization: validation-aware search
+## 10. ML hyperparameter optimization: validation-aware search
 
 The [hyperparameter-tuning tutorial](ml-hyperparameter-tuning/) turns a
 SmartCore decision tree into a deterministic, bagged probability forest and
@@ -530,7 +580,7 @@ fair-comparison rules, commands, results, and limitations.
 
 ![A validation-aware optimization protocol separates tuning, selection, and final reporting](ml-hyperparameter-tuning/images/architecture.svg)
 
-## 10. PGPE and CR-FM-NES: fixed-topology policy search
+## 11. PGPE and CR-FM-NES: fixed-topology policy search
 
 The [neural-controller tutorial](neural-controller-policy-search/) gives PGPE
 and CR-FM-NES a direct-policy-search showcase. A native Rust cart-pole model
@@ -576,7 +626,7 @@ See the [complete neural-controller policy-search tutorial](neural-controller-po
 for the model, objective, fixed-versus-rotating noise protocol, baselines,
 frozen test, scaling experiment, raw results and limitations.
 
-## 11. GTOC1 “Save the Earth”: multi-fidelity trajectory optimization
+## 12. GTOC1 “Save the Earth”: multi-fidelity trajectory optimization
 
 The [GTOC1 tutorial](gtoc1/) combines `pykep-core` and `fcmaes-core` to
 reproduce the EVEEEJSJA asteroid-impact trajectory disclosed by JPL. Its
@@ -619,7 +669,7 @@ background, multi-fidelity and split-brain architectures, mission
 transcription, objective construction, staged search, parallel retry commands,
 measured wall times, feasibility checks, and scoring limitation.
 
-### 11.1 Split-brain planet-order search (work in progress)
+### 12.1 Split-brain planet-order search (work in progress)
 
 The [route-search companion](gtoc1-route-search/) executes the discrete outer
 loop described above. A provider-independent subprocess proposes body orders
@@ -628,17 +678,20 @@ duration decoding, equal-budget Lambert optimization, failure taxonomy,
 crash-safe persistence, and scheduled Sims–Flanagan promotions. Random and
 route `(1+1)` baselines use the same numerical budget and promotion policy.
 
-The checked-in evidence is deliberately a protocol smoke test, not an agent
-performance claim. The work-in-progress chapter publishes the experiment
-contract, lists the missing matched arms and independent seeds, and gives
-commands for readers to run their own L0 or L1 studies. The tutorial preserves
-every claim ceiling: L0 is a surrogate, L1 is impulsive, and only optional
-Taylor plus independent DOP853 validation can support model-qualified
-continuous-thrust feasibility.
+The checked-in evidence now includes the offline protocol fixture, a completed
+MiniMax-M3 seed-42 L0 audit, and a predeclared random-arm L1 follow-up. Random
+reaches 15 L0-admissible routes, the repaired evolutionary arm reaches 24,
+and MiniMax reaches none. The original 1/40 bootstrap failure and a
+bootstrap-only 39/40 saturation run remain preserved; independent bootstrap
+seeds plus exploration immigrants let the final evolutionary arm complete
+40/40 in 58 attempts. Random L0 ranks 1, 8, and 15 were promoted before any L1
+outcome was inspected, but none closed. L0 remains a surrogate, L1 is
+impulsive, and only optional Taylor plus independent DOP853 validation can
+support model-qualified continuous-thrust feasibility.
 
 ![The route proposer is separated from deterministic Rust grammar, optimization, physics, archive, and fidelity promotion](gtoc1-route-search/images/architecture.svg)
 
-## 12. sindr: smooth features and manufacturable circuit catalogues
+## 13. sindr: smooth features and manufacturable circuit catalogues
 
 The [circuit-design tutorial](sindr-circuit-design/) puts `sindr` AC analysis
 inside three native optimization formulations. It first demonstrates why a
@@ -665,7 +718,7 @@ the netlists, feature tests, objectives, E12 encoding, recorded evidence,
 deterministic visualizations, and the deliberately limited alpha-simulator
 scope.
 
-## 13. thevenin: validated transient gate-driver trade-offs
+## 14. thevenin: validated transient gate-driver trade-offs
 
 The [gate-driver tutorial](thevenin-gate-driver/) keeps the optimization hot
 path pure Rust while adding the transient controls deliberately absent from the
@@ -689,7 +742,7 @@ circuit model, objectives, measurement interpolation, MODE front, scaling
 study, ngspice harness, validation limits, dependency notice, and exact
 publication commands.
 
-## 14. Pure-Rust optics: validated multimodal lens design
+## 15. Pure-Rust optics: validated multimodal lens design
 
 The [optical-design tutorial](optical-lens-design/) implements the compact
 closed-form core of sequential geometric optics—sphere intersections, vector
@@ -708,7 +761,7 @@ cargo run --release -- --preset smoke --mode all --workers 4 --no-output
 See the [complete optical tutorial](optical-lens-design/README.md) for the
 prescription, validation limits, spot diagrams, and spot/length/glass front.
 
-## 15. Rapier quadruped: contact-derived gait repertoires
+## 16. Rapier quadruped: contact-derived gait repertoires
 
 The [quadruped tutorial](rapier-quadruped-gait/) makes MAP-Elites the primary
 answer. A 25-variable CPG drives eight ideal motors in a deterministic
@@ -726,7 +779,7 @@ cargo run --release -- --preset smoke --mode all --workers 4 --no-output
 See the [complete gait tutorial](rapier-quadruped-gait/README.md) for the range
 study, contact strips, equal-budget scalar baseline, and held-out robustness.
 
-## 16. Quantized phased arrays: robust beams and register codebooks
+## 17. Quantized phased arrays: robust beams and register codebooks
 
 The [phased-array tutorial](phased-array-codebook/) implements direct-sum and
 native-node FFT array-factor kernels, then optimizes 6-bit phase and 5-bit
@@ -755,7 +808,7 @@ See the [complete phased-array tutorial](phased-array-codebook/README.md) for
 the kernel contract, metric validation, robustness scenarios, descriptor
 gate, measured results, non-uniform geometry arm, artifacts, and limitations.
 
-## 17. Bilevel energy hub: a global outer problem around a convex inner LP
+## 18. Bilevel energy hub: a global outer problem around a convex inner LP
 
 The [energy-hub tutorial](energy-hub-bilevel/) makes the optimizer boundary
 explicit. For fixed capacities, `microlp` solves electricity and storage
@@ -785,7 +838,7 @@ See the [complete energy-hub tutorial](energy-hub-bilevel/README.md) for the LP
 formulation, invariants, solver gate, landscape evidence, descriptor verdict,
 annual H₂ extension, artifacts, and limitations.
 
-## 18. Field-service routing: random-key assignments and permutations
+## 19. Field-service routing: random-key assignments and permutations
 
 The [field-service tutorial](field-service-routing/) maps two continuous key
 blocks to compatible vehicle assignments and a deterministic priority order.
@@ -819,7 +872,7 @@ See the [complete field-service tutorial](field-service-routing/README.md) for
 the frozen cost specification, route maps, measured solver-choice discussion,
 and descriptor-gate evidence.
 
-## 19. Water networks: robust schedules around stateful hydraulics
+## 20. Water networks: robust schedules around stateful hydraulics
 
 The [water-network tutorial](water-network-scheduling/) puts a stepwise
 `epanet-rs` extended-period simulation inside independent fcmaes candidates.
@@ -857,7 +910,63 @@ See the [complete water-network tutorial](water-network-scheduling/README.md)
 for the synthetic network, M1 backend audit, DDA/PDA contract, validation
 limits, resolution study, measured optimization results and replay artifacts.
 
-## 20. Diffsol: why gradients are the better default
+## 21. Truss topology and sizing: mechanisms are not large stresses
+
+The [truss-sizing tutorial](truss-sizing/) puts a native linear-elastic 2-D
+truss FEM inside a 171-coordinate mixed-variable objective. An exact-k decoder
+selects 8–40 members from a 75-member ground structure, assigns one of twelve
+CHS catalogue sections, and moves ten nodes without moving supports or load
+points.
+
+Connectivity and spectral reciprocal conditioning gate every load solve.
+Disconnected or singular candidates retain typed constraint failures and no
+fabricated stress or displacement. A hand-derived three-bar equilibrium
+oracle, an independent virtual-work displacement, and a rigid support-
+settlement invariant validate the implementation before optimization.
+
+The equal-budget publication comparison reduces the explicit triangulated seed
+from 4,190.377 kg to a feasible 1,789.319 kg with differential evolution.
+Constrained MODE exposes intact mass/displacement trade-offs, but every
+retained point loses a load path under at least one member removal. The
+pre-registered depth/survival and utilization-spread/survival descriptors also
+miss the coverage gate, so QD is recorded as a schema-compliant skip rather
+than a misleading structural repertoire.
+
+![Exact mixed decoding feeds a typed FEM contract before scalar and multi-objective search](truss-sizing/images/architecture.svg)
+
+```bash
+cd tutorials/truss-sizing
+cargo run --release --locked -- \
+  --mode all --preset publication --workers 0 --seed 42 \
+  --output results/publication
+```
+
+See the [complete truss-sizing tutorial](truss-sizing/README.md) for the
+equations, catalogue provenance, validation oracles, full-precision artifacts,
+measured optimizer comparison, descriptor verdict, and engineering limits.
+
+## 22. Network coverage: certificates before generic search
+
+The [network-coverage tutorial](network-coverage/) uses a 4,000-variable
+two-bin representation for weighted outreach or monitor placement. Ordinary
+edges are stored directly; overlapping group relations use an exactly
+equivalent weighted-pair count without materializing group cliques.
+
+Its validation layer deliberately comes before fcmaes: maximal matching and
+weighted primal-dual constructions publish separate lower bounds and verified
+factor-two covers, while exact tiny `microlp` programs agree with brute force.
+The throughput gate selects publication scale before optimizer quality is
+known. DE retains but does not improve the certified classic-cover seeds.
+
+For the extended cost/coverage problem, integer-aware MODE is compared with
+every prefix of marginal-gain-per-cost greedy. The specialist frontier
+dominates all finite MODE-generated points on the frozen monotone-submodular
+model. Seed-origin labels prevent known greedy points from being reported as
+optimizer discoveries. This negative result defines the useful boundary:
+prefer the specialist here; use the continuous-box representation when
+non-submodular simulations or coupled controls remove that structure.
+
+## 23. Diffsol: why gradients are the better default
 
 [Diffsol](https://github.com/martinjrobins/diffsol) is an MIT-licensed Rust
 ODE/DAE solver with explicit and implicit integration, event/root detection,

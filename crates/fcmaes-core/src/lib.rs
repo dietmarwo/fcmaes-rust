@@ -14,6 +14,7 @@ pub mod crfmnes;
 pub mod da;
 pub mod de;
 pub mod fitness;
+pub mod indicators;
 pub mod mapelites;
 pub mod mode;
 pub mod moretry;
@@ -29,8 +30,13 @@ pub use crfmnes::{Crfmnes, CrfmnesParams, CrfmnesResult};
 pub use da::{DaParams, DaResult, optimize_da};
 pub use de::{De, DeParams, DeResult};
 pub use fitness::{Fitness, NAN_REPLACEMENT, Objective, parallel_batch};
+pub use indicators::{
+    HypervolumeEstimate, HypervolumeReport, IndicatorError, OutsidePolicy, ReferencePoint,
+    additive_epsilon, crowding_distance, gd, gd_plus, hypervolume, hypervolume_monte_carlo,
+    hypervolume_with, igd, igd_plus, nondominated_sort, spacing, spread,
+};
 pub use mapelites::{
-    Archive, DiversifierParams, MapElitesParams, QdBatchFitness, QdFitness, diversify,
+    Archive, DiversifierParams, GridLayout, MapElitesParams, QdBatchFitness, QdFitness, diversify,
     diversify_batch, map_elites, map_elites_batch, map_elites_batch_with_progress,
 };
 pub use mode::{Mode, ModeParams, ModeResult};
@@ -41,7 +47,7 @@ pub use moretry::{
 pub use pgpe::{Pgpe, PgpeParams, PgpeResult};
 pub use retry::{
     AdvancedRetryConfig, RetryBounds, RetryConfig, RetryContext, RetryEntry, RetryImprovement,
-    RetryResult, RetryRunResult, advanced_retry, retry,
+    RetryResult, RetryRunResult, advanced_retry, retry, retry_run_seed,
 };
 pub use rng::Rng;
 

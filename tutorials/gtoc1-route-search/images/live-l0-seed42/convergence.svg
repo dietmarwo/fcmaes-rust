@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="520" viewBox="0 0 1000 520" role="img" aria-labelledby="title desc">
+  <title id="title">Route-search constraint convergence</title>
+  <desc id="desc">Lowest feasibility-first L0 constraint violation by accepted candidate for three configured campaign arms; failed arms retain their partial archive.</desc>
+  <rect width="1000" height="520" fill="#f7f9fc"/>
+  <text x="500" y="42" text-anchor="middle" font-family="system-ui" font-size="24" font-weight="700" fill="#132238">Lowest L0 constraint violation under the protocol budget</text>
+  <path d="M90 450 H950 M90 450 V80" stroke="#40556f" stroke-width="2"/>
+  <polyline points="90.00,100.00 112.05,100.00 134.10,229.86 156.15,229.86 178.21,229.86 200.26,252.97 222.31,252.97 244.36,252.97 266.41,421.81 288.46,421.81 310.51,421.81 332.56,421.81 354.62,421.81 376.67,421.81 398.72,421.81 420.77,421.81 442.82,421.81 464.87,421.81 486.92,421.81 508.97,421.81 531.03,421.81 553.08,421.81 575.13,421.81 597.18,434.22 619.23,434.22 641.28,434.22 663.33,434.22 685.38,434.22 707.44,434.22 729.49,434.22 751.54,434.22 773.59,434.22 795.64,434.22 817.69,434.22 839.74,434.22 861.79,434.22 883.85,434.22 905.90,434.22 927.95,434.22 950.00,434.22" fill="none" stroke="#2774ae" stroke-width="4"/>
+  <circle cx="950.00" cy="434.22" r="6" fill="#2774ae"/>
+  <polyline points="90.00,450.00 112.05,450.00 134.10,450.00 156.15,450.00 178.21,450.00 200.26,450.00 222.31,450.00 244.36,450.00 266.41,450.00 288.46,450.00 310.51,450.00 332.56,450.00 354.62,450.00 376.67,450.00 398.72,450.00 420.77,450.00 442.82,450.00 464.87,450.00 486.92,450.00 508.97,450.00 531.03,450.00 553.08,450.00 575.13,450.00 597.18,450.00 619.23,450.00 641.28,450.00 663.33,450.00 685.38,450.00 707.44,450.00 729.49,450.00 751.54,450.00 773.59,450.00 795.64,450.00 817.69,450.00 839.74,450.00 861.79,450.00 883.85,450.00 905.90,450.00 927.95,450.00 950.00,450.00" fill="none" stroke="#c99118" stroke-width="4"/>
+  <circle cx="950.00" cy="450.00" r="6" fill="#c99118"/>
+  <polyline points="90.00,449.38 112.05,449.38 134.10,450.00 156.15,450.00 178.21,450.00 200.26,450.00 222.31,450.00 244.36,450.00 266.41,450.00 288.46,450.00 310.51,450.00 332.56,450.00 354.62,450.00 376.67,450.00 398.72,450.00 420.77,450.00 442.82,450.00 464.87,450.00 486.92,450.00 508.97,450.00 531.03,450.00 553.08,450.00 575.13,450.00 597.18,450.00 619.23,450.00 641.28,450.00 663.33,450.00 685.38,450.00 707.44,450.00 729.49,450.00 751.54,450.00 773.59,450.00 795.64,450.00 817.69,450.00 839.74,450.00 861.79,450.00 883.85,450.00 905.90,450.00 927.95,450.00 950.00,450.00" fill="none" stroke="#7656b5" stroke-width="4"/>
+  <circle cx="950.00" cy="450.00" r="6" fill="#7656b5"/>
+  <rect x="260" y="475" width="24" height="5" fill="#2774ae"/><text x="294" y="484" font-family="system-ui" font-size="15" fill="#26384f">agent (completed)</text>
+  <rect x="490" y="475" width="24" height="5" fill="#c99118"/><text x="524" y="484" font-family="system-ui" font-size="15" fill="#26384f">random (completed)</text>
+  <rect x="720" y="475" width="24" height="5" fill="#7656b5"/><text x="754" y="484" font-family="system-ui" font-size="15" fill="#26384f">evolutionary (completed)</text>
+  <text x="520" y="510" text-anchor="middle" font-family="system-ui" font-size="14" fill="#40556f">accepted candidates</text>
+  <text x="24" y="270" text-anchor="middle" font-family="system-ui" font-size="13" fill="#40556f" transform="rotate(-90 24 270)">log10(1 + violation), lower is better</text>
+</svg>

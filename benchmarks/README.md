@@ -7,6 +7,7 @@ preserve every experiment and are the authoritative inputs for statistics.
 |---|---|---|
 | Coordinated retry, BiteOpt retry, and DE→CMA retry on GTOP | [`benchmark_gtop.md`](benchmark_gtop.md) | [`benchmark_gtop_100_raw.tsv`](benchmark_gtop_100_raw.tsv), [`benchmark_gtop_tandem_100_raw.tsv`](benchmark_gtop_tandem_100_raw.tsv), [`benchmark_biteopt_gtop_rust_100_raw.tsv`](benchmark_biteopt_gtop_rust_100_raw.tsv), [`benchmark_de_cma_gtop_rust_100_raw.tsv`](benchmark_de_cma_gtop_rust_100_raw.tsv) |
 | fcmaes versus independent Rust optimizer crates | [`optimizer-comparison/comparison.md`](optimizer-comparison/comparison.md) | [raw artifacts](https://github.com/dietmarwo/fcmaes-rust/tree/main/benchmarks/optimizer-comparison/raw) |
+| Core boundary: DE versus Nelder–Mead refinement and EGO at equal wall deadlines | [`optimizer-boundary/results/decision-v2/comparison.md`](optimizer-boundary/results/decision-v2/comparison.md) | [`refiner-raw.tsv`](optimizer-boundary/results/decision-v2/refiner-raw.tsv), [`bo-trace.tsv`](optimizer-boundary/results/decision-v2/bo-trace.tsv) |
 
 Recreate the recorded native fcmaes workloads from the repository root:
 
@@ -37,6 +38,11 @@ Run the dependency-isolated optimizer comparison with:
 ```bash
 benchmarks/optimizer-comparison/run_all_external.sh
 ```
+
+Reproduce the dependency-isolated optimizer-boundary experiment using the
+commands in its [protocol](optimizer-boundary/README.md). It keeps the
+experiment-only `egobox-ego` and Nelder–Mead implementations outside the root
+workspace and `fcmaes-core` dependency graph.
 
 Wall times depend strongly on CPU, operating system, compiler version, and
 background load. Treat recorded timings as reproducibility data for the stated

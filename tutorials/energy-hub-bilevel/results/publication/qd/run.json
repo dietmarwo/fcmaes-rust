@@ -31,7 +31,7 @@
       "label": "peak_import_ratio"
     }
   ],
-  "elapsed_seconds": 3.605088835,
+  "elapsed_seconds": 3.924771778,
   "formulation": "quality-diversity",
   "horizon_limitation": "twelve independently cyclic representative days; no seasonal or hydrogen claim",
   "objectives": [

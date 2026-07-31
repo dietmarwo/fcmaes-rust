@@ -11,7 +11,7 @@
         "solver_failures": 0
       },
       "completed_retries": 4,
-      "elapsed_seconds": 2.150018341,
+      "elapsed_seconds": 3.310511294,
       "feasible": true,
       "optimizer": "cma",
       "requested_evaluations": 160
@@ -26,7 +26,7 @@
         "solver_failures": 0
       },
       "completed_retries": 4,
-      "elapsed_seconds": 1.59674257,
+      "elapsed_seconds": 2.172645546,
       "feasible": true,
       "optimizer": "de",
       "requested_evaluations": 160
@@ -41,7 +41,7 @@
         "solver_failures": 0
       },
       "completed_retries": 4,
-      "elapsed_seconds": 1.294475326,
+      "elapsed_seconds": 1.7877719920000001,
       "feasible": true,
       "optimizer": "bite",
       "requested_evaluations": 160
@@ -78,7 +78,7 @@
     }
   ],
   "descriptors": [],
-  "elapsed_seconds": 5.041236237,
+  "elapsed_seconds": 7.270928831999999,
   "formulation": "so-comparison",
   "horizon_limitation": "twelve independently cyclic representative days; no seasonal or hydrogen claim",
   "objectives": [

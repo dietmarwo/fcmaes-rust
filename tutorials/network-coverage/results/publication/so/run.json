@@ -1,0 +1,39 @@
+{
+  "actual_evaluations": 16816,
+  "artifacts": {
+    "arms": "arms.csv",
+    "convergence": "convergence.csv",
+    "optimizer_incumbents": "optimizer_incumbents.csv"
+  },
+  "certificate_contract": "cardinality and weighted ratios use distinct valid lower bounds",
+  "command": "cargo run --release --locked -- --mode all --preset publication --workers 0 --output results/publication",
+  "formulation": "so",
+  "input": {
+    "dropped_self_loops": 0,
+    "external_edges": false
+  },
+  "instance": "reference-4k",
+  "requested_evaluations": 16384,
+  "retention": [
+    {
+      "arm": "de-cardinality",
+      "delta_vs_seed": 0.0,
+      "optimizer_metrics_available": true,
+      "optimizer_objective": 5136.0,
+      "optimizer_verified": false,
+      "retained_source": "seed"
+    },
+    {
+      "arm": "de-weighted",
+      "delta_vs_seed": 0.0,
+      "optimizer_metrics_available": true,
+      "optimizer_objective": 706820.9102372737,
+      "optimizer_verified": false,
+      "retained_source": "seed"
+    }
+  ],
+  "schema_version": 1,
+  "seed": 42,
+  "tutorial": "network-coverage",
+  "workers": 0
+}

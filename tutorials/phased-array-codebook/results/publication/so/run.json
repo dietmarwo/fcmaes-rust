@@ -6,7 +6,7 @@
       "actual_evaluations": 8184,
       "best_objective": -11.70495191065001,
       "completed_retries": 8,
-      "elapsed_seconds": 3.573764693,
+      "elapsed_seconds": 3.698826609,
       "optimizer": "cma",
       "requested_evaluations": 8000
     },
@@ -14,7 +14,7 @@
       "actual_evaluations": 8152,
       "best_objective": -11.23260253490708,
       "completed_retries": 8,
-      "elapsed_seconds": 3.667845089,
+      "elapsed_seconds": 3.7322471630000003,
       "optimizer": "de",
       "requested_evaluations": 8000
     },
@@ -22,7 +22,7 @@
       "actual_evaluations": 8000,
       "best_objective": -12.029500766047079,
       "completed_retries": 8,
-      "elapsed_seconds": 3.536316709,
+      "elapsed_seconds": 3.593421359,
       "optimizer": "bite",
       "requested_evaluations": 8000
     }
@@ -52,7 +52,7 @@
     }
   ],
   "descriptors": [],
-  "elapsed_seconds": 10.777926491,
+  "elapsed_seconds": 11.024495131,
   "formulation": "so-comparison",
   "objectives": [
     {

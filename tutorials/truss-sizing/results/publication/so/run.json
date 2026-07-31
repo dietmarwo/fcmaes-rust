@@ -1,0 +1,251 @@
+{
+  "actual_evaluations": 8496,
+  "arms": [
+    {
+      "actual_evaluations": 2232,
+      "best": {
+        "active_count": 34,
+        "carbon_kg_co2e_indicative": 4051.7650250922943,
+        "compliance_j": 2740.7700299625412,
+        "constraints": [
+          -1.0,
+          -1.0,
+          -7.408874052374432,
+          -0.34389700536232815,
+          -0.7797148655618804,
+          -0.7983982848936904
+        ],
+        "depth_to_span": 0.3383172124858789,
+        "failed_removals": null,
+        "failure": null,
+        "feasible": true,
+        "mass_kg": 2383.3911912307613,
+        "max_buckling_ratio": 0.22028513443811953,
+        "max_displacement_m": 0.010080085755315483,
+        "max_stress_ratio": 0.6561029946376719,
+        "objective": 2383.3911912307613,
+        "rcond": 0.002563740430833753,
+        "redundancy_degradation": null,
+        "removal_survival": null
+      },
+      "completed_retries": 8,
+      "elapsed_seconds": 0.033792953,
+      "optimizer": "cma-seeded",
+      "requested_evaluations": 2048,
+      "work": {
+        "candidate_evaluations": 2234,
+        "factorizations": 2234,
+        "fem_solves": 3194
+      }
+    },
+    {
+      "actual_evaluations": 2168,
+      "best": {
+        "active_count": 36,
+        "carbon_kg_co2e_indicative": 3041.842998706109,
+        "compliance_j": 4677.938134841919,
+        "constraints": [
+          -1.0,
+          -1.0,
+          -7.054512734065522,
+          -0.09592536562797183,
+          -0.2868421472792183,
+          -0.7114355332717961
+        ],
+        "depth_to_span": 0.35232985978846926,
+        "failed_removals": null,
+        "failure": null,
+        "feasible": true,
+        "mass_kg": 1789.319411003595,
+        "max_buckling_ratio": 0.7131578527207817,
+        "max_displacement_m": 0.014428223336410195,
+        "max_stress_ratio": 0.9040746343720282,
+        "objective": 1789.319411003595,
+        "rcond": 0.0011337380802577878,
+        "redundancy_degradation": null,
+        "removal_survival": null
+      },
+      "completed_retries": 8,
+      "elapsed_seconds": 0.013374386,
+      "optimizer": "de-seeded",
+      "requested_evaluations": 2048,
+      "work": {
+        "candidate_evaluations": 2170,
+        "factorizations": 2168,
+        "fem_solves": 2916
+      }
+    },
+    {
+      "actual_evaluations": 2048,
+      "best": {
+        "active_count": 34,
+        "carbon_kg_co2e_indicative": 3971.379104029076,
+        "compliance_j": 4097.933307847781,
+        "constraints": [
+          -1.0,
+          -1.0,
+          -6.422345302362911,
+          -0.05129575672742159,
+          -0.3065714227675246,
+          -0.27718499131725294
+        ],
+        "depth_to_span": 0.34813402848357083,
+        "failed_removals": null,
+        "failure": null,
+        "feasible": true,
+        "mass_kg": 2336.105355311222,
+        "max_buckling_ratio": 0.6934285772324754,
+        "max_displacement_m": 0.03614075043413736,
+        "max_stress_ratio": 0.9487042432725784,
+        "objective": 2336.105355311222,
+        "rcond": 0.0002644510540450605,
+        "redundancy_degradation": null,
+        "removal_survival": null
+      },
+      "completed_retries": 8,
+      "elapsed_seconds": 0.022529282,
+      "optimizer": "bite-seeded",
+      "requested_evaluations": 2048,
+      "work": {
+        "candidate_evaluations": 2050,
+        "factorizations": 2029,
+        "fem_solves": 2060
+      }
+    },
+    {
+      "actual_evaluations": 2048,
+      "best": {
+        "active_count": 9,
+        "carbon_kg_co2e_indicative": 181.7857810709003,
+        "compliance_j": null,
+        "constraints": [
+          1.0,
+          -1.0,
+          -1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "depth_to_span": 0.3772736577715239,
+        "failed_removals": null,
+        "failure": "disconnected",
+        "feasible": false,
+        "mass_kg": 106.93281239464723,
+        "max_buckling_ratio": null,
+        "max_displacement_m": null,
+        "max_stress_ratio": null,
+        "objective": 400000106.9328124,
+        "rcond": null,
+        "redundancy_degradation": null,
+        "removal_survival": null
+      },
+      "completed_retries": 8,
+      "elapsed_seconds": 0.012358359,
+      "optimizer": "bite-unseeded",
+      "requested_evaluations": 2048,
+      "work": {
+        "candidate_evaluations": 2049,
+        "factorizations": 1399,
+        "fem_solves": 56
+      }
+    }
+  ],
+  "artifacts": {
+    "arms": "arms.csv",
+    "best_members": "best_members.csv",
+    "convergence": "convergence.csv"
+  },
+  "command": "cargo run --release --locked -- --mode all --preset publication --workers 0 --output results/publication",
+  "constraints": [
+    {
+      "column": "constraint_disconnected",
+      "feasible": "<= 0"
+    },
+    {
+      "column": "constraint_mechanism",
+      "feasible": "<= 0"
+    },
+    {
+      "column": "constraint_conditioning",
+      "feasible": "<= 0"
+    },
+    {
+      "column": "constraint_stress",
+      "feasible": "<= 0"
+    },
+    {
+      "column": "constraint_buckling",
+      "feasible": "<= 0"
+    },
+    {
+      "column": "constraint_displacement",
+      "feasible": "<= 0"
+    }
+  ],
+  "descriptors": [],
+  "elapsed_seconds": 0.08205498,
+  "formulation": "so-comparison",
+  "model_limitation": "Educational linear-elastic pin-jointed 2-D truss; not a code-compliant structural design.",
+  "objectives": [
+    {
+      "column": "objective",
+      "label": "Penalized structural mass",
+      "unit": "kg"
+    }
+  ],
+  "requested_evaluations": 8192,
+  "schema_version": 1,
+  "seed": 42,
+  "seed_baseline": {
+    "active_count": 40,
+    "carbon_kg_co2e_indicative": 7123.641534929275,
+    "compliance_j": 1005.9741394012524,
+    "constraints": [
+      -1.0,
+      -1.0,
+      -7.609576467218252,
+      -0.7932163196966262,
+      -0.9708799386039606,
+      -0.9380136006473859
+    ],
+    "depth_to_span": 0.3333333333333333,
+    "failed_removals": null,
+    "failure": null,
+    "feasible": true,
+    "mass_kg": 4190.377373487806,
+    "max_buckling_ratio": 0.02912006139603943,
+    "max_displacement_m": 0.003099319967630705,
+    "max_stress_ratio": 0.2067836803033738,
+    "objective": 4190.377373487806,
+    "rcond": 0.004069831859572241,
+    "redundancy_degradation": null,
+    "removal_survival": null
+  },
+  "selected": {
+    "active_count": 36,
+    "carbon_kg_co2e_indicative": 3041.842998706109,
+    "compliance_j": 4677.938134841919,
+    "constraints": [
+      -1.0,
+      -1.0,
+      -7.054512734065522,
+      -0.09592536562797183,
+      -0.2868421472792183,
+      -0.7114355332717961
+    ],
+    "depth_to_span": 0.35232985978846926,
+    "failed_removals": null,
+    "failure": null,
+    "feasible": true,
+    "mass_kg": 1789.319411003595,
+    "max_buckling_ratio": 0.7131578527207817,
+    "max_displacement_m": 0.014428223336410195,
+    "max_stress_ratio": 0.9040746343720282,
+    "objective": 1789.319411003595,
+    "rcond": 0.0011337380802577878,
+    "redundancy_degradation": null,
+    "removal_survival": null
+  },
+  "tutorial": "truss-sizing",
+  "workers": 0
+}

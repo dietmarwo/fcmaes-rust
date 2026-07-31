@@ -162,11 +162,21 @@ candidate evaluations split over eight seeded parallel retries. Every retry
 starts near a decoded steered/tapered beam, and every retained result is
 replayed from its exported codes.
 
-| Arm | Actual evaluations | Peak | Nominal PSLL | Worst training PSLL | Feasible |
-|---|---:|---:|---:|---:|---:|
-| CMA-ES | 8,184 | 20.137° | -17.64 dB | -11.70 dB | yes |
-| DE | 8,152 | 20.160° | -17.40 dB | -11.23 dB | yes |
-| BiteOpt | 8,000 | 19.803° | -23.18 dB | **-12.03 dB** | yes |
+| Arm | Actual evaluations | Peak | Nominal PSLL | Worst training PSLL | Δ vs seed | Feasible |
+|---|---:|---:|---:|---:|---:|---:|
+| analytic seed | 13 | 19.901° | -21.24 dB | -11.66 dB | — | yes |
+| CMA-ES | 8,184 | 20.137° | -17.64 dB | -11.70 dB | -0.04 dB | yes |
+| DE | 8,152 | 20.160° | -17.40 dB | -11.23 dB | **+0.43 dB** | yes |
+| BiteOpt | 8,000 | 19.803° | -23.18 dB | **-12.03 dB** | -0.37 dB | yes |
+
+The first row is the baseline: the best of a deterministic 13-point sweep over
+the same taper range each retry samples from. It is already feasible, so the
+arms are refining a good start rather than searching from nothing. Read against
+it, CMA-ES gains `0.04 dB`, BiteOpt gains `0.37 dB`, and **DE finishes
+`0.43 dB` worse than the seed** despite 8,152 evaluations. On a quantized
+plateau landscape that ranking is the expected one, and publishing the baseline
+is what makes it visible; a table of three arms alone would have implied more
+search value than the measurement supports.
 
 The exact values, constraints, register codes, actual budgets, and wall times
 are in

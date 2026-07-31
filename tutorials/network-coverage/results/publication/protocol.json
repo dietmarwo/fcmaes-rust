@@ -1,0 +1,18 @@
+{
+  "decision_bounds": [
+    0.0,
+    1.999999999999
+  ],
+  "group_weight_exponent": 0.5,
+  "integer_mask": true,
+  "mo_evaluations": 8192,
+  "mo_population": 64,
+  "mo_sensitivity_evaluations": 200000,
+  "preset": "publication",
+  "schema_version": 1,
+  "selected_instance": "reference-4k",
+  "selection_precedes_optimization": true,
+  "so_evaluations_per_arm": 8192,
+  "so_retries": 8,
+  "tutorial": "network-coverage"
+}

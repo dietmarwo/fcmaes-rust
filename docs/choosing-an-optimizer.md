@@ -68,7 +68,7 @@ automatically a useful derivative of an objective that also contains:
 Events alone do not invalidate gradients. Diffsol supports forward and adjoint
 sensitivities, so smooth parameter fitting is naturally paired with a
 gradient-based optimizer. The
-[Diffsol discussion](../tutorials/README.md#20-diffsol-why-gradients-are-the-better-default)
+[Diffsol discussion](../tutorials/README.md#23-diffsol-why-gradients-are-the-better-default)
 explains the boundary. A gradient-free outer layer becomes attractive when
 discrete policies, resets, robust aggregation, or failures break the complete
 derivative path.
@@ -92,6 +92,19 @@ formulations.
 Use the total campaign budget, not only the cost of one evaluation. Include
 retries, replications, validation, failed simulations, and every worker.
 
+Check *why* an evaluation is expensive before choosing. Time the simulator
+alone, then time it again through your objective wrapper. Process launches,
+file or container round-trips, re-parsing inputs, and re-initializing state can
+dominate the physics. When they do, removing them usually changes the
+affordable budget by more than any algorithm choice — and can change which
+algorithm is correct, because a method chosen for scarce evaluations stops
+being appropriate once evaluations are cheap and parallel. Non-reentrant global
+state is the common blocker: it prevents in-process parallel evaluation and
+forces slower process-level fan-out. The Python
+[`fast-cma-es` Water tutorial](https://github.com/dietmarwo/fast-cma-es/blob/master/tutorials/Water.adoc)
+works through that repair on a groundwater model whose shared state initially
+prevented parallel objective evaluation.
+
 | Evaluation regime | Usually benchmark first |
 | --- | --- |
 | Very scarce, expensive evaluations | Bayesian or surrogate-based optimization |
@@ -108,7 +121,11 @@ number of constraints, batch size, and surrogate choice can shift the
 crossover by orders of magnitude. A few hundred evaluations may already be a
 large budget for an expensive low-dimensional model and far too small for a
 noisy 50-dimensional search. When both approaches are plausible, compare them
-under the same total evaluations and compute resources.
+under the same wall time and compute resources. The corrected
+[optimizer-boundary experiment](optimizer-boundary.md) shows why equal calls
+can be misleading: EGO paid roughly 3–4 seconds of modelling overhead while
+DE's measured overhead was about 0.1 milliseconds. BO helped on one small CFD
+budget but did not remain ahead as the budget grew.
 
 The [GTOP optimizer comparison](../benchmarks/optimizer-comparison/comparison.md)
 demonstrates the high-budget retry regime, not a universal ranking. Under the
@@ -199,7 +216,7 @@ It is a good fit when most of the following are true:
 - the required result is one robust design, a Pareto set, or a meaningful
   quality-diversity archive.
 
-The nineteen [application tutorials](../tutorials/README.md) cover different
+The twenty-two [application tutorials](../tutorials/README.md) cover different
 reasons for reaching this point: stochastic discrete events, mechanical
 discontinuities, intrinsic simulation noise, changing access windows,
 mixed-integer controls and solver failures, censored inverse inference,
@@ -245,7 +262,9 @@ The strongest solution often combines methods:
 The DE-to-CMA sequence in coordinated retry is an example of staged
 derivative-free exploration and refinement. CMA-ES is not a gradient-based
 local solver, so this should not be confused with a classical global-to-local
-gradient hybrid.
+gradient hybrid. A paired DE→Nelder–Mead experiment also found that improving a
+shorter DE prefix did not reliably beat continuing DE for the same resource
+rounds; see [The optimizer boundary](optimizer-boundary.md).
 
 ## Symptoms that the choice or formulation is wrong
 
@@ -265,8 +284,10 @@ gradient hybrid.
 Before adopting an optimizer, compare at least two plausible choices and record:
 
 1. identical objective, bounds, constraints, failure handling, and decoding;
-2. identical total objective evaluations, including initialization and
-   restarts;
+2. an equal budget in the resource that actually binds — objective
+   evaluations when the objective dominates and workers are unavailable, or
+   wall time at a stated worker count when evaluations run in parallel — with
+   the choice recorded, and including initialization and restarts;
 3. actual worker availability and which layer owns parallelism;
 4. independent root seeds and, for noisy problems, the same named scenario
    sets;
@@ -277,6 +298,28 @@ Before adopting an optimizer, compare at least two plausible choices and record:
 Report mean and standard deviation across independent experiments, but retain
 quantiles or the raw results when distributions are skewed. A single best run
 is not an algorithm comparison.
+
+### Reading published comparisons
+
+Optimization results are usually reported against objective-evaluation counts
+rather than wall time, because evaluation counts are hardware-independent and
+reproducible. That is a reasonable convention, but it carries no parallelism
+factor: a method that needs fewer evaluations can still finish later than one
+that fills every available worker. When your deployment evaluates in parallel,
+treat per-evaluation rankings as informative about the sequential case, and
+re-measure at equal wall time before adopting them.
+
+Several Python [`fast-cma-es` tutorials](https://github.com/dietmarwo/fast-cma-es/tree/master/tutorials)
+re-examine published surrogate comparisons on their original problems:
+[RobotRover](https://github.com/dietmarwo/fast-cma-es/blob/master/tutorials/RobotRover.adoc)
+re-runs two benchmarks created to evaluate an ensemble Bayesian optimizer,
+[FluidDynamics](https://github.com/dietmarwo/fast-cma-es/blob/master/tutorials/FluidDynamics.adoc)
+uses the Docker-based ESP and PitzDaily CFD problems alongside the MVRSM
+surrogate solver, and
+[Hospital](https://github.com/dietmarwo/fast-cma-es/blob/master/tutorials/Hospital.adoc)
+argues that surrogate methods should be compared against parallel rather than
+sequential baselines. They are prior work in the Python library, not results of
+this project.
 
 ## Quick reference
 

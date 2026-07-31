@@ -1,0 +1,25 @@
+{
+  "arms": [
+    "initial-population",
+    "random",
+    "de"
+  ],
+  "artifacts": {
+    "arms": "arms.csv"
+  },
+  "baseline_relation": "initial-population is the first 31 points of the random arm stream",
+  "claim_scope": "deterministic-conformance-demonstration",
+  "dimensions": [
+    10
+  ],
+  "formulation": "classic-single-objective",
+  "preset": "publication",
+  "problems": 8,
+  "requested_evaluations_per_optimized_arm": 4000,
+  "schema_version": 2,
+  "seed": 42,
+  "seed_count": 1,
+  "status": "completed",
+  "tutorial": "foundations",
+  "workers": 2
+}

@@ -24,7 +24,7 @@
     }
   ],
   "descriptors": [],
-  "elapsed_seconds": 19.923189009,
+  "elapsed_seconds": 21.778777017,
   "formulation": "chronological-annual-extension",
   "hourly_validation": {
     "hydrogen_amplitude_kwh": 2119.5539949608738,

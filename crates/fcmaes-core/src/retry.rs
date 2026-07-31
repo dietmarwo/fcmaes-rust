@@ -30,7 +30,7 @@
 //!     );
 //!     let params = DeParams {
 //!         max_evaluations: context.max_evaluations,
-//!         seed: context.seed,
+//!         seed: context.run_seed,
 //!         ..Default::default()
 //!     };
 //!     let mut de = De::new(fit, &[], &[], None, &params);
@@ -101,10 +101,20 @@ impl RetryBounds {
 
 /// Inputs for one independent optimizer run.
 #[derive(Clone, Debug)]
+#[non_exhaustive]
 pub struct RetryContext {
     /// Zero-based retry identifier.
     pub run_id: usize,
+    /// Seed derived only from the campaign root seed and [`run_id`](Self::run_id).
+    ///
+    /// Unlike [`seed`](Self::seed), this value is independent of worker count,
+    /// scheduling, and the number of earlier runs completed by a worker. Use it
+    /// when a retry must be reproducible across concurrency configurations.
+    pub run_seed: u64,
     /// Independent seed assigned from the worker's persistent stream.
+    ///
+    /// This preserves the original scheduling-dependent retry behavior. New
+    /// reproducible campaigns should normally use [`run_seed`](Self::run_seed).
     pub seed: u64,
     /// Bounds selected for this retry.
     pub bounds: RetryBounds,
@@ -386,6 +396,17 @@ fn splitmix64(mut z: u64) -> u64 {
     z ^ (z >> 31)
 }
 
+/// Derive the schedule-independent seed for one retry identifier.
+///
+/// The same `(root_seed, run_id)` pair always returns the same value regardless
+/// of worker count or scheduling. This is the derivation used for
+/// [`RetryContext::run_seed`] by scalar, advanced, and multi-objective retry.
+pub fn retry_run_seed(root_seed: u64, run_id: usize) -> u64 {
+    splitmix64(
+        root_seed ^ 0xA076_1D64_78BD_642F ^ (run_id as u64).wrapping_mul(0xE703_7ED1_A0B4_28DB),
+    )
+}
+
 /// Spawn one persistent PCG stream per retry worker. Distinct PCG stream
 /// selectors provide the same independence property sought by NumPy's
 /// `SeedSequence.spawn(workers)` without sharing mutable RNG state.
@@ -456,6 +477,7 @@ where
             let sdev = initial_sdev(bounds.dim(), &mut worker_rng);
             let context = RetryContext {
                 run_id,
+                run_seed: retry_run_seed(config.seed, run_id),
                 seed: worker_rng.next_u64(),
                 bounds: bounds.clone(),
                 guess: None,
@@ -506,6 +528,7 @@ fn advanced_context(
         let sdev = initial_sdev(bounds.dim(), worker_rng);
         return RetryContext {
             run_id,
+            run_seed: retry_run_seed(config.retry.seed, run_id),
             seed: worker_rng.next_u64(),
             bounds: bounds.clone(),
             guess: None,
@@ -548,6 +571,7 @@ fn advanced_context(
 
     RetryContext {
         run_id,
+        run_seed: retry_run_seed(config.retry.seed, run_id),
         seed: worker_rng.next_u64(),
         bounds: RetryBounds::new(lower, upper).expect("crossover bounds are valid"),
         guess: Some(guess),
@@ -689,6 +713,43 @@ mod tests {
                 assert_ne!(first[left], first[right]);
             }
         }
+    }
+
+    #[test]
+    fn run_seeds_are_independent_of_worker_count_and_scheduling() {
+        let collect = |workers| {
+            let observed = Mutex::new(Vec::new());
+            let config = RetryConfig {
+                num_retries: 32,
+                workers,
+                seed: 0x1234_5678,
+                value_limit: f64::INFINITY,
+                ..Default::default()
+            };
+            retry(&|_: &[f64]| 0.0, &bounds(), &config, |_, context| {
+                observed
+                    .lock()
+                    .unwrap()
+                    .push((context.run_id, context.run_seed));
+                RetryRunResult {
+                    x: vec![0.0; context.bounds.dim()],
+                    y: context.run_id as f64,
+                    evaluations: 1,
+                }
+            });
+            let mut values = observed.into_inner().unwrap();
+            values.sort_unstable();
+            values
+        };
+        let serial = collect(1);
+        assert_eq!(serial, collect(8));
+        assert!(
+            serial
+                .iter()
+                .all(|(run_id, seed)| *seed == retry_run_seed(0x1234_5678, *run_id))
+        );
+        let unique: std::collections::HashSet<u64> = serial.iter().map(|(_, seed)| *seed).collect();
+        assert_eq!(unique.len(), serial.len());
     }
 
     #[test]

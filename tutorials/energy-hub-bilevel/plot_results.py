@@ -341,7 +341,7 @@ def descriptor_pilot(output: Path) -> None:
         max(diagnostic["clipping_axis_1"], diagnostic["clipping_axis_2"]),
         diagnostic["coverage"],
         diagnostic["minimum_seed_coverage"],
-        diagnostic["holdout_retention"],
+        diagnostic["holdout_niche_retention"],
     ]
     limits = [0.7, 0.1, 0.4, None, 0.6]
     passing = [

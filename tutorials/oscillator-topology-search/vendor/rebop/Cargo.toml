@@ -1,0 +1,12 @@
+[package]
+name = "rebop"
+version = "0.9.7"
+edition = "2024"
+license = "MIT"
+authors = ["fcmaes-rust contributors"]
+description = "Tutorial compatibility copy of ReBop's runtime Gillespie core"
+repository = "https://github.com/dietmarwo/fcmaes-rust"
+
+[dependencies]
+rand = "0.10.0"
+rand_distr = "0.6.0"

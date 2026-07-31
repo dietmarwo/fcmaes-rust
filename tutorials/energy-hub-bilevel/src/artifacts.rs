@@ -11,7 +11,7 @@ use crate::annual::AnnualResult;
 use crate::archive_grid::ArchiveGrid;
 use crate::config::{Preset, Protocol};
 use crate::decode::OuterDesign;
-use crate::evaluate::{OuterEvaluation, feasible};
+use crate::evaluate::{OuterEvaluation, analytic_seed, evaluate_training, feasible};
 use crate::landscape::{LandscapeResult, convexity_violation};
 use crate::mo::MoResult;
 use crate::pilot::{DescriptorPair, PilotRow, PilotSummary};
@@ -172,14 +172,36 @@ pub fn write_landscape(
 pub fn write_so(metadata: &RunMetadata<'_>, arms: &[SoArmResult]) -> Result<(), Box<dyn Error>> {
     fs::create_dir_all(metadata.directory)?;
     let mut best = format!(
-        "optimizer,feasible,objective,mean_lcoe,worst_lcoe,min_self_sufficiency,max_unserved_fraction,max_annual_cycles,constraint_self_sufficiency,constraint_unserved,constraint_cycles,constraint_lp_status,{DESIGN_HEADER}\n"
+        "optimizer,feasible,objective,mean_lcoe,worst_lcoe,min_self_sufficiency,max_unserved_fraction,max_annual_cycles,constraint_self_sufficiency,constraint_unserved,constraint_cycles,constraint_lp_status,{DESIGN_HEADER},delta_vs_seed\n"
     );
+    // Every arm starts from the same deterministic analytic seed, so the seed's
+    // own objective is published as the baseline row. An arm whose
+    // `delta_vs_seed` is zero did not improve on its starting point.
+    let seed = evaluate_training(&analytic_seed(), metadata.preset)
+        .ok_or("analytic scalar seed could not be replayed for the baseline row")?;
+    writeln!(
+        best,
+        "seed,{},{},{},{},{},{},{},{},{},{},{},{},{:.17}",
+        usize::from(feasible(&seed)),
+        seed.objective,
+        seed.mean_lcoe,
+        seed.worst_lcoe,
+        seed.min_self_sufficiency,
+        seed.max_unserved_fraction,
+        seed.max_annual_cycles,
+        seed.constraint_self_sufficiency,
+        seed.constraint_unserved,
+        seed.constraint_cycles,
+        seed.constraint_lp_status,
+        design_fields(&seed.design),
+        0.0
+    )?;
     let mut convergence = String::from("optimizer,evaluations,elapsed_seconds,best_objective\n");
     for arm in arms {
         let evaluation = &arm.best;
         writeln!(
             best,
-            "{},{},{},{},{},{},{},{},{},{},{},{},{}",
+            "{},{},{},{},{},{},{},{},{},{},{},{},{},{:.17}",
             arm.optimizer.name(),
             usize::from(feasible(evaluation)),
             evaluation.objective,
@@ -192,7 +214,8 @@ pub fn write_so(metadata: &RunMetadata<'_>, arms: &[SoArmResult]) -> Result<(), 
             evaluation.constraint_unserved,
             evaluation.constraint_cycles,
             evaluation.constraint_lp_status,
-            design_fields(&evaluation.design)
+            design_fields(&evaluation.design),
+            evaluation.objective - seed.objective
         )?;
         if arm.improvements.is_empty() {
             writeln!(
@@ -336,7 +359,7 @@ pub fn write_pilot(
         summary.d1.rank_correlation,
         100.0 * summary.d1.coverage,
         100.0 * summary.d1.minimum_seed_coverage,
-        100.0 * summary.d1.holdout_retention,
+        100.0 * summary.d1.holdout_niche_retention,
         summary.timestep_mean_normalized_shift,
         summary.d2.rank_correlation,
         summary.d3.rank_correlation

@@ -1,0 +1,50 @@
+{
+  "schema_version": 1,
+  "tutorial": "oscillator-topology-search",
+  "formulation": "agent",
+  "status": "not-run",
+  "strategy": "agent",
+  "preset": "publication",
+  "command": "cargo run --release --locked -- --mode all --preset publication --inner-retries 1 --workers 1 --output results/publication",
+  "seed": 42,
+  "protocol": {
+    "candidates_per_arm": 20,
+    "inner_retries": 1,
+    "workers": 1,
+    "inner_evaluations": 480,
+    "training_replications": 2,
+    "validation_replications": 5,
+    "bite_depth": 6
+  },
+  "resolved_workers": 1,
+  "proposal_attempts": 0,
+  "accepted_candidates": 0,
+  "duplicates_or_invalid": 0,
+  "transport_failures": 0,
+  "input_tokens": 0,
+  "output_tokens": 0,
+  "best_validation_score": null,
+  "best_topology": null,
+  "exact_rediscoveries": {
+    "goodwin-like": 0,
+    "positive-cycle": 0,
+    "repressilator": 0,
+    "toggle-control": 0
+  },
+  "motif_classes": [],
+  "message": "configure --agent-command, a provider/model and a deliberate token budget",
+  "artifacts": {
+    "archive": {
+      "kind": "jsonl",
+      "path": "candidates.jsonl"
+    },
+    "candidates": {
+      "kind": "table",
+      "path": "candidates.csv"
+    },
+    "convergence": {
+      "kind": "table",
+      "path": "convergence.csv"
+    }
+  }
+}

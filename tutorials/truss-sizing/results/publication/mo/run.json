@@ -1,0 +1,70 @@
+{
+  "actual_evaluations": 256,
+  "artifacts": {
+    "convergence": "convergence.csv",
+    "pareto": "pareto.csv"
+  },
+  "command": "cargo run --release --locked -- --mode all --preset publication --workers 0 --output results/publication",
+  "constraints": [
+    {
+      "column": "constraint_disconnected",
+      "feasible": "<= 0"
+    },
+    {
+      "column": "constraint_mechanism",
+      "feasible": "<= 0"
+    },
+    {
+      "column": "constraint_conditioning",
+      "feasible": "<= 0"
+    },
+    {
+      "column": "constraint_stress",
+      "feasible": "<= 0"
+    },
+    {
+      "column": "constraint_buckling",
+      "feasible": "<= 0"
+    }
+  ],
+  "convergence_metrics": [
+    "feasible_population",
+    "pareto_population",
+    "best_quality"
+  ],
+  "descriptors": [],
+  "elapsed_seconds": 0.087827733,
+  "formulation": "mo",
+  "objectives": [
+    {
+      "column": "objective_mass_kg",
+      "label": "Structural mass",
+      "unit": "kg"
+    },
+    {
+      "column": "objective_displacement_m",
+      "label": "Maximum displacement",
+      "unit": "m"
+    },
+    {
+      "column": "objective_redundancy_degradation",
+      "label": "Worst removal compliance degradation",
+      "unit": "ratio"
+    },
+    {
+      "column": "objective_active_count",
+      "label": "Active members",
+      "unit": "count"
+    }
+  ],
+  "requested_evaluations": 256,
+  "schema_version": 1,
+  "seed": 42,
+  "tutorial": "truss-sizing",
+  "work": {
+    "candidate_evaluations": 288,
+    "factorizations": 11808,
+    "fem_solves": 22448
+  },
+  "workers": 0
+}

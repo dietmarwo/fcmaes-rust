@@ -1,0 +1,190 @@
+{
+  "results": [
+    {
+      "structure": {
+        "bodies": [
+          3,
+          2,
+          2,
+          3,
+          2,
+          2,
+          2,
+          2,
+          3,
+          2,
+          3,
+          10
+        ]
+      },
+      "variant": {
+        "structure": {
+          "bodies": [
+            3,
+            2,
+            2,
+            3,
+            2,
+            2,
+            2,
+            2,
+            3,
+            2,
+            3,
+            10
+          ]
+        },
+        "clockwise": [
+          false,
+          false,
+          false,
+          false,
+          false,
+          false,
+          false,
+          false,
+          true,
+          false,
+          false
+        ]
+      },
+      "structure_key": "3-2-2-3-2-2-2-2-3-2-3-10",
+      "variant_key": "3-2-2-3-2-2-2-2-3-2-3-10|00000000100",
+      "niche_key": "L12-I11-Tnone-R2-F13y",
+      "accepted_index": 0,
+      "proposal_attempt": 1,
+      "strategy": "evolutionary",
+      "rationale": "evolutionary bootstrap sample",
+      "l0": {
+        "evaluation_found": true,
+        "objective": 17254058.720610563,
+        "estimated_score": 5.170194054639253e-10,
+        "fixed_mass_score": 233440.95183961876,
+        "constraint": 0.0017254058720610561,
+        "launch_v_infinity_km_s": 2.5415380051526437,
+        "powered_delta_v_km_s": 790.7947654337713,
+        "endpoint_repair_delta_v_km_s": 828.1897593257389,
+        "minimum_periapsis_margin_km": 1.0171334310743987,
+        "flight_days": 5080.004427829574,
+        "branches": [
+          {
+            "revolutions": 3,
+            "path": "left"
+          },
+          {
+            "revolutions": 1,
+            "path": "left"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 5,
+            "path": "left"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 1,
+            "path": "left"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 2,
+            "path": "left"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          },
+          {
+            "revolutions": 0,
+            "path": "zero"
+          }
+        ],
+        "epochs_mjd2000": [
+          10354.998514382398,
+          11393.666384420138,
+          11840.279048153277,
+          11854.635106415411,
+          13854.635106415411,
+          13868.63525639118,
+          14191.703002857448,
+          14234.439584156153,
+          15035.533187856212,
+          15049.563358052572,
+          15090.601341681884,
+          15435.002942211971
+        ],
+        "optimizer_decision": [
+          10354.998514382398,
+          5080.004427829574,
+          3.138848293068798,
+          2.2765672698664643,
+          -4.825936420603935,
+          8.90951223006503,
+          -12.598312338378863,
+          1.9402849803312203,
+          -0.4351045959122659,
+          2.8750716619386223,
+          -7.2941762341554135,
+          -0.49603283829101164
+        ],
+        "physical_decision": {
+          "launch_mjd2000": 10354.998514382398,
+          "leg_days": [
+            1038.6678700377397,
+            446.6126637331401,
+            14.356058262134098,
+            2000.0,
+            14.000149975768295,
+            323.06774646626695,
+            42.73658129870402,
+            801.0936037000599,
+            14.030170196359645,
+            41.037983629312436,
+            344.40160053008805
+          ]
+        },
+        "requested_evaluations": 3520000,
+        "actual_evaluations": 2181747,
+        "resolved_workers": 32,
+        "worker_seconds": 2840.380827392,
+        "wall_seconds": 88.761900856,
+        "failures": {
+          "LambertUnavailable": 151,
+          "PropagationFailure": 59
+        },
+        "failure_examples": [
+          {
+            "code": "LambertUnavailable",
+            "leg": null,
+            "value": null,
+            "message": "pykep evaluation failed: floating-point overflow in LambertProblem::time_of_flight"
+          },
+          {
+            "code": "PropagationFailure",
+            "leg": null,
+            "value": null,
+            "message": "invalid decision x[11]=10957.500000000002"
+          }
+        ]
+      },
+      "l1": null,
+      "l2": null,
+      "surrogate_gap": null,
+      "cache_key": "de17093a2700fa0f8c8de1c426761c71b9d45cf95071147f75004bcf25067add",
+      "created_unix_ms": 1785438623635
+    }
+  ]
+}

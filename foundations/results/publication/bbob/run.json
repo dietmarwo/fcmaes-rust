@@ -1,0 +1,14 @@
+{
+  "actual_evaluations": null,
+  "artifacts": {},
+  "command": "cargo run --release --locked -- --campaign --preset publication --workers 2 --seed 42 --output <DIR>",
+  "formulation": "bbob",
+  "preset": "publication",
+  "reason": "reference-fixtures-unavailable",
+  "reason_detail": "implementation was not attempted because independently sourced fixed-point fixtures are a prerequisite",
+  "schema_version": 2,
+  "seed": 42,
+  "status": "skipped",
+  "tutorial": "foundations",
+  "workers": 2
+}

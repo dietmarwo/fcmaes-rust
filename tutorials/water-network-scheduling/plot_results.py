@@ -441,7 +441,7 @@ def descriptor_gate(output: Path) -> None:
         abs(d1["rank_correlation"]),
         max(d1["clipping_axis_1"], d1["clipping_axis_2"]),
         d1["coverage"],
-        d1["holdout_retention"],
+        d1["holdout_niche_retention"],
         d1["timestep_retention"],
     ]
     limits = [0.7, 0.1, 0.4, 0.6, None]
@@ -486,7 +486,7 @@ def qd_catalogue(output: Path) -> None:
         figure, axis = plt.subplots(figsize=(7.3, 4.4))
         names = ["D1", "D2"]
         coverage = [pilot["pairs"][name]["coverage"] for name in names]
-        retention = [pilot["pairs"][name]["holdout_retention"] for name in names]
+        retention = [pilot["pairs"][name]["holdout_niche_retention"] for name in names]
         x = np.arange(len(names))
         axis.bar(x - 0.18, coverage, 0.36, label="coverage", color="#0072B2")
         axis.bar(x + 0.18, retention, 0.36, label="holdout retention", color="#D55E00")

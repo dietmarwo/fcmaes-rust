@@ -1,0 +1,25 @@
+[package]
+name = "fcmaes-foundations"
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+publish = false
+description = "Academic benchmark suites, indicators, and a progressive fcmaes-rust on-ramp"
+
+[features]
+default = []
+gradient-reference = ["dep:argmin", "dep:argmin-math"]
+
+[workspace]
+
+[dependencies]
+fcmaes-core = { path = "../crates/fcmaes-core", version = "=0.1.4" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sha2 = "0.10"
+argmin = { version = "0.11", optional = true }
+argmin-math = { version = "0.5", optional = true, features = ["vec"] }
+
+[profile.release]
+codegen-units = 1
+lto = "thin"

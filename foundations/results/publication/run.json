@@ -1,0 +1,31 @@
+{
+  "artifacts": {
+    "bbob_gate": "bbob/run.json",
+    "ladder": "ladder/run.json",
+    "multi_objective": "mo/run.json",
+    "single_objective": "so/run.json",
+    "wfg_gate": "wfg/run.json"
+  },
+  "available_components": [
+    "cec-loader"
+  ],
+  "claim_scope": "deterministic-conformance-demonstration; not a statistical optimizer benchmark",
+  "completed_stages": [
+    "classic",
+    "zdt",
+    "dtlz",
+    "ladder"
+  ],
+  "elapsed_seconds": 0.472042438,
+  "formulation": "foundations-conformance-campaign",
+  "preset": "publication",
+  "schema_version": 2,
+  "seed": 42,
+  "skipped_gates": [
+    "wfg",
+    "bbob"
+  ],
+  "status": "completed",
+  "tutorial": "foundations",
+  "workers": 2
+}

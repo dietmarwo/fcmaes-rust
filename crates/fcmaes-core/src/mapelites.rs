@@ -227,6 +227,38 @@ fn cvt_centers(k: usize, dim: usize, samples_per_niche: usize, rng: &mut Rng) ->
 // Archive
 // ---------------------------------------------------------------------------
 
+/// Exact row layout of a regular two-dimensional MAP-Elites archive.
+///
+/// The first `extra_columns` rows contain `base_columns + 1` cells; remaining
+/// rows contain `base_columns`. This represents every capacity exactly,
+/// including ragged grids such as 60 cells arranged over seven rows.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct GridLayout {
+    /// Number of descriptor rows.
+    pub rows: usize,
+    /// Columns present in every row.
+    pub base_columns: usize,
+    /// Number of leading rows containing one additional column.
+    pub extra_columns: usize,
+}
+
+impl GridLayout {
+    /// Exact number of cells described by this layout.
+    pub fn cells(&self) -> usize {
+        self.rows * self.base_columns + self.extra_columns
+    }
+
+    /// Number of columns in `row`, or `None` when the row is out of range.
+    pub fn columns_in_row(&self, row: usize) -> Option<usize> {
+        (row < self.rows).then(|| self.base_columns + usize::from(row < self.extra_columns))
+    }
+
+    /// Maximum number of columns in any row.
+    pub fn max_columns(&self) -> usize {
+        self.base_columns + usize::from(self.extra_columns > 0)
+    }
+}
+
 /// CVT quality-diversity archive: `capacity` niches, each holding the best
 /// solution found for it.
 pub struct Archive {
@@ -354,6 +386,35 @@ impl Archive {
     /// Number of niches containing an evaluated elite.
     pub fn occupied(&self) -> usize {
         self.occupied
+    }
+
+    /// Exact layout of a regular two-dimensional archive.
+    ///
+    /// Returns `None` for CVT archives and descriptor dimensions other than
+    /// two. Use [`capacity`](Self::capacity) as the coverage denominator and
+    /// this layout when mapping a niche index to a rendered row.
+    pub fn grid_layout(&self) -> Option<GridLayout> {
+        if !self.grid_2d {
+            return None;
+        }
+        let rows = (self.capacity as f64).sqrt().floor().max(1.0) as usize;
+        Some(GridLayout {
+            rows,
+            base_columns: self.capacity / rows,
+            extra_columns: self.capacity % rows,
+        })
+    }
+
+    /// Shape of a regular two-dimensional archive.
+    ///
+    /// The first component is the number of columns and the second the number
+    /// of rows. Returns `None` for CVT archives and for descriptor dimensions
+    /// other than two. Non-rectangular regular grids report the maximum column
+    /// count; early rows may contain one additional cell as documented by the
+    /// archive's exact-capacity construction.
+    pub fn grid_shape(&self) -> Option<(usize, usize)> {
+        self.grid_layout()
+            .map(|layout| (layout.max_columns(), layout.rows))
     }
 
     /// Seed all niche solutions with uniform random samples in `[lower, upper]`
@@ -1010,6 +1071,41 @@ mod tests {
         assert_eq!(archive.centers.len(), 100);
         assert_eq!(archive.index_of_niche(&[0.0, 0.0]), 0);
         assert_eq!(archive.index_of_niche(&[1.0, 1.0]), 99);
+    }
+
+    #[test]
+    fn grid_layout_represents_rectangular_and_ragged_capacities_exactly() {
+        let mut rng = Rng::new(11);
+        let rectangular = Archive::new(2, &[0.0, 0.0], &[1.0, 1.0], 120, 0, &mut rng);
+        let layout = rectangular.grid_layout().unwrap();
+        assert_eq!(
+            layout,
+            GridLayout {
+                rows: 10,
+                base_columns: 12,
+                extra_columns: 0,
+            }
+        );
+        assert_eq!(layout.cells(), rectangular.capacity());
+        assert_eq!(layout.columns_in_row(9), Some(12));
+        assert_eq!(layout.columns_in_row(10), None);
+        assert_eq!(rectangular.grid_shape(), Some((12, 10)));
+
+        let ragged = Archive::new(2, &[0.0, 0.0], &[1.0, 1.0], 60, 0, &mut rng);
+        let layout = ragged.grid_layout().unwrap();
+        assert_eq!(
+            layout,
+            GridLayout {
+                rows: 7,
+                base_columns: 8,
+                extra_columns: 4,
+            }
+        );
+        assert_eq!(layout.cells(), ragged.capacity());
+        assert_eq!(layout.columns_in_row(0), Some(9));
+        assert_eq!(layout.columns_in_row(3), Some(9));
+        assert_eq!(layout.columns_in_row(4), Some(8));
+        assert_eq!(ragged.grid_shape(), Some((9, 7)));
     }
 
     #[test]
