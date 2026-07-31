@@ -6,6 +6,8 @@ phase, with breaking changes called out explicitly.
 
 ## [Unreleased]
 
+## [0.1.4] - 2026-07-31
+
 ### Added
 
 - Added a standalone Foundations guide with seven compact, size-tested
@@ -266,7 +268,8 @@ Initial crates.io bootstrap release.
   before configuring trusted publishing.
 - There was no corresponding `fcmaes-rust` 0.1.1 release on PyPI.
 
-[Unreleased]: https://github.com/dietmarwo/fcmaes-rust/compare/v0.1.3...HEAD
+[Unreleased]: https://github.com/dietmarwo/fcmaes-rust/compare/v0.1.4...HEAD
+[0.1.4]: https://github.com/dietmarwo/fcmaes-rust/compare/v0.1.3...v0.1.4
 [0.1.3]: https://github.com/dietmarwo/fcmaes-rust/compare/v0.1.2...v0.1.3
 [0.1.2]: https://github.com/dietmarwo/fcmaes-rust/releases/tag/v0.1.2
 [0.1.1]: https://crates.io/crates/fcmaes-core/0.1.1
