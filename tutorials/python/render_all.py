@@ -26,11 +26,11 @@ def main() -> int:
         raise SystemExit(f"no run.json manifests found below {arguments.root}")
     stale = []
     for manifest in manifests:
-        run = load_run(manifest)
         relative = manifest.relative_to(arguments.root)
         tutorial = arguments.root / relative.parts[0]
         if (tutorial / ".custom-renderer").is_file():
             continue
+        run = load_run(manifest)
         run_name = "-".join(relative.parts[2:-1])
         output = tutorial / "images" / run_name
         if arguments.write:

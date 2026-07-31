@@ -203,11 +203,13 @@ quietly truncated.
 
 | Arm | Actual outer calls | Robust mean LCOE | Min. self-sufficiency | Max. annual cycles | Feasible |
 |---|---:|---:|---:|---:|---:|
+| Analytic seed | baseline replay | 0.070236 | 75.39% | 426.52 | no |
 | CMA-ES | 248 | 0.054026 | 97.21% | 277.92 | yes |
 | DE | 207 | **0.045683** | 92.53% | 0.00 | yes |
 | BiteOpt | 160 | 0.050120 | 88.19% | 0.00 | yes |
 
-All three replayed designs satisfy the frozen constraints. DE selected
+The explicit analytic seed is infeasible and is not charged to any optimizer's
+budget. All three optimized designs satisfy the frozen constraints. DE selected
 `1,447.60 kWp` PV, `3,000 kW` wind, no battery, and the `1,250 kW` grid tier.
 Each retry derives its random stream from the arm root seed and stable retry
 ID, so changing worker count changes scheduling but not search trajectories.

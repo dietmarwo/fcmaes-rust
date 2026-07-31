@@ -21,7 +21,12 @@ from matplotlib.patches import FancyBboxPatch
 ROOT = Path(__file__).resolve().parent
 RESULTS = ROOT / "results" / "publication"
 IMAGES = ROOT / "images"
-COLORS = {"cma": "#0072B2", "de": "#009E73", "bite": "#D55E00"}
+COLORS = {
+    "seed": "#999999",
+    "cma": "#0072B2",
+    "de": "#009E73",
+    "bite": "#D55E00",
+}
 FIGURES = [
     "architecture.svg",
     "landscape.svg",
@@ -107,7 +112,10 @@ def validate_artifacts() -> None:
         if not (0 <= int(row["grid_x"]) < 12 and 0 <= int(row["grid_y"]) < 10):
             raise ValueError("QD archive contains an invalid native-grid coordinate")
 
-    if not any(row["feasible"] == "1" for row in rows(RESULTS / "so" / "best.csv")):
+    scalar_rows = rows(RESULTS / "so" / "best.csv")
+    if scalar_rows[0]["optimizer"] != "seed":
+        raise ValueError("scalar comparison does not publish its seed baseline first")
+    if not any(row["feasible"] == "1" for row in scalar_rows[1:]):
         raise ValueError("scalar comparison has no feasible design")
     for row in rows(RESULTS / "mo" / "pareto.csv"):
         if any(
@@ -290,6 +298,8 @@ def so_comparison(output: Path) -> None:
     objective = [float(row["objective"]) for row in best]
     colors = [COLORS[name] for name in names]
     arm_budget = {row["optimizer"]: row["budget"] for row in manifest["arms"]}
+    optimizer_names = [name for name in names if name in arm_budget]
+    optimizer_colors = [COLORS[name] for name in optimizer_names]
     figure, axes = plt.subplots(1, 2, figsize=(9.2, 3.65))
     locations = np.arange(len(names))
     axes[0].bar(locations - 0.17, lcoe, 0.34, color=colors, alpha=0.60, label="mean LCOE")
@@ -298,12 +308,15 @@ def so_comparison(output: Path) -> None:
         if row["feasible"] == "0":
             axes[0].text(index, objective[index], " infeasible", rotation=90, va="bottom", ha="center")
     axes[0].set_xticks(locations, [name.upper() for name in names])
-    axes[0].set(title="Equal requested outer budgets", ylabel="Cost (currency/kWh)")
+    axes[0].set(
+        title="Explicit seed baseline and equal-budget optimizers",
+        ylabel="Cost (currency/kWh)",
+    )
     axes[0].legend()
     axes[1].bar(
-        [name.upper() for name in names],
-        [arm_budget[name]["simplex_iterations"] for name in names],
-        color=colors,
+        [name.upper() for name in optimizer_names],
+        [arm_budget[name]["simplex_iterations"] for name in optimizer_names],
+        color=optimizer_colors,
     )
     axes[1].set(title="The same outer budget does not mean equal LP work", ylabel="Simplex pivots")
     axes[1].ticklabel_format(axis="y", style="sci", scilimits=(0, 0))
