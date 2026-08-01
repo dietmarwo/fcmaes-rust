@@ -1,5 +1,6 @@
 //! Provider-independent subprocess boundary for topology proposals.
 
+use std::collections::HashSet;
 use std::error::Error;
 use std::fmt;
 use std::io::Write;
@@ -151,12 +152,18 @@ pub fn propose(
             dimension: candidate.parameter_dimension,
         })
         .collect();
+    let mut seen_rejections = HashSet::new();
+    let unique_rejections = rejected_keys
+        .iter()
+        .filter(|key| seen_rejections.insert((*key).clone()))
+        .cloned()
+        .collect();
     let mut observation = AgentObservation {
         proposal_attempt: attempt,
         grammar: "nine digits in {0,1,2}; 2..=6 active; no isolated gene",
         objective: "minimize holdout oscillator score; seek distinct signed topologies",
         evaluated,
-        rejected_keys: rejected_keys.to_vec(),
+        rejected_keys: unique_rejections,
         repair_error: None,
     };
     match invoke(command, &observation) {
@@ -199,5 +206,16 @@ mod tests {
     fn failed_command_is_not_retried_as_a_format_repair() {
         let error = propose("false", 1, &Archive::default(), &[]).unwrap_err();
         assert_eq!(error.kind(), AgentErrorKind::Transport);
+    }
+
+    #[test]
+    fn repeated_rejections_are_sent_once_in_first_seen_order() {
+        let command = r#"python3 -c 'import json,sys; r=json.load(sys.stdin); assert r["rejected_keys"] == ["111000000", "020222002"]; print("{\"edges\":[1,1,1,0,0,0,0,0,0]}")'"#;
+        let rejected = vec![
+            "111000000".to_owned(),
+            "020222002".to_owned(),
+            "111000000".to_owned(),
+        ];
+        propose(command, 1, &Archive::default(), &rejected).unwrap();
     }
 }

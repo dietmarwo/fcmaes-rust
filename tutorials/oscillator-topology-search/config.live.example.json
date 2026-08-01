@@ -3,7 +3,7 @@
   "model": "MiniMax-M3",
   "base_url": "https://api.minimax.io/anthropic/v1",
   "api_key_env": "MINIMAX_API_KEY",
-  "max_tokens": 4096,
+  "max_tokens": 8000,
   "thinking": {
     "type": "adaptive"
   }

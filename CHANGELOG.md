@@ -6,6 +6,20 @@ phase, with breaking changes called out explicitly.
 
 ## [Unreleased]
 
+### Changed
+
+- Hardened the oscillator topology-search live-agent protocol with forced
+  structured output, an 8,000-token MiniMax cap, and local unauthenticated
+  llama.cpp support. Protocol v4 now gives OpenAI-compatible models a balanced
+  deterministic menu of unseen elite mutations, underrepresented structures,
+  and random immigrants; deduplicates rejection feedback; and rejects older
+  agent archives at resume time.
+- Replaced the oscillator tutorial's preliminary 20-candidate serial evidence
+  with a matched seed-42 comparison of 200 random, evolutionary, and Gemma 4
+  31B Q8 proposals at 16 × 12,000 inner evaluations. The v4 agent completed
+  without proposal failures, achieved the best and median scores, and exactly
+  rediscovered the held-out repressilator at proposal 188.
+
 ## [0.1.4] - 2026-07-31
 
 ### Added

@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "provider": "openai-compatible",
+  "model": "gemma-4-31B-it-Q8_0.gguf",
+  "endpoint_scope": "loopback llama.cpp",
+  "max_tokens": 8000,
+  "candidate_menu_size": 96,
+  "temperature": 0.6,
+  "thinking_enabled": false,
+  "proposal_protocol": "oscillator-topology-proposal-v4",
+  "note": "This redacted provenance contains no endpoint address or secret. Numerical and token accounting remains authoritative in run.json."
+}

@@ -23,7 +23,7 @@ campaign end to end?”. Foundations does not change the application count.
 | [Production line](nexosim-production-line/) | NeXosim | stochastic discrete events and mixed controls | MODE + MAP-Elites | accepted |
 | [Trebuchet](rapier-trebuchet/) | Rapier | contact, release and joint-limit discontinuities | BiteOpt retry + MODE + MAP-Elites | accepted |
 | [Biochemical oscillator](rebop-oscillator/) | ReBop | intrinsically noisy stochastic reaction paths | BiteOpt retry + MODE + MAP-Elites | accepted |
-| [Oscillator topology search](oscillator-topology-search/) | ReBop runtime SSA + signed grammar | variable-dimension nested search, noisy motif evidence, and an optional agent proposer | deterministic parallel BiteOpt retry + random/evolutionary/agent outer controls + descriptor gate | rejected: two of three arms, 4.17% minimum coverage, and 12.5% eight-replication retention; QD skipped |
+| [Oscillator topology search](oscillator-topology-search/) | ReBop runtime SSA + signed grammar | variable-dimension nested search, noisy motif evidence, and an agent proposer | deterministic parallel BiteOpt retry + random/evolutionary/Gemma outer controls | not part of the matched three-arm publication |
 | [Satellite constellation](brahe-constellation/) | Brahe | access-window appearance/disappearance and worst-gap aggregation | BiteOpt retry + constrained MODE + MAP-Elites | accepted |
 | [Voltage control](rustpower-voltage-control/) | RustPower | mixed-integer controls, contingencies and power-flow failures | constrained MODE + MAP-Elites | MODE primary, QD secondary |
 | [Atmospheric source localization](dispersion-source-localization/) | ISC-3-derived native model | inverse inference, censoring, model mismatch, and non-identifiability | BiteOpt advanced retry + MODE + MAP-Elites | accepted |
@@ -315,32 +315,28 @@ worker cores without making the evolutionary or agent proposal history stale.
 Native ReBop Gillespie paths share training random streams and use disjoint
 validation streams.
 
-Four held-out structural references are optimized separately. At the frozen
-seed-42 publication budget, the repressilator reference reaches a 2.262
-holdout score, while random and a simple `(1+1)` evolutionary control reach
-2.817 and 2.874. Neither control exactly rediscovers a reference in 20
-proposals. The live-agent arm is explicitly `not-run`: the checked mock tests
-transport only and is excluded from scientific comparison.
-
-Period × amplitude is re-piloted rather than inherited from the fixed Vilar
-model. The pair reaches only 4.17% minimum per-arm coverage, 5% coarse-grid
-retention, and 12.5% native-grid retention even after increasing training from
-two to eight replications. Only two of three required arms are available, so
-the tutorial records QD as skipped.
+The matched seed-42 publication gives random, eight-elite evolutionary, and a
+local Gemma 4 31B Q8 agent 200 accepted topologies each. Every topology gets
+16 × 12,000 inner objective calls. Their best holdout scores are respectively
+0.613988, 0.483957, and 0.471418; medians are 2.950889, 2.636004, and 0.957210.
+The v4 unseen-candidate menu lets Gemma complete 200 proposals without one
+duplicate or transport failure, and it exactly rediscovers the held-out
+repressilator at proposal 188. The result is a one-seed case study, not a
+general model ranking.
 
 ![Discrete topology proposals are separated from fixed-budget stochastic evidence](oscillator-topology-search/images/architecture.svg)
 
 ```bash
 cd tutorials/oscillator-topology-search
 cargo run --release --locked -- \
-  --mode all --preset publication \
-  --inner-retries 16 --workers 16 --evaluations 1000 \
-  --output results/local/parallel-r16-seed42
+  --mode report --preset publication --accepted-candidates 200 \
+  --inner-retries 16 --workers 16 --evaluations 12000 \
+  --seed 42 --output results/publication
 ```
 
 See the [complete split-brain oscillator tutorial](oscillator-topology-search/README.md)
 for the runtime model, compatibility notice, score contract, agent boundary,
-publication evidence, descriptor verdict and limitations.
+publication evidence and limitations.
 
 ## 6. Brahe: constellation access optimization
 

@@ -1,42 +1,53 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "tutorial": "oscillator-topology-search",
   "formulation": "agent",
-  "status": "not-run",
+  "status": "complete",
   "strategy": "agent",
   "preset": "publication",
-  "command": "cargo run --release --locked -- --mode all --preset publication --inner-retries 1 --workers 1 --output results/publication",
+  "command": "cargo run --release --locked -- --mode campaign --preset publication --strategy agent --accepted-candidates 200 --inner-retries 16 --workers 16 --evaluations 12000 --seed 42 --agent-command python3 agents/llm_agent.py --config results/matched-200-e12k-r16w16-v4-gemma4-31b-q8-seed42/agent-config.json --output results/matched-200-e12k-r16w16-v4-gemma4-31b-q8-seed42 --resume",
   "seed": 42,
   "protocol": {
     "candidates_per_arm": 20,
-    "inner_retries": 1,
-    "workers": 1,
-    "inner_evaluations": 480,
+    "inner_retries": 16,
+    "workers": 16,
+    "inner_evaluations": 12000,
     "training_replications": 2,
     "validation_replications": 5,
     "bite_depth": 6
   },
-  "resolved_workers": 1,
-  "proposal_attempts": 0,
-  "accepted_candidates": 0,
+  "resolved_workers": 16,
+  "proposal_policy": "external-feedback-candidate-menu-agent-circuit3-v4",
+  "proposal_attempts": 200,
+  "accepted_candidates": 200,
   "duplicates_or_invalid": 0,
   "transport_failures": 0,
-  "input_tokens": 0,
-  "output_tokens": 0,
-  "best_validation_score": null,
-  "best_topology": null,
+  "input_tokens": 2078001,
+  "output_tokens": 3200,
+  "best_validation_score": 0.4714179599205005,
+  "best_topology": "202022022",
   "exact_rediscoveries": {
     "goodwin-like": 0,
     "positive-cycle": 0,
-    "repressilator": 0,
+    "repressilator": 188,
     "toggle-control": 0
   },
-  "motif_classes": [],
-  "message": "configure --agent-command, a provider/model and a deliberate token budget",
+  "motif_classes": [
+    "goodwin-like",
+    "mixed-cycle",
+    "positive-cycle",
+    "repressilator",
+    "toggle-core"
+  ],
+  "message": null,
   "artifacts": {
     "archive": {
       "kind": "jsonl",
       "path": "candidates.jsonl"
+    },
+    "best_trace": {
+      "kind": "table",
+      "path": "best_trace.csv"
     },
     "candidates": {
       "kind": "table",

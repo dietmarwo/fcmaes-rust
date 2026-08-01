@@ -1,10 +1,9 @@
 # Oscillator topology-search comparison
 
-All scores are minimized (**lower is better**). Reference rows are optimized separately and excluded from proposal counts, so their rediscovery cells are `n/a`. A dash means a proposal arm did not exactly rediscover that held-out topology.
+All scores are minimized (**lower is better**). Held-out reference encodings are excluded from proposal histories. A dash means a proposal arm did not exactly rediscover that topology.
 
-| Arm | Repressilator | Goodwin-like | Positive cycle | Toggle control | Classes | Accepted | Best validation score | Agent tokens |
-|---|---:|---:|---:|---:|---:|---:|---:|---:|
-| reference (complete) | n/a | n/a | n/a | n/a | 4 | 4 | 2.262235 | 0 |
-| random (complete) | — | — | — | — | 5 | 20 | 2.816855 | 0 |
-| evolutionary (complete) | — | — | — | — | 1 | 20 | 2.874179 | 0 |
-| agent (not-run) | — | — | — | — | 0 | 0 | — | 0 |
+| Arm | Repressilator | Goodwin-like | Positive cycle | Toggle control | Classes | Accepted | Best | Median | Score < 1 | Agent tokens |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| random (complete) | — | — | — | — | 5 | 200 | 0.613988 | 2.950889 | 10 | 0 |
+| evolutionary (complete) | — | — | — | — | 5 | 200 | 0.483957 | 2.636004 | 59 | 0 |
+| agent (complete) | 188 | — | — | — | 5 | 200 | 0.471418 | 0.957210 | 103 | 2081201 |

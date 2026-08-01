@@ -37,7 +37,6 @@
     - [Score specification](tutorials/oscillator-topology-search/SCORE_SPEC.md)
     - [Agent protocol](tutorials/oscillator-topology-search/AGENT_PROTOCOL.md)
     - [Publication comparison](tutorials/oscillator-topology-search/results/publication/comparison.md)
-    - [Descriptor-pilot evidence](tutorials/oscillator-topology-search/results/publication/pilot/pilot.md)
   - [Brahe constellation access](tutorials/brahe-constellation/README.md)
   - [RustPower voltage control](tutorials/rustpower-voltage-control/README.md)
   - [Atmospheric source localization](tutorials/dispersion-source-localization/README.md)

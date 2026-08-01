@@ -6,7 +6,7 @@ use oscillator_topology_search::artifacts::{
     restore_campaign_snapshot, write_campaign, write_comparison, write_pilot, write_qd_skipped,
 };
 use oscillator_topology_search::config::{Preset, Protocol};
-use oscillator_topology_search::grammar::{REFERENCES, Topology};
+use oscillator_topology_search::grammar::Topology;
 use oscillator_topology_search::outer::{self, Campaign, Strategy};
 use oscillator_topology_search::{pilot, qd};
 
@@ -361,14 +361,6 @@ fn main() -> Result<(), Box<dyn Error>> {
             );
         }
         Mode::Report => {
-            let reference = report_campaign(
-                &root,
-                Strategy::Reference,
-                args.preset,
-                protocol,
-                args.seed,
-                REFERENCES.len(),
-            )?;
             let random = report_campaign(
                 &root,
                 Strategy::Random,
@@ -393,22 +385,12 @@ fn main() -> Result<(), Box<dyn Error>> {
                 args.seed,
                 target,
             )?;
-            let campaigns = [&reference, &random, &evolutionary, &agent];
-            let descriptor_pilot = pilot::evaluate(&campaigns[1..]);
+            let campaigns = [&random, &evolutionary, &agent];
             write_comparison(&root, &campaigns)?;
-            write_pilot(&root, &descriptor_pilot)?;
-            let reasons = if descriptor_pilot.rejection_reasons.is_empty() {
-                "none".to_owned()
-            } else {
-                descriptor_pilot.rejection_reasons.join("; ")
-            };
             println!(
-                "REPORT arms=4 accepted_per_proposal_arm={} qd_gate={} reasons={} comparison={} pilot={}",
+                "REPORT arms=3 accepted_per_proposal_arm={} comparison={}",
                 target,
-                descriptor_pilot.status,
-                reasons,
                 root.join("comparison.md").display(),
-                root.join("pilot/pilot.json").display(),
             );
         }
         Mode::All => {

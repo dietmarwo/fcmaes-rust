@@ -10,7 +10,7 @@ The architecture is a Rust port and protocol-focused extension of
 [`autoresearch-circuit`](https://github.com/dietmarwo/autoresearch-circuit).
 The new parts are a ReBop runtime model, fixed-evaluation inner optimization,
 disjoint stochastic validation, held-out motif rediscovery, replayable
-schema-v1 artifacts, and an explicit live-agent boundary. It is deliberately a
+schema-v2 artifacts, and an explicit live-agent boundary. It is deliberately a
 second split-brain tutorial: unlike variable-order GTOC1, the small outer
 grammar has recognizable structural references.
 
@@ -18,39 +18,40 @@ grammar has recognizable structural references.
 
 ## What the checked experiment found
 
-The publication run optimized four reference rows separately and gave random
-and evolutionary controls 20 accepted topologies each. Every topology received
-one 480-evaluation BiteOpt retry, regardless of whether its kinetic vector had
-10 or 18 variables. This frozen evidence remains the serial baseline; the
-implementation now also supports deterministic parallel inner retry.
+The checked publication experiment compares three outer strategies under one
+matched numerical protocol: seed 42, 200 accepted topologies, 16 independent
+BiteOpt retries, 12,000 evaluations per retry, and 16 workers. Each accepted
+topology therefore receives 192,000 requested objective calls, independent of
+its 10–18-dimensional kinetic vector.
 
-| Arm | Accepted | Exact reference rediscoveries | Motif classes | Best holdout score |
-|---|---:|---:|---:|---:|
-| references | 4 | excluded from search accounting | 4 | **2.262235** |
-| grammar-aware random | 20 | 0 | 5 | 2.816855 |
-| evolutionary `(1+1)` control | 20 | 0 | 1 | 2.874179 |
-| live agent | 0 | — | — | **not run** |
+| Arm | Accepted / attempts | Exact references | Motif classes | Best | Median | Score < 1 |
+|---|---:|---:|---:|---:|---:|---:|
+| grammar-aware random | 200 / 210 | 0 | 5 | 0.613988 | 2.950889 | 10 |
+| eight-elite evolutionary | 200 / 270 | 0 | 5 | 0.483957 | 2.636004 | 59 |
+| Gemma 4 31B Q8, menu v4 | **200 / 200** | **repressilator at 188** | 5 | **0.471418** | **0.957210** | **103** |
 
-Lower is better. The reference winner is the repressilator `000200220`.
-Its 2.262 score clears the frozen 2.5 reference-calibration floor, so the
-inner loop is capable of recovering at least one known oscillator before the
-outer controls are interpreted.
-Neither offline control exactly rediscovered a held-out reference in 20
-proposals. Random also beat the simple evolutionary control: repeatedly
-mutating its current best topology narrowed structural exploration. This is a
-small seed-42 experiment, not evidence that random search generally dominates
-evolution.
+Lower is better. Gemma's best score is 2.59% below evolutionary and
+23.22% below random. More importantly, its median and 103 sub-one results show
+that the outcome is not a single lucky incumbent. The v4 menu also converted
+every model response into a novel accepted topology: zero duplicates, invalid
+responses, or transport failures. The agent used 2,078,001 input and 3,200
+output tokens through a local llama.cpp endpoint with thinking disabled.
 
-The live agent is intentionally `not-run`. It needs a provider, explicit model,
-secret and deliberate token budget. The checked mock only tests JSON transport
-in CI and never appears in the table. See the complete machine-generated
-[comparison](results/publication/comparison.md).
+The exact repressilator `000200220` was not placed in the prompt or proposal
+history. It first appeared at proposal 188 after motif labels from earlier
+evaluations had been fed back to the model. Neither offline control exactly
+rediscovered any of the four held-out encodings. These are descriptive results
+for one root seed and one model configuration, not a general claim that an LLM
+dominates evolutionary search. See the complete machine-generated
+[comparison](results/publication/comparison.md) and redacted
+[agent provenance](results/publication/agent/provenance.json).
 
-![Reference and equal-budget control outcomes](images/campaign-results.svg)
+![Matched random, evolutionary, and Gemma outcomes](images/campaign-results.svg)
 
-The timed inner optimizations consumed 4.68 s for the four references, 35.30 s
-for random and 26.82 s for evolutionary search on the development machine.
-Those wall times are reproducibility notes, not a cross-language benchmark.
+Summed per-topology optimizer wall times were 14,873 s for random, 14,835 s for
+evolutionary, and 16,020 s for the agent. They were collected on separate
+machines and exclude any unrecorded orchestration overhead, so they are
+provenance—not a hardware comparison.
 
 ## The bounded topology grammar
 
@@ -149,8 +150,8 @@ two workers.
 Both `R` and `W` default to the machine's physical-core count, capped by the
 logical CPU quota visible to the process. On the 16-core/32-thread development
 machine, the default is therefore 16 retries on 16 workers. Use
-`--inner-retries 1 --workers 1` to reproduce the frozen serial publication
-evidence. `--workers 0` deliberately opts into all visible logical CPUs but is
+`--inner-retries 1 --workers 1` for a serial smoke or diagnostic run.
+`--workers 0` deliberately opts into all visible logical CPUs but is
 still capped by `R`.
 
 `--evaluations E` is the budget **per retry**, so one topology requests
@@ -205,8 +206,7 @@ three-gene-participation fixtures, plus bit-identical seeded stochastic replay.
 
 ## Structural references, not seeds
 
-The four references are optimized under the campaign budget, but never put in
-proposal history:
+The four reference encodings are held out from proposal history:
 
 - the three-inhibition repressilator is an oscillator reference;
 - the `(+,+,−)` cycle is labelled **Goodwin-like** because this reduced
@@ -281,49 +281,99 @@ circuit-broken arm cannot silently resume: preserve or rename its directory,
 fix and preflight the adapter, then start a fresh arm.
 
 The MiniMax/Anthropic path uses the same transport proven by the GTOC1 route
-search: both bearer and `X-Api-Key` authentication headers, SSE streaming, and
-adaptive-thinking filtering. Only text deltas reach the topology parser;
-thinking deltas are consumed without being mixed into the candidate JSON.
+search: both bearer and `X-Api-Key` authentication headers, SSE streaming and
+adaptive-thinking filtering. Protocol v4 retains the single
+`propose_topology` tool call. The provider may reason privately, but only the
+tool's schema-constrained nine-edge input reaches Rust. The example caps the
+response at 8,000 tokens; the previous 20,000-token unconstrained experiment
+could exhaust its budget in thinking without returning a candidate.
+
+### Local llama.cpp agent
+
+The same adapter can call a local llama.cpp server without a fake API key.
+For the 16 GB smoke-test GPU, the official 12B Gemma 4 Q4 conversion leaves
+substantial room for a 32K context and KV cache:
+
+```bash
+llama-server \
+  -hf ggml-org/gemma-4-12B-it-GGUF:Q4_0 \
+  --alias gemma-4-12b-it-q4 \
+  --gpu-layers all --ctx-size 32768 --flash-attn on \
+  --host 127.0.0.1 --port 8080
+```
+
+In a second terminal:
+
+```bash
+osc_result_root="results/local/llamacpp-gemma4-12b-smoke"
+mkdir -p "$osc_result_root"
+cp config.llamacpp.example.json "$osc_result_root/agent-config.json"
+
+python3 agents/llm_agent.py \
+  --config "$osc_result_root/agent-config.json" \
+  --check
+
+printf '%s\n' \
+  '{"proposal_attempt":1,"grammar":"nine digits in {0,1,2}; 2..=6 active; no isolated gene","objective":"minimize holdout oscillator score; seek distinct signed topologies","evaluated":[],"rejected_keys":[],"repair_error":null}' |
+python3 agents/llm_agent.py \
+  --config "$osc_result_root/agent-config.json"
+
+cargo run --release --locked -- \
+  --mode campaign --preset smoke --strategy agent \
+  --accepted-candidates 1 --inner-retries 1 --workers 1 \
+  --evaluations 200 --seed 42 \
+  --agent-command "python3 agents/llm_agent.py --config $osc_result_root/agent-config.json" \
+  --output "$osc_result_root"
+```
+
+The OpenAI-compatible request uses llama.cpp's schema-constrained
+`response_format`, not model-specific function-call syntax. Protocol v4 first
+removes every evaluated or rejected key from the 12,024-member grammar. It
+then presents 96 unseen candidates: one third round-robin mutations of up to
+eight elites, one third underrepresented structural classes, and one third
+deterministic random immigrants. The model can return only one opaque menu ID,
+which the adapter translates back to nine edges; Rust validates again
+defensively. The local URL
+may omit `api_key_env` only because it is loopback; the adapter rejects an
+unauthenticated remote endpoint. The example keeps the same 8,000-token ceiling
+as MiniMax but disables Gemma's explicit thinking channel. In the 16 GB smoke
+test, Gemma 4 12B ignored a request for at most 500 reasoning tokens, generated
+more than 7,200 and hit the adapter timeout before returning nine integers.
+Direct menu selection is therefore the honest local baseline.
+It is a different proposer from thinking-enabled MiniMax and must remain a
+separate experimental arm. With thinking disabled and the protocol-v3 complete
+grammar schema, the 12B Q4 server returned a 27-token valid proposal in 0.73 s;
+the end-to-end Rust smoke campaign accepted one topology on its first attempt.
+After the v4 repair, a fresh two-candidate end-to-end smoke accepted both in
+exactly two attempts. Each local request used about 5,300 prompt tokens and 16
+output tokens and took about 3.1 seconds on the 16 GB test GPU; no duplicate or
+invalid proposal was recorded.
 
 Do not check in a local configuration or the key. A real agent row belongs in
 the headline comparison only after its result directory records the concrete
 provider/model configuration and `run.json` records provider token usage.
 
-## Descriptor pilot and QD decision
+## From failed proposer to completed experiment
 
-Period × amplitude was successful for the fixed Vilar model, but that does not
-pre-approve it for a topology-search family. This tutorial ran a fresh
-12×12 native-grid pilot on all 40 offline-control candidates. Only two of the
-three required arms are available because the publication agent is `not-run`;
-the gate therefore fails closed instead of silently treating two arms as
-complete evidence.
+The first Gemma 4 31B run used protocol v3's complete grammar schema. Transport
+and syntax worked, but the model accepted only 24 candidates in 2,500 attempts;
+2,476 responses repeated an evaluated topology. Its best accepted score was
+1.051480. This was a novelty-control failure, not an inner-budget or thinking
+failure.
 
-| Gate quantity | Result | Required |
-|---|---:|---:|
-| deterministic arms | **2** | at least 3 |
-| minimum per-arm coverage | **4.167%** | at least 5% |
-| period below / above bounds | 0% / 0% | at most 5% each |
-| amplitude below / above bounds | 0% / 0% | at most 5% each |
-| absolute correlation | 0.2971 | at most 0.90 |
-| 12×12 holdout retention, 2 training replications | **2.5%** | at least 25% |
-| 6×6 holdout retention, 2 training replications | **5.0%** | at least 25% |
-| 12×12 holdout retention, 8 training replications | **12.5%** | at least 25% |
+Protocol v4 moved novelty enforcement outside the model. Every request now
+contains only unseen candidates, so the completed agent arm needed exactly 200
+attempts for 200 accepted topologies. The old serial and failed-v3 publication
+artifacts are not mixed with the headline evidence. The raw external result
+directories may be retained as historical evidence, but `results/publication`
+contains only the three matched completed arms.
 
-The observed training ranges are 20.866–39.028 time units and
-9.500–33.833 molecules, so the registered box contains the sample. Raising
-training replication from two to eight improves native-grid retention from
-2.5% to 12.5%, showing that measurement noise matters, but it still misses the
-25% gate. Coarsening to 6×6 reaches only 5%. The pair is therefore rejected on
-arm count, coverage and holdout stability. The QD arm has a schema-conforming
-`status: "skipped"` manifest with no placeholder archive. This is more
-informative than rendering a noisy repertoire whose elites migrate between
-cells.
+## Reproduce and verify the publication evidence
 
-![Training descriptors, holdout movement and the rejected native grid](images/descriptor-pilot.svg)
-
-## Reproduce the publication evidence
-
-From this standalone workspace:
+Each arm contains its manifest, replay archive, tabular projection, convergence
+history, and incumbent trace. The comparison command is read-only with respect
+to those arm directories: it validates exact schema-v2 manifests and the full
+numerical/proposal protocol, then rewrites only `comparison.md`.
 
 ```bash
 cargo test --locked
@@ -331,100 +381,21 @@ cargo clippy --all-targets --locked -- -D warnings
 python3 -m unittest agents/test_llm_agent.py
 
 cargo run --release --locked -- \
-  --mode all --preset publication \
-  --inner-retries 1 --workers 1 \
-  --output results/publication
-
-# Remeasure descriptor gates from the frozen random/evolutionary archives.
-cargo run --release --locked -- \
-  --mode pilot --preset publication --seed 42 \
-  --output results/publication
+  --mode report --preset publication --accepted-candidates 200 \
+  --inner-retries 16 --workers 16 --evaluations 12000 \
+  --seed 42 --output results/publication
 
 python3 plot_results.py --check
 ```
 
-The publication command deliberately does not provide `--agent-command`.
-`results/publication/agent/run.json` is therefore `not-run`, not fabricated.
-The reference, random and evolutionary arms write:
-
-- `run.json` — schema, protocol, status, usage and summary;
-- `candidates.jsonl` — crash-replay archive;
-- `candidates.csv` — topology, dimension, scores, descriptors and budgets;
-- `convergence.csv` — best score and motif coverage by accepted candidate; and
-- `best_trace.csv` — one disjoint-seed replay.
-
-`--resume` restores a selected arm only after its schema-v2 `run.json` matches
-the requested strategy, preset, root seed, complete inner protocol, resolved
-worker count and versioned proposal policy. Candidate rows are also checked
-against the strategy, evaluation budget and replication counts. Legacy
-schema-v1 results remain valid evidence but cannot be extended; use a new
-`--output` directory. Proposal RNG streams are derived from root seed, arm and
-attempt number, and resume retains cumulative attempts, rejected/duplicate
-counts, transport failures and token usage. A staged offline run therefore
-does not depend on hidden global RNG state.
-
-For a fresh matched 200-candidate run on the documented 16-core machine, make
-the retry and worker counts explicit and encode them in the new result root:
-
-```bash
-osc_result_root="results/local/matched-200-e2k-r16w16-seed42"
-
-for osc_strategy in random evolutionary; do
-  for osc_target in 20 50 100 150 200; do
-    cargo run --release --locked -- \
-      --mode campaign \
-      --preset publication \
-      --strategy "$osc_strategy" \
-      --accepted-candidates "$osc_target" \
-      --inner-retries 16 \
-      --workers 16 \
-      --evaluations 2000 \
-      --seed 42 \
-      --output "$osc_result_root" \
-      --resume
-  done
-done
-```
-
-The staged targets provide completed checkpoints. Reusing a schema-v1
-directory, changing any numerical budget, or changing the root seed produces
-an error before the archive is read or modified.
-
-After the three proposal arms finish, optimize the four held-out references
-once under the same numerical protocol:
-
-```bash
-cargo run --release --locked -- \
-  --mode reference \
-  --preset publication \
-  --inner-retries 16 \
-  --workers 16 \
-  --evaluations 2000 \
-  --seed 42 \
-  --output "$osc_result_root"
-```
-
-Then generate the matched comparison and descriptor-gate report without
-rerunning or rewriting any campaign arm:
-
-```bash
-cargo run --release --locked -- \
-  --mode report \
-  --preset publication \
-  --accepted-candidates 200 \
-  --inner-retries 16 \
-  --workers 16 \
-  --evaluations 2000 \
-  --seed 42 \
-  --output "$osc_result_root"
-```
-
-Report mode requires exact schema-v2 manifests for reference, random,
-evolutionary and agent, verifies equal proposal-arm counts, and preserves the
-recorded proposal failures and agent token usage. It writes only
-`comparison.md` and the files below `pilot/`. The printed `qd_gate` is a
-decision, not an implicit authorization to run QD; report mode never invokes
-an optimizer, an agent or the QD arm.
+To repeat an expensive arm, use a fresh output root and the campaign commands
+above, advancing through checkpoints 20, 50, 100, 150, and 200. `--resume`
+restores an arm only when schema version, strategy, seed, complete inner
+protocol, resolved worker count, and proposal policy match. Changing any of
+those boundaries fails before the archive is modified. Random, evolutionary,
+and Gemma/MiniMax runs belong in separate directories until their manifests
+have been checked; never splice partial agent archives or change models inside
+one arm.
 
 ## Limitations
 
@@ -433,21 +404,21 @@ an optimizer, an agent or the QD arm.
 - “Goodwin-like” describes a signed feedback core, not model equivalence.
 - A toggle is expected to be bistable, so its oscillator score is a negative
   control rather than a success criterion.
-- Twenty proposals are enough to exercise the architecture, not to estimate a
-  general algorithm ranking or motif-discovery probability. Under the exact
+- Two hundred proposals at one root seed support a matched case study, not a
+  general algorithm ranking or uncertainty estimate. Under the exact
   rejection-sampled grammar, one specified three-edge reference has probability
   `1/2912` per independent valid random draw; the four references together have
-  probability `1/728`, so 20 draws have only
-  `1-(727/728)^20 = 2.71%` probability of any exact hit before duplicate
+  probability `1/728`, so 200 independent draws have
+  `1-(727/728)^200 = 24.04%` probability of any exact hit before duplicate
   conditioning.
-- The simple evolutionary arm mutates only its current best topology after
-  four bootstrap candidates; its one-class archive shows why diversity-aware
-  parent selection matters.
+- The evolutionary arm uses eight elites and 20% random immigrants; other
+  evolutionary policies could change the comparison.
 - Inner retries parallelize one topology's numerical search. Topology proposals
   themselves remain sequential so evolutionary and agent decisions always use
   the latest validated archive.
-- Live-agent behavior and cost remain unmeasured until a deliberate campaign
-  is run.
+- Agent conclusions apply to Gemma 4 31B Q8 with thinking disabled and a
+  96-candidate v4 menu; model, quantization, prompt, or menu changes define a
+  different strategy.
 - The compatibility copy should be removed once ReBop exports its runtime
   expression type upstream.
 

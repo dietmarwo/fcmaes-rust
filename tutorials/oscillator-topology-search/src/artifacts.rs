@@ -326,9 +326,9 @@ pub fn write_campaign(
 pub fn write_comparison(root: &Path, campaigns: &[&Campaign]) -> Result<(), Box<dyn Error>> {
     let mut markdown = "# Oscillator topology-search comparison\n\n".to_owned();
     markdown.push_str(
-        "All scores are minimized (**lower is better**). Reference rows are optimized separately and excluded from proposal counts, so their rediscovery cells are `n/a`. A dash means a proposal arm did not exactly rediscover that held-out topology.\n\n",
+        "All scores are minimized (**lower is better**). Held-out reference encodings are excluded from proposal histories. A dash means a proposal arm did not exactly rediscover that topology.\n\n",
     );
-    markdown.push_str("| Arm | Repressilator | Goodwin-like | Positive cycle | Toggle control | Classes | Accepted | Best validation score | Agent tokens |\n|---|---:|---:|---:|---:|---:|---:|---:|---:|\n");
+    markdown.push_str("| Arm | Repressilator | Goodwin-like | Positive cycle | Toggle control | Classes | Accepted | Best | Median | Score < 1 | Agent tokens |\n|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|\n");
     let display = |value: Option<usize>| {
         value
             .filter(|value| *value > 0)
@@ -347,9 +347,24 @@ pub fn write_comparison(root: &Path, campaigns: &[&Campaign]) -> Result<(), Box<
             || "—".to_owned(),
             |row| format!("{:.6}", row.validation.scalar_score),
         );
+        let mut scores = campaign
+            .archive
+            .candidates
+            .iter()
+            .map(|row| row.validation.scalar_score)
+            .collect::<Vec<_>>();
+        scores.sort_by(f64::total_cmp);
+        let median = match scores.len() {
+            0 => "—".to_owned(),
+            length if length % 2 == 0 => {
+                format!("{:.6}", (scores[length / 2 - 1] + scores[length / 2]) / 2.0)
+            }
+            length => format!("{:.6}", scores[length / 2]),
+        };
+        let below_one = scores.iter().filter(|score| **score < 1.0).count();
         writeln!(
             markdown,
-            "| {} ({}) | {} | {} | {} | {} | {} | {} | {} | {} |",
+            "| {} ({}) | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} |",
             campaign.strategy.label(),
             campaign.status,
             rediscovery("repressilator"),
@@ -359,6 +374,8 @@ pub fn write_comparison(root: &Path, campaigns: &[&Campaign]) -> Result<(), Box<
             campaign.archive.motif_classes().len(),
             campaign.accepted_candidates,
             best,
+            median,
+            below_one,
             campaign.input_tokens + campaign.output_tokens,
         )?;
     }

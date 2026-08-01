@@ -30,7 +30,6 @@ FIGURES = [
     "reference-motifs.svg",
     "campaign-results.svg",
     "best-traces.svg",
-    "descriptor-pilot.svg",
 ]
 BLUE = "#0072B2"
 GREEN = "#009E73"
@@ -61,29 +60,32 @@ def rows(path: Path) -> list[dict[str, str]]:
 
 
 def validate_artifacts() -> None:
+    arms = ["random", "evolutionary", "agent"]
     manifests = {
         part: json.loads((RESULTS / part / "run.json").read_text(encoding="utf-8"))
-        for part in ["reference", "random", "evolutionary", "agent", "pilot", "qd"]
+        for part in arms
     }
-    if any(manifest["schema_version"] != 1 for manifest in manifests.values()):
-        raise ValueError("publication manifests do not share schema version 1")
-    if manifests["agent"]["status"] != "not-run":
-        raise ValueError("checked figures expect the explicit no-live-agent status")
-    if manifests["reference"]["best_validation_score"] > 2.5:
-        raise ValueError("reference calibration failed its frozen 2.5 score floor")
-    pilot = json.loads((RESULTS / "pilot" / "pilot.json").read_text(encoding="utf-8"))
-    if pilot["status"] == "rejected" and manifests["qd"]["status"] != "skipped":
-        raise ValueError("QD status contradicts the descriptor gate")
-    if manifests["qd"]["status"] == "skipped":
-        if manifests["qd"].get("actual_evaluations", "missing") is not None:
-            raise ValueError("skipped QD manifest needs actual_evaluations: null")
-        if manifests["qd"].get("artifacts") != {}:
-            raise ValueError("skipped QD manifest must have no artifacts")
-        if (RESULTS / "qd" / "candidates.jsonl").exists():
-            raise ValueError("skipped QD arm must not publish a placeholder archive")
-    for arm in ["reference", "random", "evolutionary"]:
-        if not rows(RESULTS / arm / "candidates.csv"):
-            raise ValueError(f"{arm} has no publication candidates")
+    if any(manifest["schema_version"] != 2 for manifest in manifests.values()):
+        raise ValueError("publication manifests do not share schema version 2")
+    if any(manifest["status"] != "complete" for manifest in manifests.values()):
+        raise ValueError("all three publication arms must be complete")
+    if any(manifest["accepted_candidates"] != 200 for manifest in manifests.values()):
+        raise ValueError("publication arms must contain 200 accepted candidates")
+    protocols = [manifest["protocol"] for manifest in manifests.values()]
+    if any(protocol != protocols[0] for protocol in protocols[1:]):
+        raise ValueError("publication arms do not share one numerical protocol")
+    if protocols[0]["inner_retries"] != 16 or protocols[0]["inner_evaluations"] != 12_000:
+        raise ValueError("publication protocol is not the documented 16 x 12,000 budget")
+    agent = manifests["agent"]
+    if agent["proposal_policy"] != "external-feedback-candidate-menu-agent-circuit3-v4":
+        raise ValueError("publication agent does not use the v4 unseen-menu policy")
+    if agent["duplicates_or_invalid"] or agent["transport_failures"]:
+        raise ValueError("publication agent contains proposal or transport failures")
+    if agent["exact_rediscoveries"]["repressilator"] != 188:
+        raise ValueError("publication agent repressilator rediscovery changed")
+    for arm in arms:
+        if len(rows(RESULTS / arm / "candidates.csv")) != 200:
+            raise ValueError(f"{arm} does not have 200 publication candidates")
 
 
 def save(figure: plt.Figure, path: Path) -> None:
@@ -180,7 +182,7 @@ def architecture(output: Path) -> None:
     axis.text(
         5.8,
         0.32,
-        "reference motifs are optimized separately and never enter proposal history",
+        "held-out reference encodings never enter proposer observations or archives",
         ha="center",
         color="#37474F",
     )
@@ -329,8 +331,9 @@ def reference_motifs(output: Path) -> None:
 
 def campaign_results(output: Path) -> None:
     figure, axes = plt.subplots(1, 2, figsize=(11.0, 4.25))
-    colors = {"reference": PURPLE, "random": BLUE, "evolutionary": GREEN}
-    for arm in ["reference", "random", "evolutionary"]:
+    arms = ["random", "evolutionary", "agent"]
+    colors = {"random": BLUE, "evolutionary": GREEN, "agent": ORANGE}
+    for arm in arms:
         data = rows(RESULTS / arm / "convergence.csv")
         axes[0].step(
             [int(row["accepted"]) for row in data],
@@ -346,30 +349,31 @@ def campaign_results(output: Path) -> None:
         ylabel="best validation score (lower is better)",
     )
     axes[0].legend()
-    arms = ["reference", "random", "evolutionary", "agent"]
-    values = []
+    best = []
+    medians = []
     for arm in arms:
         manifest = json.loads((RESULTS / arm / "run.json").read_text(encoding="utf-8"))
-        values.append(manifest.get("best_validation_score"))
+        best.append(manifest["best_validation_score"])
+        scores = sorted(
+            float(row["validation_score"])
+            for row in rows(RESULTS / arm / "candidates.csv")
+        )
+        medians.append((scores[99] + scores[100]) / 2)
     positions = np.arange(len(arms))
-    axes[1].bar(
-        positions[:3],
-        values[:3],
-        color=[PURPLE, BLUE, GREEN],
-        width=0.68,
-    )
+    axes[1].bar(positions - 0.18, best, color=[colors[arm] for arm in arms], width=0.34, label="best")
+    axes[1].bar(positions + 0.18, medians, color="#B0BEC5", width=0.34, label="median")
     axes[1].set(
-        title="Equal 480-evaluation inner budget",
-        ylabel="best validation score",
+        title="Matched 200-candidate outcome",
+        ylabel="validation score",
         xticks=positions,
-        xticklabels=["references", "random", "evolutionary", "agent\nnot run"],
-        ylim=(0, max(values[:3]) * 1.25),
+        xticklabels=["random", "evolutionary", "Gemma 4\n31B Q8"],
+        ylim=(0, max(medians) * 1.18),
     )
-    axes[1].text(3, 0.25, "no provider /\ntoken budget", ha="center", color=GREY)
+    axes[1].legend()
     axes[1].text(
         0.02,
         0.98,
-        "No control exactly rediscovered a held-out reference in 20 proposals.",
+        "Agent rediscovered the exact repressilator at proposal 188.",
         transform=axes[1].transAxes,
         va="top",
         color="#37474F",
@@ -380,87 +384,21 @@ def campaign_results(output: Path) -> None:
 
 def best_traces(output: Path) -> None:
     figure, axes = plt.subplots(3, 1, figsize=(10.5, 7.2), sharex=True)
-    for axis, arm in zip(axes, ["reference", "random", "evolutionary"]):
+    for axis, arm in zip(axes, ["random", "evolutionary", "agent"]):
         data = rows(RESULTS / arm / "best_trace.csv")
         time = [float(row["time"]) for row in data]
         for gene, color in zip("ABC", [BLUE, GREEN, ORANGE]):
             axis.plot(time, [float(row[gene]) for row in data], color=color, lw=1.2, label=gene)
         manifest = json.loads((RESULTS / arm / "run.json").read_text(encoding="utf-8"))
+        label = "Gemma agent" if arm == "agent" else arm
         axis.set(
-            title=f"{arm}: {manifest['best_topology']}  holdout score {manifest['best_validation_score']:.3f}",
+            title=f"{label}: {manifest['best_topology']}  holdout score {manifest['best_validation_score']:.3f}",
             ylabel="copies",
         )
         axis.legend(ncol=3, loc="upper right")
     axes[-1].set_xlabel("model time")
     figure.suptitle("Disjoint-seed replay of each publication incumbent", weight="bold")
     figure.tight_layout()
-    save(figure, output)
-
-
-def descriptor_pilot(output: Path) -> None:
-    figure, axis = plt.subplots(figsize=(8.6, 5.8))
-    colors = {"random": BLUE, "evolutionary": GREEN}
-    for arm in ["random", "evolutionary"]:
-        data = rows(RESULTS / arm / "candidates.csv")
-        train = np.array(
-            [[float(row["period_train"]), float(row["amplitude_train"])] for row in data]
-        )
-        valid = np.array(
-            [[float(row["period_validation"]), float(row["amplitude_validation"])] for row in data]
-        )
-        for left, right in zip(train, valid):
-            axis.plot(
-                [left[0], right[0]],
-                [left[1], right[1]],
-                color=colors[arm],
-                alpha=0.16,
-                lw=0.8,
-            )
-        axis.scatter(
-            train[:, 0],
-            train[:, 1],
-            color=colors[arm],
-            marker="o",
-            label=f"{arm} training",
-            s=30,
-        )
-        axis.scatter(
-            valid[:, 0],
-            valid[:, 1],
-            facecolors="none",
-            edgecolors=colors[arm],
-            marker="o",
-            label=f"{arm} holdout",
-            s=30,
-        )
-    for value in np.linspace(8, 64, 13):
-        axis.axvline(value, color="#CFD8DC", lw=0.45)
-    for value in np.linspace(0, 200, 13):
-        axis.axhline(value, color="#CFD8DC", lw=0.45)
-    pilot = json.loads((RESULTS / "pilot" / "pilot.json").read_text(encoding="utf-8"))
-    axis.set(
-        title=(
-            f"Descriptor gate {pilot['status']}: "
-            f"{100 * pilot['minimum_arm_coverage']:.2f}% minimum coverage, "
-            f"{100 * pilot['holdout_niche_retention']:.1f}% native retention"
-        ),
-        xlabel="measured period",
-        ylabel="measured amplitude",
-        xlim=(8, 64),
-        ylim=(0, 200),
-    )
-    axis.legend(ncol=2)
-    axis.text(
-        0.02,
-        0.03,
-        (
-            "lines: 2-replication training → 5-replication holdout; "
-            f"6×6 retention {100 * pilot['coarse_holdout_niche_retention']:.1f}%, "
-            f"8-replication training {100 * pilot['high_replication_holdout_niche_retention']:.1f}%"
-        ),
-        transform=axis.transAxes,
-        color="#37474F",
-    )
     save(figure, output)
 
 
@@ -474,7 +412,6 @@ def render(root: Path) -> None:
         reference_motifs,
         campaign_results,
         best_traces,
-        descriptor_pilot,
     ]
     for function, name in zip(functions, FIGURES):
         function(root / name)

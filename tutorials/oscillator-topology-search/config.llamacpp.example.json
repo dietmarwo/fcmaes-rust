@@ -1,0 +1,12 @@
+{
+  "provider": "openai-compatible",
+  "model": "gemma-4-12b-it-q4",
+  "base_url": "http://127.0.0.1:8080/v1",
+  "max_tokens": 8000,
+  "candidate_menu_size": 96,
+  "timeout_seconds": 300,
+  "temperature": 0.6,
+  "chat_template_kwargs": {
+    "enable_thinking": false
+  }
+}

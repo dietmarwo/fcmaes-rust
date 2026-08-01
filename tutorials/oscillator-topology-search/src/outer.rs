@@ -45,7 +45,7 @@ pub fn proposal_policy(strategy: Strategy) -> &'static str {
         Strategy::Reference => "held-out-references-v1",
         Strategy::Random => "independent-grammar-sampling-v1",
         Strategy::Evolutionary => "elite8-mutation+20pct-random-immigrant-v1",
-        Strategy::Agent => "external-feedback-agent-circuit3-v2",
+        Strategy::Agent => "external-feedback-candidate-menu-agent-circuit3-v4",
         Strategy::Qd => "descriptor-archive-v1",
     }
 }
@@ -145,6 +145,12 @@ fn offline_proposal(strategy: Strategy, archive: &Archive, seed: u64, attempt: u
     }
 }
 
+fn push_unique_rejection(rejected: &mut Vec<String>, detail: String) {
+    if !rejected.contains(&detail) {
+        rejected.push(detail);
+    }
+}
+
 /// Run a random, evolutionary or external-agent campaign. Resumed archives
 /// retain evaluated candidates; duplicates are rejected before the optimizer.
 pub fn run(
@@ -233,7 +239,7 @@ pub fn run(
                     }
                     consecutive_agent_failures += 1;
                     let detail = error.to_string();
-                    rejected.push(format!("agent:{detail}"));
+                    push_unique_rejection(&mut rejected, format!("agent:{detail}"));
                     last_agent_error = Some(detail);
                     if consecutive_agent_failures >= MAX_CONSECUTIVE_AGENT_FAILURES {
                         break;
@@ -247,7 +253,7 @@ pub fn run(
         let key = topology.key();
         if archive.contains_key(&key) {
             duplicates += 1;
-            rejected.push(key);
+            push_unique_rejection(&mut rejected, key);
             continue;
         }
         let candidate = inner::optimize(
