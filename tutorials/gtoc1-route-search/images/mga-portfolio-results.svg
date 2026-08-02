@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="520" viewBox="0 0 1000 520" role="img" aria-labelledby="title desc">
+  <title id="title">Seed-42 MGA portfolio comparison</title>
+  <desc id="desc">Best-20 portfolio sum and best single impulsive MGA score for random, evolutionary, cold Gemma, and the separately identified prior-informed Gemma-assisted follow-up.</desc>
+  <rect width="1000" height="520" fill="#f7f9fc"/>
+  <text x="500" y="42" text-anchor="middle" font-family="system-ui" font-size="24" font-weight="700" fill="#132238">Seed-42 MGA portfolio results</text>
+  <text x="270" y="82" text-anchor="middle" font-family="system-ui" font-size="17" font-weight="700" fill="#26384f">Declared best-20 sum</text>
+  <text x="755" y="82" text-anchor="middle" font-family="system-ui" font-size="17" font-weight="700" fill="#26384f">Best single route</text>
+  <text x="18" y="144" font-family="system-ui" font-size="15" fill="#26384f">random</text>
+  <rect x="140" y="120" width="214.39" height="32" rx="5" fill="#c99118"/>
+  <text x="362.39" y="143" font-family="system-ui" font-size="14" fill="#132238">19.270 M</text>
+  <rect x="625" y="120" width="212.44" height="32" rx="5" fill="#c99118"/>
+  <text x="845.44" y="143" font-family="system-ui" font-size="14" fill="#132238">1.234 M</text>
+  <text x="18" y="226" font-family="system-ui" font-size="15" fill="#26384f">evolutionary</text>
+  <rect x="140" y="202" width="246.33" height="32" rx="5" fill="#7656b5"/>
+  <text x="394.33" y="225" font-family="system-ui" font-size="14" fill="#132238">22.140 M</text>
+  <rect x="625" y="202" width="220.20" height="32" rx="5" fill="#7656b5"/>
+  <text x="853.20" y="225" font-family="system-ui" font-size="14" fill="#132238">1.279 M</text>
+  <text x="18" y="308" font-family="system-ui" font-size="15" fill="#26384f">cold Gemma</text>
+  <rect x="140" y="284" width="218.92" height="32" rx="5" fill="#2774ae"/>
+  <text x="366.92" y="307" font-family="system-ui" font-size="14" fill="#132238">19.676 M</text>
+  <rect x="625" y="284" width="200.47" height="32" rx="5" fill="#2774ae"/>
+  <text x="833.47" y="307" font-family="system-ui" font-size="14" fill="#132238">1.164 M</text>
+  <text x="18" y="390" font-family="system-ui" font-size="15" fill="#26384f">Gemma assisted</text>
+  <rect x="140" y="366" width="300.00" height="32" rx="5" fill="#16856b"/>
+  <text x="448.00" y="389" font-family="system-ui" font-size="14" fill="#132238">26.964 M</text>
+  <rect x="625" y="366" width="260.00" height="32" rx="5" fill="#16856b"/>
+  <text x="893.00" y="389" font-family="system-ui" font-size="14" fill="#132238">1.510 M</text>
+  <path d="M500 72 V445" stroke="#ccd5e0" stroke-width="1"/>
+  <text x="500" y="480" text-anchor="middle" font-family="system-ui" font-size="14" fill="#40556f">Higher is better · assisted uses prior baseline evidence</text>
+</svg>

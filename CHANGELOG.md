@@ -19,6 +19,18 @@ phase, with breaking changes called out explicitly.
   31B Q8 proposals at 16 × 12,000 inner evaluations. The v4 agent completed
   without proposal failures, achieved the best and median scores, and exactly
   rediscovered the held-out repressilator at proposal 188.
+- Reframed the GTOC1 route-search tutorial around impulsive-MGA portfolio
+  discovery and replaced its interim cold-Gemma snapshot with complete
+  100-route seed-42 random, evolutionary, and Gemma 4 evidence. Cold Gemma
+  concentrates 90 routes at the 14-encounter limit and trails evolutionary
+  search on the declared best-20 sum while using more than twice its worker
+  time.
+- Added the separately versioned `gemma4-assisted-v1` follow-up. It verifies
+  and consumes the completed baseline archives, presents length-stratified
+  unseen candidate menus, and uses ranked fallbacks; the completed run raises
+  the best-20 MGA sum from 19.676 M to 26.964 M and cuts wall time from 11.66
+  to 4.70 hours. Documentation explicitly treats it as prior-informed protocol
+  evidence rather than an independent model-comparison arm.
 
 ## [0.1.4] - 2026-07-31
 

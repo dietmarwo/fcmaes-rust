@@ -1,0 +1,66 @@
+{"proposal_attempt":7,"kind":"diversity_rejected","variant_key":"3-6-3-10|000","detail":"body order is too close to the protected set; propose a more distinct order","created_unix_ms":1785624115898}
+{"proposal_attempt":9,"kind":"diversity_rejected","variant_key":"3-5-3-3-3-10|00000","detail":"body order is too close to the protected set; propose a more distinct order","created_unix_ms":1785624348056}
+{"proposal_attempt":11,"kind":"diversity_rejected","variant_key":"3-3-10|00","detail":"body order is too close to the protected set; propose a more distinct order","created_unix_ms":1785624482489}
+{"proposal_attempt":15,"kind":"diversity_rejected","variant_key":"3-5-3-6-10|0000","detail":"body order is too close to the protected set; propose a more distinct order","created_unix_ms":1785625344050}
+{"proposal_attempt":18,"kind":"duplicate_variant","variant_key":"3-2-10|00","detail":"exact variant already evaluated; no inner budget consumed","created_unix_ms":1785625641821}
+{"proposal_attempt":25,"kind":"diversity_rejected","variant_key":"3-6-3-5-10|0001","detail":"body order is too close to the protected set; propose a more distinct order","created_unix_ms":1785626884401}
+{"proposal_attempt":29,"kind":"diversity_rejected","variant_key":"3-6-10|00","detail":"body order is too close to the protected set; propose a more distinct order","created_unix_ms":1785627415395}
+{"proposal_attempt":33,"kind":"diversity_rejected","variant_key":"3-3-10|00","detail":"body order is too close to the protected set; propose a more distinct order","created_unix_ms":1785627785961}
+{"proposal_attempt":37,"kind":"diversity_rejected","variant_key":"3-3-2-10|000","detail":"body order is too close to the protected set; propose a more distinct order","created_unix_ms":1785628308409}
+{"proposal_attempt":43,"kind":"diversity_rejected","variant_key":"3-6-3-3-6-3-10|000000","detail":"body order is too close to the protected set; propose a more distinct order","created_unix_ms":1785629539237}
+{"proposal_attempt":45,"kind":"duplicate_variant","variant_key":"3-2-10|00","detail":"exact variant already evaluated; no inner budget consumed","created_unix_ms":1785629738745}
+{"proposal_attempt":47,"kind":"diversity_rejected","variant_key":"3-2-6-6-6-10|00000","detail":"body order is too close to the protected set; propose a more distinct order","created_unix_ms":1785629946585}
+{"proposal_attempt":49,"kind":"diversity_rejected","variant_key":"3-5-6-5-5-10|00101","detail":"body order is too close to the protected set; propose a more distinct order","created_unix_ms":1785630021286}
+{"proposal_attempt":51,"kind":"diversity_rejected","variant_key":"3-3-6-6-6-5-10|000011","detail":"body order is too close to the protected set; propose a more distinct order","created_unix_ms":1785630033879}
+{"proposal_attempt":55,"kind":"duplicate_variant","variant_key":"3-2-10|00","detail":"exact variant already evaluated; no inner budget consumed","created_unix_ms":1785630579597}
+{"proposal_attempt":59,"kind":"diversity_rejected","variant_key":"3-6-5-6-10|0100","detail":"body order is too close to the protected set; propose a more distinct order","created_unix_ms":1785631422728}
+{"proposal_attempt":61,"kind":"diversity_rejected","variant_key":"3-5-3-3-10|0000","detail":"body order is too close to the protected set; propose a more distinct order","created_unix_ms":1785631548780}
+{"proposal_attempt":63,"kind":"diversity_rejected","variant_key":"3-3-5-2-3-3-2-3-3-10|000000000","detail":"body order is too close to the protected set; propose a more distinct order","created_unix_ms":1785631710554}
+{"proposal_attempt":65,"kind":"diversity_rejected","variant_key":"3-6-6-10|000","detail":"body order is too close to the protected set; propose a more distinct order","created_unix_ms":1785631885003}
+{"proposal_attempt":66,"kind":"duplicate_variant","variant_key":"3-3-10|00","detail":"exact variant already evaluated; no inner budget consumed","created_unix_ms":1785631885004}
+{"proposal_attempt":67,"kind":"diversity_rejected","variant_key":"3-3-6-6-6-5-10|000011","detail":"body order is too close to the protected set; propose a more distinct order","created_unix_ms":1785631885004}
+{"proposal_attempt":69,"kind":"diversity_rejected","variant_key":"3-5-5-5-5-10|00001","detail":"body order is too close to the protected set; propose a more distinct order","created_unix_ms":1785632200671}
+{"proposal_attempt":71,"kind":"diversity_rejected","variant_key":"3-6-5-3-3-3-5-10|0100001","detail":"body order is too close to the protected set; propose a more distinct order","created_unix_ms":1785632336458}
+{"proposal_attempt":73,"kind":"diversity_rejected","variant_key":"3-3-5-2-5-3-3-10|0000000","detail":"body order is too close to the protected set; propose a more distinct order","created_unix_ms":1785632679233}
+{"proposal_attempt":75,"kind":"diversity_rejected","variant_key":"3-3-6-10|000","detail":"body order is too close to the protected set; propose a more distinct order","created_unix_ms":1785632748305}
+{"proposal_attempt":77,"kind":"diversity_rejected","variant_key":"3-5-5-3-2-3-10|000000","detail":"body order is too close to the protected set; propose a more distinct order","created_unix_ms":1785632822892}
+{"proposal_attempt":79,"kind":"diversity_rejected","variant_key":"3-3-2-6-6-3-2-2-6-10|000000000","detail":"body order is too close to the protected set; propose a more distinct order","created_unix_ms":1785633040689}
+{"proposal_attempt":80,"kind":"duplicate_variant","variant_key":"3-2-10|00","detail":"exact variant already evaluated; no inner budget consumed","created_unix_ms":1785633040690}
+{"proposal_attempt":83,"kind":"diversity_rejected","variant_key":"3-2-5-6-2-2-2-10|0000000","detail":"body order is too close to the protected set; propose a more distinct order","created_unix_ms":1785633262564}
+{"proposal_attempt":85,"kind":"diversity_rejected","variant_key":"3-3-6-3-3-10|00000","detail":"body order is too close to the protected set; propose a more distinct order","created_unix_ms":1785633404605}
+{"proposal_attempt":87,"kind":"diversity_rejected","variant_key":"3-3-3-3-2-3-10|000000","detail":"body order is too close to the protected set; propose a more distinct order","created_unix_ms":1785633607168}
+{"proposal_attempt":89,"kind":"diversity_rejected","variant_key":"3-2-2-2-6-6-10|000000","detail":"body order is too close to the protected set; propose a more distinct order","created_unix_ms":1785633764765}
+{"proposal_attempt":91,"kind":"diversity_rejected","variant_key":"3-6-5-5-2-5-10|010001","detail":"body order is too close to the protected set; propose a more distinct order","created_unix_ms":1785634026468}
+{"proposal_attempt":93,"kind":"diversity_rejected","variant_key":"3-3-5-6-10|0000","detail":"body order is too close to the protected set; propose a more distinct order","created_unix_ms":1785634252679}
+{"proposal_attempt":95,"kind":"duplicate_variant","variant_key":"3-5-10|01","detail":"exact variant already evaluated; no inner budget consumed","created_unix_ms":1785634627210}
+{"proposal_attempt":99,"kind":"diversity_rejected","variant_key":"3-2-2-3-6-6-6-2-6-10|000000000","detail":"body order is too close to the protected set; propose a more distinct order","created_unix_ms":1785635499909}
+{"proposal_attempt":100,"kind":"duplicate_variant","variant_key":"3-5-6-10|000","detail":"exact variant already evaluated; no inner budget consumed","created_unix_ms":1785635499909}
+{"proposal_attempt":101,"kind":"diversity_rejected","variant_key":"3-2-5-2-5-3-2-10|0000000","detail":"body order is too close to the protected set; propose a more distinct order","created_unix_ms":1785635499910}
+{"proposal_attempt":103,"kind":"duplicate_variant","variant_key":"3-6-10|00","detail":"exact variant already evaluated; no inner budget consumed","created_unix_ms":1785635717890}
+{"proposal_attempt":108,"kind":"duplicate_variant","variant_key":"3-2-10|00","detail":"exact variant already evaluated; no inner budget consumed","created_unix_ms":1785636613735}
+{"proposal_attempt":109,"kind":"duplicate_variant","variant_key":"3-5-6-10|000","detail":"exact variant already evaluated; no inner budget consumed","created_unix_ms":1785636613736}
+{"proposal_attempt":113,"kind":"diversity_rejected","variant_key":"3-6-3-3-2-10|00000","detail":"body order is too close to the protected set; propose a more distinct order","created_unix_ms":1785637029852}
+{"proposal_attempt":114,"kind":"duplicate_variant","variant_key":"3-6-10|00","detail":"exact variant already evaluated; no inner budget consumed","created_unix_ms":1785637029852}
+{"proposal_attempt":117,"kind":"diversity_rejected","variant_key":"3-6-6-3-10|0000","detail":"body order is too close to the protected set; propose a more distinct order","created_unix_ms":1785637439776}
+{"proposal_attempt":119,"kind":"diversity_rejected","variant_key":"3-5-2-5-5-5-3-3-10|00000000","detail":"body order is too close to the protected set; propose a more distinct order","created_unix_ms":1785637484340}
+{"proposal_attempt":120,"kind":"duplicate_variant","variant_key":"3-3-10|00","detail":"exact variant already evaluated; no inner budget consumed","created_unix_ms":1785637484341}
+{"proposal_attempt":123,"kind":"diversity_rejected","variant_key":"3-3-3-2-10|0000","detail":"body order is too close to the protected set; propose a more distinct order","created_unix_ms":1785637851870}
+{"proposal_attempt":124,"kind":"duplicate_variant","variant_key":"3-6-10|00","detail":"exact variant already evaluated; no inner budget consumed","created_unix_ms":1785637851870}
+{"proposal_attempt":125,"kind":"diversity_rejected","variant_key":"3-6-3-2-6-10|00000","detail":"body order is too close to the protected set; propose a more distinct order","created_unix_ms":1785637851871}
+{"proposal_attempt":129,"kind":"duplicate_variant","variant_key":"3-5-10|01","detail":"exact variant already evaluated; no inner budget consumed","created_unix_ms":1785638863223}
+{"proposal_attempt":131,"kind":"diversity_rejected","variant_key":"3-2-5-3-3-5-10|000001","detail":"body order is too close to the protected set; propose a more distinct order","created_unix_ms":1785638955825}
+{"proposal_attempt":133,"kind":"diversity_rejected","variant_key":"3-2-5-2-10|0000","detail":"body order is too close to the protected set; propose a more distinct order","created_unix_ms":1785639000136}
+{"proposal_attempt":135,"kind":"diversity_rejected","variant_key":"3-3-6-2-5-6-10|000000","detail":"body order is too close to the protected set; propose a more distinct order","created_unix_ms":1785639020313}
+{"proposal_attempt":137,"kind":"duplicate_variant","variant_key":"3-6-10|00","detail":"exact variant already evaluated; no inner budget consumed","created_unix_ms":1785639125084}
+{"proposal_attempt":143,"kind":"diversity_rejected","variant_key":"3-3-5-6-6-3-3-10|0000000","detail":"body order is too close to the protected set; propose a more distinct order","created_unix_ms":1785640299184}
+{"proposal_attempt":145,"kind":"duplicate_variant","variant_key":"3-2-5-3-10|0000","detail":"exact variant already evaluated; no inner budget consumed","created_unix_ms":1785640366496}
+{"proposal_attempt":147,"kind":"diversity_rejected","variant_key":"3-5-2-6-5-5-10|000101","detail":"body order is too close to the protected set; propose a more distinct order","created_unix_ms":1785640387150}
+{"proposal_attempt":148,"kind":"duplicate_variant","variant_key":"3-2-10|00","detail":"exact variant already evaluated; no inner budget consumed","created_unix_ms":1785640387151}
+{"proposal_attempt":149,"kind":"diversity_rejected","variant_key":"3-6-6-6-10|0000","detail":"body order is too close to the protected set; propose a more distinct order","created_unix_ms":1785640387152}
+{"proposal_attempt":151,"kind":"diversity_rejected","variant_key":"3-6-3-6-6-2-10|000000","detail":"body order is too close to the protected set; propose a more distinct order","created_unix_ms":1785640587402}
+{"proposal_attempt":153,"kind":"diversity_rejected","variant_key":"3-2-2-3-5-6-2-10|0000000","detail":"body order is too close to the protected set; propose a more distinct order","created_unix_ms":1785640666647}
+{"proposal_attempt":155,"kind":"diversity_rejected","variant_key":"3-6-2-3-10|0000","detail":"body order is too close to the protected set; propose a more distinct order","created_unix_ms":1785640780744}
+{"proposal_attempt":157,"kind":"diversity_rejected","variant_key":"3-6-3-2-5-3-10|000000","detail":"body order is too close to the protected set; propose a more distinct order","created_unix_ms":1785640990850}
+{"proposal_attempt":159,"kind":"diversity_rejected","variant_key":"3-3-5-6-5-10|00011","detail":"body order is too close to the protected set; propose a more distinct order","created_unix_ms":1785641080999}
+{"proposal_attempt":163,"kind":"diversity_rejected","variant_key":"3-3-3-6-2-3-3-5-10|00000001","detail":"body order is too close to the protected set; propose a more distinct order","created_unix_ms":1785641643532}
+{"proposal_attempt":165,"kind":"diversity_rejected","variant_key":"3-6-6-3-3-10|00000","detail":"body order is too close to the protected set; propose a more distinct order","created_unix_ms":1785641687948}

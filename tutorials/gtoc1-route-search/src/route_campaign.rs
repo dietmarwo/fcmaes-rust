@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Dietmar Wolz
 // SPDX-License-Identifier: MIT
 
-//! Equal-budget outer campaign for agent, random, and evolutionary routes.
+//! Equal-budget MGA campaign for agent, random, and evolutionary body orders.
 
 use std::collections::{BTreeMap, VecDeque};
 use std::fs::{self, File};
@@ -18,6 +18,7 @@ use fcmaes_core::{
 use serde::{Deserialize, Serialize};
 
 use crate::Gtoc1Error;
+use crate::mga::{MgaOptimizationResult, optimize_mga_campaign};
 use crate::route_agent::{
     AgentClient, AgentConfig, AgentLogEntry, AgentPhase, AgentUsage, build_request,
 };
@@ -36,6 +37,11 @@ use crate::route_search::{
 };
 
 const FAILURE_OBJECTIVE: f64 = 1.0e99;
+const MGA_FORMULATION: &str = "impulsive-mga-route-qualification-v1";
+
+const fn default_portfolio_size() -> usize {
+    20
+}
 
 /// Highest numerical fidelity enabled for a campaign.
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd, Serialize, Deserialize)]
@@ -89,7 +95,7 @@ impl Default for PromotionConfig {
 pub struct CampaignConfig {
     /// Agent, random, or evolutionary arm.
     pub strategy: Strategy,
-    /// Accepted unique L0 evaluations required.
+    /// Accepted unique MGA body-order evaluations required.
     pub accepted_candidates: usize,
     /// Hard proposal-attempt cap.
     pub maximum_proposal_attempts: usize,
@@ -97,15 +103,18 @@ pub struct CampaignConfig {
     pub bootstrap_candidates: usize,
     /// Number of top routes protected by exploration diversity.
     pub protected_top: usize,
+    /// Number of leading MGA-qualified routes summed for the portfolio metric.
+    #[serde(default = "default_portfolio_size")]
+    pub portfolio_size: usize,
     /// Root seed shared by discrete and continuous derivations.
     pub root_seed: u64,
-    /// Highest enabled fidelity.
+    /// Compatibility field; the active MGA campaign requires `L0`.
     pub maximum_level: MaximumLevel,
     /// Route grammar and discrete operators.
     pub grammar: GrammarConfig,
     /// Runtime route derivation settings.
     pub derivation: RouteDerivationConfig,
-    /// Identical L0 optimizer budget.
+    /// Identical MGA optimizer budget.
     pub inner_budget: InnerBudget,
     /// Promotion policy.
     pub promotion: PromotionConfig,
@@ -122,12 +131,13 @@ impl Default for CampaignConfig {
     fn default() -> Self {
         Self {
             strategy: Strategy::Agent,
-            accepted_candidates: 40,
-            maximum_proposal_attempts: 120,
+            accepted_candidates: 100,
+            maximum_proposal_attempts: 2_500,
             bootstrap_candidates: 6,
             protected_top: 5,
+            portfolio_size: default_portfolio_size(),
             root_seed: 42,
-            maximum_level: MaximumLevel::L1,
+            maximum_level: MaximumLevel::L0,
             grammar: GrammarConfig::default(),
             derivation: RouteDerivationConfig::default(),
             inner_budget: InnerBudget {
@@ -181,11 +191,24 @@ impl CampaignConfig {
         self.agent.validate()?;
         if self.accepted_candidates == 0
             || self.maximum_proposal_attempts < self.accepted_candidates
+            || self.portfolio_size == 0
             || self.inner_budget.retries == 0
             || self.inner_budget.initial_evaluations == 0
         {
             return Err(RouteSearchError::Grammar(
                 "campaign target, attempt cap, retries, and evaluations are inconsistent"
+                    .to_owned(),
+            ));
+        }
+        if self.maximum_level != MaximumLevel::L0 {
+            return Err(RouteSearchError::Grammar(
+                "the route-discovery campaign is MGA-only; defer low-thrust work to a separate downstream study"
+                    .to_owned(),
+            ));
+        }
+        if self.grammar.maximum_variants_per_structure != 1 {
+            return Err(RouteSearchError::Grammar(
+                "the canonical-direction MGA protocol requires maximum_variants_per_structure=1"
                     .to_owned(),
             ));
         }
@@ -241,6 +264,8 @@ pub struct CampaignCounters {
     pub invalid_proposals: usize,
     /// Exact variant duplicates.
     pub duplicate_variants: usize,
+    /// Repeated body orders rejected before inner optimization.
+    pub duplicate_sequences: usize,
     /// Body orders rejected by the per-structure variant cap.
     pub structure_cap_rejections: usize,
     /// Exploration diversity rejections.
@@ -308,12 +333,29 @@ pub struct CampaignManifest {
     pub requested_evaluations: u64,
     /// Sum of actual L0 objective calls.
     pub actual_evaluations: u64,
+    /// Number of finite MGA-qualified routes in the accepted archive.
+    #[serde(default)]
+    pub qualified_candidates: usize,
+    /// Effective number of leading qualified routes in the portfolio sum.
+    #[serde(default)]
+    pub portfolio_size: usize,
+    /// Sum of the best `portfolio_size` MGA scores.
+    #[serde(default)]
+    pub portfolio_score_sum: f64,
     /// Complete campaign wall time.
     pub elapsed_seconds: f64,
     /// Detailed protocol and resource counters.
     pub budget: CampaignCounters,
     /// Relative artifact paths.
     pub artifacts: BTreeMap<String, String>,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct CampaignProtocol {
+    schema_version: u32,
+    formulation: String,
+    configuration: CampaignConfig,
 }
 
 /// Agent metadata recorded independently from numerical budget counters.
@@ -343,7 +385,7 @@ pub struct CampaignOutcome {
     pub manifest: CampaignManifest,
 }
 
-/// Runs one complete L0 campaign and writes resumable artifacts.
+/// Runs one complete MGA campaign and writes resumable artifacts.
 ///
 /// # Errors
 ///
@@ -357,6 +399,32 @@ pub fn run_campaign(config: &CampaignConfig) -> Result<CampaignOutcome, RouteSea
     let snapshot_path = config.results.join("archive.json");
     let proposal_log_path = config.results.join("proposal_log.jsonl");
     let cache_directory = config.results.join("cache");
+    let protocol_path = config.results.join("protocol.json");
+    let expected_protocol = CampaignProtocol {
+        schema_version: 2,
+        formulation: MGA_FORMULATION.to_owned(),
+        configuration: artifact_configuration(config),
+    };
+    if protocol_path.exists() {
+        let stored: CampaignProtocol = serde_json::from_reader(File::open(&protocol_path)?)?;
+        if stored != expected_protocol {
+            return Err(RouteSearchError::Grammar(
+                "resume protocol differs from the stored MGA campaign; preserve it and choose a new --results directory"
+                    .to_owned(),
+            ));
+        }
+    } else {
+        let legacy_artifacts_exist = [&archive_path, &snapshot_path, &proposal_log_path]
+            .iter()
+            .any(|path| path.metadata().is_ok_and(|metadata| metadata.len() > 0));
+        if legacy_artifacts_exist {
+            return Err(RouteSearchError::Grammar(
+                "result directory predates MGA protocol validation; preserve it and choose a new --results directory"
+                    .to_owned(),
+            ));
+        }
+        write_atomic_json(&protocol_path, &expected_protocol)?;
+    }
     fs::create_dir_all(&cache_directory)?;
     let mut archive = if archive_path.exists() {
         load_archive(&archive_path)?
@@ -500,12 +568,13 @@ pub fn run_campaign(config: &CampaignConfig) -> Result<CampaignOutcome, RouteSea
             >= config.grammar.maximum_variants_per_structure
         {
             counters.structure_cap_rejections += 1;
+            counters.duplicate_sequences += 1;
             append_event(
                 &proposal_log_path,
                 counters.proposal_attempts,
-                ProposalEventKind::StructureVariantCap,
+                ProposalEventKind::DuplicateSequence,
                 Some(variant_key),
-                "body order reached the equal per-structure variant cap",
+                "body order already evaluated under the canonical direction policy; no inner budget consumed",
             )?;
             continue;
         }
@@ -533,15 +602,17 @@ pub fn run_campaign(config: &CampaignConfig) -> Result<CampaignOutcome, RouteSea
         }
 
         let route = RouteCase::derive(proposal.variant.clone(), config.derivation.clone())?;
-        let context =
+        let mut context =
             EvaluationContext::for_route(&route, config.inner_budget.clone(), config.root_seed);
+        "direct-leg-times-v1".clone_into(&mut context.duration_decoder_version);
+        MGA_FORMULATION.clone_into(&mut context.scout_formulation_version);
         let cache_key = proposal.evaluation_key(&context)?;
         let cache_path = cache_directory.join(format!("{cache_key}.json"));
         let l0 = if cache_path.exists() {
             counters.cache_hits += 1;
             serde_json::from_reader(File::open(&cache_path)?)?
         } else {
-            let result = optimize_route(&route, &config.inner_budget, config.root_seed)?;
+            let result = optimize_mga_campaign(&route, &config.inner_budget, config.root_seed)?;
             counters.l0_requested_evaluations = counters
                 .l0_requested_evaluations
                 .saturating_add(result.requested_evaluations);
@@ -549,6 +620,7 @@ pub fn run_campaign(config: &CampaignConfig) -> Result<CampaignOutcome, RouteSea
                 .l0_actual_evaluations
                 .saturating_add(result.actual_evaluations);
             counters.l0_worker_seconds += result.worker_seconds;
+            let result = mga_l0_result(result);
             write_atomic_json(&cache_path, &result)?;
             result
         };
@@ -565,6 +637,12 @@ pub fn run_campaign(config: &CampaignConfig) -> Result<CampaignOutcome, RouteSea
         archive.add(result.clone())?;
         append_archive(&archive_path, &result)?;
         snapshot_archive(&snapshot_path, &archive)?;
+        // Assisted adapters may return ranked fallbacks. Once one proposal is
+        // accepted, discard the stale alternatives so the next call receives
+        // the newly measured score and cost evidence.
+        if config.strategy == Strategy::Agent {
+            agent_queue.clear();
+        }
         counters.accepted_candidates = archive.len();
         counters.niches = archive.niche_elites().len();
         if config.maximum_level >= MaximumLevel::L1 {
@@ -635,6 +713,7 @@ fn next_agent_proposal(
         archive,
         &config.grammar,
         &config.agent,
+        config.portfolio_size,
     );
     if let Some(note) = retry_note {
         request.user.push_str("\nSpecific retry requirement: ");
@@ -915,10 +994,11 @@ pub fn optimize_route(
             fcmaes_core::NAN_REPLACEMENT
         }
     };
+    let resolved_workers = resolved_workers(budget.workers, budget.retries);
     let config = AdvancedRetryConfig {
         retry: RetryConfig {
             num_retries: budget.retries,
-            workers: budget.workers,
+            workers: resolved_workers,
             max_evaluations: budget.initial_evaluations,
             seed: route_seed(root_seed, route.variant()),
             value_limit: f64::INFINITY,
@@ -935,7 +1015,6 @@ pub fn optimize_route(
         de_cma_run(function, context, &initial_guess)
     });
     let wall_seconds = started.elapsed().as_secs_f64();
-    let resolved_workers = resolved_workers(budget.workers, budget.retries);
     let physical = route
         .codec()
         .decode(&retry.x)
@@ -1175,7 +1254,7 @@ fn encounter_epochs(physical: &PhysicalDecision) -> Vec<f64> {
 }
 
 fn resolved_workers(requested: usize, retries: usize) -> usize {
-    let available = std::thread::available_parallelism().map_or(1, usize::from);
+    let available = num_cpus::get_physical().max(1).min(num_cpus::get().max(1));
     let requested = if requested == 0 { available } else { requested };
     requested.min(available).min(retries)
 }
@@ -1199,25 +1278,37 @@ fn write_campaign_artifacts(
     ensure_file(&config.results.join("proposal_log.jsonl"))?;
     ensure_file(&config.agent.log_path)?;
     write_archive_csv(&config.results.join("archive.csv"), archive)?;
-    write_promotions_csv(&config.results.join("promotions.csv"), archive)?;
-    write_convergence_csv(&config.results.join("convergence.csv"), archive)?;
+    write_convergence_csv(
+        &config.results.join("convergence.csv"),
+        archive,
+        config.portfolio_size,
+    )?;
     let artifacts = BTreeMap::from([
         ("archive_jsonl".to_owned(), "archive.jsonl".to_owned()),
+        ("protocol".to_owned(), "protocol.json".to_owned()),
         ("archive_csv".to_owned(), "archive.csv".to_owned()),
-        ("promotions".to_owned(), "promotions.csv".to_owned()),
         ("convergence".to_owned(), "convergence.csv".to_owned()),
         ("proposal_log".to_owned(), "proposal_log.jsonl".to_owned()),
         ("agent_log".to_owned(), "agent_log.jsonl".to_owned()),
     ]);
     let agent = agent_run_manifest(config, &counters)?;
+    let qualified = archive
+        .results
+        .iter()
+        .filter(|result| result.l0.evaluation_found)
+        .count();
+    let effective_portfolio_size = config.portfolio_size.min(qualified);
+    let portfolio_score_sum = archive
+        .top(qualified)
+        .into_iter()
+        .filter(|result| result.l0.evaluation_found)
+        .take(effective_portfolio_size)
+        .map(|result| result.l0.estimated_score)
+        .sum();
     let manifest = CampaignManifest {
-        schema_version: 1,
+        schema_version: 2,
         tutorial: "gtoc1-route-search".to_owned(),
-        formulation: if config.maximum_level >= MaximumLevel::L1 {
-            "lambert-endpoint-repair-l0+sims-flanagan-l1".to_owned()
-        } else {
-            "lambert-endpoint-repair-l0".to_owned()
-        },
+        formulation: MGA_FORMULATION.to_owned(),
         status: status.to_owned(),
         strategy: config.strategy,
         configuration: artifact_configuration(config),
@@ -1242,6 +1333,9 @@ fn write_campaign_artifacts(
         actual_evaluations: counters
             .l0_actual_evaluations
             .saturating_add(counters.l1_actual_evaluations),
+        qualified_candidates: qualified,
+        portfolio_size: effective_portfolio_size,
+        portfolio_score_sum,
         elapsed_seconds: elapsed_seconds.max(
             archive
                 .results
@@ -1254,6 +1348,34 @@ fn write_campaign_artifacts(
     };
     write_atomic_json(&config.results.join("run.json"), &manifest)?;
     Ok(manifest)
+}
+
+fn mga_l0_result(result: MgaOptimizationResult) -> L0Result {
+    let evaluation = result.evaluation;
+    let flyby_delta_v_km_s = evaluation.flyby_delta_v_km_s.iter().sum();
+    L0Result {
+        evaluation_found: true,
+        objective: evaluation.objective,
+        estimated_score: evaluation.score,
+        fixed_mass_score: evaluation.fixed_mass_score,
+        constraint: 0.0,
+        launch_v_infinity_km_s: evaluation.launch_v_infinity_km_s,
+        powered_delta_v_km_s: flyby_delta_v_km_s,
+        endpoint_repair_delta_v_km_s: 0.0,
+        minimum_periapsis_margin_km: 0.0,
+        flight_days: result.physical_decision.total_flight_days(),
+        branches: evaluation.branches,
+        epochs_mjd2000: evaluation.epochs_mjd2000,
+        optimizer_decision: result.optimizer_decision,
+        physical_decision: result.physical_decision,
+        requested_evaluations: result.requested_evaluations,
+        actual_evaluations: result.actual_evaluations,
+        resolved_workers: result.resolved_workers,
+        worker_seconds: result.worker_seconds,
+        wall_seconds: result.wall_seconds,
+        failures: BTreeMap::new(),
+        failure_examples: Vec::new(),
+    }
 }
 
 fn agent_run_manifest(
@@ -1306,14 +1428,14 @@ fn write_archive_csv(path: &Path, archive: &RouteArchive) -> Result<(), RouteSea
     writeln!(
         writer,
         "accepted_index,structure_key,variant_key,niche,strategy,evaluation_found,\
-objective_l0,constraint_l0,estimated_score_l0,fixed_mass_score_l0,flight_days,\
-requested_evaluations,actual_evaluations,worker_seconds,l1_promoted,l1_threshold_passed,\
-l1_score,surrogate_gap"
+objective_mga,mga_score,fixed_mass_score,launch_v_infinity_km_s,\
+flyby_delta_v_km_s,charged_delta_v_km_s,flight_days,requested_evaluations,\
+actual_evaluations,worker_seconds"
     )?;
     for result in &archive.results {
         writeln!(
             writer,
-            "{},{},{},{},{:?},{},{},{},{},{},{},{},{},{},{},{},{},{}",
+            "{},{},{},{},{:?},{},{},{},{},{},{},{},{},{},{},{}",
             result.accepted_index,
             result.structure_key,
             result.variant_key,
@@ -1321,70 +1443,30 @@ l1_score,surrogate_gap"
             result.strategy,
             result.l0.evaluation_found,
             result.l0.objective,
-            result.l0.constraint,
             result.l0.estimated_score,
             result.l0.fixed_mass_score,
+            result.l0.launch_v_infinity_km_s,
+            result.l0.powered_delta_v_km_s,
+            (result.l0.launch_v_infinity_km_s - 2.5).max(0.0) + result.l0.powered_delta_v_km_s,
             result.l0.flight_days,
             result.l0.requested_evaluations,
             result.l0.actual_evaluations,
-            result.l0.worker_seconds,
-            result.l1.is_some(),
-            result.l1.as_ref().is_some_and(|l1| l1.threshold_passed),
-            result
-                .l1
-                .as_ref()
-                .and_then(|l1| l1.score)
-                .map_or_else(String::new, |value| value.to_string()),
-            result
-                .surrogate_gap
-                .map_or_else(String::new, |value| value.to_string())
+            result.l0.worker_seconds
         )?;
     }
     writer.flush()?;
     Ok(())
 }
 
-fn write_promotions_csv(path: &Path, archive: &RouteArchive) -> Result<(), RouteSearchError> {
+fn write_convergence_csv(
+    path: &Path,
+    archive: &RouteArchive,
+    portfolio_size: usize,
+) -> Result<(), RouteSearchError> {
     let mut writer = BufWriter::new(File::create(path)?);
     writeln!(
         writer,
-        "variant_key,l0_estimated_score,l1_score,surrogate_gap,l1_threshold_passed,\
-failure,requested_evaluations,actual_evaluations,worker_seconds"
-    )?;
-    for result in archive.results.iter().filter(|result| result.l1.is_some()) {
-        let l1 = result
-            .l1
-            .as_ref()
-            .expect("filtered promotion has an L1 result");
-        let failure = l1
-            .outcome
-            .as_ref()
-            .map_or_else(String::new, |outcome| format!("{:?}", outcome.code));
-        writeln!(
-            writer,
-            "{},{},{},{},{},{},{},{},{}",
-            result.variant_key,
-            result.l0.estimated_score,
-            l1.score.map_or_else(String::new, |value| value.to_string()),
-            result
-                .surrogate_gap
-                .map_or_else(String::new, |value| value.to_string()),
-            l1.threshold_passed,
-            failure,
-            l1.requested_evaluations,
-            l1.actual_evaluations,
-            l1.worker_seconds
-        )?;
-    }
-    writer.flush()?;
-    Ok(())
-}
-
-fn write_convergence_csv(path: &Path, archive: &RouteArchive) -> Result<(), RouteSearchError> {
-    let mut writer = BufWriter::new(File::create(path)?);
-    writeln!(
-        writer,
-        "accepted_candidates,best_l0,best_l1,l1_promotions,niches,cumulative_worker_seconds"
+        "accepted_candidates,best_mga_score,portfolio_size,portfolio_score_sum,niches,cumulative_worker_seconds"
     )?;
     let mut prefix = RouteArchive::default();
     let mut worker_seconds = 0.0;
@@ -1392,26 +1474,23 @@ fn write_convergence_csv(path: &Path, archive: &RouteArchive) -> Result<(), Rout
         prefix.results.push(result.clone());
         worker_seconds +=
             result.l0.worker_seconds + result.l1.as_ref().map_or(0.0, |l1| l1.worker_seconds);
-        let best = prefix
-            .best()
+        let ranked = prefix.top(prefix.len());
+        let portfolio = portfolio_size.min(ranked.len());
+        let best = ranked
+            .first()
             .map_or(0.0, |candidate| candidate.l0.estimated_score);
-        let best_l1 = prefix
-            .results
-            .iter()
-            .filter_map(|candidate| candidate.l1.as_ref().and_then(|l1| l1.score))
-            .max_by(f64::total_cmp);
-        let promotions = prefix
-            .results
-            .iter()
-            .filter(|candidate| candidate.l1.is_some())
-            .count();
+        let portfolio_sum = ranked
+            .into_iter()
+            .take(portfolio)
+            .map(|candidate| candidate.l0.estimated_score)
+            .sum::<f64>();
         writeln!(
             writer,
             "{},{},{},{},{},{}",
             prefix.len(),
             best,
-            best_l1.map_or_else(String::new, |value| value.to_string()),
-            promotions,
+            portfolio,
+            portfolio_sum,
             prefix.niche_elites().len(),
             worker_seconds
         )?;
@@ -1486,6 +1565,7 @@ fn reconstruct_counters(
             match event.kind {
                 ProposalEventKind::GrammarInvalid => counters.invalid_proposals += 1,
                 ProposalEventKind::DuplicateVariant => counters.duplicate_variants += 1,
+                ProposalEventKind::DuplicateSequence => counters.duplicate_sequences += 1,
                 ProposalEventKind::StructureVariantCap => counters.structure_cap_rejections += 1,
                 ProposalEventKind::DiversityRejected => counters.diversity_rejections += 1,
                 ProposalEventKind::RepairRequested | ProposalEventKind::Repaired => {
@@ -1517,7 +1597,7 @@ mod tests {
     use crate::sequences::JPL;
 
     #[test]
-    fn duplicate_screening_does_not_invoke_the_optimizer() {
+    fn canonical_direction_makes_body_order_the_campaign_identity() {
         let variant = RouteVariant::from_sequence_case(JPL);
         let key = variant.variant_key();
         let archive = RouteArchive {
@@ -1530,6 +1610,8 @@ mod tests {
             body_edit_distance(&variant.structure, &directions.structure),
             0
         );
+        assert_ne!(variant.variant_key(), directions.variant_key());
+        assert_eq!(GrammarConfig::default().maximum_variants_per_structure, 1);
     }
 
     #[test]

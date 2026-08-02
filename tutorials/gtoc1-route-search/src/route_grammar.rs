@@ -21,17 +21,14 @@ pub struct GrammarConfig {
     pub maximum_variants_per_structure: usize,
     /// Minimum body-order edit distance during bootstrap/exploration.
     pub minimum_edit_distance: usize,
-    /// Probability that a sampled leg is clockwise.
-    pub clockwise_probability: f64,
 }
 
 impl Default for GrammarConfig {
     fn default() -> Self {
         Self {
             route: RouteGrammar::default(),
-            maximum_variants_per_structure: 2,
+            maximum_variants_per_structure: 1,
             minimum_edit_distance: 3,
-            clockwise_probability: 0.2,
         }
     }
 }
@@ -41,22 +38,28 @@ impl GrammarConfig {
     ///
     /// # Errors
     ///
-    /// Returns an error for a zero variant cap or invalid probability.
+    /// Returns an error for a zero variant cap.
     pub fn validate(&self) -> Result<(), RouteSearchError> {
         if self.maximum_variants_per_structure == 0 {
             return Err(RouteSearchError::Grammar(
                 "maximum_variants_per_structure must be positive".to_owned(),
             ));
         }
-        if !self.clockwise_probability.is_finite()
-            || !(0.0..=1.0).contains(&self.clockwise_probability)
-        {
-            return Err(RouteSearchError::Grammar(
-                "clockwise_probability must be in [0,1]".to_owned(),
-            ));
-        }
         Ok(())
     }
+}
+
+/// Derives the direction pattern shared by the historical JPL, JPL2, Jena,
+/// and Deimos trajectories.
+///
+/// All inner and outward legs use the default direction. Only the final
+/// Saturn-to-Jupiter and Jupiter-to-asteroid legs use the reverse direction.
+#[must_use]
+pub fn canonical_clockwise(bodies: &[usize]) -> Vec<bool> {
+    bodies
+        .windows(2)
+        .map(|pair| matches!(pair, [6, 5] | [5, 10]))
+        .collect()
 }
 
 /// Small process-independent PRNG used only by the discrete route grammar.
@@ -128,9 +131,7 @@ pub fn sample_route(
             bodies.push(INTERIOR_BODIES[rng.index(INTERIOR_BODIES.len())]);
         }
         bodies.push(ASTEROID);
-        let clockwise = (0..length - 1)
-            .map(|_| rng.probability(config.clockwise_probability))
-            .collect();
+        let clockwise = canonical_clockwise(&bodies);
         let variant = RouteVariant::new(bodies, clockwise);
         if config.route.validate(&variant).is_ok() {
             return Ok(variant);
@@ -154,8 +155,6 @@ pub enum RouteMutation {
     SwapAdjacent,
     /// Replace the Jupiter/Saturn subsequence while preserving its length.
     ResampleOuterTail,
-    /// Flip exactly one clockwise bit.
-    FlipClockwise,
 }
 
 /// Mutates a route, retrying deterministic operators until grammar-valid.
@@ -176,7 +175,6 @@ pub fn mutate_route(
         RouteMutation::DeleteBody,
         RouteMutation::SwapAdjacent,
         RouteMutation::ResampleOuterTail,
-        RouteMutation::FlipClockwise,
     ];
     for _ in 0..256 {
         let operator = operators[rng.index(operators.len())];
@@ -208,13 +206,10 @@ fn apply_mutation(
         RouteMutation::InsertBody if bodies.len() < config.route.maximum_encounters => {
             let index = 1 + rng.index(bodies.len() - 1);
             bodies.insert(index, INTERIOR_BODIES[rng.index(INTERIOR_BODIES.len())]);
-            let inherited = candidate.clockwise[index.saturating_sub(1)];
-            candidate.clockwise.insert(index, inherited);
         }
         RouteMutation::DeleteBody if bodies.len() > 3 => {
             let index = 1 + rng.index(bodies.len() - 2);
             bodies.remove(index);
-            candidate.clockwise.remove(index);
         }
         RouteMutation::SwapAdjacent if bodies.len() > 3 => {
             let index = 1 + rng.index(bodies.len() - 3);
@@ -233,12 +228,9 @@ fn apply_mutation(
                 bodies[index] = if rng.probability(0.5) { 5 } else { 6 };
             }
         }
-        RouteMutation::FlipClockwise => {
-            let index = rng.index(candidate.clockwise.len());
-            candidate.clockwise[index] = !candidate.clockwise[index];
-        }
         _ => return false,
     }
+    candidate.clockwise = canonical_clockwise(bodies);
     true
 }
 
@@ -294,7 +286,7 @@ pub fn compact_route(structure: &RouteStructure) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::sequences::{DEIMOS, JPL2};
+    use crate::sequences::{DEIMOS, JENA, JPL, JPL2};
 
     fn valid() -> RouteVariant {
         RouteVariant::from_sequence_case(JPL2)
@@ -349,7 +341,7 @@ mod tests {
             );
         }
         let mut parent = RouteVariant::from_sequence_case(DEIMOS);
-        let mut observed = [false; 6];
+        let mut observed = [false; 5];
         for _ in 0..2_000 {
             let (route, operator) = mutate_route(&parent, &config, &mut rng).unwrap();
             config.route.validate(&route).unwrap();
@@ -357,6 +349,16 @@ mod tests {
             parent = route;
         }
         assert!(observed.into_iter().all(|seen| seen));
+    }
+
+    #[test]
+    fn canonical_directions_match_historical_route_fixtures() {
+        for case in [JPL, JPL2, JENA, DEIMOS] {
+            assert_eq!(
+                canonical_clockwise(case.bodies),
+                case.rev_flags[..case.bodies.len() - 1]
+            );
+        }
     }
 
     #[test]

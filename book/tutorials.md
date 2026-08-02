@@ -21,7 +21,7 @@ twenty-two application tutorials cover:
 | ML hyperparameter tuning | leakage-free evaluation, BiteOpt, MODE, QD diagnostics |
 | Neural-controller policy search | 118-dimensional PGPE and CR-FM-NES |
 | GTOC1 “Save the Earth” | planet-order search, staged DE–CMA-ES, low thrust, split-brain architecture |
-| Split-brain GTOC1 route search (work in progress) | provider-independent proposals, completed seed-42 L0 controls, predeclared random-arm L1 promotions, and explicit validation limits |
+| Split-brain GTOC1 route search | provider-independent body-order proposals, matched impulsive-MGA controls, a diagnosed cold-Gemma failure, and a prior-informed assisted repair |
 | sindr circuit design | smooth AC features, equal-budget retry, constrained MODE, E12 MAP-Elites |
 | thevenin gate driver | transient measurement, constrained MODE, timestep and ngspice validation |
 | Pure-Rust optical lens design | validated sequential ray tracing, equal-budget retry, constrained MODE |

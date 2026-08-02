@@ -8,6 +8,7 @@ use std::error::Error;
 use std::fs::File;
 use std::path::PathBuf;
 
+use gtoc1_pykep::mga::{evaluate_mga, optimize_mga};
 use gtoc1_pykep::route_agent::AgentTransport;
 use gtoc1_pykep::route_archive::Strategy;
 use gtoc1_pykep::route_archive::load_archive;
@@ -21,6 +22,8 @@ use gtoc1_pykep::route_search::{PhysicalDecision, RouteCase, RouteDerivationConf
 enum Mode {
     Campaign,
     Inspect,
+    MgaInspect,
+    MgaScout,
     Scout,
     Refine,
 }
@@ -29,9 +32,13 @@ fn parse_mode(value: &str) -> Result<Mode, String> {
     match value.to_ascii_lowercase().as_str() {
         "campaign" => Ok(Mode::Campaign),
         "inspect" => Ok(Mode::Inspect),
+        "mga-inspect" => Ok(Mode::MgaInspect),
+        "mga-scout" => Ok(Mode::MgaScout),
         "scout" => Ok(Mode::Scout),
         "refine" => Ok(Mode::Refine),
-        _ => Err("--mode must be campaign, inspect, scout, or refine".to_owned()),
+        _ => Err(
+            "--mode must be campaign, inspect, mga-inspect, mga-scout, scout, or refine".to_owned(),
+        ),
     }
 }
 
@@ -105,6 +112,9 @@ fn parse_args(arguments: &[String]) -> Result<CampaignConfig, Box<dyn Error>> {
             "--bootstrap-candidates" => {
                 config.bootstrap_candidates = parse(value, "--bootstrap-candidates")?;
             }
+            "--portfolio-size" => {
+                config.portfolio_size = parse(value, "--portfolio-size")?;
+            }
             "--retries" => config.inner_budget.retries = parse(value, "--retries")?,
             "--evaluations" => {
                 config.inner_budget.initial_evaluations = parse(value, "--evaluations")?;
@@ -156,7 +166,7 @@ fn print_help() {
     println!(
         "GTOC1 split-brain route search\n\
          \nUsage: cargo run --release -- [OPTIONS]\n\
-         \n  --mode MODE                    campaign, inspect, scout, or refine\n\
+         \n  --mode MODE                    campaign, inspect, mga-inspect, mga-scout, scout, or refine\n\
          \n  --route ROUTE                  compact EV...A or numeric comma-separated bodies\n\
          \n  --clockwise BITS               one 0/1 Lambert direction bit per leg\n\
          \n  --schedule CSV                 launch followed by one duration per leg\n\
@@ -164,15 +174,16 @@ fn print_help() {
          \n  --config PATH                  load complete JSON configuration\n\
          \n  --smoke                        use the tiny offline CI budget\n\
          \n  --strategy NAME                agent, random, evolutionary\n\
-         \n  --accepted-candidates N        unique L0 candidate target\n\
+         \n  --accepted-candidates N        unique MGA body-order target\n\
          \n  --max-proposal-attempts N      hard proposal-attempt cap\n\
          \n  --bootstrap-candidates N       score-withholding prefix\n\
-         \n  --retries N                    coordinated L0 retries\n\
-         \n  --evaluations N                first-retry L0 evaluation cap\n\
+         \n  --retries N                    coordinated MGA retries\n\
+         \n  --evaluations N                first-retry MGA evaluation cap\n\
          \n  --max-eval-fac N               last-retry cap multiplier\n\
-         \n  --workers N                    zero means all logical CPUs\n\
+         \n  --workers N                    zero means physical CPU cores\n\
          \n  --seed N                       root seed\n\
-         \n  --max-level LEVEL              l0 or l1; l2 is an optional follow-on\n\
+         \n  --portfolio-size N             sum the best N MGA-qualified scores\n\
+         \n  --max-level LEVEL              campaign requires l0 (MGA-only)\n\
          \n  --l1-smoke                     tiny L1 continuation for protocol tests\n\
          \n  --promote-every N              L0 acceptance cadence for L1\n\
          \n  --promote-batch N              maximum L1 promotions per cadence\n\
@@ -317,6 +328,45 @@ fn run_scout(arguments: &[String]) -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
+fn run_mga_inspect(arguments: &[String]) -> Result<(), Box<dyn Error>> {
+    let route = RouteCase::derive(parse_variant(arguments)?, RouteDerivationConfig::default())?;
+    let physical = physical_decision(arguments, &route)?;
+    let evaluation = evaluate_mga(&route, &physical)?;
+    println!("{}", serde_json::to_string_pretty(&evaluation)?);
+    Ok(())
+}
+
+fn run_mga_scout(arguments: &[String]) -> Result<(), Box<dyn Error>> {
+    let route = RouteCase::derive(parse_variant(arguments)?, RouteDerivationConfig::default())?;
+    let mut config = CampaignConfig::default();
+    if let Some(value) = option_value(arguments, "--retries") {
+        config.inner_budget.retries = parse(value, "--retries")?;
+    }
+    if let Some(value) = option_value(arguments, "--evaluations") {
+        config.inner_budget.initial_evaluations = parse(value, "--evaluations")?;
+    }
+    if let Some(value) = option_value(arguments, "--max-eval-fac") {
+        config.inner_budget.maximum_evaluation_factor = parse(value, "--max-eval-fac")?;
+    }
+    if let Some(value) = option_value(arguments, "--workers") {
+        config.inner_budget.workers = parse(value, "--workers")?;
+    }
+    if let Some(value) = option_value(arguments, "--seed") {
+        config.root_seed = parse(value, "--seed")?;
+    }
+    let initial = option_value(arguments, "--schedule")
+        .map(|_| physical_decision(arguments, &route))
+        .transpose()?;
+    let result = optimize_mga(
+        &route,
+        &config.inner_budget,
+        config.root_seed,
+        initial.as_ref(),
+    )?;
+    println!("{}", serde_json::to_string_pretty(&result)?);
+    Ok(())
+}
+
 fn run_refine(arguments: &[String]) -> Result<(), Box<dyn Error>> {
     let reference =
         option_value(arguments, "--from-result").ok_or("--from-result PATH#VARIANT is required")?;
@@ -346,7 +396,7 @@ fn run_campaign_mode(arguments: &[String]) -> Result<(), Box<dyn Error>> {
     println!(
         "CAMPAIGN strategy={:?} accepted={} attempts={} niches={} \
          requested_evaluations={} actual_evaluations={} worker_seconds={:.6} \
-         l1_promotions={} l1_threshold_passed={} \
+         qualified={} top_n={} portfolio_score_sum={:.9} \
          elapsed_seconds={:.6} results={}",
         config.strategy,
         outcome.archive.len(),
@@ -355,50 +405,20 @@ fn run_campaign_mode(arguments: &[String]) -> Result<(), Box<dyn Error>> {
         outcome.manifest.requested_evaluations,
         outcome.manifest.actual_evaluations,
         outcome.manifest.budget.l0_worker_seconds + outcome.manifest.budget.l1_worker_seconds,
-        outcome.manifest.budget.l1_promotions,
-        outcome.manifest.budget.l1_threshold_passed,
+        outcome.manifest.qualified_candidates,
+        outcome.manifest.portfolio_size,
+        outcome.manifest.portfolio_score_sum,
         outcome.manifest.elapsed_seconds,
         config.results.display()
     );
     if let Some(best) = outcome.archive.best() {
         println!(
-            "BEST variant={} constraint={:.12e} estimated_score={:.9} \
+            "BEST variant={} mga_score={:.9} \
              fixed_mass_score={:.9} evaluation_found={}",
             best.variant_key,
-            best.l0.constraint,
             best.l0.estimated_score,
             best.l0.fixed_mass_score,
             best.l0.evaluation_found
-        );
-    }
-    if let Some(best_l1) = outcome
-        .archive
-        .results
-        .iter()
-        .filter(|result| result.l1.is_some())
-        .max_by(|left, right| {
-            left.l1
-                .as_ref()
-                .and_then(|l1| l1.score)
-                .unwrap_or(f64::NEG_INFINITY)
-                .total_cmp(
-                    &right
-                        .l1
-                        .as_ref()
-                        .and_then(|l1| l1.score)
-                        .unwrap_or(f64::NEG_INFINITY),
-                )
-        })
-    {
-        let l1 = best_l1.l1.as_ref().expect("filtered result has L1");
-        println!(
-            "BEST_L1 variant={} threshold_passed={} score={:?} \
-             maximum_mismatch={:?} minimum_solar_au={:?}",
-            best_l1.variant_key,
-            l1.threshold_passed,
-            l1.score,
-            l1.maximum_normalized_mismatch,
-            l1.minimum_solar_distance_au
         );
     }
     Ok(())
@@ -417,6 +437,8 @@ fn main() -> Result<(), Box<dyn Error>> {
     match mode {
         Mode::Campaign => run_campaign_mode(&arguments),
         Mode::Inspect => run_inspect(&arguments),
+        Mode::MgaInspect => run_mga_inspect(&arguments),
+        Mode::MgaScout => run_mga_scout(&arguments),
         Mode::Scout => run_scout(&arguments),
         Mode::Refine => run_refine(&arguments),
     }
@@ -438,6 +460,7 @@ mod tests {
     #[test]
     fn mode_and_direction_errors_are_explicit() {
         assert_eq!(parse_mode("refine").unwrap(), Mode::Refine);
+        assert_eq!(parse_mode("mga-scout").unwrap(), Mode::MgaScout);
         assert!(parse_mode("unknown").is_err());
         let arguments = vec![
             "--route".to_owned(),

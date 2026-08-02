@@ -13,13 +13,15 @@
 
 /// Full low-thrust validation for alternate competition planet sequences.
 pub mod low_thrust_sequences;
+/// Impulsive MGA screening with the GTOC1 asteroid-impact terminal objective.
+pub mod mga;
 /// Competition-faithful EVEEEJSJA trajectory model.
 pub mod real;
 /// Bounded agent subprocess, mock, replay, and JSON protocol.
 pub mod route_agent;
 /// Persistent route archive, niche elites, and proposal-event records.
 pub mod route_archive;
-/// Equal-budget L0 campaign, random baseline, and route (1+1)-ES.
+/// Equal-budget MGA campaign, random baseline, and route evolutionary search.
 pub mod route_campaign;
 /// Variable-length route grammar, sampling, mutation, and edit distance.
 pub mod route_grammar;

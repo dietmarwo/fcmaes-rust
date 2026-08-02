@@ -265,7 +265,7 @@ python examples/python/test_cma.py
 - [ML hyperparameter-optimization tutorial](tutorials/ml-hyperparameter-tuning/README.md)
 - [Neural-controller policy-search tutorial](tutorials/neural-controller-policy-search/README.md)
 - [GTOC1 “Save the Earth” tutorial](tutorials/gtoc1/README.md)
-- [Split-brain GTOC1 route-search tutorial (work in progress)](tutorials/gtoc1-route-search/README.md)
+- [Split-brain GTOC1 route-search tutorial](tutorials/gtoc1-route-search/README.md)
 - [sindr circuit-design tutorial](tutorials/sindr-circuit-design/README.md)
 - [thevenin transient gate-driver tutorial](tutorials/thevenin-gate-driver/README.md)
 - [Pure-Rust optical lens-design tutorial](tutorials/optical-lens-design/README.md)

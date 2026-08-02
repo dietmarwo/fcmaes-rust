@@ -16,7 +16,7 @@ use crate::route_search::{
     RouteVariant, append_jsonl, read_jsonl_resilient, write_atomic_json,
 };
 
-/// Constraint-passing threshold used by archive and promotion ordering.
+/// Legacy constraint-passing threshold retained by downstream result types.
 pub const L0_CONSTRAINT_THRESHOLD: f64 = 1.0e-8;
 
 /// Campaign arm that generated an evaluated route.
@@ -76,6 +76,10 @@ pub struct BranchChoice {
 }
 
 /// Complete cheap-model result and budget accounting.
+///
+/// The active route campaign stores MGA values in this compatibility record:
+/// `estimated_score` is the MGA score, `constraint` and endpoint repair are
+/// zero, and `powered_delta_v_km_s` is the summed flyby impulse.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct L0Result {
@@ -124,7 +128,8 @@ pub struct L0Result {
 }
 
 impl L0Result {
-    /// Feasibility-first comparison used by the archive.
+    /// Score comparison used by the MGA archive, with legacy constraint-first
+    /// behavior retained for older result records.
     #[must_use]
     pub fn rank_cmp(&self, other: &Self) -> Ordering {
         let self_passes = self.constraint <= L0_CONSTRAINT_THRESHOLD;
@@ -389,6 +394,8 @@ pub enum ProposalEventKind {
     GrammarInvalid,
     /// Exact evaluated variant duplicate.
     DuplicateVariant,
+    /// Body order already evaluated under the canonical direction policy.
+    DuplicateSequence,
     /// Body order already reached its variant cap.
     StructureVariantCap,
     /// Exploration edit-distance rejection.
@@ -574,20 +581,20 @@ impl RouteArchive {
                 .len(),
             self.niche_elites().len()
         )];
-        lines.push("Top feasibility-first L0 routes:".to_owned());
+        lines.push("Top MGA-qualified routes:".to_owned());
         for result in self.top(top) {
             lines.push(format!(
-                "- {} [{}] violation={:.3e} estimated_score={:.3}",
+                "- {} [{}] mga_score={:.3} flyby_dv_km_s={:.6}",
                 compact_route(&result.structure),
                 result.variant_key,
-                result.l0.constraint,
-                result.l0.estimated_score
+                result.l0.estimated_score,
+                result.l0.powered_delta_v_km_s
             ));
         }
         lines.push("Niche elites:".to_owned());
         for result in self.niche_elites().into_values().take(niche_top) {
             lines.push(format!(
-                "- {} {} estimated_score={:.3}",
+                "- {} {} mga_score={:.3}",
                 result.niche_key, result.variant_key, result.l0.estimated_score
             ));
         }
@@ -821,7 +828,7 @@ mod tests {
         archive.add(jpl2).unwrap();
         assert_eq!(archive.len(), 2);
         assert_eq!(archive.niche_elites().len(), 2);
-        assert!(archive.summary(2, 2).contains("feasibility-first"));
+        assert!(archive.summary(2, 2).contains("MGA-qualified"));
     }
 
     #[test]

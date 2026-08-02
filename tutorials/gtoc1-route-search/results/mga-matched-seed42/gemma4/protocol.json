@@ -1,0 +1,85 @@
+{
+  "schema_version": 2,
+  "formulation": "impulsive-mga-route-qualification-v1",
+  "configuration": {
+    "strategy": "agent",
+    "accepted_candidates": 100,
+    "maximum_proposal_attempts": 2500,
+    "bootstrap_candidates": 6,
+    "protected_top": 5,
+    "portfolio_size": 20,
+    "root_seed": 42,
+    "maximum_level": "l0",
+    "grammar": {
+      "route": {
+        "maximum_encounters": 14,
+        "maximum_same_body_run": 4,
+        "maximum_outer_encounters": 4,
+        "maximum_flight_days": 10957.5
+      },
+      "maximum_variants_per_structure": 1,
+      "minimum_edit_distance": 3
+    },
+    "derivation": {
+      "grammar": {
+        "maximum_encounters": 14,
+        "maximum_same_body_run": 4,
+        "maximum_outer_encounters": 4,
+        "maximum_flight_days": 10957.5
+      },
+      "duration_decoder_version": "direct-leg-times-v1",
+      "ephemeris_id": "vsop2013",
+      "vsop_threshold": 1e-9,
+      "scout_formulation_version": "impulsive-mga-route-qualification-v1"
+    },
+    "inner_budget": {
+      "retries": 32,
+      "initial_evaluations": 20000,
+      "maximum_evaluation_factor": 10.0,
+      "workers": 0
+    },
+    "promotion": {
+      "every": 8,
+      "batch": 2,
+      "control_rate": 0.2,
+      "variants": []
+    },
+    "refinement": {
+      "stages": [],
+      "workers": 0,
+      "solar_samples_per_coast": 128,
+      "maximum_mismatch_norm": 1e-7,
+      "throttle_tolerance": 1e-8
+    },
+    "agent": {
+      "transport": "command",
+      "command": [
+        "python3",
+        "agents/llm_agent.py"
+      ],
+      "provider": "openai-compatible",
+      "model": "gemma-4-31B-it-Q8_0.gguf",
+      "base_url": "http://127.0.0.1:8080/v1",
+      "api_key_env": null,
+      "maximum_tokens": 8000,
+      "provider_options": {
+        "candidate_menu_size": 96,
+        "chat_template_kwargs": {
+          "enable_thinking": false
+        },
+        "http_timeout_seconds": 300,
+        "temperature": 0.6
+      },
+      "timeout_seconds": 360,
+      "maximum_retries": 2,
+      "maximum_consecutive_failures": 5,
+      "batch_size": 1,
+      "context_exchanges": 2,
+      "exchange_maximum_chars": 2000,
+      "stream_maximum_bytes": 1048576,
+      "log_path": "agent_log.jsonl",
+      "replay_path": null
+    },
+    "results": "."
+  }
+}

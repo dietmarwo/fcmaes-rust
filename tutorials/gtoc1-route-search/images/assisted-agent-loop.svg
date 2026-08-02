@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1120" height="610" viewBox="0 0 1120 610" role="img" aria-labelledby="title desc">
+  <title id="title">Cold Gemma failure and assisted route-selection loop</title>
+  <desc id="desc">The cold loop feeds a large unbalanced menu and global elites back to Gemma, causing route-length collapse. The assisted loop uses declared prior archives, compact length and cost evidence, stratified candidates, and ranked fallbacks before deterministic Rust evaluation.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#40556f"/></marker>
+    <style>
+      .box{rx:14;stroke-width:2}.title{font:700 19px system-ui,sans-serif;fill:#132238}.heading{font:700 17px system-ui,sans-serif;fill:#132238}.body{font:14px system-ui,sans-serif;fill:#26384f}.small{font:12.5px system-ui,sans-serif;fill:#40556f}.edge{stroke:#40556f;stroke-width:2.5;fill:none;marker-end:url(#arrow)}.bad{stroke:#b5473c}.good{stroke:#2f855a}
+    </style>
+  </defs>
+  <rect width="1120" height="610" fill="#f7f9fc"/>
+  <text class="title" x="560" y="36" text-anchor="middle">Repair the information boundary, keep the numerical evaluator fixed</text>
+
+  <rect class="box bad" x="35" y="70" width="480" height="190" fill="#fff0ee"/>
+  <text class="heading" x="275" y="103" text-anchor="middle">Cold menu policy</text>
+  <text class="body" x="65" y="138">96 mixed candidates + complete duplicate-control state</text>
+  <text class="body" x="65" y="168">global top five becomes dominated by long routes</text>
+  <text class="body" x="65" y="198">no score-versus-cost or length-conditioned evidence</text>
+  <text class="body" x="65" y="228">selection collapses toward 14 encounters</text>
+
+  <rect class="box good" x="605" y="70" width="480" height="190" fill="#e8f7ed"/>
+  <text class="heading" x="845" y="103" text-anchor="middle">Gemma4-assisted-v1</text>
+  <text class="body" x="635" y="138">declared, hashed random/evolutionary archives</text>
+  <text class="body" x="635" y="168">compact length, score, cost, and portfolio evidence</text>
+  <text class="body" x="635" y="198">48 candidates in weighted route-length strata</text>
+  <text class="body" x="635" y="228">three ranked choices; fallbacks only after rejection</text>
+
+  <path class="edge bad" d="M275 270 V320"/>
+  <path class="edge good" d="M845 270 V320"/>
+  <rect class="box" x="385" y="320" width="350" height="105" fill="#e7f2ff" stroke="#2774ae"/>
+  <text class="heading" x="560" y="354" text-anchor="middle">Unchanged Rust authority</text>
+  <text class="body" x="560" y="383" text-anchor="middle">grammar · duplicates · directions · DE–CMA-ES</text>
+  <text class="small" x="560" y="407" text-anchor="middle">only measured MGA evidence enters the archive</text>
+  <path class="edge" d="M560 425 V468"/>
+
+  <rect class="box" x="185" y="470" width="750" height="100" fill="#f0eaff" stroke="#7656b5"/>
+  <text class="heading" x="560" y="505" text-anchor="middle">Report both outcomes</text>
+  <text class="body" x="560" y="534" text-anchor="middle">best-20 score at equal accepted routes + score at equal cumulative worker time</text>
+  <text class="small" x="560" y="557" text-anchor="middle">the assisted arm is labeled separately; the cold result is never overwritten</text>
+</svg>

@@ -46,10 +46,9 @@ def main() -> None:
     count = int(request.get("batch_size", 1))
     candidates = []
     for offset in range(count):
-        bodies, clockwise, rationale = ROUTES[(start + offset) % len(ROUTES)]
+        bodies, _clockwise, rationale = ROUTES[(start + offset) % len(ROUTES)]
         candidates.append({
             "bodies": bodies,
-            "clockwise": clockwise,
             "rationale": rationale,
         })
     json.dump({

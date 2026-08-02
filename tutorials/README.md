@@ -31,7 +31,7 @@ campaign end to end?”. Foundations does not change the application count.
 | [ML hyperparameter optimization](ml-hyperparameter-tuning/) | SmartCore decision trees | mixed variables, nested stochastic fitting, validation overfitting, and probability quality | BiteOpt retry + constrained MODE + MAP-Elites | rejected: coverage and diversity pass, niche retention fails |
 | [Neural controller policy search](neural-controller-policy-search/) | Native stochastic cart-pole model | 118-dimensional fixed-topology policy, randomized rollouts, and validation variance | PGPE + CR-FM-NES + active CMA-ES/BiteOpt comparison | omitted: one robust controller is the deliverable |
 | [GTOC1 “Save the Earth”](gtoc1/) | pykep-core astrodynamics | 87 variables, narrow equality constraints, two multi-revolution Lambert arcs, and low thrust | coordinated DE–CMA-ES + seeded CMA-ES/BiteOpt retry | omitted: one maximum-impact trajectory is the deliverable |
-| [Split-brain GTOC1 route search (work in progress)](gtoc1-route-search/) | pykep-core astrodynamics + provider-independent agent boundary | variable-length planet orders, multi-fidelity surrogate error, unequal evaluation costs, and repaired control protocols | agent/random/evolutionary outer search + DE–CMA-ES L0 + promoted Sims–Flanagan L1 | omitted: one seed only; random and evolutionary pass L0 while MiniMax does not, but no targeted random L1 promotion closes |
+| [Split-brain GTOC1 route search](gtoc1-route-search/) | pykep-core astrodynamics + provider-independent agent boundary | variable-length body orders, unequal optimization costs, duplicate control, and proposal-feedback bias | random/evolutionary/Gemma outer search + equal-budget DE–CMA-ES impulsive MGA | omitted: the diverse MGA-qualified portfolio is the deliverable; assisted Gemma uses prior baseline evidence |
 | [Circuit design](sindr-circuit-design/) | sindr AC modified-nodal analysis | log-scaled components, interpolated Bode features, competing filter goals, and E12 discreteness | CMA/DE/Bite retry + constrained MODE + MAP-Elites | accepted: a robust frequency/gain catalogue is the deliverable |
 | [Transient gate driver](thevenin-gate-driver/) | thevenin transient modified-nodal analysis | interpolated edge measurements, ringing, current/settling constraints, and independent simulator validation | constrained MODE | omitted: one continuous engineering trade-off front is the deliverable |
 | [Optical lens design](optical-lens-design/) | Pure-Rust sequential geometric ray tracer | multimodal bending, hard ray-loss boundaries, and a published prescription gate | CMA/DE/Bite retry + constrained MODE | omitted: a quality/size/material trade-off front is the deliverable |
@@ -665,27 +665,28 @@ background, multi-fidelity and split-brain architectures, mission
 transcription, objective construction, staged search, parallel retry commands,
 measured wall times, feasibility checks, and scoring limitation.
 
-### 12.1 Split-brain planet-order search (work in progress)
+### 12.1 Split-brain planet-order search
 
-The [route-search companion](gtoc1-route-search/) executes the discrete outer
-loop described above. A provider-independent subprocess proposes body orders
-and direction flags, while deterministic Rust owns grammar, diversity,
-duration decoding, equal-budget Lambert optimization, failure taxonomy,
-crash-safe persistence, and scheduled Sims–Flanagan promotions. Random and
-route `(1+1)` baselines use the same numerical budget and promotion policy.
+The [route-search companion](gtoc1-route-search/) now asks a narrower and more
+scalable question: which unique body orders deserve a separate low-thrust
+study? A proposer supplies only the order. Deterministic Rust owns grammar,
+pair-derived Lambert directions, duplicate and diversity control, equal-budget
+DE–CMA-ES timing optimization, powered-flyby accounting, the impulsive MGA
+score, crash-safe archives, and all result claims.
 
-The checked-in evidence now includes the offline protocol fixture, a completed
-MiniMax-M3 seed-42 L0 audit, and a predeclared random-arm L1 follow-up. Random
-reaches 15 L0-admissible routes, the repaired evolutionary arm reaches 24,
-and MiniMax reaches none. The original 1/40 bootstrap failure and a
-bootstrap-only 39/40 saturation run remain preserved; independent bootstrap
-seeds plus exploration immigrants let the final evolutionary arm complete
-40/40 in 58 attempts. Random L0 ranks 1, 8, and 15 were promoted before any L1
-outcome was inspected, but none closed. L0 remains a surrogate, L1 is
-impulsive, and only optional Taylor plus independent DOP853 validation can
-support model-qualified continuous-thrust feasibility.
+The reviewed seed-42 evidence contains 100-route blind random, evolutionary,
+and local Gemma 4 31B arms. Cold Gemma selects 90 fourteen-encounter routes,
+occupies only 63 niches, and achieves a 19.676 M best-20 sum versus 22.140 M
+for evolutionary search while consuming 178.7 worker-hours. A separately
+named prior-informed follow-up fixes the information boundary with
+length-stratified menus and ranked fallbacks: it occupies 81 niches, reaches a
+26.964 M best-20 sum, and completes in 71.2 worker-hours. Because it consumes
+the completed baseline archives, this is evidence that the protocol repair
+works—not an independent fourth arm or a general model-capability result.
 
-![The route proposer is separated from deterministic Rust grammar, optimization, physics, archive, and fidelity promotion](gtoc1-route-search/images/architecture.svg)
+![The route proposer is separated from deterministic Rust grammar, optimization, physics, archive, and evidence](gtoc1-route-search/images/architecture.svg)
+
+![Cold Gemma's long-route collapse is replaced by a broad assisted route-length mix](gtoc1-route-search/images/mga-length-mix.svg)
 
 ## 13. sindr: smooth features and manufacturable circuit catalogues
 

@@ -1,0 +1,130 @@
+{
+  "schema_version": 2,
+  "tutorial": "gtoc1-route-search",
+  "formulation": "impulsive-mga-route-qualification-v1",
+  "status": "completed",
+  "strategy": "evolutionary",
+  "configuration": {
+    "strategy": "evolutionary",
+    "accepted_candidates": 100,
+    "maximum_proposal_attempts": 2500,
+    "bootstrap_candidates": 6,
+    "protected_top": 5,
+    "portfolio_size": 20,
+    "root_seed": 42,
+    "maximum_level": "l0",
+    "grammar": {
+      "route": {
+        "maximum_encounters": 14,
+        "maximum_same_body_run": 4,
+        "maximum_outer_encounters": 4,
+        "maximum_flight_days": 10957.5
+      },
+      "maximum_variants_per_structure": 1,
+      "minimum_edit_distance": 3
+    },
+    "derivation": {
+      "grammar": {
+        "maximum_encounters": 14,
+        "maximum_same_body_run": 4,
+        "maximum_outer_encounters": 4,
+        "maximum_flight_days": 10957.5
+      },
+      "duration_decoder_version": "direct-leg-times-v1",
+      "ephemeris_id": "vsop2013",
+      "vsop_threshold": 1e-9,
+      "scout_formulation_version": "impulsive-mga-route-qualification-v1"
+    },
+    "inner_budget": {
+      "retries": 32,
+      "initial_evaluations": 20000,
+      "maximum_evaluation_factor": 10.0,
+      "workers": 0
+    },
+    "promotion": {
+      "every": 8,
+      "batch": 2,
+      "control_rate": 0.2,
+      "variants": []
+    },
+    "refinement": {
+      "stages": [],
+      "workers": 0,
+      "solar_samples_per_coast": 128,
+      "maximum_mismatch_norm": 1e-7,
+      "throttle_tolerance": 1e-8
+    },
+    "agent": {
+      "transport": "command",
+      "command": [
+        "python3",
+        "agents/llm_agent.py"
+      ],
+      "provider": "openai-compatible",
+      "model": "gemma-4-31b-it",
+      "base_url": "http://127.0.0.1:8080/v1",
+      "api_key_env": null,
+      "maximum_tokens": 8000,
+      "provider_options": {
+        "candidate_menu_size": 96,
+        "chat_template_kwargs": {
+          "enable_thinking": false
+        },
+        "http_timeout_seconds": 300,
+        "temperature": 0.6
+      },
+      "timeout_seconds": 360,
+      "maximum_retries": 2,
+      "maximum_consecutive_failures": 5,
+      "batch_size": 1,
+      "context_exchanges": 2,
+      "exchange_maximum_chars": 2000,
+      "stream_maximum_bytes": 1048576,
+      "log_path": "agent_log.jsonl",
+      "replay_path": null
+    },
+    "results": "."
+  },
+  "agent": null,
+  "maximum_level": "l0",
+  "seed": 42,
+  "workers": 16,
+  "requested_evaluations": 352000000,
+  "actual_evaluations": 195104939,
+  "qualified_candidates": 100,
+  "portfolio_size": 20,
+  "portfolio_score_sum": 22140497.510948338,
+  "elapsed_seconds": 17454.029649313,
+  "budget": {
+    "proposal_attempts": 146,
+    "accepted_candidates": 100,
+    "invalid_proposals": 0,
+    "duplicate_variants": 11,
+    "duplicate_sequences": 0,
+    "structure_cap_rejections": 0,
+    "diversity_rejections": 35,
+    "repair_calls": 0,
+    "transport_failures": 0,
+    "agent_calls": 0,
+    "agent_input_tokens": 0,
+    "agent_output_tokens": 0,
+    "l0_requested_evaluations": 352000000,
+    "l0_actual_evaluations": 195104939,
+    "l0_worker_seconds": 279249.220123104,
+    "cache_hits": 0,
+    "niches": 97,
+    "l1_promotions": 0,
+    "l1_threshold_passed": 0,
+    "l1_requested_evaluations": 0,
+    "l1_actual_evaluations": 0,
+    "l1_worker_seconds": -0.0
+  },
+  "artifacts": {
+    "agent_log": "agent_log.jsonl",
+    "archive_csv": "archive.csv",
+    "archive_jsonl": "archive.jsonl",
+    "convergence": "convergence.csv",
+    "proposal_log": "proposal_log.jsonl",
+    "protocol": "protocol.json"
+  }
+}

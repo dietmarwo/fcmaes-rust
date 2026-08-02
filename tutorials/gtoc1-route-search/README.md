@@ -1,542 +1,497 @@
-# Split-brain GTOC1 route search
+# Split-brain GTOC1 route discovery
 
-> **Claim boundary.** This tutorial compares ways to propose GTOC1 planet
-> orders. L0 is a multi-revolution Lambert surrogate and L1 is an impulsive
-> Sims–Flanagan approximation. Neither is a validated continuous-thrust GTOC1
-> solution. Only the optional L2 Taylor transcription plus independent DOP853
-> repropagation may support model-qualified feasibility language.
+> **Claim boundary.** This tutorial discovers planet orders with an impulsive
+> multiple-gravity-assist (MGA) model. “MGA-qualified” means only that the
+> declared optimizer found a finite Lambert/flyby solution. It does not mean
+> continuous-thrust feasible, competition-valid, or better than a published
+> GTOC1 solution.
 
-> **Work in progress.** The first live seed-42 L0 audit is now complete for
-> MiniMax-M3, random, and the repaired evolutionary control. A predeclared
-> random-arm follow-up promoted the L0 leader plus median and lowest admissible
-> controls to L1; none passed the closure threshold. No arm ran L2. One seed
-> is neither an agent-performance claim nor a new GTOC1 solution. A result
-> directory is final only when its `run.json` records its terminal status.
+> **Measured status.** The JPL control, three blind 100-route seed-42 arms, and
+> the separately named Gemma-assisted follow-up are complete. Cold Gemma
+> collapses onto long routes; the prior-informed, length-stratified interface
+> repairs that failure and raises the best-20 MGA sum from 19.676 M to 26.964 M.
+> This is one-seed outer-search evidence, not a model-capability result or a
+> low-thrust GTOC1 solution. Older endpoint-repair and Sims–Flanagan folders are
+> retained only as development history and must not be mixed with this archive.
 
-The tutorial source is MIT-licensed. Its direct MPL-2.0 `pykep-core`
-dependency and the narrow `cargo deny` exception are documented in the
-[dependency notice](DEPENDENCY_NOTICE.md).
+The fixed-sequence [GTOC1 “Save the Earth” tutorial](../gtoc1/) explains the
+competition and studies known routes in detail. This companion answers an
+earlier question: **which planet orders deserve expensive downstream work?**
 
-The fixed-sequence [GTOC1 “Save the Earth” tutorial](../gtoc1/) asks how to
-optimize one known `EVEEEJSJA` route. This companion asks the preceding
-question: **which planet order should be optimized?** It implements the
-split-brain architecture proposed in that tutorial:
+The source is MIT-licensed. Its direct MPL-2.0 `pykep-core` dependency is
+described in the [dependency notice](DEPENDENCY_NOTICE.md).
 
-- a discrete outer proposer chooses bodies and per-leg Lambert direction;
-- deterministic Rust code rejects invalid proposals and derives all numerical
-  bounds and revolution caps;
-- `fcmaes-core` optimizes launch epoch and leg durations under an identical L0
-  budget for every accepted proposal;
-- a crash-safe archive feeds compact, untrusted observations back to the
-  proposer; and
-- selected leaders and controls are promoted to a much more expensive L1
-  model.
+## The reduced research question
 
-An AI agent is one proposer, not the judge. Grammar-aware random search and a
-route `(1+1)` evolutionary strategy receive the same accepted-candidate
-target, variant cap, inner budget, worker allocation, promotion policy, and
-root seeds. A negative result—no advantage over the baselines—is a valid
-outcome.
+The tutorial deliberately does not solve the full low-thrust competition
+problem. Its outer loop searches for a portfolio of promising body orders:
 
-![A provider-independent agent proposes a discrete route while deterministic Rust owns grammar, optimization, physics, fidelity promotion, and persistence](images/architecture.svg)
+1. propose a grammar-valid planet order;
+2. derive its historical pair-dependent Lambert direction pattern in Rust;
+3. optimize launch epoch and direct leg times with the same DE–CMA-ES budget;
+4. enumerate multi-revolution Lambert families and charge launch/flyby
+   impulses in an MGA score;
+5. archive the result and feed a bounded summary to the next proposal; and
+6. compare the sum of the best 20 scores after 100 accepted orders.
 
-## Why split the problem?
+Low-thrust transcription, Taylor integration, and DOP853 validation belong to
+a later project fed by this portfolio. Keeping them out makes the outer
+planet-order comparison much larger, cheaper, and easier to interpret.
 
-A route such as `EVVEEEEJSJA` contains discrete knowledge about resonances and
-gravity-assist structure, but its quality cannot be inferred from the body
-letters. Each order still needs a continuous search over launch date and
-flight times, multi-revolution Lambert branch selection, flyby auditing, and
-eventually low-thrust controls. Asking a language model for all those numbers
-would mix speculative reasoning with the evidence-producing numerical layer.
+![Random, evolutionary, or Gemma proposes only a planet order while deterministic Rust owns grammar, directions, optimization, MGA physics, duplicate filtering, and evidence](images/architecture.svg)
 
-The interface therefore contains only:
+## Why split the brain?
+
+Planet-order selection is discrete and benefits from structural hypotheses:
+resonant inner loops, an outer-planet energy pump, and motifs seen in prior
+routes. Numerical fitness is a different kind of work. A model cannot infer a
+route’s score from letters alone; launch date, flight times, Lambert branches,
+powered flybys, and final impact geometry must be computed.
+
+The proposer therefore returns only:
 
 ```json
 {
   "bodies": ["Earth", "Venus", "Earth", "Jupiter", "Saturn", "Jupiter", "TW229"],
-  "clockwise": [false, false, false, false, true, true],
-  "rationale": "an untrusted explanation"
+  "rationale": "an untrusted search hypothesis"
 }
 ```
 
-`clockwise` is the exact `LambertProblem` direction flag. It is not the
-multi-revolution `Left`/`Right` branch; the Lambert dynamic program chooses
-those branches independently.
+Rust owns every validity and score decision. Rationale is archived for audit,
+never treated as physical evidence.
 
-## Route grammar and identity
+## Grammar, directions, and duplicates
 
-Every route starts at Earth, ends at asteroid 2001 TW229, contains 3–14
-encounters, uses only Venus, Earth, Jupiter, and Saturn internally, has no
-identical-body run longer than four, has at most four Jupiter/Saturn encounters,
-and must have a sum of minimum leg durations below 30 years. Mercury and Mars
-are deliberately excluded: preliminary searches consistently spent substantial
-budget on poor route families containing them. Direction has one Boolean per
-leg.
+Every route:
 
-The archive deliberately keeps two identities:
+- starts at Earth and ends at asteroid 2001 TW229;
+- has 3–14 encounters;
+- uses only Venus, Earth, Jupiter, and Saturn internally;
+- has no identical-body run longer than four;
+- contains at most four Jupiter/Saturn encounters; and
+- admits route-derived minimum leg times within the 30-year limit.
 
-- `structure_key`: body order only, used for diversity and the per-order
-  variant cap;
-- `variant_key`: body order plus every direction bit, used for evaluation and
-  caching.
+Mercury and Mars remain excluded because earlier experiments spent large
+budgets on poor families containing them.
 
-Revolution caps are derived from the body pair and configuration. An agent
-cannot enlarge them. Launch time, total flight time, and capped-softmax
-duration-allocation coordinates decode to legal per-leg bounds whose sum never
-exceeds 10,957.5 days.
+### Direction is derived, not guessed
 
-## Three fidelity levels
+Independent random direction bits were part of the previous exploratory
+protocol. They are unsuitable here. The checked-in historical JPL, JPL2,
+Jena, and Deimos route fixtures all use the same restricted pattern:
 
-![Cheap broad route screening narrows to promoted impulsive refinements and optional continuous-thrust validation](images/fidelity-funnel.svg)
+- default direction on inner-planet and outward legs;
+- reverse direction for Saturn→Jupiter; and
+- reverse direction for the terminal Jupiter→TW229 leg.
 
-### L0: Lambert chain and endpoint-repair mass surrogate
+This is consistent with the official [GTOC1 results](https://www.esa.int/gsp/ACT/projects/gtoc_1/gtoc1results/),
+which emphasize that the two leading trajectories share the Jupiter–Saturn–
+Jupiter outer geometry. The Deimos workshop analysis likewise identifies
+Jupiter–Saturn–Jupiter–asteroid as the desirable final sequence. The Boolean
+rule itself is a tested property of the reconstructed local trajectory
+fixtures, not a claim that ESA published universal direction bits.
 
-For each physical schedule, `pykep-core` generates all configured
-zero-/multi-revolution Lambert families. A forward dynamic program connects
-them through intermediate planets. Feasibility-first ranking accounts for
-launch excess, minimum-periapsis shortfall, and the endpoint velocity changes
-needed to repair each junction to an unpowered equal-speed flyby. A rocket
-equation maps that repair to an estimated retained mass.
+`canonical_clockwise()` derives this pattern from each ordered body pair.
+Random, evolutionary, and Gemma proposals cannot override it. The test suite
+checks all four historical fixtures exactly. Manual `mga-inspect` and
+`mga-scout` calls still accept explicit direction bits for sensitivity studies.
 
-This is a screening model. A high L0 score can still be optimistic, and a
-failed inner optimization means only that no complete chain was found within
-the declared budget.
+This makes body order the campaign identity. A repeated order is rejected
+before optimization, recorded in `proposal_log.jsonl`, and consumes no MGA
+budget. The local-model adapter goes further: it offers Gemma only a
+deterministic menu of grammar-valid unseen orders. Rust still performs the
+authoritative duplicate check, including for remote/free-form adapters.
 
-Raw estimated score must never be sorted independently of the constraint. A
-diagnostic example from the completed seed-42 MiniMax arm makes this concrete:
-`ESJVEJA` (`3-6-5-2-3-5-10|010101`) has an estimated L0 score of about
-160,627, but its Earth–Saturn departure requires `10.327 km/s` hyperbolic
-excess. The competition permits `2.5 km/s`, so the squared launch violation
-alone is about `61.265`. The penalized objective and feasibility-first archive
-therefore rank it far below the low-violation routes; it is not a leader or a
-score-bearing feasible result. A deliberately lower-ranked control promotion
-could still test it, but its raw score supplies no evidence of mission quality.
+## The MGA qualification score
 
-L0 also records a global full-thrust rocket-equation capacity warning. It does
-not prune because endpoint-repair Δv is not a proved lower bound on
-continuous-thrust effort. Launch excess and periapsis shortfall are hard L0
-constraints; thrust realizability and solar distance require L1/L2 evidence.
+For one launch date and set of leg times, `pykep-core` creates every configured
+zero- and multi-revolution Lambert family. Dynamic programming connects the
+arcs using the minimum powered-flyby impulse returned by
+`pykep_core::astro::flyby::flyby_delta_v` at the safe body radius.
 
-### L1: chronological Sims–Flanagan promotion
+Only launch excess above the free `2.5 km/s` capability and powered-flyby
+impulses reduce the mass estimate. Asteroid-relative arrival speed is useful
+impact energy, not an arrival-burn cost:
 
-Promotion consumes the **exact L0 schedule and selected Lambert branches**.
-Each repaired fixed-endpoint leg becomes a `SimsFlanaganLeg` using analytic
-Lagrange/Kepler propagation. Arrival mass is a decision on every leg, and
-optimized mass is carried chronologically through the tour. The default
-continuation is:
+\[
+S_{\mathrm{MGA}} = 1500\exp\!\left(-\frac{\max(0,v_\infty-2.5)+
+\sum_i\Delta v_{\mathrm{fb},i}}{24.516625}\right)
+\frac{|(\mathbf v_A-\mathbf v_{sc})\cdot\mathbf v_A|}{10^6}.
+\]
 
-1. 12 impulses, penalty `1e9`;
-2. 12 impulses, penalty `1e12`;
-3. 25 impulses, penalty `1e15`.
+Higher is better. A candidate with a finite optimized score is
+“MGA-qualified” for downstream study. This deliberately says nothing about
+whether low thrust can realize its Lambert scaffold.
 
-The final controls, per-leg fuel, mismatch, throttle norm, solar-distance
-samples, evaluations, worker-seconds, and failure observation remain in the
-archive. They are also an exact warm start for L2.
+### JPL control
 
-The checked-in JPL2 control regression reproduces final mass
-`1424.093608744 kg`, maximum normalized mismatch `3.12845009e-8`, maximum
-throttle `0.999975870154`, and minimum sampled solar distance
-`0.654921189476 AU`. That pins the numerical L1 model; it is not an official
-GTOC score.
+The historical-control mode fixes JPL’s `EVEEEJSJA|00000011` order/direction,
+allows the published timing as an incumbent, and enumerates all configured
+Lambert branches. The checked-in seed-43 result is:
 
-### L2: optional finalist gate
+| quantity | result |
+|---|---:|
+| optimized MGA score | 1,841,018.733 |
+| fixed-1442.9-kg impact score | 1,851,239.950 |
+| charged impulsive Δv | 1.087232 km/s |
+| final mass estimate | 1,434.933 kg |
+| relative impact speed | 52.660437 km/s |
+| selected early branches | 3R, 1L, 1R |
+| actual / requested evaluations | 1,824,145 / 3,520,000 |
+| recorded wall time / workers | 116.765 s / 32 |
 
-The existing route-generalized `ZohTourProblem` accepts the stored
-Sims–Flanagan controls, resamples them to 5–8 genuine constant-thrust segments
-per leg, optimizes with Taylor propagation, and independently repropagates the
-reported decision with DOP853. Daily solar-distance sampling is required.
-This takes hours and is intentionally outside the default campaign.
+See [`results/mga-jpl-seed43.json`](results/mga-jpl-seed43.json). This validates
+that MGA recognizes the winning route’s useful structure; it is not a
+competition trajectory validation.
 
-## Outer strategies and promotion
+```bash
+cargo run --release --locked -- \
+  --mode mga-scout --route EVEEEJSJA --clockwise 00000011 \
+  --schedule 8998,1278,950,1189,1756,486,482,3275,543 \
+  --retries 32 --evaluations 20000 --max-eval-fac 10 \
+  --workers 0 --seed 43
+```
 
-The guided agent alternates exploration and exploitation after a
-feedback-blind bootstrap. “Feedback-blind” means scores are withheld; a
-pretrained model can still know published routes, so matches to JPL/Jena/
-Deimos families must be labelled rather than presented as discoveries.
+The campaign path is intentionally history-blind. Even when an arm proposes
+the JPL body order, `optimize_mga_campaign()` uses route-derived bounds and a
+neutral midpoint—never JPL’s published timing or special bounds. All arms see
+the same numerical problem.
 
-During bootstrap and exploration, a candidate must clear a body-only edit
-distance from the protected leaders and niche elites. Exploitation may make
-distance-one edits. Exact variants and structures that reached their equal
-variant cap never consume an inner budget.
+## Three matched outer strategies
 
-The baselines are:
+The experiment compares:
 
-- random grammar-valid variable-length routes and independent direction bits;
-- an evolutionary strategy with independent grammar-random bootstrap seeds,
-  random immigrants during exploration, and feasibility-first elite
-  exploitation using substitution, insertion, deletion, adjacent swap,
-  outer-tail resampling, and one direction-bit flip.
+- **random**: independent grammar-valid body orders;
+- **evolutionary**: a feedback-blind random bootstrap, mutations of several
+  score-ranked elites, and regular random immigrants; and
+- **Gemma 4 31B**: a local llama.cpp model selecting an opaque ID from a
+  deterministic menu of unseen valid candidates.
 
-The random immigrants are protocol-critical, not a tuning embellishment.
-One-edit children cannot clear the exploration distance-three gate, and a
-mutation-only elite pool eventually saturates the exact-variant and
-per-structure caps.
+Evolution mutates only the body order: substitution, insertion, deletion,
+adjacent exchange, and outer-tail resampling. Direction-bit mutation no longer
+exists. During bootstrap/exploration, body edit distance protects diversity;
+exploitation may refine a nearby route family.
 
-After every eight accepted L0 candidates, the default policy promotes one
-leader and one diverse niche elite—or, with probability 0.2, a lower-ranked
-control. Controls measure surrogate error outside the sample the surrogate
-already prefers. The main scientific figure is therefore L0 estimated score
-versus L1 score, including promotion failures.
+All three arms share:
 
-## Agent boundary and security
+| setting | publication value |
+|---|---:|
+| accepted unique body orders | 100 |
+| proposal-attempt ceiling | 2,500 |
+| DE–CMA-ES retries per order | 32 |
+| initial evaluations per retry | 20,000 |
+| maximum retry budget factor | 10 |
+| default workers | physical CPU cores |
+| root seed | 42 |
+| portfolio metric | sum of best 20 MGA scores |
 
-The Rust driver has no HTTP, TLS, async-runtime, or provider SDK dependency.
-It spawns an exact argv array without a shell, writes one request to stdin,
-closes stdin, reads independently capped stdout/stderr streams, and enforces a
-deadline. On Unix the adapter gets a fresh process group, which is terminated
-as a unit on timeout. Malformed model output receives exactly one JSON repair
-call.
+The best-one score is retained, but the declared comparison target is the
+top-20 sum. It rewards a proposer for finding a useful portfolio rather than
+getting lucky once.
 
-CI uses `agents/mock_agent.py`, which is deterministic and offline. Replay
-mode consumes a redacted prior `agent_log.jsonl`. The optional
-`agents/llm_agent.py` supports OpenAI- and Anthropic-compatible endpoints
-using only the Python standard library; no provider or model is compiled into
-Rust.
+### Eight-hour budget design
 
-[`config.live.example.json`](config.live.example.json) is a complete campaign
-configuration for
-[MiniMax's Anthropic-compatible API](https://platform.minimax.io/docs/api-reference/text-anthropic-api).
-Its `agent` object contains:
+On the development Ryzen 9 9950X, one representative full-budget random route
+used 16 physical workers, made 2,031,391 actual objective calls, and took
+149.642 seconds. At that measured rate, 100 routes project to about 4.16 hours.
+The eight-hour ceiling leaves about 3.84 hours for longer routes, optimizer
+variance, operating-system load, and duplicate proposal overhead.
+
+This is a sizing measurement, not a universal runtime guarantee. Check the
+first few routes on a different machine. If their mean exceeds 240 seconds,
+reduce `--accepted-candidates` before starting all arms and apply the same new
+target to every arm. Do not stop one arm early based on its observed scores.
+
+## Local Gemma 4 through llama.cpp
+
+[`config.llamacpp.example.json`](config.llamacpp.example.json) is a complete
+campaign configuration. It assumes an OpenAI-compatible llama.cpp server at
+`http://127.0.0.1:8080/v1` and deliberately needs no fake API key. Replace the
+model ID with the ID exposed by your server if necessary.
+
+The checked-in settings use:
 
 ```json
 {
-  "transport": "command",
-  "command": ["python3", "agents/llm_agent.py"],
-  "provider": "anthropic-compatible",
-  "model": "MiniMax-M3",
-  "base_url": "https://api.minimax.io/anthropic",
-  "api_key_env": "ROUTE_AGENT_API_KEY",
-  "maximum_tokens": 20000,
-  "provider_options": {"thinking": {"type": "adaptive"}}
+  "provider": "openai-compatible",
+  "model": "gemma-4-31b-it",
+  "base_url": "http://127.0.0.1:8080/v1",
+  "api_key_env": null,
+  "maximum_tokens": 8000,
+  "provider_options": {
+    "candidate_menu_size": 96,
+    "temperature": 0.6,
+    "chat_template_kwargs": {"enable_thinking": false}
+  }
 }
 ```
 
-Then export `ROUTE_AGENT_API_KEY` only in the process environment. Artifacts
-store the variable name, provider/model identifiers, options, latency, and
-token usage—not the credential value.
+`enable_thinking: false` is intentional for the candidate-menu task: Gemma
+chooses among already valid candidates while the expensive reasoning and
+evidence production happen in Rust. The adapter accepts normal text or fenced
+JSON, enforces a JSON-schema `candidate_id`, and maps that opaque ID back to a
+body order. Local loopback URLs require no credential; remote URLs still
+require `api_key_env`.
 
-Run the offline adapter tests, export the key, and launch the arm with:
+This is the original **cold** menu policy. It is retained unchanged so its
+result remains replayable; the assisted follow-up below is opt-in and uses a
+different, explicit protocol identifier.
+
+Anthropic-compatible streaming remains supported by
+[`config.live.example.json`](config.live.example.json). Thinking deltas are
+discarded and never mixed into the candidate JSON.
+
+## Run the matched experiment
+
+Start the local model before the Gemma arm. Each command writes to a distinct
+directory and can resume an interrupted archive. The random and evolutionary
+arms parse the same config but never contact the provider.
 
 ```bash
-python3 -m unittest agents/test_llm_agent.py
-export ROUTE_AGENT_API_KEY='your-minimax-api-key'
+experiment_root=results/mga-matched-seed42
+
 cargo run --release --locked -- \
-  --mode campaign --config config.live.example.json
+  --mode campaign --config config.llamacpp.example.json \
+  --strategy random --seed 42 \
+  --results "$experiment_root/random"
+
+cargo run --release --locked -- \
+  --mode campaign --config config.llamacpp.example.json \
+  --strategy evolutionary --seed 42 \
+  --results "$experiment_root/evolutionary"
+
+cargo run --release --locked -- \
+  --mode campaign --config config.llamacpp.example.json \
+  --strategy agent --seed 42 \
+  --results "$experiment_root/gemma4"
+
+python3 compare_campaigns.py --results "$experiment_root"
 ```
 
-The adapter sends `thinking: {"type": "adaptive"}` together with
-`stream: true`. Its Anthropic SSE parser consumes keep-alives and
-`thinking_delta` events without retaining the reasoning, concatenates only
-`text_delta` events into candidate JSON, merges start/final token usage, and
-requires a clean `message_stop`. Provider error events and truncated streams
-remain typed transport failures. Because this wire format has no native
-`response_format`, the adapter appends the protocol-owned route constraints,
-an exact output example, and JSON Schema after the user prompt. Each provider
-call is deliberately independent; the Rust driver supplies a bounded summary
-of prior proposal exchanges instead of continuing a provider-native reasoning
-chain.
-For MiniMax the adapter sends both `Authorization: Bearer` and `X-Api-Key`;
-their Messages API specifies that bearer authorization takes precedence when
-both are present.
+The reviewed seed-42 bundle is checked in under
+[`results/mga-matched-seed42`](results/mga-matched-seed42/README.md). It retains
+the accepted-route archives, terminal manifests, convergence and rejection
+logs, and provider exchanges while omitting redundant response caches.
 
-Before funding the full campaign, run one accepted-candidate L0 smoke test.
-This permits one proposal attempt, no transport retry, at most one JSON-repair
-call, and at most 8,192 generated tokens per call:
+## A useful failure: cold Gemma collapses on route length
+
+The completed matched run exposed an information-boundary failure. Cold Gemma
+selected 90 fourteen-encounter orders; 96 of its 100 routes fell in the 12–14
+encounter band, and 18 members of its final top-20 portfolio had length 14.
+Random selected four length-14 routes and evolutionary one.
+
+| blind arm | accepted | best-20 sum | best score | niches | worker-h | wall-h |
+|---|---:|---:|---:|---:|---:|---:|
+| random | 100 | 19.270 M | 1.234 M | 96 | 82.9 | 5.18 |
+| evolutionary | 100 | 22.140 M | 1.279 M | 97 | 77.6 | 4.85 |
+| cold Gemma | 100 | 19.676 M | 1.164 M | 63 | 178.7 | 11.66 |
+
+Cold Gemma's best-20 sum is only 2.1% above random, 11.1% below evolutionary,
+and costs more than twice the worker time of either control. The 96-entry
+prompt forwarded complete duplicate-control state, exposed only global score
+leaders, omitted length-conditioned cost evidence, and let those leaders seed
+more mutations. Once long routes occupied the global top five, Gemma received
+increasingly one-sided evidence. Turning on more model reasoning would not
+repair that feedback loop.
+
+The conclusion is not “14 encounters are invalid.” The known Deimos route has
+14 encounters and remains inside the grammar. The failure is spending almost
+the entire portfolio on one costly dimensional class without evidence that it
+dominates shorter alternatives.
+
+![Cold Gemma concentrates 96 percent of accepted routes in the 12–14 encounter band, while the assisted interface restores a broad route-length mix](images/mga-length-mix.svg)
+
+![The cold loop reinforces long routes; the assisted loop changes only the information and candidate-selection boundary while Rust physics remains authoritative](images/assisted-agent-loop.svg)
+
+## Gemma4-assisted-v1
+
+[`config.llamacpp.assisted.example.json`](config.llamacpp.assisted.example.json)
+implements the follow-up as a separately named experiment. It keeps the MGA
+formula, grammar, canonical directions, DE–CMA-ES budget, root seed, 100-route
+target, and best-20 objective. It changes only the outer agent interface:
+
+- completed random and evolutionary archives are declared as prior evidence;
+- their exact body orders are excluded, so Gemma cannot copy an evaluated
+  route;
+- the adapter verifies the full configured archive digest and stores its prefix
+  in each selected route's rationale;
+- the model sees compact live and prior evidence, never the full duplicate
+  lists needed internally by the adapter;
+- the first eight accepted routes cycle through controlled length bands before
+  score feedback is exposed;
+- later 48-entry menus use quotas `8 / 16 / 16 / 8` for encounter bands
+  `3–6 / 7–9 / 10–11 / 12–14`;
+- candidates combine mutations of score-ranked, length-diverse elites with
+  stratified random immigrants; and
+- Gemma ranks three choices. Rust uses lower-ranked choices only if an earlier
+  proposal is rejected, and discards stale fallbacks after an accepted route.
+
+Each menu row identifies its length band, terminal motif, outer-planet count,
+optimizer-cost band, mutation parent, parent score, and nearest-elite edit
+distance. Live feedback reports the best and mean MGA score, top-five mean,
+and mean worker time by encounter count, plus the current best-20 cutoff.
+Encounter count itself receives no reward.
+
+This is intentionally called **assisted**, not silently substituted for the
+cold arm. It uses knowledge acquired by the completed baseline experiments.
+The tutorial reports both accepted-route and cumulative-worker-time views;
+otherwise a strategy can look competitive merely by selecting more expensive
+orders.
+
+### Completed assisted follow-up
+
+The 100-route seed-42 follow-up completed without transport failures:
+
+| quantity | cold Gemma | Gemma-assisted |
+|---|---:|---:|
+| best-20 MGA sum | 19.676 M | 26.964 M |
+| best single MGA score | 1.164 M | 1.510 M |
+| occupied niches | 63 | 81 |
+| actual MGA evaluations | 225.903 M | 191.154 M |
+| worker-hours | 178.7 | 71.2 |
+| wall-hours | 11.66 | 4.70 |
+| model calls | 190 | 103 |
+| model input tokens | 2.339 M | 1.080 M |
+
+Relative to cold Gemma, the assisted policy improves the declared portfolio
+metric by 37.0%, improves the best route by 29.7%, uses 59.7% less wall time,
+and uses 53.8% fewer input tokens. Its leader is `EVEVVESJA`, with an MGA score
+of 1,509,902, charged impulsive Δv of 3.875844 km/s, and 8,177.8 flight days.
+The lower actual evaluation and worker totals arise mainly because the repaired
+menu selects shorter optimization problems; every route retains the same
+declared DE–CMA-ES retry limits.
+
+![The prior-informed Gemma follow-up has the largest best-20 sum and best single MGA score in the seed-42 evidence](images/mga-portfolio-results.svg)
+
+The assisted result also exceeds the blind evolutionary arm's best-20 sum by
+21.8%, but that is not an unbiased head-to-head model comparison: it consumed
+the random and evolutionary archives as prior evidence. The defensible claim
+is narrower—the diagnosed information-boundary failure can be repaired by a
+transparent, versioned candidate-selection policy while Rust remains the
+score authority.
+
+The declared
+[`random.archive.json`](results/assisted-prior/random.archive.json) and
+[`evolutionary.archive.json`](results/assisted-prior/evolutionary.archive.json)
+files, together with their terminal manifests, are checked in under
+`results/assisted-prior`. The configuration pins their combined SHA-256;
+changing either archive makes the adapter stop before contacting the model.
+
+To substitute independently reproduced baseline archives, copy both files,
+calculate the adapter's combined digest, update the config, and use a new
+assisted result directory. The shipped evidence can be verified with:
 
 ```bash
+python3 - <<'PY'
+from agents.llm_agent import load_experience
+
+prior = load_experience([
+    "results/assisted-prior/random.archive.json",
+    "results/assisted-prior/evolutionary.archive.json",
+])
+print(prior.digest)
+PY
+```
+
+Then start the same llama.cpp Gemma 4 31B server and run:
+
+```bash
+# Optional transport/schema smoke test; never resume it as the full run.
 cargo run --release --locked -- \
-  --mode campaign --config config.live.example.json \
-  --accepted-candidates 1 --max-proposal-attempts 1 --max-level l0 \
+  --mode campaign \
+  --config config.llamacpp.assisted.example.json \
+  --strategy agent \
+  --accepted-candidates 1 \
+  --max-proposal-attempts 10 \
+  --bootstrap-candidates 1 \
   --retries 1 --evaluations 500 --max-eval-fac 1 --workers 1 \
-  --agent-max-tokens 8192 --agent-max-retries 0 \
-  --results results/minimax-smoke/agent
+  --seed 42 \
+  --results results/gemma4-assisted-smoke
+
+# Full assisted experiment.
+cargo run --release --locked -- \
+  --mode campaign \
+  --config config.llamacpp.assisted.example.json \
+  --strategy agent \
+  --seed 42 \
+  --results /media/xxx/Public/Documents/gtoc1res/gemma4-assisted
 ```
 
-Use a separate copy of the configuration for every root seed and comparison
-arm. The random and evolutionary arms do not call the adapter, but their L0
-and promotion settings must remain identical.
+Do not reuse the cold `gemma4` result directory. Resume is automatic when the
+assisted directory already contains a compatible `protocol.json` and archive.
 
-## Reproduce the offline protocol
+Run random and evolutionary on otherwise idle identical machines if desired.
+The algorithm parameters must remain identical; wall time and CPU model belong
+in the report. Parallel coordinated retry is not bit-reproducible, so repeat
+the complete three-arm protocol across predeclared seeds before making a model
+capability claim.
 
-From this tutorial directory:
+For a cheap offline protocol check:
 
 ```bash
-cargo test --locked
-cargo clippy --locked --all-targets -- -D warnings
-
-# Evaluate a supplied physical schedule without optimization.
 cargo run --release --locked -- \
-  --mode inspect --route EVEEEJSJA --clockwise 00000011 \
-  --schedule 8168.477153978,817.769667745,660.575139524,788.584346596,1412.595495585,445.823854604,479.477839881,3269.045639424,548.827683602
-
-# Optimize one route at L0.
-cargo run --release --locked -- \
-  --mode scout --route EVEEEJSJA --clockwise 00000011 \
-  --retries 32 --evaluations 20000 --max-eval-fac 10 --seed 43
-
-cargo run --release --locked -- \
-  --smoke --strategy agent \
+  --mode campaign --smoke --strategy agent \
   --agent-command-json '["python3","agents/mock_agent.py"]' \
   --results results/smoke/agent
 
 cargo run --release --locked -- \
-  --smoke --strategy random --results results/smoke/random
+  --mode campaign --smoke --strategy random \
+  --results results/smoke/random
 
 cargo run --release --locked -- \
-  --smoke --strategy evolutionary --results results/smoke/evolutionary
-
-python3 compare_campaigns.py --results results/smoke
+  --mode campaign --smoke --strategy evolutionary \
+  --results results/smoke/evolutionary
 ```
 
-These smoke and CI paths are intentionally gitignored scratch output. Readers
-can inspect the committed `results/protocol-evidence/` fixture without running
-the code; live provider campaigns are published only after they finish and
-their complete manifest/CSV bundle has been reviewed.
+Use a fresh root when any numerical or protocol setting changes. Cache keys
+include the MGA formulation, dependency versions, route, budget, and root
+seed; rationale text is excluded.
 
-A single archived route can be promoted independently:
-
-```bash
-cargo run --release --locked -- \
-  --mode refine \
-  --from-result 'results/smoke/agent/archive.jsonl#3-2-3-3-3-5-6-5-10|00000011'
-```
-
-The optional end-to-end L1 protocol test uses a deliberately inadequate
-budget and should normally report `threshold_passed=false`:
-
-```bash
-cargo run --release --locked -- \
-  --smoke --strategy agent --accepted-candidates 1 \
-  --max-level l1 --l1-smoke --promote-every 1 --promote-batch 1 \
-  --results results/l1-smoke
-```
-
-## Persistence and artifacts
-
-`archive.jsonl` is append-only and checksummed. An L1/L2 revision appends a new
-complete record for the same immutable L0 candidate; loading verifies that the
-revision did not alter identity or L0. A truncated final line is ignored, but
-mid-file corruption is fatal. Snapshots and cache entries use a temporary
-sibling, flush, and atomic rename.
+## Evidence and failure semantics
 
 Each arm writes:
 
-- `run.json`: status, configuration identity, proposal/token counters,
-  requested and actual evaluations, wall time and allocated worker-seconds;
-- `archive.jsonl`, `archive.json`, and `archive.csv`;
-- `proposal_log.jsonl` and replayable `agent_log.jsonl`;
-- `promotions.csv` with L0/L1 gap and failure;
-- `convergence.csv`.
+- `archive.jsonl`: append-only checksummed accepted results;
+- `archive.json`: atomic snapshot;
+- `archive.csv`: compact numerical table;
+- `proposal_log.jsonl`: grammar, diversity, and duplicate rejections;
+- `agent_log.jsonl`: bounded replayable provider exchanges;
+- `convergence.csv`: best score and resource accumulation; and
+- `run.json`: terminal status, exact non-secret configuration, workers,
+  evaluations, token use, qualified count, and top-20 portfolio sum.
 
-Allocated worker-seconds are `wall × resolved workers`, not measured CPU time.
-Parallel coordinated retry is not claimed bit-reproducible; fixed-seed
-single-worker regression and replay are.
+A duplicate or grammar rejection consumes no inner optimization budget. An
+optimizer failure means “not found under this declared budget,” not physical
+infeasibility. A result directory is complete only when `run.json` says
+`completed`.
 
-## Evidence status
-
-The original committed fixture is only a transport, persistence, and protocol smoke
-check. Its deterministic mock emits the historical JPL, JPL2, and Jena routes
-as its first three proposals; it is not a language model and its table is not
-an agent-versus-baseline capability comparison. The table deliberately omits
-route scores and instead reports constraint status, accounting, and coverage.
-
-The reviewed live evidence uses MiniMax-M3, root seed 42, a 20,000-token
-response cap, a 40-candidate target, and a 120-attempt ceiling. It was
-deliberately launched at L0 only. The compact final bundles—without optimizer
-cache files—are checked in under
-[`results/live-l0-seed42/`](https://github.com/dietmarwo/fcmaes-rust/tree/main/tutorials/gtoc1-route-search/results/live-l0-seed42).
-They retain the final manifests, archives, proposal/provider logs, convergence,
-and empty promotion tables. The original one-route failure and the
-bootstrap-only 39-route rerun remain beside the completed repaired arm instead
-of being overwritten.
-
-The exact offline evidence is retained in
-[`results/protocol-evidence/comparison.md`](results/protocol-evidence/comparison.md);
-regenerate its table with `python3 compare_campaigns.py --check`.
-
-![Lowest L0 constraint violation after each accepted candidate in the tiny protocol run](images/convergence.svg)
-
-![The protocol evidence occupies three structural niches in each arm](images/niche-coverage.svg)
-
-The empty [surrogate-gap panel](images/surrogate-gap.svg) is a status
-placeholder, not a scientific figure: the L0-only protocol fixture contains
-zero promotions and therefore zero measured gaps. The separate L1 smoke
-command tests promotion plumbing, while a future publication campaign must
-supply the gap distribution. The
-[closest-route structure diagram](images/best-route-structure.svg) labels the
-mock fixture's lowest-violation body order and explicitly is not a propagated
-trajectory.
-
-### Live seed-42 L0 audit
-
-The three configurations requested the same root seed, 40 accepted candidates,
-120 proposal attempts, L0 inner budget, variant cap, worker allocation, and
-promotion policy. All three final arms completed:
-
-| Arm | Status | Accepted | L0 admissible | Lowest violation | Niches |
-|---|---|---:|---:|---:|---:|
-| MiniMax-M3 | completed | 40 / 40 | 0 | 0.342919 | 36 |
-| random | completed | 40 / 40 | 15 | 0 | 39 |
-| evolutionary | completed | 40 / 40 | 24 | 0 | 39 |
-
-“L0 admissible” means only `constraint_l0 <= 1e-8`: launch excess and
-periapsis checks in the Lambert endpoint-repair screen pass. It does not mean
-that the thrust history, mass continuity, solar-distance constraint, or final
-intercept is realizable.
-
-![Random and the repaired evolutionary arm reach zero L0 violation while MiniMax does not in this seed](images/live-l0-seed42/convergence.svg)
-
-The random arm's leading L0-admissible route is
-`3-3-3-6-10|0000` (`EEESA`). Its diagnostic estimated score is
-`658,588.701`, with `2.500 km/s` launch v-infinity, `6.688 km/s` powered flyby
-change, `9.024 km/s` endpoint repair, and 6,995.3 flight days. Those numbers
-make it a useful L1 challenge candidate, not a GTOC1 solution or score. No
-MiniMax proposal passed the L0 constraint threshold in this seed.
-
-![The feasibility-first leading seed-42 structure comes from random search and remains only a Lambert-screen candidate](images/live-l0-seed42/best-route-structure.svg)
-
-The numerical work was of the same order across the completed arms: MiniMax
-used 74,005,732 actual L0 evaluations and 45.333 allocated worker-hours;
-random used 75,743,371 and 44.190 worker-hours; evolutionary used 81,822,640
-and 51.776 worker-hours. Wall time was 8.697 h, 1.381 h, and 1.618 h,
-respectively. The agent made 94 provider calls, consumed 944,365 reported
-tokens, encountered 10 transport failures, and had 43 diversity rejections.
-These are accounting observations, not cost-normalized model-quality claims.
-
-![Random and evolutionary each occupy 39 structural niches while MiniMax occupies 36](images/live-l0-seed42/niche-coverage.svg)
-
-The evolutionary repair was incremental and its failed attempts remain useful
-protocol evidence:
-
-1. the original arm stopped at 1/40 because every post-seed one-edit bootstrap
-   mutation failed the distance-three gate;
-2. keeping independent samples through the six-route bootstrap fixed that
-   deadlock, but the mutation-only exploration/exploitation pool saturated at
-   39/40 after 120 attempts; and
-3. using independent random immigrants for exploration while retaining elite
-   mutations for exploitation completed 40/40 in 58 attempts and occupied 39
-   niches.
-
-The generated, feasibility-first table is
-[`results/live-l0-seed42/comparison.md`](results/live-l0-seed42/comparison.md).
-Both tables and both figure sets are regenerated and checked independently.
-
-### Predeclared random-arm L1 follow-up
-
-Before inspecting any L1 output, the follow-up selected the leader, median,
-and lowest route among the 15 L0-admissible random candidates: ranks 1, 8, and
-15. Exact variant keys and order are stored in `run.json`. This design tests
-the top surrogate prediction and two controls without spending the controls
-on routes already disqualified by L0 launch/periapsis constraints.
-
-![The random-arm L0 leader and two lower-ranked admissible controls were promoted; none passed L1](images/live-l1-seed42/targeted-promotions.svg)
-
-No promotion passed:
-
-- rank 1 `3-3-3-6-10|0000` returned a finite L1 score of `289,300.288`,
-  versus `658,588.701` at L0, but maximum normalized mismatch remained
-  `1.07444` rather than at most `1e-7`; maximum throttle was also `1.02870`;
-- rank 8 `3-3-3-2-6-10|00011` encountered a typed elliptic Kepler propagation
-  convergence failure; and
-- rank 15 `3-2-2-3-2-2-2-2-3-2-3-10|00000000100` encountered a typed
-  hyperbolic Kepler propagation convergence failure.
-
-The complete generated table is
-[`results/live-l1-seed42/comparison.md`](results/live-l1-seed42/comparison.md).
-The recorded L1 work is 56,052,992 observed objective calls and 5,228.4
-worker-seconds. A zero actual-evaluation count on a propagation failure means
-the exception escaped before the retry layer returned its counter; it does not
-mean that no compute was consumed. The requested caps and measured
-worker-seconds remain recorded.
-
-No L2 success is required for an honest L1 comparison. Here there is no
-threshold-passing L1 candidate to promote. The abstract and conclusion must
-continue to say “Lambert and impulsive Sims–Flanagan route-proposal
-comparison,” never “new feasible GTOC1 solution.”
-
-### What is still missing?
-
-The following items deliberately remain open:
-
-- repeat all three arms for a predeclared set of independent root seeds rather
-  than drawing a capability conclusion from seed 42;
-- run matched, predeclared L1 promotions for agent and evolutionary archives
-  before comparing strategy-specific surrogate error;
-- diagnose the two control-route Kepler convergence failures and improve L1
-  accounting so an interrupted retry reports its exact objective count;
-- report feasibility-first results: positive L0 constraint values are
-  violations, so their estimated and fixed-mass scores are diagnostic values,
-  not valid mission scores;
-- obtain a threshold-passing L1 candidate before considering L2 Taylor
-  transcription and independent DOP853 repropagation.
-
-Publishing this list is intentional. It separates a useful, reproducible
-workbench from conclusions that the evidence does not yet support.
-
-## Run your own experiment
-
-Start with the offline smoke commands above. For a live experiment, copy
-`config.live.example.json`, choose an explicit provider and model, point
-`api_key_env` at an environment variable, and never put the credential in the
-JSON file. Reduce `accepted_candidates`, `maximum_proposal_attempts`,
-`inner_budget`, and `maximum_tokens` for a first paid test.
-
-The following commands run one matched L0 set. `--results` also redirects the
-agent log into the corresponding arm directory:
+## Verification
 
 ```bash
-experiment_root=results/my-live-l0-seed42
-
-cargo run --release --locked -- \
-  --mode campaign --config config.live.example.json \
-  --strategy agent --max-level l0 --seed 42 \
-  --results "$experiment_root/agent"
-
-cargo run --release --locked -- \
-  --mode campaign --config config.live.example.json \
-  --strategy random --max-level l0 --seed 42 \
-  --results "$experiment_root/random"
-
-cargo run --release --locked -- \
-  --mode campaign --config config.live.example.json \
-  --strategy evolutionary --max-level l0 --seed 42 \
-  --results "$experiment_root/evolutionary"
-
-python3 compare_campaigns.py --results "$experiment_root"
-python3 plot_results.py --results "$experiment_root" \
-  --output images/my-live-l0-seed42
+cargo fmt --all -- --check
+cargo test --all-targets
+cargo clippy --all-targets -- -D warnings
+python3 -m unittest agents.test_llm_agent
 ```
 
-The random and evolutionary arms do not contact the configured provider. Use
-a new directory for every seed and every fidelity level; do not overwrite or
-reinterpret a completed manifest with changed settings. Before comparison,
-confirm that all three `run.json` files say `completed` and record matching
-budgets apart from `strategy`, provider usage, and the output path.
+The tests cover the historical direction policy, grammar and mutation
+closure, exact duplicate behavior, cache identity, JPL MGA regression,
+history-blind campaign optimization, subprocess timeout/repair/replay, local
+llama.cpp authentication, deterministic unseen candidate menus, assisted
+length strata and ranked fallbacks, compact prompt redaction, Anthropic SSE
+parsing, and token accounting.
 
-For an L1 study, change all three arms to `--max-level l1` and use a fresh
-root such as `results/my-live-l1-seed42`. L1 is substantially more expensive:
-the checked-in refinement schedule reaches 25 impulses and 1.2 million
-evaluations in its last continuation stage. L2 remains an explicitly selected
-follow-on for a few finalists, not part of the broad route-order campaign.
+## What remains open?
 
-To reproduce the targeted random-arm follow-up without altering the completed
-L0 bundle, copy only its append-only archive and promote the exact predeclared
-variants:
+- repeat the blind comparison and prior-informed follow-up for predeclared
+  independent seeds and record CPU hardware in the manifests;
+- inspect top-20 overlap and route-family diversity, not only scalar sums;
+- test whether pair-dependent direction rules should admit narrowly defined
+  alternatives for route families absent from the four historical fixtures;
+- pass the best MGA-qualified portfolio to a separate low-thrust study; and
+- report failed downstream candidates as surrogate error, not as evidence
+  against their outer proposer.
 
-```bash
-mkdir -p results/my-live-l1-seed42/random-targeted
-cp results/live-l0-seed42/random/archive.jsonl \
-  results/my-live-l1-seed42/random-targeted/archive.jsonl
-
-cargo run --release --locked -- \
-  --mode campaign --config config.live.example.json \
-  --strategy random --max-level l1 --seed 42 \
-  --promote-variants \
-  '3-3-3-6-10|0000,3-3-3-2-6-10|00011,3-2-2-3-2-2-2-2-3-2-3-10|00000000100' \
-  --results results/my-live-l1-seed42/random-targeted
-```
-
-Parallel coordinated retry is not bit-reproducible even with a fixed root
-seed. Preserve the raw archives and report distributions across seeds. Use
-replay mode when testing the deterministic numerical pipeline against the same
-agent proposals without paying for another provider call.
+Publishing these limits is part of the experiment. The useful result is a
+reproducible portfolio generator and an honest comparison, not a new GTOC1
+score claim.

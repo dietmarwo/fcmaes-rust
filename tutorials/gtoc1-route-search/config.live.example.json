@@ -1,11 +1,12 @@
 {
   "strategy": "agent",
-  "accepted_candidates": 40,
-  "maximum_proposal_attempts": 120,
+  "accepted_candidates": 100,
+  "maximum_proposal_attempts": 2500,
   "bootstrap_candidates": 6,
   "protected_top": 5,
+  "portfolio_size": 20,
   "root_seed": 42,
-  "maximum_level": "l1",
+  "maximum_level": "l0",
   "grammar": {
     "route": {
       "maximum_encounters": 14,
@@ -13,9 +14,8 @@
       "maximum_outer_encounters": 4,
       "maximum_flight_days": 10957.5
     },
-    "maximum_variants_per_structure": 2,
-    "minimum_edit_distance": 3,
-    "clockwise_probability": 0.2
+    "maximum_variants_per_structure": 1,
+    "minimum_edit_distance": 3
   },
   "derivation": {
     "grammar": {
@@ -24,10 +24,10 @@
       "maximum_outer_encounters": 4,
       "maximum_flight_days": 10957.5
     },
-    "duration_decoder_version": "capped-softmax-v1",
+    "duration_decoder_version": "direct-leg-times-v1",
     "ephemeris_id": "vsop2013",
     "vsop_threshold": 1e-9,
-    "scout_formulation_version": "endpoint-repair-lexicographic-v1"
+    "scout_formulation_version": "impulsive-mga-route-qualification-v1"
   },
   "inner_budget": {
     "retries": 32,

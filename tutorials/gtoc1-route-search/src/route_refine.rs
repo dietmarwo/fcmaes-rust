@@ -408,7 +408,7 @@ fn refinement_seed(root_seed: u64, result: &SearchResult, stage: usize, leg: usi
 }
 
 fn resolved_workers(requested: usize, retries: usize) -> usize {
-    let available = std::thread::available_parallelism().map_or(1, usize::from);
+    let available = num_cpus::get_physical().max(1).min(num_cpus::get().max(1));
     let requested = if requested == 0 { available } else { requested };
     requested.min(available).min(retries)
 }
