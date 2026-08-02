@@ -328,7 +328,7 @@ pub fn write_comparison(root: &Path, campaigns: &[&Campaign]) -> Result<(), Box<
     markdown.push_str(
         "All scores are minimized (**lower is better**). Held-out reference encodings are excluded from proposal histories. A dash means a proposal arm did not exactly rediscover that topology.\n\n",
     );
-    markdown.push_str("| Arm | Repressilator | Goodwin-like | Positive cycle | Toggle control | Classes | Accepted | Best | Median | Score < 1 | Agent tokens |\n|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|\n");
+    markdown.push_str("| Arm | Repressilator | Goodwin-like | Positive cycle | Toggle control | Classes | Accepted | Best | Median | Score < 1 | Agent tokens (input+output) |\n|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|\n");
     let display = |value: Option<usize>| {
         value
             .filter(|value| *value > 0)

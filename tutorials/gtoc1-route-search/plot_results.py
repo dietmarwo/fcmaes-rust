@@ -415,8 +415,8 @@ def mga_length_mix(root: Path) -> str:
         "".join(body),
         "MGA route-length distribution",
         "Encounter-count bands for 100 accepted routes per strategy. Cold Gemma "
-        "concentrates in the longest band while the assisted menu restores a "
-        "broad, lower-cost distribution.",
+        "concentrates in the longest band while the assisted policy concentrates "
+        "in the 7–9 encounter band.",
     )
 
 

@@ -9,9 +9,9 @@ robust stochastic oscillations.
 The architecture is a Rust port and protocol-focused extension of
 [`autoresearch-circuit`](https://github.com/dietmarwo/autoresearch-circuit).
 The new parts are a ReBop runtime model, fixed-evaluation inner optimization,
-disjoint stochastic validation, held-out motif rediscovery, replayable
-schema-v2 artifacts, and an explicit live-agent boundary. It is deliberately a
-second split-brain tutorial: unlike variable-order GTOC1, the small outer
+disjoint stochastic validation, held-out reference-label accounting, replayable
+schema-v2 artifacts, and an explicit live-agent boundary. It is deliberately
+a second split-brain tutorial: unlike variable-order GTOC1, the small outer
 grammar has recognizable structural references.
 
 ![A discrete proposer is separated from the stochastic numerical evidence loop](images/architecture.svg)
@@ -30,20 +30,24 @@ its 10–18-dimensional kinetic vector.
 | eight-elite evolutionary | 200 / 270 | 0 | 5 | 0.483957 | 2.636004 | 59 |
 | Gemma 4 31B Q8, menu v4 | **200 / 200** | **repressilator at 188** | 5 | **0.471418** | **0.957210** | **103** |
 
-Lower is better. Gemma's best score is 2.59% below evolutionary and
-23.22% below random. More importantly, its median and 103 sub-one results show
-that the outcome is not a single lucky incumbent. The v4 menu also converted
-every model response into a novel accepted topology: zero duplicates, invalid
-responses, or transport failures. The agent used 2,078,001 input and 3,200
-output tokens through a local llama.cpp endpoint with thinking disabled.
+Lower is better. The Gemma-plus-v4-menu policy's best score is 2.59% below
+evolutionary and 23.22% below random. More importantly, its median and 103
+sub-one results show that the outcome is not a single lucky incumbent. The v4
+menu made every model response a novel accepted topology: zero duplicates,
+invalid responses, or transport failures. The agent used 2,078,001 input and
+3,200 output tokens through a local llama.cpp endpoint with thinking disabled.
 
-The exact repressilator `000200220` was not placed in the prompt or proposal
-history. It first appeared at proposal 188 after motif labels from earlier
-evaluations had been fed back to the model. Neither offline control exactly
-rediscovered any of the four held-out encodings. These are descriptive results
-for one root seed and one model configuration, not a general claim that an LLM
-dominates evolutionary search. See the complete machine-generated
-[comparison](results/publication/comparison.md) and redacted
+The exact repressilator `000200220` was omitted from the held-out reference
+list shown to the model and never entered proposal history. It was not absent
+from the prompt: protocol v4 can select only an offered menu row. Deterministic
+reconstruction shows that the unlabeled edge vector was offered on 17 attempts;
+Gemma declined the first 16 and selected it at attempt 188, after declining six
+consecutive elite-mutation offers on attempts 182–187. Neither offline control
+exactly selected any of the four held-out encodings. This is feedback-guided
+selection from an engineered candidate menu, not free generation. These are
+descriptive results for one root seed and one model configuration, not a
+general claim that an LLM dominates evolutionary search. See the complete
+machine-generated [comparison](results/publication/comparison.md) and redacted
 [agent provenance](results/publication/agent/provenance.json).
 
 ![Matched random, evolutionary, and Gemma outcomes](images/campaign-results.svg)
@@ -134,6 +138,12 @@ not neutral: a six-edge network must search a larger space with the same
 budget as a two-edge network. The CSV artifacts report both dimension and
 requested/actual evaluations.
 
+That asymmetry cuts against the best recorded arm: 176 of its 200 candidates
+have dimension 16–18, compared with 123 for evolutionary and 90 for random.
+Its median validation score is nevertheless lowest, and its median
+training-to-validation gap is 0.571 versus 1.258 and 1.402. These are
+descriptive one-seed measurements, not a complexity-corrected comparison.
+
 BiteOpt minimizes the common-random-number training score. The final vector is
 then evaluated on disjoint seeds. No simulator thread pool is enabled.
 
@@ -167,11 +177,11 @@ cargo run --release --locked -- \
   --output results/local/random-r16-e1000
 ```
 
-A focused scheduling check used two topologies, four 480-evaluation retries per
-topology and seed 777. One worker took 8.23 s at 99% CPU; four workers took
-2.31 s at 362% CPU, a 3.56× wall-time speedup, and both selected the identical
-best score `3.0034960329076874`. This verifies parallel utilization and
-worker-count invariance; it is not a general scaling benchmark.
+The regression test `parallel_inner_retries_are_worker_count_invariant` runs
+the same seeded case with one and two workers and requires identical selected
+parameters and score. It verifies scheduling invariance, not speedup; measure
+throughput on the intended objective and host rather than extrapolating an
+unarchived development timing.
 
 The outer proposal loop remains sequential by design. After eight independent
 bootstrap samples, the evolutionary arm selects uniformly among its eight
@@ -333,7 +343,11 @@ then presents 96 unseen candidates: one third round-robin mutations of up to
 eight elites, one third underrepresented structural classes, and one third
 deterministic random immigrants. The model can return only one opaque menu ID,
 which the adapter translates back to nine edges; Rust validates again
-defensively. The local URL
+defensively. The IDs are shuffled, but each row explicitly identifies its
+source. In the publication run, Gemma chose 167 elite mutations, seven
+underrepresented-structure rows, and 26 random immigrants. A menu-matched
+non-model selector has not yet been run, so score differences belong to the
+complete menu–model policy and cannot be attributed to Gemma alone. The local URL
 may omit `api_key_env` only because it is loopback; the adapter rejects an
 unauthenticated remote endpoint. The example keeps the same 8,000-token ceiling
 as MiniMax but disables Gemma's explicit thinking channel. In the 16 GB smoke
@@ -419,6 +433,9 @@ one arm.
 - Agent conclusions apply to Gemma 4 31B Q8 with thinking disabled and a
   96-candidate v4 menu; model, quantization, prompt, or menu changes define a
   different strategy.
+- No seeded uniform or fixed-rule selector has yet been run over the identical
+  v4 menus. That ablation is required to separate candidate generation from
+  model ranking.
 - The compatibility copy should be removed once ReBop exports its runtime
   expression type upstream.
 

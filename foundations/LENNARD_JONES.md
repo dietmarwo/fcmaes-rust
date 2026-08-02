@@ -75,7 +75,7 @@ Each row is one independent root seed. The arms are:
 | `random` | equal-budget compact-candidate control |
 | `lbfgs-multistart` | required analytic-gradient reference using `argmin` |
 | `basin-hopping` | perturbed local-minimum reference |
-| `de-retry`, `cma-retry`, `crfmnes-retry`, `bite-retry` | four schedule-independent retries under the same total pair budget |
+| `de-retry`, `cma-retry`, `crfmnes-retry`, `bite-retry` | four schedule-independent retries under the same 20,000-traversal cap |
 
 The adapter dependency is a non-default feature of Foundations, not a
 dependency of `fcmaes-core`. This is the interoperation pattern described in
@@ -83,11 +83,22 @@ dependency of `fcmaes-core`. This is the interoperation pattern described in
 uses the same model and evidence contract without expanding the core crate.
 
 One energy-only call and one combined value/gradient evaluation each count as
-one full `pair_traversal`. That is the primary equal budget within each cluster
-size. `pair_terms_evaluated` multiplies it by `N(N-1)/2`, preventing a reader
-from mistaking equal calls across sizes for equal compute. Objective calls,
-gradient calls, measured pair time, wall time, overlap pairs, projections, and
-estimated optimizer overhead are separate columns. The overhead value is
+one full `pair_traversal`. The requested cap is 20,000 within each cluster
+size, but converged gradient runs may stop early. Across the 100 cells per arm,
+the measured traversal use is:
+
+| Arm | Mean traversals | Minimum |
+|---|---:|---:|
+| L-BFGS multistart | 7,545 | 1,656 |
+| Basin hopping | 17,339 | 4,569 |
+| CR-FM-NES / DE / CMA-ES / BiteOpt / random | 20,000 | 20,000 |
+
+L-BFGS therefore wins every best-achieved row below while consuming only 37.7%
+of the derivative-free traversal cap on average. `pair_terms_evaluated`
+multiplies traversals by `N(N-1)/2`, preventing a reader from mistaking equal
+calls across sizes for equal compute. Objective calls, gradient calls, measured
+pair time, wall time, overlap pairs, projections, and estimated optimizer
+overhead are separate columns. The overhead value is
 `max(wall - measured_pair_time, 0)` and is only an estimate: initialization,
 locking, timing, and serialization are not perfectly separable.
 

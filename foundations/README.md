@@ -1,11 +1,11 @@
 # Foundations: standard suites, measured fronts, and a seven-step on-ramp
 
-`foundations/` is the small, referenceable side of fcmaes-rust. It combines eight
-classic scalar functions, ZDT1–4/ZDT6, DTLZ1–7, a continuous
-Lennard-Jones scaling study, audited multi-objective quality indicators, and
-seven lessons that run in well under a minute. Known values and analytic
-fronts make it possible to test measurement code independently of optimizer
-success.
+`foundations/` is the small, referenceable side of fcmaes-rust. It combines
+one-seed conformance runs over eight classic scalar functions, ZDT1–4/ZDT6 and
+DTLZ1–7; a separate ten-seed continuous Lennard-Jones scaling comparison;
+audited multi-objective quality indicators; and seven lessons that run in well
+under a minute. Known values and analytic fronts make it possible to test
+measurement code independently of optimizer success.
 
 This is a user guide, not application tutorial number 23:
 
@@ -75,11 +75,13 @@ cargo run --release --locked --features gradient-reference -- \
 The `publication` preset names the checked-in artifact size; it does not make
 the run a statistical benchmark. It uses one seed, 4,000 scalar evaluations,
 and 4,096 multi-objective evaluations per optimized/control arm. Its
-2026-07-31 run took 0.49 seconds after compilation on a Ryzen 9 9950X. The
-analytic suite and MODE population evaluations are sequential; `--workers 2`
-only exercises the schedule-independence check in L3. The reported time is an
-end-to-end conformance replay check, not a parallel-scaling or cross-library
-benchmark.
+2026-07-31 analytic run took 0.47 seconds after compilation on a Ryzen 9
+9950X. The analytic suite and MODE population evaluations are sequential;
+`--workers 2` only exercises the schedule-independence check in L3. The
+separate Lennard-Jones evidence contains 700 case rows whose recorded
+single-worker case times sum to 1,911.8 seconds, scheduled over 32 outer
+workers. Both timings are provenance, not parallel-scaling or cross-library
+benchmarks.
 
 ## Why the indicators live in `fcmaes-core`
 
@@ -216,12 +218,17 @@ three positions that are not archive niches.
 
 ## Checked-in conformance evidence
 
-At 4,000 scalar evaluations, DE improves over equal-budget random search on
-all eight functions. The initial row is a 31-member random population—not the
-box center, which would leak the exact optimum on symmetric functions. It is
-also deliberately nested: these are the first 31 points of the random arm's
-stream. The identical Griewank initial/random values therefore mean the next
-3,969 samples did not improve the incumbent; they are not a seeding bug.
+The main result of these compact tables is that the measurement path remains
+auditable: requested and actual evaluations are separate, initial controls are
+nested, every front uses recorded normalization and one shared reference,
+fixed-box ineligibility remains null rather than filtered, and deterministic
+rechecks have zero discrepancy. As a basic outcome check, DE improves over
+random search on all eight scalar functions at the same requested budget.
+The initial row is a 31-member random population—not the box center, which
+would leak the exact optimum on symmetric functions. It is also deliberately
+nested: these are the first 31 points of the random arm's stream. The identical
+Griewank initial/random values therefore mean the next 3,969 samples did not
+improve the incumbent; they are not a seeding bug.
 
 | Problem | Initial | Random | DE |
 |---|---:|---:|---:|
@@ -234,16 +241,21 @@ stream. The identical Griewank initial/random values therefore mean the next
 | Sphere | 54.1 | 16.5 | 1.41e-21 |
 | Zakharov | 7.54e4 | 77.4 | 2.94e-9 |
 
+Both optimized/control arms request 4,000 evaluations. Random uses exactly
+4,000; DE finishes its current population batch and records 4,006–4,029 actual
+evaluations, a maximum 0.73% overshoot. The result CSV exposes both counts.
+
 MODE with its default NSGA-II-style population update improves both
 shared-reference hypervolume and IGD+ over the equal-budget random control on
 all twelve multi-objective problems. This evidence does not compare MODE's two
-update policies. Each problem uses one reference shared by its initial,
-random, MODE, and convergence fronts: the component-wise union nadir plus 10%
-of `max(observed range, 1)` after analytic normalization. Consequently every
-complete front contributes positive volume. Hypervolume magnitudes are
-comparable between arms of one problem, not across different problems. The
-conventional fixed `[1.1; m]` result remains a secondary nullable column: 33
-of 36 fronts cross that box, so their fixed-box value is
+update policies. Unlike scalar DE, MODE and its random control both use exactly
+their requested 4,096 evaluations. Each problem uses one reference shared by
+its initial, random, MODE, and convergence fronts: the component-wise union
+nadir plus 10% of `max(observed range, 1)` after analytic normalization.
+Consequently every complete front contributes positive volume. Hypervolume
+magnitudes are comparable between arms of one problem, not across different
+problems. The conventional fixed `[1.1; m]` result remains a secondary nullable
+column: 33 of 36 fronts cross that box, so their fixed-box value is
 `not-applicable-outside-reference` rather than a filtered zero.
 
 | Problem | Initial HV | Random HV | MODE HV | Random IGD+ | MODE IGD+ |

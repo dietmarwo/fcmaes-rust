@@ -316,13 +316,14 @@ Native ReBop Gillespie paths share training random streams and use disjoint
 validation streams.
 
 The matched seed-42 publication gives random, eight-elite evolutionary, and a
-local Gemma 4 31B Q8 agent 200 accepted topologies each. Every topology gets
-16 × 12,000 inner objective calls. Their best holdout scores are respectively
-0.613988, 0.483957, and 0.471418; medians are 2.950889, 2.636004, and 0.957210.
-The v4 unseen-candidate menu lets Gemma complete 200 proposals without one
-duplicate or transport failure, and it exactly rediscovers the held-out
-repressilator at proposal 188. The result is a one-seed case study, not a
-general model ranking.
+local Gemma 4 31B Q8 plus v4-menu policy 200 accepted topologies each. Every
+topology gets 16 × 12,000 inner objective calls. Their best holdout scores are
+respectively 0.613988, 0.483957, and 0.471418; medians are 2.950889, 2.636004,
+and 0.957210. The unseen-candidate menu eliminates duplicate and transport
+failures. Its unlabeled repressilator vector was offered 17 times and selected
+at proposal 188; the reference label itself remained held out. The result is a
+one-seed case study of the complete menu–model policy, not a general model
+ranking; a menu-matched non-model selector remains an open ablation.
 
 ![Discrete topology proposals are separated from fixed-budget stochastic evidence](oscillator-topology-search/images/architecture.svg)
 
@@ -680,13 +681,14 @@ occupies only 63 niches, and achieves a 19.676 M best-20 sum versus 22.140 M
 for evolutionary search while consuming 178.7 worker-hours. A separately
 named prior-informed follow-up fixes the information boundary with
 length-stratified menus and ranked fallbacks: it occupies 81 niches, reaches a
-26.964 M best-20 sum, and completes in 71.2 worker-hours. Because it consumes
-the completed baseline archives, this is evidence that the protocol repair
+26.964 M best-20 sum, and its incremental run uses 71.2 worker-hours. Including
+the random and evolutionary archives required as prior evidence raises the
+complete chain to 231.7 worker-hours. This is evidence that the protocol repair
 works—not an independent fourth arm or a general model-capability result.
 
 ![The route proposer is separated from deterministic Rust grammar, optimization, physics, archive, and evidence](gtoc1-route-search/images/architecture.svg)
 
-![Cold Gemma's long-route collapse is replaced by a broad assisted route-length mix](gtoc1-route-search/images/mga-length-mix.svg)
+![Cold Gemma's long-route collapse is replaced by an assisted concentration in the 7–9 encounter band](gtoc1-route-search/images/mga-length-mix.svg)
 
 ## 13. sindr: smooth features and manufacturable circuit catalogues
 

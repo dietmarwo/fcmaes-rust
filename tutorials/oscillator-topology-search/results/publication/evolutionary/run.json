@@ -8,7 +8,7 @@
   "command": "cargo run --release --locked -- --mode campaign --preset publication --strategy evolutionary --accepted-candidates 200 --inner-retries 16 --workers 16 --evaluations 12000 --seed 42 --output results/local/matched-200-e20k-r16w16-v3-gemma4-31b-q8-seed42 --resume",
   "seed": 42,
   "protocol": {
-    "candidates_per_arm": 20,
+    "preset_candidates_per_arm": 20,
     "inner_retries": 16,
     "workers": 16,
     "inner_evaluations": 12000,

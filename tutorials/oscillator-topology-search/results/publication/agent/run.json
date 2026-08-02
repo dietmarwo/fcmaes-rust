@@ -8,7 +8,7 @@
   "command": "cargo run --release --locked -- --mode campaign --preset publication --strategy agent --accepted-candidates 200 --inner-retries 16 --workers 16 --evaluations 12000 --seed 42 --agent-command python3 agents/llm_agent.py --config results/matched-200-e12k-r16w16-v4-gemma4-31b-q8-seed42/agent-config.json --output results/matched-200-e12k-r16w16-v4-gemma4-31b-q8-seed42 --resume",
   "seed": 42,
   "protocol": {
-    "candidates_per_arm": 20,
+    "preset_candidates_per_arm": 20,
     "inner_retries": 16,
     "workers": 16,
     "inner_evaluations": 12000,

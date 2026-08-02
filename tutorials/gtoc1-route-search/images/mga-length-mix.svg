@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1000" height="520" viewBox="0 0 1000 520" role="img" aria-labelledby="title desc">
   <title id="title">MGA route-length distribution</title>
-  <desc id="desc">Encounter-count bands for 100 accepted routes per strategy. Cold Gemma concentrates in the longest band while the assisted menu restores a broad, lower-cost distribution.</desc>
+  <desc id="desc">Encounter-count bands for 100 accepted routes per strategy. Cold Gemma concentrates in the longest band while the assisted policy concentrates in the 7–9 encounter band.</desc>
   <rect width="1000" height="520" fill="#f7f9fc"/>
   <text x="500" y="42" text-anchor="middle" font-family="system-ui" font-size="24" font-weight="700" fill="#132238">Accepted body orders by encounter count</text>
   <text x="22" y="132" font-family="system-ui" font-size="15" fill="#26384f">random</text>

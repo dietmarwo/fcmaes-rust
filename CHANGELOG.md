@@ -8,6 +8,16 @@ phase, with breaking changes called out explicitly.
 
 ### Changed
 
+- Audited the Foundations evidence narrative against its artifacts: clarified
+  initial/requested/actual budgets, the scalar DE batch overshoot, exact timing
+  scope, the ten-seed Lennard-Jones scale, and L-BFGS's early-stop traversal
+  advantage.
+- Corrected split-brain attribution in both agent tutorials. GTOC1 now exposes
+  the assisted run's 4/95/1 ranked-choice split, incremental versus prior-chain
+  cost, 7–9-route concentration, JPL calibration gap, and reconstructible
+  provider prompts. Oscillator search now records that the unlabeled
+  repressilator was offered 17 times, attributes results to the complete v4
+  menu–model policy, and names the missing menu-matched controls.
 - Clarified that every Foundations MODE example and publication result uses
   the default NSGA-II-style population update, while the supported DE update
   is not part of that evidence; froze the setting and intentional serial

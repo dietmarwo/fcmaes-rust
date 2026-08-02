@@ -131,13 +131,17 @@ oversample. Reference generation is seed-free.
 
 ## Fairness and replay
 
-Every table contains `initial`, `random`, and optimizer rows at the same logical
-evaluation budget. The initial row consumes only its declared population and
-is never mislabeled as an optimizer result. Every retained decision is
-evaluated again before indicators are written; the deterministic recheck count
-and maximum absolute discrepancy are recorded. This same-evaluator check can
-detect nondeterminism or bookkeeping corruption, not independent model error.
-Requested and actual optimizer evaluations, seed, workers, dimensions,
-normalization, both reference conventions, deterministic rechecks, and wall
-time are part of the machine-readable artifacts. Rechecks do not consume
-optimizer budget.
+Every table contains `initial`, `random`, and optimizer rows. The `random`
+control receives exactly the optimizer's requested budget; the `initial` row
+consumes only its declared population and is never mislabeled as an optimizer
+result. Requested-budget equality does not imply identical actual counts. In
+the checked publication artifacts, scalar DE completes its current population
+batch and records 4,006–4,029 actual evaluations against random's exact 4,000,
+while MODE and random both record exactly 4,096. Every retained decision is
+evaluated again before
+indicators are written; the deterministic recheck count and maximum absolute
+discrepancy are recorded. This same-evaluator check can detect nondeterminism
+or bookkeeping corruption, not independent model error. Requested and actual
+optimizer evaluations, seed, workers, dimensions, normalization, both
+reference conventions, deterministic rechecks, and wall time are part of the
+machine-readable artifacts. Rechecks do not consume optimizer budget.

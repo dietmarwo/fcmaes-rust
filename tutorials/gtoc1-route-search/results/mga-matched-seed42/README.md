@@ -15,11 +15,13 @@ Each arm retains:
 - the terminal `run.json` and immutable `protocol.json`;
 - compact and full accepted-route archives;
 - convergence and proposal-rejection logs; and
-- the provider exchange log, empty by construction for non-agent controls.
+- the Rust→adapter exchange log, empty by construction for non-agent controls.
 
 Per-request response caches are deliberately omitted because they duplicate
-the provider exchange logs. The original local work directories remain
-outside the repository.
+adapter responses. The provider prompt and candidate menu are reconstructed
+deterministically from these exchanges, the adapter, and any digest-pinned
+prior archives; they are not stored verbatim. The original local work
+directories remain outside the repository.
 
 Regenerate or verify the comparison from the tutorial directory:
 

@@ -76,6 +76,8 @@ impl Preset {
 /// Fixed budgets for one run.
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct Protocol {
+    /// Preset default; a larger resumed campaign target is recorded separately.
+    #[serde(rename = "preset_candidates_per_arm", alias = "candidates_per_arm")]
     pub candidates_per_arm: usize,
     /// Independent BiteOpt restarts assigned to each proposed topology.
     pub inner_retries: usize,
@@ -166,5 +168,21 @@ mod tests {
             assert_eq!(protocol.workers, physical as i32);
             assert_eq!(protocol.resolved_workers(), physical);
         }
+    }
+
+    #[test]
+    fn serialized_protocol_labels_the_candidate_count_as_a_preset_default() {
+        let protocol = Protocol::for_preset(Preset::Smoke);
+        let mut value = serde_json::to_value(protocol).unwrap();
+        assert_eq!(
+            value["preset_candidates_per_arm"],
+            serde_json::Value::from(protocol.candidates_per_arm)
+        );
+        assert!(value.get("candidates_per_arm").is_none());
+
+        let object = value.as_object_mut().unwrap();
+        let count = object.remove("preset_candidates_per_arm").unwrap();
+        object.insert("candidates_per_arm".to_owned(), count);
+        assert_eq!(serde_json::from_value::<Protocol>(value).unwrap(), protocol);
     }
 }

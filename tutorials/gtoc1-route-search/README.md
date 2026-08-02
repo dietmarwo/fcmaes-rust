@@ -197,6 +197,11 @@ used 16 physical workers, made 2,031,391 actual objective calls, and took
 The eight-hour ceiling leaves about 3.84 hours for longer routes, optimizer
 variance, operating-system load, and duplicate proposal overhead.
 
+The completed random arm realized 5.18 hours, or 186.6 seconds per accepted
+route—25% above the one-route projection but still inside the declared
+eight-hour ceiling. The sizing measurement served its purpose; it was not a
+runtime prediction.
+
 This is a sizing measurement, not a universal runtime guarantee. Check the
 first few routes on a different machine. If their mean exceeds 240 seconds,
 reduce `--accepted-candidates` before starting all arms and apply the same new
@@ -271,7 +276,9 @@ python3 compare_campaigns.py --results "$experiment_root"
 The reviewed seed-42 bundle is checked in under
 [`results/mga-matched-seed42`](results/mga-matched-seed42/README.md). It retains
 the accepted-route archives, terminal manifests, convergence and rejection
-logs, and provider exchanges while omitting redundant response caches.
+logs, and Rust→adapter exchanges while omitting redundant response caches. The
+adapter deterministically reconstructs the larger provider prompt, including
+the candidate menu, from that state and the digest-pinned prior archives.
 
 ## A useful failure: cold Gemma collapses on route length
 
@@ -280,26 +287,26 @@ selected 90 fourteen-encounter orders; 96 of its 100 routes fell in the 12–14
 encounter band, and 18 members of its final top-20 portfolio had length 14.
 Random selected four length-14 routes and evolutionary one.
 
-| blind arm | accepted | best-20 sum | best score | niches | worker-h | wall-h |
-|---|---:|---:|---:|---:|---:|---:|
-| random | 100 | 19.270 M | 1.234 M | 96 | 82.9 | 5.18 |
-| evolutionary | 100 | 22.140 M | 1.279 M | 97 | 77.6 | 4.85 |
-| cold Gemma | 100 | 19.676 M | 1.164 M | 63 | 178.7 | 11.66 |
+| blind arm | accepted / attempts | diversity rejected | best-20 sum | best score | niches | worker-h | wall-h |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| random | 100 / 166 | 49 | 19.270 M | 1.234 M | 96 | 82.9 | 5.18 |
+| evolutionary | 100 / 146 | 35 | 22.140 M | 1.279 M | 97 | 77.6 | 4.85 |
+| cold Gemma | 100 / 190 | 90 | 19.676 M | 1.164 M | 63 | 178.7 | 11.66 |
 
 Cold Gemma's best-20 sum is only 2.1% above random, 11.1% below evolutionary,
 and costs more than twice the worker time of either control. The 96-entry
 prompt forwarded complete duplicate-control state, exposed only global score
 leaders, omitted length-conditioned cost evidence, and let those leaders seed
 more mutations. Once long routes occupied the global top five, Gemma received
-increasingly one-sided evidence. Turning on more model reasoning would not
-repair that feedback loop.
+increasingly one-sided evidence. More model reasoning would not supply the
+length-conditioned evidence missing from that feedback loop.
 
 The conclusion is not “14 encounters are invalid.” The known Deimos route has
 14 encounters and remains inside the grammar. The failure is spending almost
 the entire portfolio on one costly dimensional class without evidence that it
 dominates shorter alternatives.
 
-![Cold Gemma concentrates 96 percent of accepted routes in the 12–14 encounter band, while the assisted interface restores a broad route-length mix](images/mga-length-mix.svg)
+![Cold Gemma concentrates 96 percent of accepted routes in the 12–14 encounter band; the assisted policy instead concentrates 72 percent in the 7–9 band](images/mga-length-mix.svg)
 
 ![The cold loop reinforces long routes; the assisted loop changes only the information and candidate-selection boundary while Rust physics remains authoritative](images/assisted-agent-loop.svg)
 
@@ -338,6 +345,14 @@ The tutorial reports both accepted-route and cumulative-worker-time views;
 otherwise a strategy can look competitive merely by selecting more expensive
 orders.
 
+Ranked fallback is load-bearing in the completed run. Only four accepted routes
+were Gemma's first choice; 95 were its second choice and one was its third. All
+106 logged rejections were diversity rejections because an earlier-ranked body
+order lay too close to the protected set. The fallback converted those rejected
+near-elite preferences into an accepted route without another model call. The
+result therefore belongs to the combined menu–model–Rust-filter policy, not to
+unfiltered Gemma choices.
+
 ### Completed assisted follow-up
 
 The 100-route seed-42 follow-up completed without transport failures:
@@ -354,12 +369,32 @@ The 100-route seed-42 follow-up completed without transport failures:
 | model input tokens | 2.339 M | 1.080 M |
 
 Relative to cold Gemma, the assisted policy improves the declared portfolio
-metric by 37.0%, improves the best route by 29.7%, uses 59.7% less wall time,
-and uses 53.8% fewer input tokens. Its leader is `EVEVVESJA`, with an MGA score
-of 1,509,902, charged impulsive Δv of 3.875844 km/s, and 8,177.8 flight days.
-The lower actual evaluation and worker totals arise mainly because the repaired
-menu selects shorter optimization problems; every route retains the same
-declared DE–CMA-ES retry limits.
+metric by 37.0%, improves the best route by 29.7%, and the incremental follow-up
+uses 59.7% less wall time and 53.8% fewer input tokens. Its leader is
+`EVEVVESJA`, with an MGA score of 1,509,902, charged impulsive Δv of 3.875844
+km/s, and 8,177.8 flight days. The lower actual evaluation and worker totals
+arise mainly because the repaired menu selects shorter optimization problems;
+every route retains the same declared DE–CMA-ES retry limits.
+
+The 71.2 worker-hours are incremental after the prior evidence exists. Counting
+the random and evolutionary archives needed to construct that evidence gives
+231.7 worker-hours and 576.046 million MGA evaluations for the complete
+assisted evidence chain, versus 178.7 worker-hours and 225.903 million
+evaluations for cold Gemma alone. The baseline archives also serve as the
+published controls, but their acquisition is not free.
+
+The assisted leader remains 18.0% below the 1,841,019 JPL control. That is not
+an equal search comparison: the control admits the published timing under the
+`historical-jpl` bounds profile, while campaign routes use history-blind bounds
+and a neutral midpoint. The structural calibration is nevertheless useful:
+all five top-scoring assisted routes occupy a `TSJ` terminal niche, recovering
+the Saturn–Jupiter–asteroid tail of the known JPL scaffold.
+
+The assisted policy did not restore a broad length distribution. It replaced
+the cold arm's 96% concentration in the 12–14 band with a 72% concentration in
+the 7–9 band. That preference is not imposed by the menu quotas: only one third
+of menu rows occupy the 7–9 band. A menu-matched non-model control is still
+needed to separate Gemma's ranking contribution from the prior-informed menu.
 
 ![The prior-informed Gemma follow-up has the largest best-20 sum and best single MGA score in the seed-42 evidence](images/mga-portfolio-results.svg)
 
@@ -455,7 +490,8 @@ Each arm writes:
 - `archive.json`: atomic snapshot;
 - `archive.csv`: compact numerical table;
 - `proposal_log.jsonl`: grammar, diversity, and duplicate rejections;
-- `agent_log.jsonl`: bounded replayable provider exchanges;
+- `agent_log.jsonl`: bounded Rust→adapter exchanges; the deterministic adapter
+  reconstructs the larger provider prompt and candidate menu;
 - `convergence.csv`: best score and resource accumulation; and
 - `run.json`: terminal status, exact non-secret configuration, workers,
   evaluations, token use, qualified count, and top-20 portfolio sum.
@@ -485,6 +521,8 @@ parsing, and token accounting.
 
 - repeat the blind comparison and prior-informed follow-up for predeclared
   independent seeds and record CPU hardware in the manifests;
+- run a seeded uniform selector over the identical assisted menus and priors to
+  separate menu construction from model ranking;
 - inspect top-20 overlap and route-family diversity, not only scalar sums;
 - test whether pair-dependent direction rules should admit narrowly defined
   alternatives for route families absent from the four historical fixtures;
