@@ -82,6 +82,19 @@ with conventional `k`: 5 for DTLZ1, 10 for DTLZ2–6, and 20 for DTLZ7. The
 publication campaign reports ZDT1–4 and ZDT6 plus DTLZ1–7. It never mixes
 training points into the analytic reference set.
 
+The MODE arm uses population 64 and `nsga_update=true`: MODE's default
+NSGA-II-style population update. `nsga_update=false` selects MODE's supported
+DE update, but that alternative is outside this conformance campaign and no
+result in the Foundations tables is a DE-versus-NSGA-II comparison. Lessons
+L4–L6 likewise retain `nsga_update=true` through `ModeParams::default()`.
+The analytic MODE populations are evaluated sequentially
+(`evaluation_workers=1`): at this cost scale, dispatching 64 individual suite
+calls to worker threads would measure scheduler overhead rather than useful
+objective parallelism. The campaign's `--workers` argument is exercised only
+by lesson L3's schedule-independence check. Applications with costly
+independent objectives can pass each ordered ask batch through
+`fcmaes_core::parallel_batch` before telling MODE.
+
 Objective-space normalization is fixed per problem and uses the extrema of its
 deterministic analytic reference set. DTLZ1 therefore uses `[0, 0, 0]` and
 `[0.5, 0.5, 0.5]`; DTLZ7 uses the extrema of its deterministic disconnected

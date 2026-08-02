@@ -8,6 +8,11 @@ phase, with breaking changes called out explicitly.
 
 ### Changed
 
+- Clarified that every Foundations MODE example and publication result uses
+  the default NSGA-II-style population update, while the supported DE update
+  is not part of that evidence; froze the setting and intentional serial
+  evaluation policy in the benchmark contract and run manifest, and documented
+  ordered `parallel_batch` evaluation for costly objectives.
 - Hardened the oscillator topology-search live-agent protocol with forced
   structured output, an 8,000-token MiniMax cap, and local unauthenticated
   llama.cpp support. Protocol v4 now gives OpenAI-compatible models a balanced

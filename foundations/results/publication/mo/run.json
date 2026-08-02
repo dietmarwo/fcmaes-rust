@@ -15,6 +15,13 @@
   "fixed_hypervolume_reference_point": "[1.1; objectives] after analytic-front normalization",
   "formulation": "analytic-front-multi-objective",
   "hypervolume_reference_point": "shared per-problem union-front nadir plus 10% of max(observed range, 1) after analytic-front normalization",
+  "mode": {
+    "de_update_evaluated": false,
+    "evaluation_workers": 1,
+    "nsga_update": true,
+    "population": 64,
+    "population_update": "nsga-ii-style"
+  },
   "normalization": "analytic-reference-set ideal/nadir",
   "preset": "publication",
   "problems": 12,

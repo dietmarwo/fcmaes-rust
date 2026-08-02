@@ -765,6 +765,13 @@ pub fn run(preset: Preset, seed: u64, workers: i32, output: &Path) -> Result<(),
             "claim_scope": "deterministic-conformance-demonstration",
             "problems": 12,
             "arms": ["initial", "random", "mode"],
+            "mode": {
+                "population": 64,
+                "evaluation_workers": 1,
+                "population_update": "nsga-ii-style",
+                "nsga_update": true,
+                "de_update_evaluated": false
+            },
             "requested_evaluations_per_control_or_optimizer": preset.mo_budget(),
             "reference_points": preset.reference_points(),
             "normalization": "analytic-reference-set ideal/nadir",

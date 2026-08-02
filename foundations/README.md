@@ -19,6 +19,17 @@ The exact contracts are frozen in [BENCHMARK_SPEC.md](BENCHMARK_SPEC.md).
 [PROVENANCE.md](PROVENANCE.md) records formula sources and why CEC data is
 loaded locally while WFG/BBOB remain explicit evidence-gate skips.
 
+Throughout this guide, `MODE` names the optimizer rather than a particular
+population-update policy. Lessons L4–L6 and the publication campaign retain
+the `ModeParams` default `nsga_update=true`, so they use MODE's NSGA-II-style
+population update. MODE also supports its DE update with
+`nsga_update=false`; that alternative is not evaluated by Foundations.
+The analytic suite objectives are intentionally evaluated sequentially because
+thread dispatch would dominate their cost. For costly objectives, evaluate
+the decisions returned by `Mode::ask()` with
+[`parallel_batch`](../docs/architecture.md#concurrency-model); it uses cached
+Rayon pools and preserves candidate order before `Mode::tell()`.
+
 The [Lennard-Jones extension](LENNARD_JONES.md) grows one analytic problem
 from 33 to 294 variables and deliberately includes external L-BFGS references.
 It demonstrates the documented optimizer boundary instead of implying that a
@@ -65,7 +76,10 @@ The `publication` preset names the checked-in artifact size; it does not make
 the run a statistical benchmark. It uses one seed, 4,000 scalar evaluations,
 and 4,096 multi-objective evaluations per optimized/control arm. Its
 2026-07-31 run took 0.49 seconds after compilation on a Ryzen 9 9950X. The
-time is a conformance replay check, not a cross-library benchmark.
+analytic suite and MODE population evaluations are sequential; `--workers 2`
+only exercises the schedule-independence check in L3. The reported time is an
+end-to-end conformance replay check, not a parallel-scaling or cross-library
+benchmark.
 
 ## Why the indicators live in `fcmaes-core`
 
@@ -161,6 +175,22 @@ MODE approximates ZDT1, then the lesson reports hypervolume and IGD+ against
 front. The conventional fixed box is reported as ineligible if any point lies
 outside; points are never removed to manufacture a partial hypervolume.
 
+This cheap teaching objective uses a serial iterator. When each population
+member is costly and independent, the corresponding ask/tell pattern is:
+
+```rust
+use fcmaes_core::parallel_batch;
+
+let decisions = mode.ask();
+let values = parallel_batch(&decisions, workers, |x| expensive_objective(x));
+mode.try_tell(&values)?;
+```
+
+`workers=1` remains serial, a positive value selects an explicitly sized
+cached pool, and a non-positive value uses the global Rayon pool. Avoid nested
+retry and population parallelism unless the CPU budget is partitioned
+deliberately.
+
 ### L6 — mixed variables need two layers
 
 ```bash
@@ -204,15 +234,17 @@ stream. The identical Griewank initial/random values therefore mean the next
 | Sphere | 54.1 | 16.5 | 1.41e-21 |
 | Zakharov | 7.54e4 | 77.4 | 2.94e-9 |
 
-MODE improves both shared-reference hypervolume and IGD+ over the equal-budget
-random control on all twelve multi-objective problems. Each problem uses one
-reference shared by its initial, random, MODE, and convergence fronts: the
-component-wise union nadir plus 10% of `max(observed range, 1)` after analytic
-normalization. Consequently every complete front contributes positive volume.
-Hypervolume magnitudes are comparable between arms of one problem, not across
-different problems. The conventional fixed `[1.1; m]` result remains a
-secondary nullable column: 33 of 36 fronts cross that box, so their fixed-box
-value is `not-applicable-outside-reference` rather than a filtered zero.
+MODE with its default NSGA-II-style population update improves both
+shared-reference hypervolume and IGD+ over the equal-budget random control on
+all twelve multi-objective problems. This evidence does not compare MODE's two
+update policies. Each problem uses one reference shared by its initial,
+random, MODE, and convergence fronts: the component-wise union nadir plus 10%
+of `max(observed range, 1)` after analytic normalization. Consequently every
+complete front contributes positive volume. Hypervolume magnitudes are
+comparable between arms of one problem, not across different problems. The
+conventional fixed `[1.1; m]` result remains a secondary nullable column: 33
+of 36 fronts cross that box, so their fixed-box value is
+`not-applicable-outside-reference` rather than a filtered zero.
 
 | Problem | Initial HV | Random HV | MODE HV | Random IGD+ | MODE IGD+ |
 |---|---:|---:|---:|---:|---:|
