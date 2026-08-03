@@ -433,6 +433,13 @@ uses dependency-isolated adapter crates to compare fcmaes with `cmaes`,
 `genetic_algorithms`, `math-optimisation`, and `argmin`. None of those
 alternative crates is added to the public Cargo workspace.
 
+The standalone
+[GTOP CMA-ES retry benchmark](../benchmarks/gtop-cmaes-retry/README.md) narrows
+that comparison to one external optimizer and the retry scheduler. It compares
+one serial CMA-ES restart lane with physical-core lanes under the same elapsed
+allowance, reporting paired objective mean/sdev and an explicit wall/CPU work
+audit without adding `cmaes` to `fcmaes-core` or this examples crate.
+
 ## Python-wrapper example
 
 The optional PyO3 extension has a runnable

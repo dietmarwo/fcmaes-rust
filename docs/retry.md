@@ -1,5 +1,31 @@
 # Parallel retry
 
+## Why retry is a core design principle
+
+For a user, returned solution quality at a fixed wall-time deadline is often
+more important than the number of evaluations completed by one optimizer
+instance. Independent retry exploits this directly: keep otherwise idle
+physical cores busy with separate searches and return the best retained
+result. The additional aggregate CPU work is intentional.
+
+This design is algorithm-independent. The retry closure may invoke an
+fcmaes-core optimizer, another Rust crate's single-threaded optimizer, or a
+safe adapter to an external solver. The controlled
+[GTOP equal-wall campaign](../benchmarks/gtop-cmaes-retry/README.md) demonstrates
+the latter with external serial CMA-ES: at the same approximately four-second
+wait, 16 retry lanes improve mean objective on all seven tested problems over
+100 paired seeds per problem. This is scoped experimental evidence, not a
+guarantee for every objective; the benchmark reports the full quality,
+wall-time, active-core, start, and evaluation tables.
+
+Retry parallelizes *between complete searches*. For costly objective calls,
+the complementary approach is to use a population optimizer's ask/tell or
+batch interface and parallelize *within one search*. Every population-based
+fcmaes-core optimizer provides such a boundary; Dual Annealing is sequential
+and can use only the outer retry form. The
+[optimizer parallelism guide](optimizers.md#parallel-evaluation-asktell-and-retry)
+compares the two and explains how to combine them without oversubscription.
+
 ## Basic retry
 
 `fcmaes_core::retry` runs independent optimizer restarts. A fixed worker pool
@@ -195,9 +221,11 @@ worker count.
 ## External optimizer and adapter contract
 
 The retry closure is the supported plugin point for an optimizer implemented
-by another Rust crate. `fcmaes-core` deliberately does not depend on gradient,
-local-search, or Bayesian frameworks. An adapter can still participate in
-independent or coordinated retry when it obeys the same small contract:
+by another Rust crate or exposed through a safe FFI layer. `fcmaes-core`
+deliberately does not depend on gradient, local-search, or Bayesian frameworks.
+Serial Nelder–Mead, Bayesian, gradient/local, and domain-specific solvers can
+still participate in independent or coordinated retry when an adapter obeys
+the same small contract:
 
 1. Seed the external optimizer with `context.run_seed` when results must be
    invariant to worker scheduling. Use `context.seed` only when a persistent

@@ -137,6 +137,39 @@ The alternative BIPOP-CMA-ES stress test reached 0 of 1,000 targets after about
 the value of application-specific adaptive coordination on Tandem, not a
 general proof that one optimizer dominates another.
 
+For the narrower same-family question, the
+[controlled active CMA-ES implementation diagnostic](../benchmarks/cmaes-implementation/README.md)
+gives `fcmaes-core` and `cmaes` 0.2.2 the same reflected objective, declared
+initial distribution, offspring population, wall deadline, and three parallel
+architectures. Its complete 20-pair publication campaign finds no universal
+quality winner. `cmaes` has the serial throughput advantage on cheap and
+high-dimensional cases, while fcmaes-core has higher median aggregate
+throughput in the equal 16-instance multistart arm. `cmaes` also stops
+protectively in 61.5% of publication rows, so deadline utilization and restart
+policy must be considered beside raw active throughput. Sphere, Ellipsoid,
+and the other easy analytic cases are diagnostic controls, not evidence that
+CMA-ES is the right solver for them. At 100 µs injected cost, the aggregate
+serial throughput ratio is already 0.983; for costlier real objectives, test
+time-to-target and success on the application instead of selecting a library
+from this microbenchmark.
+
+The related
+[GTOP equal-wall retry experiment](../benchmarks/gtop-cmaes-retry/README.md)
+asks the more practical fixed-machine question: what best-objective mean and
+sdev does one serial CMA-ES restart lane return versus 16 lanes coordinated by
+`fcmaes_core::retry` after the same four-second wait? This is the appropriate
+comparison when the goal is to exploit a modern multicore CPU for better
+solutions without making the user wait longer. Measured wall time audits the
+match; optimizer starts, evaluations, CPU time, and active cores expose the
+additional work instead of disguising it. A secondary equal-work pilot checks
+scheduler scaling but is not used as the optimizer-quality result. In 100
+pairs on seven GTOP cases, retry improves mean objective everywhere and wins
+86–96 pairs, but improves sdev on only five cases. SAGAS and Tandem retain
+larger retry spreads, and six cases remain at zero target successes in both
+arms. Parallel retry buys more opportunities during the same wait; it does not
+remove the need for an appropriate optimizer, coordination strategy, or
+budget.
+
 ### 5. What result must the optimizer return?
 
 - For one selected design, use scalar optimization. Keep genuine feasibility

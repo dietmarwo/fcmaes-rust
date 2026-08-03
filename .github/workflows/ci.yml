@@ -127,6 +127,181 @@ jobs:
             benchmarks/optimizer-boundary/results/decision-v2/comparison.md \
             /tmp/optimizer-boundary-comparison.md
 
+  cmaes-implementation:
+    name: Active CMA-ES implementation diagnostic
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: benchmarks/cmaes-implementation
+      - name: Install pinned figure dependencies
+        run: python -m pip install -r tutorials/python/requirements-lock.txt
+      - name: cargo fmt
+        run: >-
+          cargo fmt --manifest-path benchmarks/cmaes-implementation/Cargo.toml
+          --all -- --check
+      - name: cargo clippy
+        run: >-
+          cargo clippy --locked --all-targets
+          --manifest-path benchmarks/cmaes-implementation/Cargo.toml -- -D warnings
+      - name: cargo test
+        run: >-
+          cargo test --locked --all-targets
+          --manifest-path benchmarks/cmaes-implementation/Cargo.toml
+      - name: Verify adapter contract
+        run: >-
+          cargo run --release --locked
+          --manifest-path benchmarks/cmaes-implementation/Cargo.toml --
+          --mode verify
+      - name: Run a bounded harness smoke
+        run: >-
+          cargo run --release --locked
+          --manifest-path benchmarks/cmaes-implementation/Cargo.toml --
+          --mode campaign --preset smoke --problems sphere10
+          --cost-ns 0 --deadlines-ms 2 --seeds 1 --workers 2
+          --output /tmp/cmaes-implementation-smoke
+      - name: Check checked-in report and figures
+        working-directory: benchmarks/cmaes-implementation
+        run: |
+          cp -r results/harness-smoke /tmp/cmaes-implementation-report
+          cargo run --release --locked -- \
+            --mode report --output /tmp/cmaes-implementation-report
+          diff -u \
+            results/harness-smoke/comparison.md \
+            /tmp/cmaes-implementation-report/comparison.md
+          python plot_results.py --check
+          cp -r \
+            results/implementation-v1 \
+            /tmp/cmaes-implementation-publication
+          cargo run --release --locked -- \
+            --mode report --output /tmp/cmaes-implementation-publication
+          diff -u \
+            results/implementation-v1/comparison.md \
+            /tmp/cmaes-implementation-publication/comparison.md
+          python plot_results.py \
+            --profile publication \
+            --results results/implementation-v1 \
+            --check
+          python - <<'PY'
+          import csv
+          from collections import Counter
+          from pathlib import Path
+
+          rows = list(csv.DictReader(
+              (Path("results/implementation-v1") / "paired.csv").open()
+          ))
+          assert len(rows) == 7_920
+          keys = [
+              (
+                  row["problem"], row["injected_cost_ns"], row["arm"],
+                  row["library"], row["seed"], row["deadline_ms"],
+              )
+              for row in rows
+          ]
+          assert len(set(keys)) == len(rows)
+          pairs = Counter(
+              (
+                  row["problem"], row["injected_cost_ns"], row["arm"],
+                  row["seed"], row["deadline_ms"],
+              )
+              for row in rows
+          )
+          assert len(pairs) == 3_960
+          assert set(pairs.values()) == {2}
+          PY
+
+  gtop-cmaes-retry:
+    name: GTOP external CMA-ES equal-wall retry
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: benchmarks/gtop-cmaes-retry
+      - name: cargo fmt
+        run: >-
+          cargo fmt --manifest-path benchmarks/gtop-cmaes-retry/Cargo.toml
+          --all -- --check
+      - name: cargo clippy
+        run: >-
+          cargo clippy --locked --all-targets
+          --manifest-path benchmarks/gtop-cmaes-retry/Cargo.toml -- -D warnings
+      - name: cargo test
+        run: >-
+          cargo test --locked --all-targets
+          --manifest-path benchmarks/gtop-cmaes-retry/Cargo.toml
+      - name: Verify serial adapter contract
+        run: >-
+          cargo run --release --locked
+          --manifest-path benchmarks/gtop-cmaes-retry/Cargo.toml --
+          --mode verify
+      - name: Run bounded scaling smoke
+        run: >-
+          cargo run --release --locked
+          --manifest-path benchmarks/gtop-cmaes-retry/Cargo.toml --
+          --mode campaign --preset smoke
+          --output /tmp/gtop-cmaes-retry-smoke
+      - name: Check generated smoke report
+        working-directory: benchmarks/gtop-cmaes-retry
+        run: |
+          cp -r results/harness-smoke /tmp/gtop-cmaes-retry-report
+          cargo run --release --locked -- \
+            --mode report --output /tmp/gtop-cmaes-retry-report
+          diff -u \
+            results/harness-smoke/comparison.md \
+            /tmp/gtop-cmaes-retry-report/comparison.md
+          cp -r results/scaling-pilot-v1 /tmp/gtop-cmaes-retry-pilot
+          cargo run --release --locked -- \
+            --mode report --output /tmp/gtop-cmaes-retry-pilot
+          diff -u \
+            results/scaling-pilot-v1/comparison.md \
+            /tmp/gtop-cmaes-retry-pilot/comparison.md
+          cp -r results/equal-wall-smoke-v2 /tmp/gtop-cmaes-retry-equal-wall
+          cargo run --release --locked -- \
+            --mode report --output /tmp/gtop-cmaes-retry-equal-wall
+          diff -u \
+            results/equal-wall-smoke-v2/comparison.md \
+            /tmp/gtop-cmaes-retry-equal-wall/comparison.md
+          cp -r results/equal-wall-100-v2 /tmp/gtop-cmaes-retry-publication
+          cargo run --release --locked -- \
+            --mode report --output /tmp/gtop-cmaes-retry-publication
+          diff -u \
+            results/equal-wall-100-v2/comparison.md \
+            /tmp/gtop-cmaes-retry-publication/comparison.md
+      - name: Validate equal-wall publication rows
+        run: |
+          python3 -m py_compile benchmarks/gtop-cmaes-retry/merge_problem_results.py
+          python3 - <<'PY'
+          import csv
+          from pathlib import Path
+
+          path = Path("benchmarks/gtop-cmaes-retry/results/equal-wall-100-v2/results.csv")
+          rows = list(csv.DictReader(path.open()))
+          assert len(rows) == 1_400
+          keys = {
+              (row["phase"], row["arm"], row["problem"], row["run"], row["seed"], row["workers"])
+              for row in rows
+          }
+          assert len(keys) == len(rows)
+          assert {row["problem"] for row in rows} == {
+              "cassini1", "cassini2", "gtoc1", "messenger", "rosetta", "sagas", "tandem"
+          }
+          sagas = [row for row in rows if row["problem"] == "sagas"]
+          assert len(sagas) == 200
+          assert all(float(row["best"]) >= 0.0 for row in sagas)
+          assert all(row["success"] == "false" for row in sagas)
+          PY
+
   simulator-tutorials:
     name: Tutorial · ${{ matrix.tutorial }}
     runs-on: ubuntu-latest

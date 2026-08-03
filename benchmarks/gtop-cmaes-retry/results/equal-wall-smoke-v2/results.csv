@@ -1,0 +1,7 @@
+preset,phase,arm,problem,run,seed,workers,retries_requested,retries_completed,optimizer_starts,evaluations_per_retry,wall_time_ms,evaluations_actual,population,sigma,stop_value,success,best,wall_seconds,cpu_seconds,average_cores
+publication,equal-wall,external-retry,cassini1,1,42,16,16,16,135,1000000000,250,1025703,9,0.3,4.95535,false,5.303421263458892,0.250522947,3.99953351,15.964739190138937
+publication,equal-wall,external-single,cassini1,1,42,1,1,1,9,1000000000,250,69642,9,0.3,4.95535,false,11.031958273978347,0.250114924,0.2505022,1.0015483922102946
+publication,equal-wall,external-single,cassini1,2,43,1,1,1,8,1000000000,250,69660,9,0.3,4.95535,false,11.032048774602627,0.250129454,0.25009703,0.9998703711239062
+publication,equal-wall,external-retry,cassini1,2,43,16,16,16,139,1000000000,250,1026720,9,0.3,4.95535,false,5.303421259149713,0.250391046,4.00210123,15.983403935298869
+publication,equal-wall,external-retry,cassini1,3,44,16,16,16,140,1000000000,250,1023201,9,0.3,4.95535,false,5.303421382566025,0.250312706,3.9953899699999997,15.961594734228154
+publication,equal-wall,external-single,cassini1,3,44,1,1,1,7,1000000000,250,69957,9,0.3,4.95535,false,10.996483985025195,0.250112375,0.25113476,1.0040877025776913

@@ -116,6 +116,46 @@ to Differential Evolution and 6,000 to active CMA-ES.
 Raw data:
 [`benchmark_de_cma_gtop_rust_100_raw.tsv`](benchmark_de_cma_gtop_rust_100_raw.tsv).
 
+## External CMA-ES through generic retry
+
+The dependency-isolated
+[GTOP CMA-ES retry experiment](gtop-cmaes-retry/README.md) adds an external
+single-threaded optimizer to this benchmark family. Its primary comparison
+gives one serial CMA-ES restart lane and 16 lanes coordinated through
+`fcmaes_core::retry` the same four-second wall allowance. Protective CMA-ES
+terminations trigger immediate deterministic restarts, so both arms consume
+the allowance rather than silently returning early. Across 100 paired seeds,
+best-objective mean/sdev and paired retry wins are the main outcomes; measured
+wall mean/sdev audits fairness.
+
+The retry arm deliberately spends more aggregate CPU during the same user
+wait. That is the practical value being measured: converting the otherwise
+idle physical cores of a modern processor into a better solution distribution.
+The coordinated DE→CMA table above remains the full fcmaes system-level
+reference because it intentionally uses adaptive budgets and search
+coordination.
+
+In the [100-pair equal-wall result](gtop-cmaes-retry/results/equal-wall-100-v2/comparison.md),
+retry improves the objective mean on all seven non-Messenger-Full cases and
+wins 86–96 paired runs. It reduces objective sdev on five cases; SAGAS and
+Tandem instead have better means but larger spreads. Cassini1 target success
+improves from 38/100 to 100/100. Both arms remain at 0/100 target success on the
+other six cases, so the result is not presented as a four-second solution of
+the GTOP suite. Serial and retry wall means stay within 4.000109–4.000523 s,
+while measured active cores are approximately 1 and 16.
+
+The original SAGAS block found a physically impossible negative time-to-50-AU
+value. A nonnegative travel-time guard was added to the port and the complete
+SAGAS block was repeated with the same seeds. The final bundle links the
+[correction provenance](gtop-cmaes-retry/results/equal-wall-100-v2/PROVENANCE.md)
+and uses only the corrected rows.
+
+The secondary five-pair scaling pilot uses 40 retries of 2,000 evaluations and reaches
+11.18×–12.23× mean fixed-work speedup at 16 workers across Cassini1, Rosetta,
+and Tandem. Every one of the 60 worker-count pairs passes the same-work audit.
+These runs deliberately do not reach the GTOP targets; they demonstrate
+multicore scheduling, not optimizer quality. It is not the main result.
+
 ## Statistics and environment
 
 Means and standard deviations include every experiment, including failures.

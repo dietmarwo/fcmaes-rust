@@ -34,6 +34,7 @@ htmlcov/
 # Editor and operating-system files
 .DS_Store
 *.swp
+.~lock.*#
 
 # Example download scratch files
 ticker_cache/*.tmp

@@ -1,0 +1,9 @@
+preset,phase,arm,problem,run,seed,workers,retries_requested,retries_completed,evaluations_per_retry,evaluations_actual,population,sigma,stop_value,success,best,wall_seconds,cpu_seconds,average_cores
+smoke,target,fcmaes-retry,cassini1,1,42,2,4,4,200,828,9,0.3,4.95535,false,26.092117143027934,0.002288908,0.00415881,1.8169406546702618
+smoke,target,external-retry,cassini1,1,42,2,4,4,200,828,9,0.3,4.95535,false,19.71989704903749,0.001813565,0.00358147,1.9748230694791749
+smoke,target,external-sequential,cassini1,1,42,1,4,4,200,828,9,0.3,4.95535,false,19.71989704903749,0.003425217,0.00343631,1.0032386269249511
+smoke,target,external-single,cassini1,1,42,1,1,1,200,207,9,0.3,4.95535,false,63.75600969659534,0.000930338,0.00093292,1.0027753354157307
+smoke,fixed-work,fcmaes-retry,cassini1,1,42,2,4,4,200,828,9,0.3,4.95535,false,26.092117143027934,0.001796205,0.00355935,1.9815945284641787
+smoke,fixed-work,external-retry,cassini1,1,42,2,4,4,200,828,9,0.3,4.95535,false,19.71989704903749,0.00245705,0.00427252,1.7388819926334425
+smoke,fixed-work,external-sequential,cassini1,1,42,1,4,4,200,828,9,0.3,4.95535,false,19.71989704903749,0.003471358,0.00348584,1.0041718543578624
+smoke,fixed-work,external-single,cassini1,1,42,1,1,1,200,207,9,0.3,4.95535,false,63.75600969659534,0.000924158,0.00092634,1.002361068129043

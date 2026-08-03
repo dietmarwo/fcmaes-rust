@@ -6,8 +6,58 @@ phase, with breaking changes called out explicitly.
 
 ## [Unreleased]
 
+### Added
+
+- Added a dependency-isolated GTOP experiment that runs external serial
+  `cmaes` through one serial restart lane and through physical-core restart
+  lanes coordinated by generic `fcmaes_core::retry`. The primary 100-pair,
+  seven-GTOP protocol gives both arms the same four-second wall allowance and
+  reports best-objective mean/sdev plus paired retry wins; measured wall
+  mean/sdev, CPU time, active cores, starts, and evaluations audit fairness and
+  expose the deliberately higher parallel work. Deterministic seed streams,
+  immediate restart after protective termination, alternating arm order,
+  resume validation, and generated reports complete the protocol. A separate
+  five-pair fixed-work pilot retains 11.18×–12.23× scheduling evidence at 16
+  physical cores but is explicitly secondary to equal-wall solution quality.
+  The completed campaign improves mean objective on all seven problems and
+  wins 86–96 of 100 pairs; sdev improves on five problems but increases on
+  SAGAS and Tandem. Cassini1 success rises from 38/100 to 100/100, while the
+  other six cases honestly remain at zero target successes.
+- Added a dependency-isolated active-CMA-ES implementation diagnostic against
+  `cmaes` 0.2.2. Its shared reflected objective, explicit three-arm topology,
+  physical-core default, paired deadline ordering, direct cost calibration,
+  termination accounting, resume validation, raw CSV/JSON artifacts, and
+  three-seed smoke bundle establish the protocol without treating smoke data
+  as publication evidence or the easy controls as recommended CMA-ES
+  applications.
+- Completed its 20-pair, 7,920-row publication campaign on a 16-core Ryzen 9
+  9950X, recording about 24.96 billion objective calls, 5.327 active wall
+  hours, exhaustive generated tables, and deterministic quality/throughput
+  figures. The scoped result reports mixed quality, a `cmaes` serial advantage
+  on cheap/high-dimensional cases, a fcmaes-core aggregate-throughput
+  advantage in equal multistart, and the observed 61.5% external protective-
+  stop rate.
+
+### Fixed
+
+- Rejected non-finite and physically impossible negative time-to-50-AU values
+  in the Rust SAGAS port. The equal-wall campaign exposed one false negative
+  objective; a focused regression guard and complete same-seed SAGAS rerun
+  replace it with 200 validated rows and zero false target successes.
+
 ### Changed
 
+- Promoted equal-wall solution quality to an explicit retry design principle
+  in the main README and retry guide. The external-CMA GTOP benchmark now
+  carries complete quality, wall/core fairness, and starts/evaluations tables,
+  and documents how the generic retry closure can coordinate compatible
+  single-threaded third-party or FFI optimizers.
+- Promoted population ask/tell as the complementary fixed-wall-time strategy
+  for expensive objectives. The documentation now enumerates each core
+  optimizer's batch boundary, records sequential Dual Annealing as the one
+  non-population exception, distinguishes external `cmaes` 0.2.2's internal
+  `run_parallel()` from public ask/tell, and warns against nested-worker
+  oversubscription.
 - Audited the Foundations evidence narrative against its artifacts: clarified
   initial/requested/actual budgets, the scalar DE batch overshoot, exact timing
   scope, the ten-seed Lennard-Jones scale, and L-BFGS's early-stop traversal

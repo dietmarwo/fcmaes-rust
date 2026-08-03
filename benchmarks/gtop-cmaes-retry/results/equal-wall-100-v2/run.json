@@ -1,0 +1,40 @@
+{
+  "architecture": "x86_64",
+  "arms": [
+    "external-single",
+    "external-retry"
+  ],
+  "command": "benchmarks/gtop-cmaes-retry/target/release/gtop-cmaes-retry --mode campaign --preset publication --output benchmarks/gtop-cmaes-retry/results/equal-wall-100-v2 --resume",
+  "cpu_model": "AMD Ryzen 9 9950X 16-Core Processor",
+  "created_unix_seconds": 1785757747,
+  "equal_wall_time_ms": 4000,
+  "evaluations_per_retry": 1000000000,
+  "logical_cpus": 32,
+  "os": "linux",
+  "phases": [
+    "equal-wall"
+  ],
+  "physical_cpus": 16,
+  "population": null,
+  "preset": "publication",
+  "problems": [
+    "cassini1",
+    "cassini2",
+    "gtoc1",
+    "messenger",
+    "rosetta",
+    "sagas",
+    "tandem"
+  ],
+  "retries": 16,
+  "rows": 1400,
+  "runs": 100,
+  "rustc": "rustc 1.97.1 (8bab26f4f 2026-07-14)",
+  "schema_version": 2,
+  "seed": 42,
+  "sigma": 0.3,
+  "workers": [
+    1,
+    16
+  ]
+}

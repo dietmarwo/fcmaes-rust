@@ -1,0 +1,71 @@
+{
+  "actual_evaluations": 24963543455,
+  "allocated_seconds": 29306.438368626925,
+  "allocated_worker_seconds": 322372.32208787324,
+  "artifacts": {
+    "comparison": "comparison.md",
+    "paired_rows": "paired.csv"
+  },
+  "command": "target/release/cmaes-implementation-comparison --mode campaign --preset publication --output results/implementation-v1",
+  "descriptors": [],
+  "elapsed_seconds": 19178.641965078048,
+  "formulation": "paired-wall-deadline",
+  "last_command": "target/release/cmaes-implementation-comparison --mode campaign --preset publication --output results/implementation-v1",
+  "machine": {
+    "arch": "x86_64",
+    "cpu_model": "AMD Ryzen 9 9950X 16-Core Processor",
+    "logical_cpus": 32,
+    "os": "linux",
+    "physical_cpus": 16,
+    "rustc": "rustc 1.97.1 (8bab26f4f 2026-07-14)"
+  },
+  "objectives": [
+    {
+      "column": "best",
+      "label": "best objective",
+      "unit": null
+    }
+  ],
+  "process_cpu_seconds": 157432.11487770543,
+  "protocol": {
+    "arms": [
+      "a",
+      "b",
+      "c"
+    ],
+    "bound_transform": "shared reflection from unbounded normalized coordinates",
+    "cmaes_default_features": false,
+    "cmaes_version": "0.2.2",
+    "deadlines_ms": [
+      100,
+      1000,
+      10000
+    ],
+    "injected_cost_ns": [
+      0,
+      1000,
+      100000
+    ],
+    "paired_seeds": 20,
+    "population_override": null,
+    "preset": "publication",
+    "problems": [
+      "sphere10",
+      "sphere100",
+      "rosenbrock10",
+      "rosenbrock40",
+      "rastrigin10",
+      "rastrigin40",
+      "ellipsoid100",
+      "cassini1"
+    ],
+    "sigma0_normalized": 0.3,
+    "termination": "external generation-boundary wall deadline; internal stops recorded"
+  },
+  "requested_evaluations": null,
+  "schema_version": 1,
+  "seed": 42,
+  "status": "completed",
+  "tutorial": "cmaes-implementation-comparison",
+  "workers": 16
+}

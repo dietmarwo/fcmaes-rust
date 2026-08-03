@@ -645,6 +645,14 @@ fn time_to_distance(position: &Vec3, velocity: &Vec3, target: f64) -> f64 {
     }
 }
 
+fn time_to_aus_objective(travel_time: f64, time_scale: f64, flight_days: f64) -> f64 {
+    if !travel_time.is_finite() || travel_time < 0.0 {
+        100_000.0
+    } else {
+        (travel_time * time_scale / 86_400.0 + flight_days) / 365.25
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum MissionType {
     OrbitInsertion,
@@ -1034,12 +1042,8 @@ fn mga_dsm(decision: &[f64], problem: &DsmProblem) -> (f64, Vec<f64>) {
                 &scale(&outgoing, 1.0 / velocity_scale),
                 problem.au_distance,
             );
-            if travel_time == -1.0 {
-                100_000.0
-            } else {
-                let flight_days: f64 = decision[4..4 + n - 1].iter().sum();
-                (travel_time * time_scale / 86_400.0 + flight_days) / 365.25
-            }
+            let flight_days: f64 = decision[4..4 + n - 1].iter().sum();
+            time_to_aus_objective(travel_time, time_scale, flight_days)
         }
         MissionType::AsteroidImpact => f64::NAN,
     };
@@ -1185,6 +1189,9 @@ pub fn rosetta(x: &[f64]) -> f64 {
 }
 
 /// SAGAS time-to-50-AU benchmark with the original delta-v penalties.
+///
+/// Non-finite or physically impossible negative travel times receive the
+/// established failure penalty instead of being accepted as improvements.
 pub fn sagas(x: &[f64]) -> f64 {
     if x.len() < 12 {
         return PENALTY;
@@ -1202,7 +1209,8 @@ pub fn sagas(x: &[f64]) -> f64 {
     if onboard > problem.onboard_delta_v_limit {
         objective += 10.0 + 10.0 * onboard;
     }
-    sanitize(objective)
+    let objective = sanitize(objective);
+    if objective >= 0.0 { objective } else { PENALTY }
 }
 
 const ATLAS_VINF: [f64; 9] = [2.5, 3.0, 3.5, 4.0, 4.5, 5.0, 5.5, 5.75, 6.0];
@@ -1491,6 +1499,9 @@ mod tests {
     #[test]
     fn helper_edge_paths_are_finite_or_penalized() {
         assert_eq!(sanitize(f64::NAN), PENALTY);
+        assert_eq!(time_to_aus_objective(-1.0, 1.0, 1.0), 100_000.0);
+        assert_eq!(time_to_aus_objective(f64::NAN, 1.0, 1.0), 100_000.0);
+        assert!(time_to_aus_objective(1.0, 1.0, 1.0) > 0.0);
         assert_eq!(bisect_root(1.0, 2.0, |value| value - 1.0), 1.0);
         assert_eq!(bisect_root(1.0, 2.0, |value| value - 2.0), 2.0);
         assert_eq!(bisect_root(1.0, 2.0, |value| value + 1.0), 0.0);

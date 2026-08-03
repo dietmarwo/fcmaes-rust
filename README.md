@@ -31,6 +31,58 @@ also implements dimension-matrix enumeration, numerical nullspace analysis,
 regression, and continuous-exponent optimization directly in Rust; it has no
 BuckinghamPy dependency.
 
+## Core design principle: improve results for the same wait
+
+**Independent retry turns otherwise idle CPU cores into additional chances to
+find a better solution before the user's deadline.** Many useful stochastic,
+local, and third-party optimizers execute one search on one thread. The generic
+`fcmaes_core::retry` coordinator runs independent instances concurrently and
+returns the best retained result; the wrapped optimizer does not have to be an
+fcmaes implementation.
+
+The controlled [GTOP equal-wall experiment](benchmarks/gtop-cmaes-retry/README.md)
+wrapped the external, serial `cmaes` crate and compared one restart lane with
+16 lanes on a 16-physical-core Ryzen 9 9950X. Both arms waited approximately
+4.000 seconds per pair. Across 100 paired seeds on each of seven problems,
+retry improved the mean returned objective on **7/7 problems** and won
+**86–96/100 pairs**:
+
+| Equal-wall evidence | Serial external CMA-ES | Through `fcmaes` retry |
+|---|---:|---:|
+| User-visible wall time | 4.000109–4.000150 s | 4.000440–4.000523 s |
+| Mean active cores | 1.00 | 15.99–16.00 |
+| Problems with the better mean | 0/7 | **7/7** |
+| Cassini1 target successes | 38/100 | **100/100** |
+
+This is the practical library design claim: on that fixed machine and
+protocol, retry bought better mean quality for the same wait by spending more
+aggregate CPU work. It is not a theorem for every objective or budget. The
+full quality, wall-time, and work-accounting tables are in the benchmark
+report; variability fell on five problems but rose on SAGAS and Tandem.
+
+### Two complementary ways to spend the cores
+
+Retry is not the only parallelism boundary. **All population-based
+fcmaes-core optimizers expose ask/tell or an equivalent whole-population batch
+interface.** The caller asks for candidates, evaluates them concurrently on
+CPU workers, a GPU, a simulator farm, or remote services, and tells the
+optimizer the ordered results. This often gives the largest wall-time benefit
+when one objective evaluation is expensive.
+
+| Parallel strategy | Unit of parallel work | Best fit | Main effect at fixed wall time |
+|---|---|---|---|
+| Independent `retry` | Complete optimizer runs | Multimodal problems; serial internal algorithms; cheap to moderately costly objectives | Explores more independent basins and improves the distribution of the returned best |
+| Population ask/tell | Candidates from one optimizer generation | Expensive simulations, training jobs, hardware tests, or remote evaluations | Advances one search through more generations during the same wait |
+
+DE, active CMA-ES, CR-FM-NES, PGPE, BiteOpt, and MODE provide direct ask/tell
+interfaces. MAP-Elites and Diversifier provide equivalent batch evaluators and
+ordered archive updates. Dual Annealing is the deliberate exception: its next
+point depends on the preceding point and score, so it has no population to
+evaluate concurrently. Retry can still parallelize independent Dual Annealing
+runs. Both forms can be combined, but partition the available workers between
+outer retries and inner batch evaluation to avoid oversubscription. See the
+[optimizer guide](docs/optimizers.md#parallel-evaluation-asktell-and-retry).
+
 ## Implementation facts
 
 | Feature | Implementation |
@@ -38,7 +90,7 @@ BuckinghamPy dependency.
 | Optimizer core | 100% native Rust in `fcmaes-core` |
 | Legacy C++ optimization backend | None; no C++ library is compiled, linked, loaded, or invoked |
 | Core build | Standard Cargo build; no project `build.rs`, CMake, or C/C++ compiler |
-| Parallelism | Native multithreading with Rayon plus independent retry workers |
+| Parallelism | Independent retry workers plus ask/tell and ordered Rayon population batches |
 | Objective functions | Native Rust closures and batch evaluators |
 | Python integration | Optional PyO3 extension that exposes the Rust core; Python is not an optimizer backend |
 
@@ -317,6 +369,32 @@ demonstrates the benefit of adaptive retry coordination on a hard problem.
 The original Python/C++ fcmaes performance table reports a similar 81/100
 Tandem success rate; the linked report records both results and their exact
 parallel execution models.
+
+The separate [controlled active CMA-ES implementation diagnostic](benchmarks/cmaes-implementation/README.md)
+holds the objective and parallel architecture much closer between
+`fcmaes-core` and `cmaes` 0.2.2. Its complete 20-pair campaign finds no
+universal quality winner: `cmaes` leads serial throughput on cheap and
+high-dimensional cases, while fcmaes-core leads median aggregate throughput
+under equal 16-instance multistart. The large difference in protective-stop
+behavior is reported explicitly rather than normalized away. Its easy
+analytic functions isolate implementation effects; they are not recommended
+CMA-ES workloads, and the serial speed gap is already negligible at 100 µs
+objective cost.
+
+The complementary
+[GTOP equal-wall retry experiment](benchmarks/gtop-cmaes-retry/README.md) plugs
+that external, single-threaded `cmaes` implementation into
+`fcmaes_core::retry`. Its primary 100-pair experiment compares the
+best-objective mean/sdev returned by one serial restart lane and by 16 lanes
+after the same four-second wait. Measured wall mean/sdev checks fairness;
+starts, evaluations, CPU time, and active cores expose the deliberately higher
+parallel work. This demonstrates that retry is an optimizer adapter rather
+than a facility reserved for fcmaes algorithms. A separate five-pair pilot
+retains equal-work scheduler-scaling evidence but is not the practical quality
+claim. In the completed seven-problem campaign, retry improves mean objective
+on every case and wins 86–96 of 100 pairs; it reduces sdev on five cases but
+increases it on SAGAS and Tandem. Both arms measure about 4.000 seconds, at
+roughly 1 versus 16 active cores.
 
 ## Data-backed examples
 

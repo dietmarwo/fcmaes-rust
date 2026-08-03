@@ -18,6 +18,54 @@ All optimizers minimize. Scalar optimizer result objects contain a best point
 code. `ModeResult` instead contains its population matrices plus iteration and
 stop state; MAP-Elites retains its results in `Archive`.
 
+## Parallel evaluation: ask/tell and retry
+
+fcmaes-core offers two independent parallelism boundaries, both intended to
+improve the result returned after a fixed user-visible wait:
+
+1. `retry` runs complete optimizer instances concurrently. It is especially
+   useful for multimodal problems and for adapting otherwise serial external
+   optimizers.
+2. Ask/tell separates candidate generation from evaluation. Evaluate one
+   population concurrently, preserve its order, then tell the scores back to
+   the same optimizer. This is especially useful when objective calls are
+   expensive.
+
+| Algorithm | Population-evaluation interface | Notes |
+|---|---|---|
+| Differential Evolution | `ask` / `tell` | One ordered DE population batch |
+| Active CMA-ES | `ask` / `tell`; `tell_x`; parallel one-shot evaluation | One CMA generation |
+| CR-FM-NES | `ask_pop` / `tell_pop`; `optimize_batch` | One mirrored population |
+| PGPE | `ask_pop` / `tell_pop`; `optimize_batch` | One mirrored population |
+| BiteOpt / DeepBiteOpt | `ask(batch)` / `tell` | Delayed-feedback candidate batch |
+| MODE | `ask` / `tell` | Objective-and-constraint rows for one population |
+| MAP-Elites / Diversifier | `*_batch` evaluators and ordered archive updates | Equivalent batch boundary rather than a literal optimizer `tell` |
+| Dual Annealing | None | Sequential proposal dependency; parallelize complete runs with retry instead |
+
+Thus every population-based optimizer in the core has direct ask/tell or an
+equivalent batch interface. Dual Annealing is not population-based and is the
+only listed optimizer without one. The external `cmaes` 0.2.2 crate used in
+the [GTOP retry benchmark](../benchmarks/gtop-cmaes-retry/README.md) likewise
+has no public ask/tell boundary, although it does offer internal Rayon
+`run_parallel()` and `next_parallel()` methods.
+
+For native CPU evaluation, `parallel_batch` preserves candidate order:
+
+```rust
+use fcmaes_core::parallel_batch;
+
+let xs = optimizer.ask();
+let ys = parallel_batch(&xs, 16, |x| expensive_objective(x));
+optimizer.tell(&ys);
+```
+
+The same split permits GPU batches, asynchronous services, or external
+simulator pools, as long as results are restored to ask order before `tell`.
+When combining retry and population evaluation, budget threads explicitly:
+for example, four retry lanes with four evaluation workers each on 16 physical
+cores. Using 16 lanes each with 16 inner workers normally oversubscribes the
+machine and can make wall time worse.
+
 ## Shared objective and bounds
 
 An ordinary synchronized scalar closure implements `Objective` automatically:

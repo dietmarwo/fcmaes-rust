@@ -48,6 +48,32 @@ Use optimized builds for real workloads:
 cargo run --release
 ```
 
+## Parallel design: retry and ask/tell
+
+fcmaes-core uses two complementary forms of parallelism to improve the result
+returned within a fixed wall time:
+
+- `retry` runs independent optimizer instances on separate workers and keeps
+  the best results. Its closure can wrap fcmaes algorithms or compatible
+  single-threaded optimizers from other crates and FFI libraries.
+- ask/tell and batch APIs expose one population for concurrent evaluation.
+  This is especially effective when objective calls are expensive simulations,
+  training jobs, hardware tests, or remote requests.
+
+Every population-based core optimizer has ask/tell or an equivalent batch
+boundary: DE, active CMA-ES, CR-FM-NES, PGPE, BiteOpt, MODE, MAP-Elites, and
+Diversifier. Dual Annealing is sequential and has no population ask/tell
+interface; use retry to parallelize independent Dual Annealing searches.
+
+The controlled
+[GTOP equal-wall campaign](https://dietmarwo.github.io/fcmaes-rust/benchmarks/gtop-cmaes-retry/)
+uses retry around an external serial CMA-ES implementation. On its fixed
+16-core machine and four-second protocol, retry improves mean objective on all
+seven tested problems over 100 paired seeds per problem. This is scoped
+experimental evidence, not a guarantee for every workload. When combining
+outer retry with inner population evaluation, divide the physical cores
+between the two layers to avoid oversubscription.
+
 ## Capabilities
 
 - Differential Evolution, active CMA-ES, CR-FM-NES, PGPE and Dual Annealing

@@ -1,0 +1,40 @@
+{
+  "architecture": "x86_64",
+  "arms": [
+    "external-single",
+    "external-sequential",
+    "external-retry",
+    "fcmaes-retry"
+  ],
+  "command": "benchmarks/gtop-cmaes-retry/target/release/gtop-cmaes-retry --mode campaign --preset pilot --output benchmarks/gtop-cmaes-retry/results/scaling-pilot-v1 --resume",
+  "cpu_model": "AMD Ryzen 9 9950X 16-Core Processor",
+  "created_unix_seconds": 1785745900,
+  "evaluations_per_retry": 2000,
+  "logical_cpus": 32,
+  "os": "linux",
+  "phases": [
+    "fixed-work"
+  ],
+  "physical_cpus": 16,
+  "population": null,
+  "preset": "pilot",
+  "problems": [
+    "cassini1",
+    "rosetta",
+    "tandem"
+  ],
+  "retries": 40,
+  "rows": 105,
+  "runs": 5,
+  "rustc": "rustc 1.97.1 (8bab26f4f 2026-07-14)",
+  "schema_version": 1,
+  "seed": 42,
+  "sigma": 0.3,
+  "workers": [
+    1,
+    2,
+    4,
+    8,
+    16
+  ]
+}

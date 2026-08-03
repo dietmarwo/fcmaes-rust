@@ -1,0 +1,36 @@
+{
+  "architecture": "x86_64",
+  "arms": [
+    "external-single",
+    "external-sequential",
+    "external-retry",
+    "fcmaes-retry"
+  ],
+  "command": "benchmarks/gtop-cmaes-retry/target/release/gtop-cmaes-retry --mode campaign --preset smoke --output benchmarks/gtop-cmaes-retry/results/harness-smoke --resume",
+  "cpu_model": "AMD Ryzen 9 9950X 16-Core Processor",
+  "created_unix_seconds": 1785745899,
+  "evaluations_per_retry": 200,
+  "logical_cpus": 32,
+  "os": "linux",
+  "phases": [
+    "fixed-work",
+    "target"
+  ],
+  "physical_cpus": 16,
+  "population": null,
+  "preset": "smoke",
+  "problems": [
+    "cassini1"
+  ],
+  "retries": 4,
+  "rows": 8,
+  "runs": 1,
+  "rustc": "rustc 1.97.1 (8bab26f4f 2026-07-14)",
+  "schema_version": 1,
+  "seed": 42,
+  "sigma": 0.3,
+  "workers": [
+    1,
+    2
+  ]
+}
