@@ -92,15 +92,19 @@ formulations.
 Use the total campaign budget, not only the cost of one evaluation. Include
 retries, replications, validation, failed simulations, and every worker.
 
-Check *why* an evaluation is expensive before choosing. Time the simulator
-alone, then time it again through your objective wrapper. Process launches,
-file or container round-trips, re-parsing inputs, and re-initializing state can
-dominate the physics. When they do, removing them usually changes the
-affordable budget by more than any algorithm choice — and can change which
-algorithm is correct, because a method chosen for scarce evaluations stops
-being appropriate once evaluations are cheap and parallel. Non-reentrant global
-state is the common blocker: it prevents in-process parallel evaluation and
-forces slower process-level fan-out. The Python
+Check *why* an evaluation is expensive before choosing an algorithm:
+
+1. Time the simulator alone.
+2. Time it again through the objective wrapper.
+3. Measure process launches, file or container round-trips, input parsing, and
+   state initialization separately.
+
+These surrounding costs can dominate the physics. Removing them may change the
+affordable budget by more than the algorithm choice—and may change which
+algorithm is appropriate once evaluations become cheap and parallel.
+
+Non-reentrant global state is a common blocker. It prevents in-process parallel
+evaluation and forces slower process-level fan-out. The Python
 [`fast-cma-es` Water tutorial](https://github.com/dietmarwo/fast-cma-es/blob/master/tutorials/Water.adoc)
 works through that repair on a groundwater model whose shared state initially
 prevented parallel objective evaluation.
@@ -120,8 +124,10 @@ There is no universal numerical cutoff. Dimension, smoothness, noise, the
 number of constraints, batch size, and surrogate choice can shift the
 crossover by orders of magnitude. A few hundred evaluations may already be a
 large budget for an expensive low-dimensional model and far too small for a
-noisy 50-dimensional search. When both approaches are plausible, compare them
-under the same wall time and compute resources. The corrected
+noisy 50-dimensional search.
+
+When both approaches are plausible, compare them under the same wall time and
+compute resources. The corrected
 [optimizer-boundary experiment](optimizer-boundary.md) shows why equal calls
 can be misleading: EGO paid roughly 3–4 seconds of modelling overhead while
 DE's measured overhead was about 0.1 milliseconds. BO helped on one small CFD
@@ -137,38 +143,50 @@ The alternative BIPOP-CMA-ES stress test reached 0 of 1,000 targets after about
 the value of application-specific adaptive coordination on Tandem, not a
 general proof that one optimizer dominates another.
 
-For the narrower same-family question, the
-[controlled active CMA-ES implementation diagnostic](../benchmarks/cmaes-implementation/README.md)
-gives `fcmaes-core` and `cmaes` 0.2.2 the same reflected objective, declared
-initial distribution, offspring population, wall deadline, and three parallel
-architectures. Its complete 20-pair publication campaign finds no universal
-quality winner. `cmaes` has the serial throughput advantage on cheap and
-high-dimensional cases, while fcmaes-core has higher median aggregate
-throughput in the equal 16-instance multistart arm. `cmaes` also stops
-protectively in 61.5% of publication rows, so deadline utilization and restart
-policy must be considered beside raw active throughput. Sphere, Ellipsoid,
-and the other easy analytic cases are diagnostic controls, not evidence that
-CMA-ES is the right solver for them. At 100 µs injected cost, the aggregate
-serial throughput ratio is already 0.983; for costlier real objectives, test
-time-to-target and success on the application instead of selecting a library
-from this microbenchmark.
+#### Controlled CMA-ES implementation diagnostic
 
-The related
+The
+[active CMA-ES implementation diagnostic](../benchmarks/cmaes-implementation/README.md)
+asks a narrow same-family question. It gives `fcmaes-core` and `cmaes` 0.2.2
+the same reflected objective, initial distribution, offspring population,
+wall deadline, and three parallel architectures.
+
+The complete 20-pair campaign found no universal quality winner:
+
+- `cmaes` had the serial-throughput advantage on cheap and high-dimensional
+  cases.
+- `fcmaes-core` had higher median aggregate throughput in the equal
+  16-instance multistart arm.
+- `cmaes` stopped protectively in 61.5% of publication rows. Deadline use and
+  restart policy therefore matter alongside raw active throughput.
+
+Sphere, Ellipsoid, and the other easy analytic cases are diagnostic controls;
+they do not show that CMA-ES is the right solver for those problems. At 100 µs
+injected cost, the aggregate serial-throughput ratio was already 0.983. For
+costlier real objectives, compare time-to-target and success on the application
+instead of choosing a library from this microbenchmark.
+
+#### Parallel retry at equal wall time
+
+The
 [GTOP equal-wall retry experiment](../benchmarks/gtop-cmaes-retry/README.md)
-asks the more practical fixed-machine question: what best-objective mean and
-sdev does one serial CMA-ES restart lane return versus 16 lanes coordinated by
-`fcmaes_core::retry` after the same four-second wait? This is the appropriate
-comparison when the goal is to exploit a modern multicore CPU for better
-solutions without making the user wait longer. Measured wall time audits the
-match; optimizer starts, evaluations, CPU time, and active cores expose the
-additional work instead of disguising it. A secondary equal-work pilot checks
-scheduler scaling but is not used as the optimizer-quality result. In 100
-pairs on seven GTOP cases, retry improves mean objective everywhere and wins
-86–96 pairs, but improves sdev on only five cases. SAGAS and Tandem retain
-larger retry spreads, and six cases remain at zero target successes in both
-arms. Parallel retry buys more opportunities during the same wait; it does not
-remove the need for an appropriate optimizer, coordination strategy, or
-budget.
+asks a more practical fixed-machine question: after the same four-second wait,
+what solution quality does one serial CMA-ES restart lane deliver, compared
+with 16 lanes coordinated by `fcmaes_core::retry`?
+
+The experiment reports best-objective mean and standard deviation. Measured
+wall time audits the match, while optimizer starts, evaluations, CPU time, and
+active cores expose the extra work. A secondary equal-work pilot checks
+scheduler scaling but is not part of the optimizer-quality result.
+
+Across 100 pairs on seven GTOP cases, retry improved the mean objective on
+every case and won 86–96 pairs. It improved the standard deviation on only
+five cases; SAGAS and Tandem retained larger retry spreads, and six cases had
+zero target successes in both arms.
+
+The result shows how parallel retry can buy more opportunities without making
+the user wait longer. It does not remove the need for an appropriate optimizer,
+coordination strategy, or budget.
 
 ### 5. What result must the optimizer return?
 
@@ -344,15 +362,17 @@ re-measure at equal wall time before adopting them.
 
 Several Python [`fast-cma-es` tutorials](https://github.com/dietmarwo/fast-cma-es/tree/master/tutorials)
 re-examine published surrogate comparisons on their original problems:
-[RobotRover](https://github.com/dietmarwo/fast-cma-es/blob/master/tutorials/RobotRover.adoc)
-re-runs two benchmarks created to evaluate an ensemble Bayesian optimizer,
-[FluidDynamics](https://github.com/dietmarwo/fast-cma-es/blob/master/tutorials/FluidDynamics.adoc)
-uses the Docker-based ESP and PitzDaily CFD problems alongside the MVRSM
-surrogate solver, and
-[Hospital](https://github.com/dietmarwo/fast-cma-es/blob/master/tutorials/Hospital.adoc)
-argues that surrogate methods should be compared against parallel rather than
-sequential baselines. They are prior work in the Python library, not results of
-this project.
+
+- [RobotRover](https://github.com/dietmarwo/fast-cma-es/blob/master/tutorials/RobotRover.adoc)
+  re-runs two benchmarks created to evaluate an ensemble Bayesian optimizer.
+- [FluidDynamics](https://github.com/dietmarwo/fast-cma-es/blob/master/tutorials/FluidDynamics.adoc)
+  uses the Docker-based ESP and PitzDaily CFD problems alongside the MVRSM
+  surrogate solver.
+- [Hospital](https://github.com/dietmarwo/fast-cma-es/blob/master/tutorials/Hospital.adoc)
+  argues that surrogate methods should be compared with parallel rather than
+  sequential baselines.
+
+These are results from the earlier Python library, not from this project.
 
 ## Quick reference
 

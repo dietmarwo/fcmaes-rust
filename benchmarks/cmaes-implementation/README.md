@@ -138,17 +138,24 @@ Ellipsoid endpoints split in problem-specific ways. The exhaustive
 
 ![Paired final-objective outcomes](images/publication-quality.svg)
 
-Throughput depends strongly on architecture and objective cost. At 10 seconds,
-the median paired `fcmaes-core / cmaes` active eval/s ratios across all
-available problems were 0.630, 0.664, and 0.983 in serial Arm A for minimum
-costs 0 ns, 1 µs, and 100 µs. The external crate therefore had the serial
-throughput advantage on the cheap and high-dimensional cases, and the median
-gap almost disappeared at 100 µs. In equal 16-instance Arm C, the corresponding
-ratios were 1.179, 1.096, and 1.278 in favor of fcmaes-core aggregate
-throughput. Dimension still matters: `cmaes` remained substantially faster on
-the 100-dimensional Sphere and Ellipsoid cases. These are active-runtime
-ratios; allocated-core accounting separately charges idle time after an early
-stop.
+Throughput depends strongly on architecture and objective cost. At the
+10-second deadline, the median paired `fcmaes-core / cmaes` active eval/s ratios
+across all available problems were:
+
+| Minimum objective cost | Serial Arm A | 16-instance Arm C |
+|---:|---:|---:|
+| 0 ns | 0.630 | 1.179 |
+| 1 µs | 0.664 | 1.096 |
+| 100 µs | 0.983 | 1.278 |
+
+The external crate has the serial-throughput advantage on cheap and
+high-dimensional cases, and the median serial gap nearly disappears at 100 µs.
+Under equal 16-instance multistart, fcmaes-core has the higher aggregate
+throughput. Dimension still matters: `cmaes` remains substantially faster on
+the 100-dimensional Sphere and Ellipsoid cases.
+
+These are active-runtime ratios. Allocated-core accounting separately charges
+idle time after an early stop.
 
 ![Paired active-throughput ratios](images/publication-throughput.svg)
 

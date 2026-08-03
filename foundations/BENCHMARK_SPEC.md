@@ -57,16 +57,26 @@ CR-FM-NES sigma `{0.05, 0.15, 0.50}` and population `{16, 32, 64}` selected
 `sigma=0.05`, population 16 before the ten-seed primary rerun. The sensitivity
 table is diagnostic and cannot support a general optimizer ranking.
 
-Source-cited *putative-minimum* target energies are -44.326801, -173.928427,
--279.248470, -397.492331, and -543.665361 in ascending size order. Supplying
-`--reference-directory` audits separately obtained Cambridge point files named
-`13`, `38`, `55`, `75`, and `98`; the resulting hashes and evaluator residuals
-are recorded without redistributing coordinates. Exact success is
-`best_energy <= target + 1e-3`. Target-relative gaps and attainment within 1%,
-5%, and 10% are secondary diagnostics. Publication uses ten seeds and 20,000
-full pair-loop traversals per arm; smoke uses two seeds and 600 and cannot
-support rankings. `pair_terms_evaluated` additionally reports the traversal
-count multiplied by `N(N-1)/2`, so scaling across atom counts is explicit.
+The source-cited *putative-minimum* target energies are:
+
+| Atoms | Target energy |
+|---:|---:|
+| 13 | -44.326801 |
+| 38 | -173.928427 |
+| 55 | -279.248470 |
+| 75 | -397.492331 |
+| 98 | -543.665361 |
+
+Supplying `--reference-directory` audits separately obtained Cambridge point
+files named by atom count. Hashes and evaluator residuals are recorded without
+redistributing the coordinates. Exact success is
+`best_energy <= target + 1e-3`; target-relative gaps and attainment within 1%,
+5%, and 10% are secondary diagnostics.
+
+Publication uses ten seeds and 20,000 full pair-loop traversals per arm. Smoke
+uses two seeds and 600, so it cannot support rankings. The
+`pair_terms_evaluated` field multiplies traversals by `N(N-1)/2`, making scaling
+across atom counts explicit.
 
 The QD pilot uses N=38 fixed-frame candidates, normalized radius of gyration
 in `[0.25,0.75]`, mean coordination in `[0,12]` at cutoff 1.35, and a 12×12
@@ -82,18 +92,18 @@ with conventional `k`: 5 for DTLZ1, 10 for DTLZ2–6, and 20 for DTLZ7. The
 publication campaign reports ZDT1–4 and ZDT6 plus DTLZ1–7. It never mixes
 training points into the analytic reference set.
 
-The MODE arm uses population 64 and `nsga_update=true`: MODE's default
-NSGA-II-style population update. `nsga_update=false` selects MODE's supported
-DE update, but that alternative is outside this conformance campaign and no
-result in the Foundations tables is a DE-versus-NSGA-II comparison. Lessons
-L4–L6 likewise retain `nsga_update=true` through `ModeParams::default()`.
-The analytic MODE populations are evaluated sequentially
-(`evaluation_workers=1`): at this cost scale, dispatching 64 individual suite
-calls to worker threads would measure scheduler overhead rather than useful
-objective parallelism. The campaign's `--workers` argument is exercised only
-by lesson L3's schedule-independence check. Applications with costly
-independent objectives can pass each ordered ask batch through
-`fcmaes_core::parallel_batch` before telling MODE.
+The MODE protocol fixes three choices:
+
+- **Population update:** population 64 with `nsga_update=true`, MODE's default
+  NSGA-II-style update. `nsga_update=false` selects MODE's supported DE update,
+  but that alternative is outside this campaign. No Foundations table is a
+  DE-versus-NSGA-II comparison. Lessons L4–L6 also retain the default.
+- **Evaluation mode:** analytic populations run sequentially with
+  `evaluation_workers=1`. At this cost, dispatching 64 suite calls to threads
+  would mostly measure scheduler overhead.
+- **Parallelism check:** `--workers` is used only by lesson L3's
+  schedule-independence test. Costly applications can evaluate each ordered
+  ask batch through `fcmaes_core::parallel_batch` before telling MODE.
 
 Objective-space normalization is fixed per problem and uses the extrema of its
 deterministic analytic reference set. DTLZ1 therefore uses `[0, 0, 0]` and
@@ -131,17 +141,21 @@ oversample. Reference generation is seed-free.
 
 ## Fairness and replay
 
-Every table contains `initial`, `random`, and optimizer rows. The `random`
-control receives exactly the optimizer's requested budget; the `initial` row
-consumes only its declared population and is never mislabeled as an optimizer
-result. Requested-budget equality does not imply identical actual counts. In
-the checked publication artifacts, scalar DE completes its current population
-batch and records 4,006–4,029 actual evaluations against random's exact 4,000,
-while MODE and random both record exactly 4,096. Every retained decision is
-evaluated again before
-indicators are written; the deterministic recheck count and maximum absolute
-discrepancy are recorded. This same-evaluator check can detect nondeterminism
-or bookkeeping corruption, not independent model error. Requested and actual
-optimizer evaluations, seed, workers, dimensions, normalization, both
-reference conventions, deterministic rechecks, and wall time are part of the
-machine-readable artifacts. Rechecks do not consume optimizer budget.
+Every table contains `initial`, `random`, and optimizer rows. The fairness and
+replay rules are explicit:
+
+- `random` receives exactly the optimizer's requested budget.
+- `initial` consumes only its declared population and is never described as an
+  optimizer result.
+- Requested-budget equality does not imply identical actual counts. In the
+  checked artifacts, scalar DE completes its current population batch and
+  records 4,006–4,029 evaluations against random's exact 4,000. MODE and its
+  random control both record exactly 4,096.
+- Every retained decision is evaluated again before indicators are written.
+  The artifacts record the recheck count and maximum absolute discrepancy;
+  rechecks do not consume optimizer budget.
+
+The same-evaluator replay can detect nondeterminism or bookkeeping corruption,
+not independent model error. Machine-readable artifacts also record requested
+and actual evaluations, seed, workers, dimensions, normalization, both
+reference conventions, and wall time.

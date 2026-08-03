@@ -118,14 +118,18 @@ MODE and MAP-Elites answer different questions:
 MAP-Elites is useful only when its descriptors express diversity that a user
 would actually choose between. It is not a generic replacement for MODE, and
 objective values should not be relabeled as descriptors without a reason.
-Two tutorials record the failure modes with measurements. RustPower's first
-descriptor pair were decision variables and reached 4% coverage, while emergent
-behavior coordinates on the identical budget reached 68%. The ML tutorial shows
-that emergent is not sufficient: its first pair were both emergent yet mutually
-redundant (rank correlation +0.9997). On the same 271 feasible range-study
-candidates and 20×20 grid, the original pair occupied 16 cells while the
-replacement occupied 91. Descriptors must be jointly reachable and individually
-reproducible. See the
+
+Two tutorials measure different descriptor failures:
+
+- RustPower's first descriptor pair consisted of decision variables. It
+  reached 4% coverage, compared with 68% for emergent behavior coordinates at
+  the same budget.
+- The ML tutorial shows that “emergent” is not enough. Its first pair had rank
+  correlation +0.9997 and was effectively one axis twice. On the same 271
+  feasible range-study candidates and 20×20 grid, that pair occupied 16 cells;
+  the replacement occupied 91.
+
+Descriptors must be jointly reachable and individually reproducible. See the
 [CVT-MAP-Elites and Diversifier guide](../docs/optimizers.md#cvt-map-elites-and-diversifier)
 for the batch APIs, the [result schema](RESULT_SCHEMA.md), and the
 [descriptor-pilot](DESCRIPTOR_PILOT.md) and
@@ -401,19 +405,22 @@ constraint violation. This preserves objective scales and makes feasibility
 auditable.
 
 Constrained MODE is the primary formulation because losses, voltage quality,
-investment and security are explicit competing goals with hard feasibility
-limits. This tutorial also records the clearest worked example of the descriptor
-rule stated above. The first QD attempt used continuous battery MW and capacitor
-MVAr as descriptors; after 100,097 evaluations only 16/400 niches were occupied
-and battery capacity stayed in a 269.9–274.2 MW band. Both axes were decision
-variables, so the archive re-plotted its own search box instead of illuminating
-behavior. Replacing them with emergent coordinates measured from the solved
-scenarios — weighted-mean bus voltage and the security-utilization spread across
-the six scenarios — raised mean coverage from 4.0% to 68.0% over three seeds at
-the identical budget, with no descriptor clipping. The corrected archive is a
-useful operating-strategy repertoire; asset siting and sizing remain nearly
-unique on this network, which the descriptor fix confirms rather than removes.
-MODE was retained, not replaced.
+investment, and security are competing goals with hard feasibility limits.
+MODE was retained when the QD study was corrected; it was not replaced.
+
+The QD evidence records a descriptor redesign:
+
+- The first attempt used continuous battery MW and capacitor MVAr. After
+  100,097 evaluations it occupied only 16/400 niches, while battery capacity
+  remained within 269.9–274.2 MW. Both axes were decision variables, so the
+  archive mostly re-plotted its search box.
+- The corrected attempt used weighted-mean bus voltage and security-utilization
+  spread across six solved scenarios. At the same budget, mean coverage over
+  three seeds rose from 4.0% to 68.0%, with no descriptor clipping.
+
+The corrected archive is a useful operating-strategy repertoire. Asset siting
+and sizing remain nearly unique on this network; the redesign confirms that
+fact rather than hiding it.
 
 ```bash
 cd tutorials/rustpower-voltage-control
@@ -543,25 +550,31 @@ Three formulations answer different questions:
 The descriptor pair is itself a recorded lesson, and a different one from the
 RustPower case. Both of the originally proposed axes — predicted-positive rate
 and the log false-positive/false-negative ratio — are emergent model behavior,
-so neither repeats the decision-variable mistake. They still failed, because
-with the threshold fixed at 0.5 they are a monotone function of each other
-  (rank correlation +0.999715 over 271 feasible recorded candidates) and the
-  reachable region is a narrow ribbon inside a two-dimensional grid. The raw
-  range-study candidates and deterministic summary are checked in. Two
-  emergent descriptors can still be the same axis twice; check that a pair is
-  *jointly reachable* before spending a campaign on it.
+so neither repeats the decision-variable mistake. They still failed:
+
+- with the threshold fixed at 0.5, the axes are a monotone function of each
+  other (rank correlation +0.999715 over 271 feasible candidates); and
+- the reachable region is a narrow ribbon inside a two-dimensional grid.
+
+The raw range-study candidates and deterministic summary are checked in. Two
+emergent descriptors can still be the same axis twice; verify that a pair is
+*jointly reachable* before spending a campaign on it.
 
 The checked-in quick run is a functional smoke study, not publication
 evidence. It exercises the complete protocol, baselines, budget sweep,
-isolated prediction-latency benchmark, finalization guard, and deterministic
-figures. The QD formulation was then run at the publication profile over three
-independent outer seeds and **rejected**: coverage (49.0%) and configuration
-  diversity (196) pass their pre-registered thresholds comfortably, but niche
-  retention (6.8%) fails the 50% requirement because precision does not
-  reproduce between fixed-fold tuning and the disjoint selection set. The
-  saved elites were revalidated after correcting a validation-only aggregation
-  defect so both sides describe single-forest behavior; the training archives
-  and optimizer budgets are unchanged, and every manifest records that scope.
+prediction-latency benchmark, finalization guard, and deterministic figures.
+
+The three-seed publication QD study was **rejected**:
+
+- coverage (49.0%) and configuration diversity (196) pass their registered
+  thresholds;
+- niche retention (6.8%) fails the 50% requirement because precision does not
+  reproduce between fixed-fold tuning and the disjoint selection set.
+
+The saved elites were revalidated after a validation-only aggregation defect
+was corrected, so both sides now describe single-forest behavior. Training
+archives and optimizer budgets are unchanged, and every manifest records that
+scope.
 
 ```bash
 cd tutorials/ml-hyperparameter-tuning
@@ -676,15 +689,19 @@ DE–CMA-ES timing optimization, powered-flyby accounting, the impulsive MGA
 score, crash-safe archives, and all result claims.
 
 The reviewed seed-42 evidence contains 100-route blind random, evolutionary,
-and local Gemma 4 31B arms. Cold Gemma selects 90 fourteen-encounter routes,
-occupies only 63 niches, and achieves a 19.676 M best-20 sum versus 22.140 M
-for evolutionary search while consuming 178.7 worker-hours. A separately
-named prior-informed follow-up fixes the information boundary with
-length-stratified menus and ranked fallbacks: it occupies 81 niches, reaches a
-26.964 M best-20 sum, and its incremental run uses 71.2 worker-hours. Including
-the random and evolutionary archives required as prior evidence raises the
-complete chain to 231.7 worker-hours. This is evidence that the protocol repair
-works—not an independent fourth arm or a general model-capability result.
+and local Gemma 4 31B arms:
+
+- Cold Gemma selects 90 fourteen-encounter routes, occupies 63 niches, and
+  reaches a 19.676 M best-20 sum versus 22.140 M for evolutionary search. It
+  consumes 178.7 worker-hours.
+- A separately named prior-informed follow-up uses length-stratified menus and
+  ranked fallbacks. It occupies 81 niches and reaches a 26.964 M best-20 sum.
+  The incremental run uses 71.2 worker-hours; including the random and
+  evolutionary archives required as prior evidence raises the complete chain
+  to 231.7 worker-hours.
+
+This supports the protocol repair. It is not an independent fourth arm or a
+general model-capability result.
 
 ![The route proposer is separated from deterministic Rust grammar, optimization, physics, archive, and evidence](gtoc1-route-search/images/architecture.svg)
 

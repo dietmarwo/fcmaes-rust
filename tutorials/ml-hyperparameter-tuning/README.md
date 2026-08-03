@@ -242,14 +242,18 @@ still encode almost the same behavior.
 
 With the operating threshold fixed at 0.5, anything that makes the forest
 predict more positives raises false positives and lowers false negatives at the
-same time. The recorded study measures **rank correlation +0.999715** over 271
-feasible candidates. `error_ratio` spans [−0.4145, +0.9174], far narrower than
-the original [−3, +3] bounds. The same candidates occupy only 16/400 cells
-under those original bounds and 28/400 even when both axes are tightened to
-their observed ranges. Under the frozen precision×sharpness bounds they occupy
-91/400 cells. These are like-for-like calculations on the same candidates and
-grid size; they support ribbon geometry without comparing different algorithms,
-budgets, or rectangles.
+same time. The recorded study quantifies the redundancy:
+
+- rank correlation is **+0.999715** over 271 feasible candidates;
+- `error_ratio` spans [−0.4145, +0.9174], far less than the original
+  [−3, +3] bounds;
+- the candidates occupy 16/400 cells under the original bounds and 28/400 when
+  both axes are tightened to their observed ranges; and
+- the frozen precision×sharpness descriptors occupy 91/400 cells.
+
+These are like-for-like calculations on the same candidates and grid size.
+They support the ribbon-geometry diagnosis without comparing different
+algorithms, budgets, or rectangles.
 
 The lesson is narrower than “pick emergent descriptors”: two emergent
 descriptors can still be the same axis twice. Check that the pair is jointly

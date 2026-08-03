@@ -28,14 +28,17 @@ The twenty-two application directories below `tutorials/` are standalone Cargo
 workspaces, not root members. This isolates application dependencies and
 result artifacts while reusing the local core. Their complete, canonical list
 is the [tutorial index](../tutorials/README.md); keeping the list there avoids
-an incomplete architecture inventory as applications are added. The
-room-ventilation tutorial demonstrates a purpose-built native simulation
-backend: each candidate owns its D2Q9 flow and D2Q5 pollutant state, so
-population parallelism remains at the fcmaes layer. The ML tutorial similarly
-keeps every tree fit and probability prediction in Rust while using disjoint
-tuning, selection, and final datasets. The neural-controller tutorial keeps
-stochastic rollout evaluation in Rust and uses PGPE and CR-FM-NES for
-fixed-topology direct policy search.
+an incomplete architecture inventory as applications are added.
+
+Three tutorials illustrate this isolation:
+
+- Room ventilation uses a purpose-built native simulation backend. Each
+  candidate owns its D2Q9 flow and D2Q5 pollutant state, so population
+  parallelism remains at the fcmaes layer.
+- ML hyperparameter tuning keeps every tree fit and probability prediction in
+  Rust, with disjoint tuning, selection, and final datasets.
+- Neural-controller policy search keeps stochastic rollout evaluation in Rust
+  and uses PGPE and CR-FM-NES for fixed-topology direct search.
 
 ## Core module map
 

@@ -11,16 +11,18 @@ The executable implementation of that broader discrete search is the
 [split-brain GTOC1 route-search companion](../gtoc1-route-search/), with
 equal-budget agent, random, and evolutionary proposal arms.
 
-The checked-in continuous-thrust solution scores **1,843,300.529365**, about
-6,699.47 points below the rounded 1,850,000 winning score reported for JPL.
-An earlier 24-impulse Sims–Flanagan approximation scored 1,850,730.667522, but
-direct finite-thrust propagation exposed a canonical endpoint mismatch of
-`3.23e-2`. That approximate score is retained as a useful warning, not claimed
-as a valid trajectory. The stored vector uses the accelerated Taylor ZOH
-system in `pykep-core` 0.1.4 and is independently repropagated with DOP853.
-An experimental second transcription propagates finite thrust on all eight
-legs with 5–8 segments **per leg**, so a global optimizer can change the
-complete tour instead of refining only the propelled Earth–Venus leg.
+The checked-in evidence separates three levels of fidelity:
+
+- The continuous-thrust solution scores **1,843,300.529365**, about 6,699.47
+  points below JPL's reported rounded score of 1,850,000. Its stored vector uses
+  the accelerated Taylor ZOH system in `pykep-core` 0.1.4 and is independently
+  repropagated with DOP853.
+- An earlier 24-impulse Sims–Flanagan approximation scored 1,850,730.667522,
+  but direct finite-thrust propagation exposed a canonical endpoint mismatch
+  of `3.23e-2`. It is retained as a warning, not as a valid trajectory.
+- An experimental transcription propagates finite thrust on all eight legs
+  with 5–8 segments **per leg**. This lets a global optimizer change the whole
+  tour instead of refining only the propelled Earth–Venus leg.
 
 > **Model score, not a new official competition result.** GTOC1 required
 > DE405-equivalent planetary states. `pykep-core` 0.1.4 supplies VSOP2013 and
@@ -485,12 +487,14 @@ More continuous-thrust segments are **not automatically better for global
 search**. They add real switching controls and raise the dimension from 146
 to as much as 218. Moreover, the uniform 5-, 6-, 7-, and 8-segment grids are
 not nested, so transferring a control profile can worsen the residual before
-reoptimization. This differs from an impulsive Sims–Flanagan approximation:
-there, adding impulses is primarily a way to mimic continuous thrust more
-closely. Here every interval is already propagated with the finite-thrust
-equations, and a smaller control space may be much easier for the global
-optimizer. Independent `tour-de-cma` campaigns at each resolution are
-therefore at least as important as sequential `tour-mesh` refinement.
+reoptimization.
+
+This differs from an impulsive Sims–Flanagan approximation, where extra
+impulses primarily mimic continuous thrust more closely. Here every interval
+already uses the finite-thrust equations, and a smaller control space may be
+much easier for the global optimizer. Independent `tour-de-cma` campaigns at
+each resolution are therefore at least as important as sequential `tour-mesh`
+refinement.
 
 A deliberately tiny deterministic smoke run used one worker, one retry, and
 5,000 evaluations at five segments per leg:

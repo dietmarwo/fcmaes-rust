@@ -358,13 +358,19 @@ library-internal profiler.\n\n",
     }
     report.push_str("\n## Interpretation boundary\n\n");
     report.push_str(
-        "Arm A is the closest same-family implementation arm. Arm B additionally compares each \
-library's population-evaluation path. Arm C gives both implementations the same independent-\
-multistart architecture. None of these rows compares fcmaes coordinated DE→CMA retry with \
-`cmaes` BIPOP; that is a different-algorithm system comparison already covered by the broader \
-optimizer benchmark. The analytic controls do not establish that CMA-ES is the right solver for \
-them, and sufficiently costly application objectives make the measured implementation overhead \
-irrelevant. Smoke and pilot presets validate the harness but are not publication evidence.\n",
+        r#"The three arms isolate different implementation choices:
+
+- **Arm A** is the closest same-family implementation comparison.
+- **Arm B** also compares each library's population-evaluation path.
+- **Arm C** gives both implementations the same independent-multistart architecture.
+
+None of these rows compares fcmaes coordinated DE→CMA retry with `cmaes` BIPOP. That is a
+different-algorithm system comparison covered by the broader optimizer benchmark.
+
+The analytic controls do not show that CMA-ES is the right solver for them. For sufficiently
+costly application objectives, the measured implementation overhead also becomes irrelevant.
+Smoke and pilot presets validate the harness; they are not publication evidence.
+"#,
     );
     fs::write(output.join("comparison.md"), report).map_err(|error| error.to_string())
 }

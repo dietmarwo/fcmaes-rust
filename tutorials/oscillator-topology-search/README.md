@@ -39,16 +39,20 @@ invalid responses, or transport failures. The agent used 2,078,001 input and
 
 The exact repressilator `000200220` was omitted from the held-out reference
 list shown to the model and never entered proposal history. It was not absent
-from the prompt: protocol v4 can select only an offered menu row. Deterministic
-reconstruction shows that the unlabeled edge vector was offered on 17 attempts;
-Gemma declined the first 16 and selected it at attempt 188, after declining six
-consecutive elite-mutation offers on attempts 182–187. Neither offline control
-exactly selected any of the four held-out encodings. This is feedback-guided
-selection from an engineered candidate menu, not free generation. These are
-descriptive results for one root seed and one model configuration, not a
-general claim that an LLM dominates evolutionary search. See the complete
-machine-generated [comparison](results/publication/comparison.md) and redacted
-[agent provenance](results/publication/agent/provenance.json).
+from the prompt: protocol v4 can select only an offered menu row.
+
+Deterministic reconstruction establishes that:
+
+- the unlabeled edge vector was offered on 17 attempts;
+- Gemma declined the first 16 and selected it at attempt 188, after six
+  consecutive elite-mutation offers on attempts 182–187; and
+- neither offline control selected any of the four held-out encodings exactly.
+
+This is feedback-guided selection from an engineered candidate menu, not free
+generation. The result describes one root seed and one model configuration; it
+does not establish that an LLM generally dominates evolutionary search. See
+the machine-generated [comparison](results/publication/comparison.md) and
+redacted [agent provenance](results/publication/agent/provenance.json).
 
 ![Matched random, evolutionary, and Gemma outcomes](images/campaign-results.svg)
 
@@ -109,13 +113,18 @@ change the runtime propensity expressions.
 ReBop 0.9.7 declares `Rate::expr(Expr)` but does not export `Expr`, so an
 external Rust crate cannot construct that public rate. The tutorial carries a
 reduced MIT-licensed reimplementation of the ReBop 0.9.7 runtime expression and
-Gillespie paths it needs. It is intentionally narrower than upstream and adds
-a defensive invalid-propensity guard. A dual-source integration test requires
-exact sparse mass-action replay against the released crate at three seeds;
-runtime expressions are covered by analytic propensity and seeded replay
-tests because upstream's private `Expr` cannot be named externally.
-[DEPENDENCY_NOTICE.md](DEPENDENCY_NOTICE.md) gives the exact scope, numerical
-delta and removal condition.
+Gillespie paths it needs. This implementation is intentionally narrower than
+upstream and adds a defensive invalid-propensity guard.
+
+Verification is split by what the public API permits:
+
+- a dual-source integration test requires exact sparse mass-action replay
+  against the released crate at three seeds; and
+- analytic propensity and seeded replay tests cover runtime expressions,
+  because upstream's private `Expr` cannot be named externally.
+
+[DEPENDENCY_NOTICE.md](DEPENDENCY_NOTICE.md) records the exact scope, numerical
+delta, and removal condition.
 
 This three-species Hill network is **not** equivalent to the nine-species,
 sixteen-reaction Vilar model. The fixed Vilar tutorial is a neighboring use
@@ -184,13 +193,17 @@ throughput on the intended objective and host rather than extrapolating an
 unarchived development timing.
 
 The outer proposal loop remains sequential by design. After eight independent
-bootstrap samples, the evolutionary arm selects uniformly among its eight
-best validated topologies and applies one grammar-preserving edit. Every fifth
-proposal is instead an independent random immigrant. The elite pool exploits
-several promising neighborhoods, while the fixed 20% immigrant cadence
-prevents exhaustion of the one-edit neighborhood around a single incumbent.
-The agent likewise observes all prior validated results. Evaluating topology
-batches from stale snapshots would define different outer algorithms.
+bootstrap samples, the evolutionary arm:
+
+- selects uniformly among its eight best validated topologies;
+- applies one grammar-preserving edit; and
+- uses an independent random immigrant for every fifth proposal.
+
+The elite pool covers several promising neighborhoods, while the fixed 20%
+immigrant cadence avoids exhausting the one-edit neighborhood around one
+incumbent. The agent likewise observes every prior validated result. Evaluating
+topology batches from stale snapshots would define different outer algorithms.
+
 Parallel retry fills the cores without weakening that feedback contract or
 creating a nested simulator pool.
 
@@ -336,32 +349,48 @@ cargo run --release --locked -- \
   --output "$osc_result_root"
 ```
 
+#### How protocol v4 constrains proposals
+
 The OpenAI-compatible request uses llama.cpp's schema-constrained
-`response_format`, not model-specific function-call syntax. Protocol v4 first
-removes every evaluated or rejected key from the 12,024-member grammar. It
-then presents 96 unseen candidates: one third round-robin mutations of up to
-eight elites, one third underrepresented structural classes, and one third
-deterministic random immigrants. The model can return only one opaque menu ID,
-which the adapter translates back to nine edges; Rust validates again
-defensively. The IDs are shuffled, but each row explicitly identifies its
-source. In the publication run, Gemma chose 167 elite mutations, seven
-underrepresented-structure rows, and 26 random immigrants. A menu-matched
-non-model selector has not yet been run, so score differences belong to the
-complete menu–model policy and cannot be attributed to Gemma alone. The local URL
-may omit `api_key_env` only because it is loopback; the adapter rejects an
-unauthenticated remote endpoint. The example keeps the same 8,000-token ceiling
-as MiniMax but disables Gemma's explicit thinking channel. In the 16 GB smoke
-test, Gemma 4 12B ignored a request for at most 500 reasoning tokens, generated
-more than 7,200 and hit the adapter timeout before returning nine integers.
-Direct menu selection is therefore the honest local baseline.
-It is a different proposer from thinking-enabled MiniMax and must remain a
-separate experimental arm. With thinking disabled and the protocol-v3 complete
-grammar schema, the 12B Q4 server returned a 27-token valid proposal in 0.73 s;
-the end-to-end Rust smoke campaign accepted one topology on its first attempt.
-After the v4 repair, a fresh two-candidate end-to-end smoke accepted both in
-exactly two attempts. Each local request used about 5,300 prompt tokens and 16
-output tokens and took about 3.1 seconds on the 16 GB test GPU; no duplicate or
-invalid proposal was recorded.
+`response_format`, not model-specific function-call syntax. Before every call,
+the adapter removes all evaluated and rejected keys from the 12,024-member
+grammar. It then offers 96 unseen candidates:
+
+- one third are round-robin mutations of up to eight elites;
+- one third come from underrepresented structural classes; and
+- one third are deterministic random immigrants.
+
+The model can return only an opaque menu ID. The adapter translates that ID
+back to nine edges, after which Rust validates the topology again. IDs are
+shuffled, but every row identifies its source.
+
+In the publication run, Gemma selected 167 elite mutations, seven
+underrepresented-structure candidates, and 26 random immigrants. A
+menu-matched non-model selector has not yet been run. Score differences must
+therefore be attributed to the complete menu–model policy, not to Gemma alone.
+
+#### Authentication and thinking policy
+
+The local URL may omit `api_key_env` only because it is a loopback endpoint;
+the adapter rejects an unauthenticated remote endpoint. The example uses the
+same 8,000-token ceiling as MiniMax but disables Gemma's explicit thinking
+channel.
+
+This choice follows a failed 16 GB smoke test: Gemma 4 12B ignored a request
+for at most 500 reasoning tokens, generated more than 7,200, and timed out
+before returning nine integers. Direct menu selection is the reliable local
+baseline. It is a different proposer from thinking-enabled MiniMax and must
+remain a separate experimental arm.
+
+#### Local smoke-test evidence
+
+- With thinking disabled and the protocol-v3 complete-grammar schema, the 12B
+  Q4 server returned a valid 27-token proposal in 0.73 seconds. The Rust smoke
+  campaign accepted one topology on its first attempt.
+- After the protocol-v4 repair, a fresh two-candidate smoke run accepted both
+  candidates in exactly two attempts. Each request used about 5,300 prompt
+  tokens and 16 output tokens, and took about 3.1 seconds on the 16 GB test GPU.
+  The run recorded no duplicate or invalid proposal.
 
 Do not check in a local configuration or the key. A real agent row belongs in
 the headline comparison only after its result directory records the concrete

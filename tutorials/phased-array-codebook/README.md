@@ -230,17 +230,22 @@ each peak/HPBW niche. It publishes actual `u32` phase and attenuator codes, not
 only normalized optimizer coordinates. A caller can find the nearest entry
 and replay exactly those register settings.
 
-The 12,000-requested campaign made 12,024 batched calls and occupied 43 of 120
-niches (35.8%). Forty of the 43 elites stayed in the same *actual archive
-niche* on the representative holdout grid. Of all calls, 539 (4.48%) were
-invalid physics/evaluation results and 10,579 (87.98%) were evaluable but
-failed robust feasibility: 11,118 rejected calls (92.47%) in total.
-Independent random register mutations commonly create multi-lobed or
-insufficiently robust patterns. Analytic steered/tapered seeds are therefore
-essential. The archive intentionally retains feasible elites only, as required
-by the tutorial result schema; archiving penalized infeasible parents could
-improve exploration, but would weaken that artifact contract. At smoke scale,
-248 of 512 calls are analytic seeds, so smoke verifies plumbing rather than
+The 12,000-requested campaign produced:
+
+- 12,024 batched calls and 43 occupied niches out of 120 (35.8%);
+- 40 of 43 elites that remained in the same *actual archive niche* on the
+  representative holdout grid;
+- 539 invalid physics or evaluation results (4.48%); and
+- 10,579 evaluable candidates that failed robust feasibility (87.98%).
+
+Together, 11,118 calls (92.47%) were rejected. Independent random register
+mutations commonly create multi-lobed or insufficiently robust patterns, so
+analytic steered/tapered seeds are essential.
+
+The archive intentionally retains feasible elites only, as required by the
+tutorial result schema. Archiving penalized infeasible parents might improve
+exploration, but would weaken that artifact contract. At smoke scale, 248 of
+512 calls are analytic seeds; smoke therefore verifies plumbing rather than
 MAP-Elites exploration quality.
 
 ![Occupied peak-direction and beamwidth niches contain directly deployable register codes](images/qd-codebook.svg)

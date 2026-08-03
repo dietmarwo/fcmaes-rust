@@ -111,16 +111,19 @@ python scripts/build_book.py
 python scripts/check_book_links.py
 ```
 
-The consistency check derives tutorial and package counts from the tree and
-verifies the repeated inventories, registry-pin count, MODE count, release-tag
-command, and workspace lockfile versions. The build writes staged input to
-`target/mdbook-src` and rendered HTML to `target/book`. The `book/SUMMARY.md`
-file controls navigation. Do not edit the staged files; change the
-corresponding README, guide, tutorial, or benchmark instead. The rendered-link
-check validates pages, assets, and anchors after mdBook has applied its
-output-path rules. The documentation workflow checks the build on pull
-requests and deploys `main` through GitHub Pages. Repository
-administrators need to select
+The three commands cover different failure modes:
+
+- The consistency check derives tutorial and package counts from the tree. It
+  verifies repeated inventories, the registry-pin and MODE counts, the release
+  tag command, and workspace lockfile versions.
+- The build stages source under `target/mdbook-src` and writes rendered HTML to
+  `target/book`. Navigation comes from `book/SUMMARY.md`. Edit the canonical
+  README, guide, tutorial, or benchmark—not the staged files.
+- The rendered-link check validates pages, assets, and anchors after mdBook has
+  applied its output-path rules.
+
+The documentation workflow runs these checks on pull requests and deploys
+`main` through GitHub Pages. A repository administrator must select
 **GitHub Actions** once under **Settings → Pages → Build and deployment →
 Source**.
 

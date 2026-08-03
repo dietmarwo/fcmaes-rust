@@ -342,12 +342,16 @@ maintain duplicate copies of the guides or tutorial results.
 
 ## Optimizer comparison
 
+### Equal-budget GTOP results
+
 The reproducible [GTOP optimizer comparison](benchmarks/optimizer-comparison/comparison.md)
 uses 100 experiments per problem and a common 240,000-evaluation cap. fcmaes
 has the best mean optimum on six of seven problems and the lowest mean wall
 time on five of seven. The exception in mean solution quality is Tandem, where
 the adaptive BIPOP-CMA-ES restart strategy leads the equal-budget table but
 does not reach the `-1493` target.
+
+### Tandem stress test
 
 In the pre-registered Tandem stress test, BIPOP-CMA-ES reached 0/1,000 targets:
 its best result was -1410.050665 after 9,466,290,846 actual evaluations. In
@@ -359,16 +363,24 @@ The original Python/C++ fcmaes performance table reports a similar 81/100
 Tandem success rate; the linked report records both results and their exact
 parallel execution models.
 
+### Controlled CMA-ES implementation diagnostic
+
 The separate [controlled active CMA-ES implementation diagnostic](benchmarks/cmaes-implementation/README.md)
 holds the objective and parallel architecture much closer between
 `fcmaes-core` and `cmaes` 0.2.2. Its complete 20-pair campaign finds no
-universal quality winner: `cmaes` leads serial throughput on cheap and
-high-dimensional cases, while fcmaes-core leads median aggregate throughput
-under equal 16-instance multistart. The large difference in protective-stop
-behavior is reported explicitly rather than normalized away. Its easy
-analytic functions isolate implementation effects; they are not recommended
-CMA-ES workloads, and the serial speed gap is already negligible at 100 µs
-objective cost.
+universal quality winner:
+
+- `cmaes` leads serial throughput on cheap and high-dimensional cases.
+- `fcmaes-core` leads median aggregate throughput under equal 16-instance
+  multistart.
+- Protective-stop behavior differs substantially and is reported rather than
+  normalized away.
+
+The easy analytic functions isolate implementation effects; they are not
+recommended CMA-ES workloads. At 100 µs objective cost, the serial speed gap
+is already negligible.
+
+### Equal-wall parallel retry
 
 The complementary
 [GTOP equal-wall retry experiment](benchmarks/gtop-cmaes-retry/README.md) plugs
@@ -378,26 +390,33 @@ best-objective mean/sdev returned by one serial restart lane and by 16 lanes
 after the same four-second wait. Measured wall mean/sdev checks fairness;
 starts, evaluations, CPU time, and active cores expose the deliberately higher
 parallel work. This demonstrates that retry is an optimizer adapter rather
-than a facility reserved for fcmaes algorithms. A separate five-pair pilot
-retains equal-work scheduler-scaling evidence but is not the practical quality
-claim. In the completed seven-problem campaign, retry improves mean objective
-on every case and wins 86–96 of 100 pairs; it reduces sdev on five cases but
-increases it on SAGAS and Tandem. Both arms measure about 4.000 seconds, at
-roughly 1 versus 16 active cores.
+than a facility reserved for fcmaes algorithms.
+
+In the completed seven-problem campaign:
+
+- retry improves mean objective on every case and wins 86–96 of 100 pairs;
+- it reduces standard deviation on five cases but increases it on SAGAS and
+  Tandem; and
+- both arms measure about 4.000 seconds, at roughly 1 versus 16 active cores.
+
+A separate five-pair pilot retains equal-work scheduler-scaling evidence but
+is not part of the practical quality claim.
 
 ## Data-backed examples
 
-The examples are self-contained by default. The trading example includes an
-offline adjusted-close cache and can optionally refresh it through Yahoo
-Finance. The Mazda decision table and compact response-surface data are bundled
-under `examples/data/`; neither Mazda binary accepts or needs an external model
-path. See the [Mazda data notice](examples/data/MAZDA_NOTICE.md) for provenance
-and the benchmark's acknowledgement request. The
-[Multi-UAV data and compatibility notice](examples/data/UAV_NOTICE.md)
-documents the native task-assignment port and its source benchmark.
-The [Buckingham notice](examples/data/BUCKINGHAM_NOTICE.md) records the
-dimension-matrix catalog's provenance and the numerical port's deliberately
-narrower scope than BuckinghamPy.
+The examples are self-contained by default:
+
+- Trading includes an offline adjusted-close cache and can optionally refresh
+  it through Yahoo Finance.
+- Mazda bundles its decision table and compact response-surface data under
+  `examples/data/`; neither binary needs or accepts an external model path. The
+  [Mazda data notice](examples/data/MAZDA_NOTICE.md) records provenance and the
+  benchmark's acknowledgement request.
+- The [Multi-UAV data and compatibility notice](examples/data/UAV_NOTICE.md)
+  documents the native task-assignment port and source benchmark.
+- The [Buckingham notice](examples/data/BUCKINGHAM_NOTICE.md) records the
+  dimension-matrix catalog's provenance and the numerical port's deliberately
+  narrower scope than BuckinghamPy.
 
 Both Mazda drivers accept `--workers N` for ordered parallel objective batches;
 use `--workers 16` for sixteen evaluation threads or `--workers 0` to select
