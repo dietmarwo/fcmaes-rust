@@ -140,83 +140,72 @@ Corrected paired experiments keep Nelder–Mead, Bayesian optimization, and
 gradient solvers behind the retry adapter boundary instead of adding them as
 core algorithms or dependencies.
 
+### Tutorial evidence map
+
+The [tutorial index](tutorials/README.md) is the exhaustive catalogue. This
+shorter map highlights the main experimental decisions and validation results.
+
+#### Multi-objective and quality-diversity evidence
+
 Seventeen application tutorials retain multi-objective optimization.
-MAP-Elites campaigns are
-implemented and recorded for NeXosim, Rapier, ReBop, Brahe, atmospheric source
-localization, room ventilation, RustPower, sindr circuit design, Rapier
-quadruped locomotion, phased-array register codebooks, and energy-hub sizing;
-the
-SmartCore hyperparameter tutorial records a QD campaign that its own
-pre-registered criteria reject.
-That tutorial demonstrates an often missed part of optimizer benchmarking:
-fixed-fold tuning, disjoint model selection, frozen final evaluation, and
-probability-aware metrics must be part of the objective protocol. It also
-records the second of two descriptor case studies: descriptors that are
-emergent but mutually redundant collapse the archive onto a curve, so
-the original pair had rank correlation +0.999715 and occupied only 16/400
-cells among the same 271 feasible range-study candidates for which the
-replacement occupied 91/400. The subsequent MAP-Elites campaign reached 49.0%
-mean coverage, but niche retention still failed. RustPower
-additionally records a descriptor case study: its first pair of descriptors
-were decision variables and reached only 4% coverage, while emergent behavior
-coordinates measured from the solved scenarios reached 68% mean coverage over
-three seeds at the identical 100k-evaluation budget. Constrained MODE stays the
-primary formulation there, because the near-unique asset architecture the
-original pilot found survives the descriptor fix. The neural-controller
-tutorial is an
-intentional scalar showcase for PGPE and CR-FM-NES on a 118-parameter neural
-controller, with fixed and rotating common scenarios, disjoint validation, and
-a frozen 1,024-scenario final test. The fixed-sequence GTOC1 tutorial uses coordinated
-DE–CMA-ES and incumbent-seeded parallel retry on the real 87-variable GTOC1
-EVEEEJSJA low-thrust trajectory, and documents why its VSOP2013 score above
-the historical reference is not an official DE405 re-scoring. The sindr
-tutorial combines interpolated AC-response features, equal-budget retry,
-constrained MODE, and an E12 MAP-Elites catalogue. The transient gate-driver
-tutorial uses thevenin transient simulation for a constrained
-rise-time/overshoot gate-driver front, admitted only after timestep refinement
-and a 49-design ngspice comparison passed. The optical-lens tutorial implements and
-validates a dependency-free sequential geometric ray tracer before comparing
-scalar retries and a constrained Cooke-triplet front. The quadruped-gait tutorial makes
-quality diversity the primary result for an eight-motor Rapier quadruped and
-reports five-seed held-out terrain replay rather than treating training
-coverage as robustness. The GTOC1 route-search tutorial publishes a work-in-progress
-split-brain GTOC1 planet-order loop with a provider-independent agent boundary.
-Its completed seed-42 L0 audit finds 15 L0-admissible random routes, 24 from
-the repaired evolutionary arm, and none from MiniMax-M3. A predeclared
-random-arm L1 follow-up promotes the leader and two admissible controls; none
-passes closure. Independent seeds, matched three-arm L1 promotion, and a
-validated L2 finalist remain required before comparative or trajectory claims.
-The phased-array tutorial implements validated direct/FFT array-factor kernels, hardware
-quantization, robust scalar retry, constrained MODE, and a descriptor-gated
-register codebook. After correction to the archive's actual 12×10 grid, its
-peak-direction/HPBW pilot passes with 40.83% coverage and 95.07% holdout niche
-retention, so QD is accepted. The energy-hub tutorial wraps a proven-optimal pure-Rust dispatch LP inside robust
-energy-hub sizing, measures the convex baseline before adding tiers and
-switches, and reports candidate calls, LP solves, and simplex pivots
-separately. Its corrected native-grid descriptor pilot is accepted, followed
-by a 64-elite MAP-Elites portfolio; a chronological hydrogen arm then performs
-an independent 8,760-hour replay. The field-service tutorial uses
-assignment and priority random keys for robust field-service routing, proves
-the decoder's exact-once and plateau bounds, and records a failed descriptor
-gate rather than publishing an unstable dispatch repertoire. The water-network
-tutorial uses stepwise `epanet-rs` hydraulics for quantized pump scheduling, distinguishes
-DDA optimization from PDA validation, and rejects its MAP-Elites repertoire
-after unseen-demand same-niche retention misses the declared gate. The truss
-tutorial implements exact-k truss topology and catalogue-section sizing over a validated
-native FEM, reports typed mechanism and conditioning failures, and rejects its
-removal-survival QD descriptors after the frozen coverage gate fails. The
-network-coverage tutorial combines a linear-storage edge/group coverage kernel
-with separate cardinality and weighted vertex-cover certificates, exact tiny
-ILPs, a 4,000-variable throughput gate, and integer-aware DE/MODE. Its
-marginal-greedy prefix frontier dominates every finite MODE-generated point,
-so the tutorial recommends the specialist method for the frozen submodular
-formulation rather than manufacturing a generic-search win. The
-[tutorial index](tutorials/README.md) includes commands, figures, validation
-results and the common result schema. Compact canonical result directories are
-version-controlled with generated SVGs so raw-evidence links and deterministic
-rendering work from a clean clone. Schema-driven tutorials use `run.json`;
-room ventilation and neural policy search add aggregate CSV/plot checks
-spanning multiple seeds and validation studies.
+MAP-Elites campaigns are recorded for NeXosim, Rapier, ReBop, Brahe,
+atmospheric source
+localization, room ventilation, RustPower, sindr circuit design, quadruped
+locomotion, phased-array register codebooks, and energy-hub sizing.
+
+- **Descriptor redesign can help.** In RustPower, direct decision variables
+  produced only 4% archive coverage. Emergent behavior coordinates
+  reached 68% mean coverage over three seeds at the same 100k-evaluation
+  budget. Constrained MODE remains primary because the near-unique asset
+  architecture survived the descriptor change.
+- **A completed QD campaign can still fail its evidence gate.** The SmartCore
+  study separates fixed-fold tuning, model selection, and frozen final
+  evaluation. Replacing
+  two highly correlated descriptors increased range-study occupancy from
+  16/400 to 91/400 cells, but the subsequent 49.0%-coverage campaign still
+  failed held-out niche retention.
+- **Accepted descriptor gates.** The phased-array study reaches
+  40.83% coverage and 95.07% holdout niche retention on its corrected 12×10
+  grid. The energy-hub study follows its accepted native-grid pilot with a
+  64-elite portfolio and an independent
+  8,760-hour chronological hydrogen replay.
+- **Rejected descriptor gates are published too.** The field-service,
+  water-network, and truss-sizing studies reject unstable or weakly retained
+  repertoires instead of presenting them as successful QD results.
+
+#### Selected application protocols
+
+- **Policy search:** the neural-controller tutorial compares PGPE and CR-FM-NES
+  on a 118-parameter controller using common scenarios, disjoint validation,
+  and a frozen 1,024-scenario final test.
+- **Fixed-sequence astrodynamics:** the GTOC1 tutorial applies coordinated
+  DE–CMA-ES and incumbent-seeded retry to the real 87-variable EVEEEJSJA
+  low-thrust tour. It explains why its VSOP2013 result is not an official DE405
+  re-scoring.
+- **Split-brain route discovery:** the GTOC1 route-search tutorial keeps a
+  provider-independent agent boundary. Its seed-42 L0 audit finds 15 admissible
+  random routes, 24 evolutionary routes, and none from MiniMax-M3. The three
+  promoted random controls all fail L1 closure, so independent seeds, matched
+  promotion, and a validated L2 finalist remain open requirements.
+- **Circuits and optics:** the sindr study combines interpolated AC features,
+  retry, MODE, and an E12 catalogue. The gate-driver front passes timestep
+  refinement and a 49-design ngspice comparison. The optical-lens study
+  validates its dependency-free ray tracer before optimizing a Cooke-triplet
+  front.
+- **Robust locomotion:** the quadruped tutorial makes quality diversity the
+  primary result and uses five-seed held-out terrain replay rather than
+  treating training coverage as robustness.
+- **Specialist baselines:** the network-coverage tutorial validates its kernel
+  and certificates before optimization. Its marginal-greedy prefix frontier
+  dominates every finite MODE point, so the tutorial recommends the specialist
+  method for that frozen submodular formulation.
+
+#### Reproducibility
+
+Tutorial result directories contain the canonical raw evidence and generated
+SVGs needed to reproduce the published pages from a clean clone. Schema-driven
+tutorials use `run.json`; room ventilation and neural policy search also check
+aggregate CSVs and plots spanning multiple seeds and validation studies.
 
 Implemented algorithms include Differential Evolution, active CMA-ES,
 CR-FM-NES, PGPE, Dual Annealing, BiteOpt, MODE, CVT-MAP-Elites, the
