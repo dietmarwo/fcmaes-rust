@@ -18,15 +18,15 @@ Messenger Full remains excluded because its full 100-run measurement is too
 expensive for this test. Tandem was measured separately with the same
 configuration and is included here.
 
-| Problem | Runs | Absolute best | Stop value | Success rate | Mean wall time | Wall-time sdev |
-|---|---:|---:|---:|---:|---:|---:|
-| Cassini1 | 100 | 4.9307 | 4.95535 | 100% | 0.25 s | 0.12 s |
-| Cassini2 | 100 | 8.383 | 8.42491 | 100% | 4.16 s | 2.26 s |
-| Gtoc1 | 100 | -1581950 | -1574080 | 100% | 3.33 s | 2.87 s |
-| Messenger | 100 | 8.6299 | 8.673 | 100% | 3.36 s | 1.83 s |
-| Rosetta | 100 | 1.3433 | 1.35 | 100% | 4.58 s | 1.73 s |
-| Tandem | 100 | -1500.46 | -1493 | 85% | 40.21 s | 39.11 s |
-| Sagas | 100 | 18.188 | 18.279 | 100% | 0.90 s | 0.95 s |
+| Problem | Runs | Absolute best | Stop value | Success rate | Mean optimum | Sdev optimum | Mean evaluations | Mean wall time | Wall-time sdev |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| Cassini1 | 100 | 4.9307 | 4.95535 | 100% | 4.939523 | 0.007950 | 1,525,802 | 0.25 s | 0.12 s |
+| Cassini2 | 100 | 8.383 | 8.42491 | 100% | 8.411108 | 0.010416 | 19,890,045 | 4.16 s | 2.26 s |
+| Gtoc1 | 100 | -1581950 | -1574080 | 100% | -1578336.739669 | 2457.727903 | 14,729,200 | 3.33 s | 2.87 s |
+| Messenger | 100 | 8.6299 | 8.673 | 100% | 8.658779 | 0.008303 | 19,603,567 | 3.36 s | 1.83 s |
+| Rosetta | 100 | 1.3433 | 1.35 | 100% | 1.347849 | 0.001672 | 21,406,666 | 4.58 s | 1.73 s |
+| Tandem | 100 | -1500.46 | -1493 | 85% | -1488.503885 | 21.850556 | 230,727,025 | 40.21 s | 39.11 s |
+| Sagas | 100 | 18.188 | 18.279 | 100% | 18.199375 | 0.020433 | 8,978,824 | 0.90 s | 0.95 s |
 
 Raw data: [`benchmark_gtop_100_raw.tsv`](benchmark_gtop_100_raw.tsv) and
 [`benchmark_gtop_tandem_100_raw.tsv`](benchmark_gtop_tandem_100_raw.tsv).
@@ -47,8 +47,8 @@ Configuration:
 The coordinated test has an adaptive budget, not the 240,000-evaluation
 allowance used by the basic-retry and external-library comparison. A retry's
 limit grows linearly from 1,500 to 75,000 evaluations as the run ID approaches
-the per-problem retry cap. The exact theoretical ceilings and actual recorded
-means are:
+the per-problem retry cap. The ramp's mean is 38,250 evaluations, so each exact
+theoretical ceiling is `38,250 × retry cap`. The actual recorded means are:
 
 | Problem | Retry cap | Exact configured ceiling | Mean actual evaluations | Actual range |
 |---|---:|---:|---:|---:|
@@ -84,15 +84,15 @@ This benchmark includes Tandem, excludes Messenger Full, and uses 24
 independent BiteOpt retries of at most 10,000 evaluations on 24 native worker
 threads for every experiment.
 
-| Problem | Runs | Absolute best | Stop value | Success rate | Mean optimum | Sdev optimum | Mean wall time | Wall-time sdev |
-|---|---:|---:|---:|---:|---:|---:|---:|---:|
-| Cassini1 | 100 | 4.9307 | 4.95535 | 57% | 5.094738 | 0.180157 | 0.05 s | 0.00 s |
-| Cassini2 | 100 | 8.383 | 8.42491 | 0% | 13.778437 | 2.559722 | 0.07 s | 0.00 s |
-| Gtoc1 | 100 | -1581950 | -1574080 | 0% | -1103593.281024 | 142070.428562 | 0.08 s | 0.00 s |
-| Messenger | 100 | 8.6299 | 8.673 | 0% | 11.896085 | 0.930384 | 0.06 s | 0.00 s |
-| Rosetta | 100 | 1.3433 | 1.35 | 0% | 4.358705 | 1.120562 | 0.07 s | 0.00 s |
-| Tandem | 100 | -1500.46 | -1493 | 0% | -419.987695 | 168.414195 | 0.07 s | 0.00 s |
-| Sagas | 100 | 18.188 | 18.279 | 2% | 83.081492 | 52.445301 | 0.03 s | 0.00 s |
+| Problem | Runs | Absolute best | Stop value | Success rate | Mean optimum | Sdev optimum | Mean evaluations | Mean wall time | Wall-time sdev |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| Cassini1 | 100 | 4.9307 | 4.95535 | 57% | 5.094738 | 0.180157 | 236,597 | 0.05 s | 0.00 s |
+| Cassini2 | 100 | 8.383 | 8.42491 | 0% | 13.778437 | 2.559722 | 240,000 | 0.07 s | 0.00 s |
+| Gtoc1 | 100 | -1581950 | -1574080 | 0% | -1103593.281024 | 142070.428562 | 240,000 | 0.08 s | 0.00 s |
+| Messenger | 100 | 8.6299 | 8.673 | 0% | 11.896085 | 0.930384 | 240,000 | 0.06 s | 0.00 s |
+| Rosetta | 100 | 1.3433 | 1.35 | 0% | 4.358705 | 1.120562 | 240,000 | 0.07 s | 0.00 s |
+| Tandem | 100 | -1500.46 | -1493 | 0% | -419.987695 | 168.414195 | 240,000 | 0.07 s | 0.00 s |
+| Sagas | 100 | 18.188 | 18.279 | 2% | 83.081492 | 52.445301 | 239,913 | 0.03 s | 0.00 s |
 
 Raw data:
 [`benchmark_biteopt_gtop_rust_100_raw.tsv`](benchmark_biteopt_gtop_rust_100_raw.tsv).
@@ -103,15 +103,21 @@ This test has the same 100 experiments, 24 workers, 24 retries, and 10,000
 evaluations per retry as the BiteOpt test. Each retry assigns 4,000 evaluations
 to Differential Evolution and 6,000 to active CMA-ES.
 
-| Problem | Runs | Absolute best | Stop value | Success rate | Mean optimum | Sdev optimum | Mean wall time | Wall-time sdev |
-|---|---:|---:|---:|---:|---:|---:|---:|---:|
-| Cassini1 | 100 | 4.9307 | 4.95535 | 22% | 5.343353 | 0.889715 | 0.05 s | 0.00 s |
-| Cassini2 | 100 | 8.383 | 8.42491 | 0% | 13.324033 | 2.034216 | 0.07 s | 0.00 s |
-| Gtoc1 | 100 | -1581950 | -1574080 | 0% | -1102350.655440 | 143746.821645 | 0.07 s | 0.00 s |
-| Messenger | 100 | 8.6299 | 8.673 | 0% | 11.042875 | 0.750887 | 0.05 s | 0.00 s |
-| Rosetta | 100 | 1.3433 | 1.35 | 0% | 2.705204 | 0.846640 | 0.07 s | 0.00 s |
-| Tandem | 100 | -1500.46 | -1493 | 0% | -490.089599 | 181.284594 | 0.06 s | 0.00 s |
-| Sagas | 100 | 18.188 | 18.279 | 0% | 111.796178 | 68.411041 | 0.03 s | 0.00 s |
+| Problem | Runs | Absolute best | Stop value | Success rate | Mean optimum | Sdev optimum | Mean evaluations | Mean wall time | Wall-time sdev |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| Cassini1 | 100 | 4.9307 | 4.95535 | 22% | 5.343353 | 0.889715 | 238,227 | 0.05 s | 0.00 s |
+| Cassini2 | 100 | 8.383 | 8.42491 | 0% | 13.324033 | 2.034216 | 240,153 | 0.07 s | 0.00 s |
+| Gtoc1 | 100 | -1581950 | -1574080 | 0% | -1102350.655440 | 143746.821645 | 239,224 | 0.07 s | 0.00 s |
+| Messenger | 100 | 8.6299 | 8.673 | 0% | 11.042875 | 0.750887 | 240,574 | 0.05 s | 0.00 s |
+| Rosetta | 100 | 1.3433 | 1.35 | 0% | 2.705204 | 0.846640 | 240,729 | 0.07 s | 0.00 s |
+| Tandem | 100 | -1500.46 | -1493 | 0% | -490.089599 | 181.284594 | 240,755 | 0.06 s | 0.00 s |
+| Sagas | 100 | 18.188 | 18.279 | 0% | 111.796178 | 68.411041 | 227,294 | 0.03 s | 0.00 s |
+
+The 240,000 value is the requested budget. DE and CMA-ES complete their
+current population batch, so mean actual work can exceed it slightly; the
+largest mean overshoot above is 755 evaluations (0.31%). Values below the
+request reflect early target stops or optimizer termination; the success
+column distinguishes target attainment.
 
 Raw data:
 [`benchmark_de_cma_gtop_rust_100_raw.tsv`](benchmark_de_cma_gtop_rust_100_raw.tsv).
@@ -143,6 +149,12 @@ improves from 38/100 to 100/100. Both arms remain at 0/100 target success on the
 other six cases, so the result is not presented as a four-second solution of
 the GTOP suite. Serial and retry wall means stay within 4.000109–4.000523 s,
 while measured active cores are approximately 1 and 16.
+
+The paired win count is mainly a scheduler check. The retry arm completed
+14.75–15.00 times as many independent starts; under iid restarts with no
+information sharing, that ratio predicts a 93.7%–93.8% win probability. The
+observed win/tie/loss counts are consistent with that null. The mean and sdev
+columns quantify the more informative change in the returned distribution.
 
 The original SAGAS block found a physically impossible negative time-to-50-AU
 value. A nonnegative travel-time guard was added to the port and the complete

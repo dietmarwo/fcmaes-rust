@@ -44,8 +44,9 @@ The controlled [GTOP equal-wall experiment](benchmarks/gtop-cmaes-retry/README.m
 wrapped the external, serial `cmaes` crate and compared one restart lane with
 16 lanes on a 16-physical-core Ryzen 9 9950X. Both arms waited approximately
 4.000 seconds per pair. Across 100 paired seeds on each of seven problems,
-retry improved the mean returned objective on **7/7 problems** and won
-**86–96/100 pairs**:
+retry improved the mean returned objective on **7/7 problems**. It won
+86–96/100 pairs, close to the roughly 94% expected when independent retry gets
+about 15 times as many starts:
 
 | Equal-wall evidence | Serial external CMA-ES | Through `fcmaes` retry |
 |---|---:|---:|
@@ -56,9 +57,12 @@ retry improved the mean returned objective on **7/7 problems** and won
 
 This is the practical library design claim: on that fixed machine and
 protocol, retry bought better mean quality for the same wait by spending more
-aggregate CPU work. It is not a theorem for every objective or budget. The
-full quality, wall-time, and work-accounting tables are in the benchmark
-report; variability fell on five problems but rose on SAGAS and Tandem.
+aggregate CPU work. The paired win rate mainly confirms that the scheduler
+delivered those extra independent opportunities; the mean and sdev quantify
+their effect on the returned distribution. This is not a theorem for every
+objective or budget. The full quality, wall-time, and work-accounting tables
+are in the benchmark report; variability fell on five problems but rose on
+SAGAS and Tandem.
 
 ### Two complementary ways to spend the cores
 
@@ -346,19 +350,25 @@ maintain duplicate copies of the guides or tutorial results.
 
 The reproducible [GTOP optimizer comparison](benchmarks/optimizer-comparison/comparison.md)
 uses 100 experiments per problem and a common 240,000-evaluation cap. fcmaes
-has the best mean optimum on six of seven problems and the lowest mean wall
-time on five of seven. The exception in mean solution quality is Tandem, where
-the adaptive BIPOP-CMA-ES restart strategy leads the equal-budget table but
-does not reach the `-1493` target.
+has the best mean optimum on six of seven problems. Its independent BiteOpt
+retry arm has the lowest mean optimizer wall time per actual evaluation on all
+seven, at 142–310 ns/evaluation. Raw total wall time is not the headline speed
+measure because plain `cmaes` CMA-ES stops protectively after using only
+7.4%–58.8% of its allowance. The exception in mean solution quality is Tandem,
+where adaptive BIPOP-CMA-ES leads the equal-budget table but does not reach the
+`-1493` target.
 
 ### Tandem stress test
 
 In the pre-registered Tandem stress test, BIPOP-CMA-ES reached 0/1,000 targets:
 its best result was -1410.050665 after 9,466,290,846 actual evaluations. In
 contrast, fcmaes coordinated DE→CMA retry reached the target in 85/100
-experiments with a mean of 230,727,025 evaluations. These are separate budget
-regimes: the first comparison is equal-budget, while the latter result
-demonstrates the benefit of adaptive retry coordination on a hard problem.
+experiments with a mean of 230,727,025 evaluations. Across their complete
+campaigns, the 100 fcmaes experiments used 23.07 billion actual evaluations,
+2.44 times the 9.47 billion used by the 1,000-retry stress test. These are
+separate budget regimes and allocations: the equal-budget table supports the
+controlled comparison, while the larger coordinated result demonstrates the
+benefit of adaptive retry coordination on a hard problem.
 The original Python/C++ fcmaes performance table reports a similar 81/100
 Tandem success rate; the linked report records both results and their exact
 parallel execution models.
@@ -398,6 +408,11 @@ In the completed seven-problem campaign:
 - it reduces standard deviation on five cases but increases it on SAGAS and
   Tandem; and
 - both arms measure about 4.000 seconds, at roughly 1 versus 16 active cores.
+
+Because the retry arm completed about 15 times as many independent starts, iid
+restart order statistics alone predict a win rate near 15/16, or 94%. The
+observed wins are consistent with that baseline; the improved means measure the
+distributional benefit relevant to the user.
 
 A separate five-pair pilot retains equal-work scheduler-scaling evidence but
 is not part of the practical quality claim.

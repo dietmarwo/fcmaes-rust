@@ -97,6 +97,26 @@ def pstd(values: list[float]) -> float:
     return statistics.pstdev(values)
 
 
+def optimizer_ranges(
+    grouped: dict[tuple[str, str, str, str], list[dict[str, str]]],
+    optimizer: tuple[str, str, str],
+) -> tuple[float, float, float, float]:
+    budget_use = []
+    wall_ns_per_evaluation = []
+    for problem in PROBLEM_ORDER:
+        rows = grouped[(*optimizer, problem)]
+        actual = mean([float(row["actual_evaluations"]) for row in rows])
+        seconds = mean([float(row["wall_seconds"]) for row in rows])
+        budget_use.append(100.0 * actual / COMMON_BUDGET)
+        wall_ns_per_evaluation.append(1.0e9 * seconds / actual)
+    return (
+        min(budget_use),
+        max(budget_use),
+        min(wall_ns_per_evaluation),
+        max(wall_ns_per_evaluation),
+    )
+
+
 def read_coordinated() -> dict[str, list[dict[str, str]]]:
     grouped: dict[str, list[dict[str, str]]] = defaultdict(list)
     for path in COORDINATED_RAW:
@@ -133,6 +153,9 @@ def render_tandem_stress() -> list[str]:
     successes = sum(row["success"] == "true" for row in rows)
     selected = metadata["selected"]
     candidates = metadata["candidate_mean_optima"]
+    coordinated_tandem = read_coordinated()["tandem"]
+    coordinated_total = sum(float(row["evaluations"]) for row in coordinated_tandem)
+    stress_total = sum(evaluations)
     lines = [
         "## Tandem long-retry stress test",
         "",
@@ -164,6 +187,12 @@ def render_tandem_stress() -> list[str]:
             "",
             f"Mean single-retry optimizer time was {mean(seconds):.3f} s "
             f"(population sdev {pstd(seconds):.3f} s).",
+            "",
+            "For budget context, the 100 coordinated fcmaes Tandem experiments "
+            f"used {coordinated_total:,.0f} actual evaluations in total, versus "
+            f"{stress_total:,.0f} here—a {coordinated_total / stress_total:.2f}× "
+            "larger total. The campaigns use different sample counts and budget "
+            "allocation, so this is not an equal-budget comparison.",
             "",
         ]
     )
@@ -208,6 +237,13 @@ def render(rows: list[dict[str, str]]) -> str:
         if run_ids != set(range(EXPECTED_RUNS)):
             raise SystemExit(f"{'/'.join(key)} has an incomplete run index set")
 
+    biteopt_ranges = optimizer_ranges(
+        grouped, ("fcmaes", "BiteOpt", "independent-retries")
+    )
+    cmaes_ranges = optimizer_ranges(
+        grouped, ("cmaes", "CMA-ES", "parallel-population")
+    )
+
     lines = [
         "# GTOP optimizer comparison",
         "",
@@ -231,8 +267,10 @@ def render(rows: list[dict[str, str]]) -> str:
         "",
         "## Main results",
         "",
-        "- fcmaes produces the best mean final optimum on six of seven problems "
-        "and the lowest mean optimizer wall time on five of seven.",
+        "- fcmaes produces the best mean final optimum on six of seven problems. "
+        "Its BiteOpt retry arm has the lowest mean optimizer wall time per actual "
+        f"evaluation on all seven ({biteopt_ranges[2]:.0f}–{biteopt_ranges[3]:.0f} "
+        "ns/evaluation).",
         "- BIPOP-CMA-ES produces the best equal-budget Tandem mean "
         "(-495.388325), but no equal-budget method reaches the `-1493` target.",
         "- The pre-registered BIPOP-CMA-ES stress test also reaches 0/1,000 "
@@ -243,7 +281,32 @@ def render(rows: list[dict[str, str]]) -> str:
         "evaluations on average—so this is evidence for adaptive coordination, "
         "not an equal-budget comparison.",
         "",
+        "The plain `cmaes` CMA-ES arm consumes only "
+        f"{cmaes_ranges[0]:.1f}%–{cmaes_ranges[1]:.1f}% of its configured budget "
+        "because of protective stops that its adapter cannot disable. Raw total "
+        "wall time is therefore not a like-for-like speed statistic for that arm.",
+        "",
+        "## Budget use and user-visible throughput",
+        "",
+        "Budget use is mean actual evaluations divided by the 240,000 configured "
+        "maximum. Wall ns/evaluation divides mean optimizer wall time by mean "
+        "actual evaluations. It is a fixed-machine throughput measure, not CPU "
+        "efficiency: worker counts and parallel architectures differ by arm.",
+        "",
+        "| Library / algorithm | Parallel mode | Budget-use range | Mean wall ns/evaluation range |",
+        "|---|---|---:|---:|",
     ]
+
+    for library, algorithm, mode in OPTIMIZER_ORDER:
+        minimum_use, maximum_use, minimum_ns, maximum_ns = optimizer_ranges(
+            grouped, (library, algorithm, mode)
+        )
+        lines.append(
+            f"| {library} / {algorithm} | {mode} | "
+            f"{minimum_use:.1f}%–{maximum_use:.1f}% | "
+            f"{minimum_ns:.0f}–{maximum_ns:.0f} |"
+        )
+    lines.append("")
 
     for problem in PROBLEM_ORDER:
         lines.extend(
@@ -313,7 +376,8 @@ def render(rows: list[dict[str, str]]) -> str:
             "",
             "The coordinated ceilings are the exact sums of retry limits growing "
             "linearly from 1,500 to 75,000 evaluations over each problem's retry "
-            "cap. Every recorded run consumed less than its theoretical ceiling. "
+            "cap: the 38,250-evaluation ramp mean multiplied by the retry cap. "
+            "Every recorded run consumed less than its theoretical ceiling. "
             "These results demonstrate the quality available from fcmaes "
             "coordination at a larger budget; they are not an equal-budget "
             "wall-time comparison.",
@@ -351,6 +415,14 @@ def render(rows: list[dict[str, str]]) -> str:
             "rather than treating every method as straight retry.",
             "- Population optimizers use their native population evaluation. Equal "
             "evaluation budgets and worker caps do not make their search topology identical.",
+            "- Plain `cmaes` CMA-ES can terminate on non-disableable protective "
+            "criteria and uses only 7.4%–58.8% of the common allowance across these "
+            "problems. It is not wrapped in a restart layer; BIPOP-CMA-ES is the "
+            "budget-spending counterpart. This affects both quality and raw wall time.",
+            "- `argmin` PSO, `genetic_algorithms` L-SHADE, and `math-optimisation` "
+            "DE have no early-target stop in these adapters. None reaches a target, "
+            "so quality is unaffected; on Cassini1 and SAGAS their wall times include "
+            "work that a successful early-stopping arm could skip.",
             "- `cmaes` is unconstrained, so its adapter searches normalized coordinates "
             "and reflects out-of-range coordinates into `[0,1]` before decoding the "
             "original GTOP bounds.",
@@ -361,8 +433,10 @@ def render(rows: list[dict[str, str]]) -> str:
             "comparison workspace and is not a dependency of fcmaes-rust.",
             "",
             "The individual raw files and the combined `raw/all_results.tsv` contain "
-            "every seed, final objective, actual evaluation count, success flag, and "
-            "wall-time measurement.",
+            "every seed, final objective, configured and actual evaluation count, "
+            "success flag, and wall-time measurement. Those two evaluation columns "
+            "make budget utilization auditable without reconstructing termination "
+            "reasons that were not recorded by the historical adapters.",
             "",
         ]
     )

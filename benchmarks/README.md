@@ -72,10 +72,13 @@ Measured wall mean/sdev verifies comparable user wait, while starts,
 evaluations, CPU time, and active cores document the extra parallel work.
 In its completed 100-pair campaign, retry improves mean objective on every one
 of the seven GTOP problems at the matched four-second wall allowance and wins
-86–96 pairs per problem. The linked benchmark README contains the complete
-quality, equal-wall fairness, and compute-work tables. It also demonstrates
-that generic fcmaes retry can coordinate a compatible single-threaded external
-optimizer; the optimizer need not be implemented by fcmaes-core.
+86–96 pairs per problem. With about 15 times as many independent starts, iid
+restart order statistics predict a win rate near 94%; the observed wins mainly
+confirm the scheduler. The mean and sdev columns carry the distributional
+result. The linked benchmark README contains the complete quality, equal-wall
+fairness, and compute-work tables. It also demonstrates that generic fcmaes
+retry can coordinate a compatible single-threaded external optimizer; the
+optimizer need not be implemented by fcmaes-core.
 
 Reproduce the dependency-isolated optimizer-boundary experiment using the
 commands in its [protocol](optimizer-boundary/README.md). It keeps the

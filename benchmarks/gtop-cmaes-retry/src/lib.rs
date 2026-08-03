@@ -925,6 +925,7 @@ deadline comparability in the separate work table.\n\n\
                     .push((*serial, *parallel));
             }
         }
+        let mut start_ratios = Vec::new();
         for ((problem, workers), pairs) in pairs_by_group {
             let (serial_best, serial_best_sdev) =
                 mean_sdev(pairs.iter().map(|(serial, _)| serial.best));
@@ -941,12 +942,36 @@ deadline comparability in the separate work table.\n\n\
             let losses = pairs.len() - wins - ties;
             let serial_successes = pairs.iter().filter(|(serial, _)| serial.success).count();
             let retry_successes = pairs.iter().filter(|(_, retry)| retry.success).count();
+            let (serial_starts, _) = mean_sdev(
+                pairs
+                    .iter()
+                    .map(|(serial, _)| serial.optimizer_starts as f64),
+            );
+            let (retry_starts, _) =
+                mean_sdev(pairs.iter().map(|(_, retry)| retry.optimizer_starts as f64));
+            if serial_starts > 0.0 {
+                start_ratios.push(retry_starts / serial_starts);
+            }
             writeln!(
                 output,
                 "| {problem} | {workers} | {} | {serial_successes}/{} | {retry_successes}/{} | {serial_best:.6} | {serial_best_sdev:.6} | {retry_best:.6} | {retry_best_sdev:.6} | {wins}/{ties}/{losses} |",
                 pairs.len(),
                 pairs.len(),
                 pairs.len(),
+            )
+            .expect("writing to String cannot fail");
+        }
+        if !start_ratios.is_empty() {
+            let minimum_ratio = start_ratios.iter().copied().fold(f64::INFINITY, f64::min);
+            let maximum_ratio = start_ratios
+                .iter()
+                .copied()
+                .fold(f64::NEG_INFINITY, f64::max);
+            let minimum_expected = 100.0 * minimum_ratio / (minimum_ratio + 1.0);
+            let maximum_expected = 100.0 * maximum_ratio / (maximum_ratio + 1.0);
+            writeln!(
+                output,
+                "\nThe paired win count is primarily a scheduler check. Mean-start ratios range from {minimum_ratio:.2}× to {maximum_ratio:.2}×. Under iid independent restarts with no information sharing, a `k`-to-one ratio predicts a retry win probability of `k/(k+1)`, or {minimum_expected:.1}%–{maximum_expected:.1}% here. The observed W/T/L values are consistent with that baseline; the mean and sdev columns quantify the returned solution distribution."
             )
             .expect("writing to String cannot fail");
         }

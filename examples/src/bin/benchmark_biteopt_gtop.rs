@@ -68,8 +68,8 @@ fn render_markdown(algorithm: Algorithm, summaries: &[BenchmarkSummary]) -> Stri
     );
     let mut output = format!(
         "## {table_title}\n\n\
-         | Problem | Runs | Absolute best | Stop value | Success rate | Mean optimum | Sdev optimum | Mean time | Sdev time |\n\
-         |---|---:|---:|---:|---:|---:|---:|---:|---:|\n"
+         | Problem | Runs | Absolute best | Stop value | Success rate | Mean optimum | Sdev optimum | Mean evaluations | Mean time | Sdev time |\n\
+         |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|\n"
     );
     for summary in summaries {
         let base = &summary.base;
@@ -80,7 +80,7 @@ fn render_markdown(algorithm: Algorithm, summaries: &[BenchmarkSummary]) -> Stri
         };
         writeln!(
             output,
-            "| {} | {} | {} | {} | {:.0}% | {:.6} | {:.6} | {:.2}s | {:.2}s |",
+            "| {} | {} | {} | {} | {:.0}% | {:.6} | {:.6} | {:.0} | {:.2}s | {:.2}s |",
             base.problem,
             base.runs,
             base.absolute_best_label,
@@ -88,6 +88,7 @@ fn render_markdown(algorithm: Algorithm, summaries: &[BenchmarkSummary]) -> Stri
             success_rate,
             summary.mean_optimum,
             summary.sdev_optimum,
+            base.mean_evaluations,
             base.mean_seconds,
             base.sdev_seconds
         )
@@ -407,7 +408,7 @@ mod tests {
         assert!((summary.sdev_optimum - 0.025).abs() < 1.0e-12);
         assert!(
             render_markdown(Algorithm::Biteopt, std::slice::from_ref(&summary)).contains(
-                "| Cassini1 | 2 | 4.9307 | 4.95535 | 50% | 4.975000 | 0.025000 | 2.00s | 1.00s |"
+                "| Cassini1 | 2 | 4.9307 | 4.95535 | 50% | 4.975000 | 0.025000 | 10 | 2.00s | 1.00s |"
             )
         );
         assert!(

@@ -184,6 +184,12 @@ every case and won 86–96 pairs. It improved the standard deviation on only
 five cases; SAGAS and Tandem retained larger retry spreads, and six cases had
 zero target successes in both arms.
 
+The retry arm completed about 15 times as many independent starts. Under iid
+restarts with no information sharing, that alone predicts a win probability of
+about 15/16, or 94%. The observed win count therefore confirms the scheduling
+mechanism; the mean and standard deviation describe the resulting quality
+distribution.
+
 The result shows how parallel retry can buy more opportunities without making
 the user wait longer. It does not remove the need for an appropriate optimizer,
 coordination strategy, or budget.

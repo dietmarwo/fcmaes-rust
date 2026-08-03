@@ -130,6 +130,11 @@ At the 10-second endpoint, the preregistered paired objective counts are:
 | B: population parallel | 84 | 90 | 266 | 440 |
 | C: independent multistart | 75 | 80 | 285 | 440 |
 
+Wins use the same conservative relative tie rule as the generated report:
+`|a-b| <= 1e-10 * max(1, |a|, |b|)`. A plain floating-point `<` comparison
+would count tiny differences after both implementations reached the same
+optimum as wins; for Arm A it would change 96/78/266 into 286/97/57.
+
 These aggregate counts do **not** identify a universal quality winner. Easy
 cases contribute many ties, while Rastrigin, Cassini1, and the short expensive
 Ellipsoid endpoints split in problem-specific ways. The exhaustive

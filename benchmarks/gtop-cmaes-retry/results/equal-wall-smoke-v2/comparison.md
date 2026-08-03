@@ -21,6 +21,8 @@ deadline comparability in the separate work table.
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
 | cassini1 | 16 | 3 | 0/3 | 0/3 | 11.020164 | 0.016744 | 5.303421 | 0.000000 | 3/0/0 |
 
+The paired win count is primarily a scheduler check. Mean-start ratios range from 17.25× to 17.25×. Under iid independent restarts with no information sharing, a `k`-to-one ratio predicts a retry win probability of `k/(k+1)`, or 94.5%–94.5% here. The observed W/T/L values are consistent with that baseline; the mean and sdev columns quantify the returned solution distribution.
+
 ### Equal-wall work audit
 
 The arms intentionally do not use equal CPU work. These counts document how

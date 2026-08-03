@@ -27,6 +27,8 @@ deadline comparability in the separate work table.
 | sagas | 16 | 100 | 0/100 | 0/100 | 171.742982 | 35.723425 | 120.593375 | 48.152676 | 92/7/1 |
 | tandem | 16 | 100 | 0/100 | 0/100 | -201.495632 | 206.305874 | -598.689263 | 216.831269 | 93/7/0 |
 
+The paired win count is primarily a scheduler check. Mean-start ratios range from 14.75× to 15.00×. Under iid independent restarts with no information sharing, a `k`-to-one ratio predicts a retry win probability of `k/(k+1)`, or 93.7%–93.8% here. The observed W/T/L values are consistent with that baseline; the mean and sdev columns quantify the returned solution distribution.
+
 ### Equal-wall work audit
 
 The arms intentionally do not use equal CPU work. These counts document how

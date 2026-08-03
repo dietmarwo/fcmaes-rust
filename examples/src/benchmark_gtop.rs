@@ -38,6 +38,9 @@ pub struct ProblemSummary {
     pub absolute_best_label: &'static str,
     pub stop_value_label: &'static str,
     pub successes: usize,
+    pub mean_optimum: f64,
+    pub sdev_optimum: f64,
+    pub mean_evaluations: f64,
     pub mean_seconds: f64,
     pub sdev_seconds: f64,
 }
@@ -206,7 +209,14 @@ pub fn mean_sdev(values: &[f64]) -> (f64, f64) {
 }
 
 pub fn summarize(case: &BenchmarkCase, records: &[RunRecord]) -> ProblemSummary {
+    let values: Vec<f64> = records.iter().map(|record| record.value).collect();
+    let evaluations: Vec<f64> = records
+        .iter()
+        .map(|record| record.evaluations as f64)
+        .collect();
     let times: Vec<f64> = records.iter().map(|record| record.wall_seconds).collect();
+    let (mean_optimum, sdev_optimum) = mean_sdev(&values);
+    let (mean_evaluations, _) = mean_sdev(&evaluations);
     let (mean_seconds, sdev_seconds) = mean_sdev(&times);
     ProblemSummary {
         problem: case.display_name,
@@ -214,6 +224,9 @@ pub fn summarize(case: &BenchmarkCase, records: &[RunRecord]) -> ProblemSummary 
         absolute_best_label: case.absolute_best_label,
         stop_value_label: case.stop_value_label,
         successes: records.iter().filter(|record| record.success).count(),
+        mean_optimum,
+        sdev_optimum,
+        mean_evaluations,
         mean_seconds,
         sdev_seconds,
     }
@@ -231,8 +244,8 @@ pub fn render_markdown(summaries: &[ProblemSummary]) -> String {
 pub fn render_markdown_with_title(title: &str, summaries: &[ProblemSummary]) -> String {
     let mut output = format!(
         "## {title}\n\n\
-         | Problem | Runs | Absolute best | Stop value | Success rate | Mean time | Sdev time |\n\
-         |---|---:|---:|---:|---:|---:|---:|\n"
+         | Problem | Runs | Absolute best | Stop value | Success rate | Mean optimum | Sdev optimum | Mean evaluations | Mean time | Sdev time |\n\
+         |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|\n"
     );
     for summary in summaries {
         let success_rate = if summary.runs == 0 {
@@ -242,12 +255,15 @@ pub fn render_markdown_with_title(title: &str, summaries: &[ProblemSummary]) -> 
         };
         writeln!(
             output,
-            "| {} | {} | {} | {} | {:.0}% | {:.2}s | {:.2}s |",
+            "| {} | {} | {} | {} | {:.0}% | {:.6} | {:.6} | {:.0} | {:.2}s | {:.2}s |",
             summary.problem,
             summary.runs,
             summary.absolute_best_label,
             summary.stop_value_label,
             success_rate,
+            summary.mean_optimum,
+            summary.sdev_optimum,
+            summary.mean_evaluations,
             summary.mean_seconds,
             summary.sdev_seconds
         )
@@ -301,12 +317,17 @@ mod tests {
             absolute_best_label: "4.9307",
             stop_value_label: "4.95535",
             successes: 99,
+            mean_optimum: 4.94,
+            sdev_optimum: 0.01,
+            mean_evaluations: 123_456.0,
             mean_seconds: 0.125,
             sdev_seconds: 0.025,
         };
         let table = render_markdown(&[summary]);
         assert!(table.contains("GTOP coordinated retry results"));
-        assert!(table.contains("| Cassini1 | 100 | 4.9307 | 4.95535 | 99% | 0.12s | 0.03s |"));
+        assert!(table.contains(
+            "| Cassini1 | 100 | 4.9307 | 4.95535 | 99% | 4.940000 | 0.010000 | 123456 | 0.12s | 0.03s |"
+        ));
     }
 
     #[test]

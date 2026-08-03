@@ -112,6 +112,13 @@ while improving the mean. Only Cassini1 reaches its target in this short
 protocol. The result therefore demonstrates better equal-wall opportunity, not
 that four seconds of CMA-ES solves the GTOP suite.
 
+The win rate is primarily a scheduler check. The retry arm completes
+14.75–15.00 times as many independent starts as the serial arm. If starts are
+iid and share no information, a `k`-to-one start ratio predicts a retry win
+probability of `k/(k+1)`—93.7%–93.8% here. The observed W/T/L values are
+consistent with that null. The mean and sdev columns quantify the more
+informative change in the returned solution distribution.
+
 ### Equal-wall fairness audit
 
 The wall-time distributions overlap to within measurement and scheduling

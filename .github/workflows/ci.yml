@@ -127,6 +127,22 @@ jobs:
             benchmarks/optimizer-boundary/results/decision-v2/comparison.md \
             /tmp/optimizer-boundary-comparison.md
 
+  optimizer-comparison:
+    name: Optimizer-comparison evidence
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Verify published sources and results
+        working-directory: benchmarks/optimizer-comparison
+        run: sha256sum --check SHA256SUMS
+      - name: Re-render checked-in comparison
+        run: |
+          python benchmarks/optimizer-comparison/render_report.py
+          git diff --exit-code -- benchmarks/optimizer-comparison
+
   cmaes-implementation:
     name: Active CMA-ES implementation diagnostic
     runs-on: ubuntu-latest

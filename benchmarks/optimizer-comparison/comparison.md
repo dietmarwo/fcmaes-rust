@@ -10,10 +10,27 @@ Standard deviations use the population definition (`ddof=0`). Wall time covers o
 
 ## Main results
 
-- fcmaes produces the best mean final optimum on six of seven problems and the lowest mean optimizer wall time on five of seven.
+- fcmaes produces the best mean final optimum on six of seven problems. Its BiteOpt retry arm has the lowest mean optimizer wall time per actual evaluation on all seven (142–310 ns/evaluation).
 - BIPOP-CMA-ES produces the best equal-budget Tandem mean (-495.388325), but no equal-budget method reaches the `-1493` target.
 - The pre-registered BIPOP-CMA-ES stress test also reaches 0/1,000 targets with 10,000,000 configured evaluations per retry; its best result is -1410.050665 after 9,466,290,846 actual evaluations.
 - fcmaes coordinated DE→CMA retry reaches the Tandem target in 85/100 experiments. It uses a much larger adaptive budget—230,727,025 actual evaluations on average—so this is evidence for adaptive coordination, not an equal-budget comparison.
+
+The plain `cmaes` CMA-ES arm consumes only 7.4%–58.8% of its configured budget because of protective stops that its adapter cannot disable. Raw total wall time is therefore not a like-for-like speed statistic for that arm.
+
+## Budget use and user-visible throughput
+
+Budget use is mean actual evaluations divided by the 240,000 configured maximum. Wall ns/evaluation divides mean optimizer wall time by mean actual evaluations. It is a fixed-machine throughput measure, not CPU efficiency: worker counts and parallel architectures differ by arm.
+
+| Library / algorithm | Parallel mode | Budget-use range | Mean wall ns/evaluation range |
+|---|---|---:|---:|
+| fcmaes / BiteOpt | independent-retries | 98.6%–100.0% | 142–310 |
+| fcmaes / DE→CMA | coordinated-retries | 96.9%–100.0% | 158–328 |
+| fcmaes / BiteOpt | ask-tell-batch | 92.2%–100.0% | 1445–2508 |
+| cmaes / CMA-ES | parallel-population | 7.4%–58.8% | 1378–3060 |
+| cmaes / BIPOP-CMA-ES | parallel-bipop | 98.3%–100.0% | 2188–4571 |
+| genetic_algorithms / L-SHADE | native-serial | 100.0%–100.0% | 2322–5446 |
+| math-optimisation / DE/best/1/bin | parallel-population | 98.1%–100.0% | 426–641 |
+| argmin / PSO | parallel-population | 100.0%–100.0% | 1064–1553 |
 
 ## Cassini1
 
@@ -120,7 +137,7 @@ The native coordinated DE→CMA retry results use adaptive budgets that are much
 | Tandem | 85% | 230,727,025 | 961.4× | 765,000,000 |
 | Sagas | 100% | 8,978,824 | 37.4× | 153,000,000 |
 
-The coordinated ceilings are the exact sums of retry limits growing linearly from 1,500 to 75,000 evaluations over each problem's retry cap. Every recorded run consumed less than its theoretical ceiling. These results demonstrate the quality available from fcmaes coordination at a larger budget; they are not an equal-budget wall-time comparison.
+The coordinated ceilings are the exact sums of retry limits growing linearly from 1,500 to 75,000 evaluations over each problem's retry cap: the 38,250-evaluation ramp mean multiplied by the retry cap. Every recorded run consumed less than its theoretical ceiling. These results demonstrate the quality available from fcmaes coordination at a larger budget; they are not an equal-budget wall-time comparison.
 
 For context, the original Python/C++ fcmaes [Performance report](https://github.com/dietmarwo/fast-cma-es/blob/master/tutorials/Performance.adoc) records 81/100 Tandem successes, 166.92 s mean wall time, and 147.87 s wall-time sdev with 32 parallel Python processes. The native Rust run records 85/100, 40.207 s, and 39.105 s using 32 native retry threads. This is a historical implementation comparison, not the equal-budget crate comparison above.
 
@@ -146,6 +163,8 @@ The stress test ran 1,000 independent retries with 10,000,000 evaluations allowe
 
 Mean single-retry optimizer time was 53.039 s (population sdev 5.040 s).
 
+For budget context, the 100 coordinated fcmaes Tandem experiments used 23,072,702,540 actual evaluations in total, versus 9,466,290,846 here—a 2.44× larger total. The campaigns use different sample counts and budget allocation, so this is not an equal-budget comparison.
+
 None of the 1,000 long retries reached the Tandem stop value `-1493`. This is strong empirical evidence for this implementation and configuration, not a mathematical impossibility result.
 
 ## Interpretation constraints
@@ -155,8 +174,10 @@ None of the 1,000 long retries reached the Tandem stop value `-1493`. This is st
 - BIPOP-CMA-ES is itself an adaptive restart strategy, not plain single-population CMA-ES: it dynamically allocates restarts between small and increasingly large populations. Its conceptual counterpart is coordinated retry, while BiteOpt retry remains the fixed-budget independent-restart baseline.
 - BiteOpt also adapts selectors inside each optimizer state. This is different from BIPOP population-size adaptation and coordinated retry's cross-run sigma/box adaptation; the table exposes all three rather than treating every method as straight retry.
 - Population optimizers use their native population evaluation. Equal evaluation budgets and worker caps do not make their search topology identical.
+- Plain `cmaes` CMA-ES can terminate on non-disableable protective criteria and uses only 7.4%–58.8% of the common allowance across these problems. It is not wrapped in a restart layer; BIPOP-CMA-ES is the budget-spending counterpart. This affects both quality and raw wall time.
+- `argmin` PSO, `genetic_algorithms` L-SHADE, and `math-optimisation` DE have no early-target stop in these adapters. None reaches a target, so quality is unaffected; on Cassini1 and SAGAS their wall times include work that a successful early-stopping arm could skip.
 - `cmaes` is unconstrained, so its adapter searches normalized coordinates and reflects out-of-range coordinates into `[0,1]` before decoding the original GTOP bounds.
 - `genetic_algorithms` DE does not enforce `RangeGene` bounds during mutation. Its adapter reflects trials into the declared box before objective evaluation.
 - `math-optimisation` is GPL-3.0-or-later. It is built only in the external comparison workspace and is not a dependency of fcmaes-rust.
 
-The individual raw files and the combined `raw/all_results.tsv` contain every seed, final objective, actual evaluation count, success flag, and wall-time measurement.
+The individual raw files and the combined `raw/all_results.tsv` contain every seed, final objective, configured and actual evaluation count, success flag, and wall-time measurement. Those two evaluation columns make budget utilization auditable without reconstructing termination reasons that were not recorded by the historical adapters.
