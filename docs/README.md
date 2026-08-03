@@ -15,6 +15,7 @@ API examples, and primary algorithm references are in the
 | Document | Read this for |
 |---|---|
 | [AI problem-solving context](../ai-context.md) | Selecting algorithms, parameters, budgets, encodings, and validation for a new user problem |
+| [Security policy](../SECURITY.md) | Supported releases and private reporting for security or silent optimization-integrity failures |
 | [Foundations](../foundations/README.md) | Seven compact lessons, standard academic suites, Lennard-Jones scaling with a required gradient reference, analytic fronts, and audited indicators |
 | [Getting started](getting-started.md) | Building, testing, generating rustdoc, and running a first optimizer |
 | [Choosing an optimizer](choosing-an-optimizer.md) | Deciding whether fcmaes-rust, a structured solver, gradients, a surrogate, or another search representation fits the problem |

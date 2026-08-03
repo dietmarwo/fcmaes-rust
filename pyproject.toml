@@ -43,6 +43,7 @@ Repository = "https://github.com/dietmarwo/fcmaes-rust"
 Documentation = "https://dietmarwo.github.io/fcmaes-rust/"
 Issues = "https://github.com/dietmarwo/fcmaes-rust/issues"
 Changelog = "https://github.com/dietmarwo/fcmaes-rust/blob/main/CHANGELOG.md"
+Security = "https://github.com/dietmarwo/fcmaes-rust/security/policy"
 
 [tool.maturin]
 manifest-path = "crates/fcmaes-py/Cargo.toml"

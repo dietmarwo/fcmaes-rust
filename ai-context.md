@@ -36,6 +36,30 @@ C/C++ compiler. Building the Python package from its source distribution does
 require Rust. Do not tell a Python user to install the historical `fcmaes`
 package when they asked specifically for this Rust implementation.
 
+The current synchronized registry release is 0.1.4. It adds audited
+multi-objective quality indicators, schedule-independent retry seeds, exact
+ragged MAP-Elites grid layouts, public non-dominated-sort/crowding utilities,
+the optimizer-boundary evidence, and the standalone Foundations and
+Lennard-Jones studies. The repository contains twenty-two application
+tutorials in addition to Foundations; do not add Foundations to that tutorial
+count.
+
+Current `main` adds two implementation diagnostics that affect algorithm
+advice. The equal-wall GTOP campaign wraps the external serial `cmaes` crate
+with generic parallel retry: at the same four-second wait, retry improves mean
+quality on all seven problems and wins 86–96 of 100 paired seeds, while using
+the otherwise idle cores for more independent starts. This is evidence for
+retry's execution model, not proof that every problem benefits equally. The
+controlled active-CMA-ES comparison is an implementation diagnostic rather
+than a general CMA-ES performance benchmark.
+
+Population ask/tell is the complementary way to spend cores. Parallelize one
+asked population when objective evaluation is expensive and feedback can wait
+for the batch; use outer retry when independent starts and early completed
+runs are more valuable. Every fcmaes population optimizer exposes an ask/tell
+boundary; Dual Annealing is the sequential non-population exception. External
+optimizers can use generic retry without becoming `fcmaes-core` dependencies.
+
 ## Required workflow for the AI
 
 Before selecting an algorithm, create a problem card containing the following
@@ -734,6 +758,13 @@ Before declaring success, the AI should:
   bitwise reproducible.
 - Preserve a small deterministic smoke configuration in tests.
 
+Treat silent candidate/result misassociation, out-of-bounds returned points,
+reversed feasibility semantics, or materially false deterministic
+seed/budget accounting as potential numerical-integrity security issues.
+Follow [`SECURITY.md`](SECURITY.md) and report credible cases privately through
+GitHub's security-advisory form. Ordinary stochastic variation and failure to
+reach a global optimum are not security defects.
+
 ## Failure diagnosis
 
 | Symptom | Likely cause | First action |
@@ -773,10 +804,11 @@ Before declaring success, the AI should:
   tests supporting the combinatorial encoding cookbook.
 - `examples/src/buckingham.rs`: nullspace parameterization that makes every
   continuous optimizer trial dimensionally valid.
-- `tutorials/README.md`: nine native application-optimization tutorials,
-  MODE/MAP-Elites selection, stochastic validation, parallelism ownership,
-  validation-aware hyperparameter tuning, fixed-topology neural policy search,
-  and the Diffsol gradient-based counterexample.
+- `foundations/README.md`: standard scalar/multi-objective suites, indicator
+  evidence, Lennard-Jones scaling, and the seven-step lesson ladder.
+- `tutorials/README.md`: all twenty-two native application-optimization
+  tutorials, MODE/MAP-Elites selection, stochastic validation, parallelism
+  ownership, split-brain protocols, and the Diffsol gradient counterexample.
 - `tutorials/ml-hyperparameter-tuning/`: native probability forests,
   mixed-variable decoding, fixed-fold tuning, disjoint selection, frozen final
   evaluation, fair baselines, constrained MODE, and a MAP-Elites pilot.
@@ -786,6 +818,16 @@ Before declaring success, the AI should:
 - `tutorials/neural-controller-policy-search/`: PGPE, CR-FM-NES, active
   CMA-ES, and BiteOpt under an equal direct-policy-search protocol with
   common scenarios, disjoint validation, a frozen test, and scaling evidence.
+- `benchmarks/gtop-cmaes-retry/README.md`: equal-wall evidence for applying
+  generic parallel retry to an external serial optimizer.
+- `benchmarks/cmaes-implementation/README.md`: controlled implementation
+  diagnostic, protocol boundaries, and publication evidence.
+- `docs/optimizer-boundary.md`: measured reason local, Bayesian, gradient, and
+  structured solvers stay behind the adapter boundary.
+- `SECURITY.md`: supported-release policy and private reporting process for
+  security and silent optimization-integrity failures.
+- `CHANGELOG.md`: synchronized release history and current-main changes.
+- `RELEASING.md`: Trusted Publishing, artifact, tag, and clean-consumer checks.
 - Generated rustdoc: `cargo doc --workspace --no-deps --open`.
 
 When code and this guide disagree, treat the current public Rust API and tests

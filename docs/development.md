@@ -91,7 +91,7 @@ RUSTC_BOOTSTRAP=1 cargo rustdoc -p fcmaes-core --lib -- \
   -Z unstable-options --show-coverage
 ```
 
-The 0.1.3 release reports 399/399 public items documented. The compile-time
+The 0.1.4 release reports 452/452 public items documented. The compile-time
 lint and CI documentation build prevent that count from silently regressing.
 
 ## Build the documentation site

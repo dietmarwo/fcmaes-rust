@@ -19,6 +19,7 @@ TOP_LEVEL_FILES = (
     "README.md",
     "CHANGELOG.md",
     "RELEASING.md",
+    "SECURITY.md",
     "ai-context.md",
     "LICENSE",
 )

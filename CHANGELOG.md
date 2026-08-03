@@ -8,6 +8,10 @@ phase, with breaking changes called out explicitly.
 
 ### Added
 
+- Added a security policy covering supported releases, private disclosure,
+  Python/FFI and dependency issues, and silent optimizer-integrity failures;
+  linked it from the package metadata, repository guide, and mdBook.
+
 - Added a dependency-isolated GTOP experiment that runs external serial
   `cmaes` through one serial restart lane and through physical-core restart
   lanes coordinated by generic `fcmaes_core::retry`. The primary 100-pair,
@@ -46,6 +50,11 @@ phase, with breaking changes called out explicitly.
   replace it with 200 validated rows and zero false target successes.
 
 ### Changed
+
+- Updated the AI operational context for the published 0.1.4 surface,
+  twenty-two tutorials, equal-wall retry evidence, population ask/tell,
+  optimizer boundary, and current reference map; refreshed the measured
+  Rustdoc coverage from 399 to 452 documented public items.
 
 - Promoted equal-wall solution quality to an explicit retry design principle
   in the main README and retry guide. The external-CMA GTOP benchmark now

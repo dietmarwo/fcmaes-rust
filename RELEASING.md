@@ -11,6 +11,11 @@ The synchronized release version is defined in `[workspace.package]`.
 Publication is irreversible: never reuse a version after uploading it to
 either registry.
 
+The production repository has completed its registry bootstrap and uses
+Trusted Publishing for both artifacts. The setup and first-release steps are
+retained for recovery or a new fork; routine releases start with the
+pre-release checks.
+
 ## One-time registry setup
 
 1. Create and protect a GitHub environment named `release`.
@@ -69,7 +74,7 @@ The release commit must have:
 - passing CI;
 - no uncommitted generated artifacts.
 
-## First crates.io release
+## First crates.io release for a new registry project
 
 Authenticate without placing the token in shell history:
 

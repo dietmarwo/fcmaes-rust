@@ -105,6 +105,7 @@
   - [Buckingham–Pi data](examples/data/BUCKINGHAM_NOTICE.md)
 - [`fcmaes-core` package overview](crates/fcmaes-core/README.md)
 - [Development and testing](docs/development.md)
+- [Security policy](SECURITY.md)
 - [Release history](CHANGELOG.md)
 - [Publishing checklist](RELEASING.md)
 - [AI problem-solving context](ai-context.md)
