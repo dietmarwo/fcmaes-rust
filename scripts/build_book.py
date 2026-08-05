@@ -14,6 +14,7 @@ ROOT = Path(__file__).resolve().parents[1]
 STAGING = ROOT / "target" / "mdbook-src"
 SOURCE = STAGING / "src"
 OUTPUT = ROOT / "target" / "book"
+PRINT_OUTPUT = ROOT / "target" / "book-pdf"
 
 TOP_LEVEL_FILES = (
     "README.md",
@@ -119,9 +120,26 @@ def main() -> None:
         action="store_true",
         help="assemble target/mdbook-src but do not invoke mdbook",
     )
+    parser.add_argument(
+        "--print",
+        action="store_true",
+        help="enable print.html and write the PDF source book to target/book-pdf",
+    )
     args = parser.parse_args()
 
     prepare()
+    output = OUTPUT
+    if args.print:
+        configuration = STAGING / "book.toml"
+        rendered = configuration.read_text(encoding="utf-8")
+        disabled = "[output.html.print]\nenable = false"
+        if disabled not in rendered:
+            raise RuntimeError("book configuration has no disabled HTML print output")
+        configuration.write_text(
+            rendered.replace(disabled, "[output.html.print]\nenable = true"),
+            encoding="utf-8",
+        )
+        output = PRINT_OUTPUT
     if not args.prepare_only:
         subprocess.run(
             [
@@ -129,7 +147,7 @@ def main() -> None:
                 "build",
                 str(STAGING),
                 "--dest-dir",
-                str(OUTPUT),
+                str(output),
             ],
             check=True,
         )

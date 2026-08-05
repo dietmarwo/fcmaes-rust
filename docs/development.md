@@ -111,6 +111,18 @@ python scripts/build_book.py
 python scripts/check_book_links.py
 ```
 
+Build and verify the complete PDF edition separately:
+
+```bash
+python scripts/build_book.py --print
+python scripts/build_book_pdf.py
+```
+
+The PDF builder needs Chrome or Chromium plus `mutool`. It creates a
+navigable bookmark tree, keeps chapter links inside the book, converts links
+to repository artifacts into portable GitHub URLs, and writes
+`docs/fcmaes-rust-book.pdf`.
+
 The three commands cover different failure modes:
 
 - The consistency check derives tutorial and package counts from the tree. It
