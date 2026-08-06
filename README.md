@@ -11,6 +11,10 @@
 [![PyPI](https://img.shields.io/pypi/v/fcmaes_rust.svg?cacheSeconds=300)](https://pypi.org/project/fcmaes-rust/)
 [![mdBook guide](https://img.shields.io/badge/guide-mdBook-blue)](https://dietmarwo.github.io/fcmaes-rust/)
 
+[Slides (PDF)](https://github.com/dietmarwo/fcmaes-rust/blob/main/docs/fcmaes-rust-slides.pdf)
+· [Book (PDF)](https://github.com/dietmarwo/fcmaes-rust/blob/main/docs/fcmaes-rust-book.pdf)
+· [YouTube video](https://youtu.be/c8MIu3_dZyY)
+
 `fcmaes-rust` is a native Rust implementation of fast, parallel,
 gradient-free optimization algorithms and selected fcmaes application
 examples. The optimizer implementation in `fcmaes-core` is 100% Rust: it does
