@@ -22,6 +22,14 @@ not compile, link, load, or call the original fast-cma-es C++ implementation.
 Optimizer numerics, retry coordination, random-number generation, fitness
 evaluation, and parallel execution all run in Rust.
 
+`fcmaes-rust` reimplements the algorithm set of
+[fast-cma-es](https://github.com/dietmarwo/fast-cma-es) natively in Rust
+rather than wrapping it, and is an alternative for both Rust and Python
+users via its PyO3 API. For objectives written in Python, prefer the Python library
+[fast-cma-es](https://github.com/dietmarwo/fast-cma-es): it uses
+multiprocessing, so Python objectives evaluate in parallel. The PyO3
+API here is the better fit when the objective itself is in Rust.
+
 In this project, “port” means that algorithms were translated, reimplemented,
 and tested in Rust. It does not mean an FFI wrapper around the old C++ code;
 the public API documentation explains the algorithms through their primary
