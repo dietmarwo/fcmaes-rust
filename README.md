@@ -5,6 +5,8 @@
 # fcmaes-rust
 
 ![Pure Rust optimizer core](https://img.shields.io/badge/optimizer%20core-100%25%20Rust-brightgreen)
+[![unsafe forbidden](https://img.shields.io/badge/unsafe-forbidden-success.svg)
+](https://github.com/rust-secure-code/safety-dance/)
 ![No C++ backend](https://img.shields.io/badge/C%2B%2B%20backend-none-brightgreen)
 [![crates.io](https://img.shields.io/crates/v/fcmaes-core.svg?cacheSeconds=300)](https://crates.io/crates/fcmaes-core)
 [![docs.rs](https://docs.rs/fcmaes-core/badge.svg)](https://docs.rs/fcmaes-core)
