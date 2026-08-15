@@ -8,6 +8,10 @@ phase, with breaking changes called out explicitly.
 
 ### Added
 
+- Added `#![forbid(unsafe_code)]` to all three workspace crates
+  (fcmaes-core, fcmaes-gtop, fcmaes-py). The crates contain no unsafe
+  code and this is now enforced at compile time.
+
 - Added a security policy covering supported releases, private disclosure,
   Python/FFI and dependency issues, and silent optimizer-integrity failures;
   linked it from the package metadata, repository guide, and mdBook.
