@@ -4,6 +4,7 @@
 //! private `fcmaes_rust._fcmaes_ext` module. The public Python facade lives
 //! in `python/fcmaes_rust/__init__.py`.
 
+#![forbid(unsafe_code)]
 use numpy::PyReadonlyArray1;
 use pyo3::prelude::*;
 use pyo3::types::PyDict;
