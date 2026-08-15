@@ -5,6 +5,7 @@
 //! functions keep the original decision-vector layouts and sanitize invalid
 //! numerical results to the same large penalty used by the Python facade.
 
+#![forbid(unsafe_code)]
 #![allow(clippy::excessive_precision)] // preserve the original GTOP constants verbatim
 
 use std::f64::consts::PI;
