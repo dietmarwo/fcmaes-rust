@@ -6,6 +6,8 @@ phase, with breaking changes called out explicitly.
 
 ## [Unreleased]
 
+## [0.1.5] - 2026-08-13
+
 ### Added
 
 - Added `#![forbid(unsafe_code)]` to all three workspace crates
