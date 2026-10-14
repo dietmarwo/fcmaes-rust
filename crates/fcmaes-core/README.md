@@ -13,6 +13,9 @@ cargo add fcmaes-core
 
 The minimum supported Rust version is 1.88.
 
+An exact two-objective Pareto archive with incremental hypervolume is available
+as `ParetoArchive2D`. See [archive usage and MODE integration](PARETO_ARCHIVE.md).
+
 ## Minimal example
 
 ```rust

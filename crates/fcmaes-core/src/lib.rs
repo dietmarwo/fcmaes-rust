@@ -19,6 +19,7 @@ pub mod indicators;
 pub mod mapelites;
 pub mod mode;
 pub mod moretry;
+pub mod pareto;
 pub mod pgpe;
 pub mod retry;
 pub mod rng;
@@ -44,6 +45,10 @@ pub use mode::{Mode, ModeParams, ModeResult};
 pub use moretry::{
     MoRetryConfig, MoRetryEntry, MoRetryResult, MultiObjective, WeightedObjective, moretry,
     pareto_indices, scalarize,
+};
+pub use pareto::{
+    BatchUpdateError, Bounds as ParetoBounds2D, Error as ParetoError, ParetoArchive2D,
+    Score as ParetoScore,
 };
 pub use pgpe::{Pgpe, PgpeParams, PgpeResult};
 pub use retry::{
