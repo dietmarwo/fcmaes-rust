@@ -205,20 +205,13 @@ impl LennardJones {
         let (lower, upper) = self.bounds();
         validate_decision(decision, &lower, &upper)?;
         match self.parameterization {
-            Parameterization::Free => Ok(decision
-                .chunks_exact(3)
-                .map(|point| [point[0], point[1], point[2]])
-                .collect()),
+            Parameterization::Free => Ok(decision.as_chunks::<3>().0.to_vec()),
             Parameterization::FixedFrame => {
                 let mut points = Vec::with_capacity(self.atoms);
                 points.push([0.0, 0.0, 0.0]);
                 points.push([decision[0], 0.0, 0.0]);
                 points.push([decision[1], decision[2], 0.0]);
-                points.extend(
-                    decision[3..]
-                        .chunks_exact(3)
-                        .map(|point| [point[0], point[1], point[2]]),
-                );
+                points.extend_from_slice(decision[3..].as_chunks::<3>().0);
                 Ok(points)
             }
         }

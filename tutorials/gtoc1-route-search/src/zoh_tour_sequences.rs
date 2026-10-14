@@ -494,10 +494,7 @@ fn resample_sims_controls(
             "invalid Sims-Flanagan warm-leg dimension",
         ));
     }
-    let source = source[offset..]
-        .chunks_exact(3)
-        .map(|values| [values[0], values[1], values[2]])
-        .collect::<Vec<_>>();
+    let source = source[offset..].as_chunks::<3>().0.to_vec();
     let source_segments = f64::from(
         u32::try_from(checkpoint.segments)
             .map_err(|_| Gtoc1Error::Numerical("warm segment count too large"))?,
