@@ -104,6 +104,7 @@
   - [Multi-UAV data](examples/data/UAV_NOTICE.md)
   - [Buckingham–Pi data](examples/data/BUCKINGHAM_NOTICE.md)
 - [`fcmaes-core` package overview](crates/fcmaes-core/README.md)
+  - [Exact 2D Pareto archive](crates/fcmaes-core/PARETO_ARCHIVE.md)
 - [Development and testing](docs/development.md)
 - [Security policy](SECURITY.md)
 - [Release history](CHANGELOG.md)

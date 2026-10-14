@@ -13,6 +13,11 @@ cargo add fcmaes-core
 
 The minimum supported Rust version is 1.88.
 
+`ParetoArchive2D` is an exact two-objective Pareto archive with incremental
+hypervolume, a Rust port derived from `bitehv2.h` in Aleksey Vaneev's
+[BiteOpt](https://github.com/avaneev/biteopt) repository. See
+[PARETO_ARCHIVE.md](PARETO_ARCHIVE.md).
+
 ## Minimal example
 
 ```rust
