@@ -984,7 +984,7 @@ pub fn optimize_route(
         .lower()
         .iter()
         .zip(bounds.upper())
-        .map(|(&lower, &upper)| 0.5 * (lower + upper))
+        .map(|(&lower, &upper)| lower.midpoint(upper))
         .collect::<Vec<_>>();
     let tracker = FailureTracker::default();
     let objective = |coordinates: &[f64]| match route.evaluate(coordinates) {

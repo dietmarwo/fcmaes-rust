@@ -831,7 +831,7 @@ fn repair_relative_velocities(
     if incoming_norm == 0.0 || outgoing_norm == 0.0 {
         return Err(Gtoc1Error::Numerical("zero flyby excess speed"));
     }
-    let common_norm = 0.5 * (incoming_norm + outgoing_norm);
+    let common_norm = incoming_norm.midpoint(outgoing_norm);
     let incoming_direction = scale(incoming, 1.0 / incoming_norm);
     let outgoing_direction = scale(outgoing, 1.0 / outgoing_norm);
     let original_angle = dot(incoming_direction, outgoing_direction)

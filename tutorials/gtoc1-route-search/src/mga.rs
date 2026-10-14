@@ -370,7 +370,7 @@ fn optimize_mga_with_profile(
             .lower()
             .iter()
             .zip(codec_bounds.upper())
-            .map(|(&lower, &upper)| 0.5 * (lower + upper))
+            .map(|(&lower, &upper)| lower.midpoint(upper))
             .collect::<Vec<_>>();
         route
             .codec()
@@ -686,7 +686,7 @@ mod tests {
                 .lower()
                 .iter()
                 .zip(codec_bounds.upper())
-                .map(|(&lower, &upper)| 0.5 * (lower + upper))
+                .map(|(&lower, &upper)| lower.midpoint(upper))
                 .collect::<Vec<_>>();
             let physical = route.codec().decode(&midpoint).unwrap();
             assert!(physical.total_flight_days() <= MAXIMUM_FLIGHT_DAYS);

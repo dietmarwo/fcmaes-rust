@@ -565,7 +565,7 @@ fn repair_relative_velocities(
     if incoming_norm == 0.0 || outgoing_norm == 0.0 {
         return Err(Gtoc1Error::Numerical("zero flyby excess speed"));
     }
-    let common_norm = 0.5 * (incoming_norm + outgoing_norm);
+    let common_norm = incoming_norm.midpoint(outgoing_norm);
     let incoming_direction = scale(incoming, 1.0 / incoming_norm);
     let outgoing_direction = scale(outgoing, 1.0 / outgoing_norm);
     let original_angle = dot(incoming_direction, outgoing_direction)
@@ -791,10 +791,7 @@ impl LowThrustLegProblem {
             } else {
                 (self.fixed_departure_velocity, 0.0, 0_usize, 1_usize)
             };
-        let throttles = x[offset..]
-            .chunks_exact(3)
-            .map(|chunk| [chunk[0], chunk[1], chunk[2]])
-            .collect::<Vec<_>>();
+        let throttles = x[offset..].as_chunks::<3>().0.to_vec();
         let maximum_throttle = throttles
             .iter()
             .map(|control| norm(*control))
@@ -863,10 +860,7 @@ impl LowThrustLegProblem {
         } else {
             (self.fixed_departure_velocity, 1)
         };
-        let throttles = x[offset..]
-            .chunks_exact(3)
-            .map(|chunk| [chunk[0], chunk[1], chunk[2]])
-            .collect::<Vec<_>>();
+        let throttles = x[offset..].as_chunks::<3>().0.to_vec();
         let mut state = join_state(self.initial_position, departure_velocity);
         let mut mass = evaluation.initial_mass_kg;
         let segment_duration = self.duration_seconds

@@ -2060,10 +2060,8 @@ impl BiteOpt {
         if self.use_par_opt == 1 {
             self.use_par_opt = self.select(sel::PAR_OPT2);
         }
-        let step;
-        let which_pop;
-        if self.use_par_opt == 0 {
-            step = self.spher.optimize(&mut self.rnd, obj);
+        let (step, which_pop) = if self.use_par_opt == 0 {
+            let step = self.spher.optimize(&mut self.rnd, obj);
             if step.stall > 0 {
                 self.use_par_opt = 1;
             }
@@ -2072,9 +2070,9 @@ impl BiteOpt {
                 self.spher.init(&mut self.rnd, Some(&best), 0.5);
                 self.par_opt_pop.reset_cur_pop_pos();
             }
-            which_pop = 0;
+            (step, 0)
         } else {
-            step = self.nmseq.optimize(&mut self.rnd, obj);
+            let step = self.nmseq.optimize(&mut self.rnd, obj);
             if step.stall > 0 {
                 self.use_par_opt = 0;
             }
@@ -2083,8 +2081,8 @@ impl BiteOpt {
                 self.nmseq.init(&mut self.rnd, Some(&best), 1.0);
                 self.par_opt2_pop.reset_cur_pop_pos();
             }
-            which_pop = 1;
-        }
+            (step, 1)
+        };
         let mut tmp = self.take_tmp();
         for i in 0..self.param_count {
             tmp[i] = ((step.values[i] - self.min_values[i]) * self.diff_values_i[i]) as i64;

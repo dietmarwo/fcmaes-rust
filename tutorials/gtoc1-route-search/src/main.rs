@@ -282,7 +282,7 @@ fn physical_decision(
         .lower()
         .iter()
         .zip(bounds.upper())
-        .map(|(&lower, &upper)| 0.5 * (lower + upper))
+        .map(|(&lower, &upper)| lower.midpoint(upper))
         .collect::<Vec<_>>();
     Ok(route.codec().decode(&midpoint)?)
 }

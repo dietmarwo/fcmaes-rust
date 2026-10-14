@@ -377,6 +377,9 @@ fn synthesize(
                 truth.lateral_dispersion_scale() * lateral_mismatch,
                 truth.vertical_dispersion_scale() * vertical_mismatch,
             );
+            // Fixed irrational phase multiplier of the published noise model;
+            // keep the literal so generated data stays bit-identical.
+            #[allow(clippy::approx_constant)]
             let relative_noise = 0.075 * (phase * 1.618_033_988_75).sin();
             let background = 0.004 * (1.0 + (phase * 0.41).cos());
             measured = (measured * (1.0 + relative_noise) + background).max(0.0);

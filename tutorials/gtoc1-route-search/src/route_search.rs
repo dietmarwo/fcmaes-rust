@@ -667,9 +667,9 @@ fn capped_allocation(extra: f64, capacities: &[f64], weights: &[f64]) -> Vec<f64
     while allocated_at(high) < extra {
         high *= 2.0;
     }
-    let mut low = 0.0;
+    let mut low = 0.0_f64;
     for _ in 0..100 {
-        let middle = 0.5 * (low + high);
+        let middle = low.midpoint(high);
         if allocated_at(middle) < extra {
             low = middle;
         } else {
