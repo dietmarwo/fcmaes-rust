@@ -37,6 +37,8 @@ jobs:
         # Lint failures still fail the job (last step), but no longer
         # skip the tests; the matcher turns errors into annotations.
         continue-on-error: true
+        env:
+          CARGO_TERM_COLOR: never  # plain output, so the matcher can parse it
         run: |
           echo "::add-matcher::.github/rust-problem-matcher.json"
           cargo clippy --workspace --all-targets -- -D warnings
@@ -78,6 +80,8 @@ jobs:
         # Lint failures still fail the job (last step), but no longer
         # skip the tests; the matcher turns errors into annotations.
         continue-on-error: true
+        env:
+          CARGO_TERM_COLOR: never  # plain output, so the matcher can parse it
         run: |
           echo "::add-matcher::.github/rust-problem-matcher.json"
           cargo clippy --manifest-path foundations/Cargo.toml --all-targets --all-features --locked -- -D warnings
@@ -133,6 +137,8 @@ jobs:
         # Lint failures still fail the job (last step), but no longer
         # skip the tests; the matcher turns errors into annotations.
         continue-on-error: true
+        env:
+          CARGO_TERM_COLOR: never  # plain output, so the matcher can parse it
         run: |
           echo "::add-matcher::.github/rust-problem-matcher.json"
           cargo clippy --release --locked --all-targets --manifest-path benchmarks/optimizer-boundary/Cargo.toml -- -D warnings
@@ -193,6 +199,8 @@ jobs:
         # Lint failures still fail the job (last step), but no longer
         # skip the tests; the matcher turns errors into annotations.
         continue-on-error: true
+        env:
+          CARGO_TERM_COLOR: never  # plain output, so the matcher can parse it
         run: |
           echo "::add-matcher::.github/rust-problem-matcher.json"
           cargo clippy --locked --all-targets --manifest-path benchmarks/cmaes-implementation/Cargo.toml -- -D warnings
@@ -285,6 +293,8 @@ jobs:
         # Lint failures still fail the job (last step), but no longer
         # skip the tests; the matcher turns errors into annotations.
         continue-on-error: true
+        env:
+          CARGO_TERM_COLOR: never  # plain output, so the matcher can parse it
         run: |
           echo "::add-matcher::.github/rust-problem-matcher.json"
           cargo clippy --locked --all-targets --manifest-path benchmarks/gtop-cmaes-retry/Cargo.toml -- -D warnings
@@ -401,6 +411,8 @@ jobs:
         # Lint failures still fail the job (last step), but no longer
         # skip the tests; the matcher turns errors into annotations.
         continue-on-error: true
+        env:
+          CARGO_TERM_COLOR: never  # plain output, so the matcher can parse it
         run: |
           echo "::add-matcher::.github/rust-problem-matcher.json"
           cargo clippy --manifest-path tutorials/${{ matrix.tutorial }}/Cargo.toml --all-targets -- -D warnings
