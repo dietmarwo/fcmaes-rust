@@ -361,10 +361,12 @@ impl Mode {
                     pb[i] = 1.0;
                 } else {
                     let r = self.rng.uniform01();
+                    // SBX spread factor (Deb & Agrawal 1995): contracting for
+                    // r <= 0.5, expanding (beta >= 1) for r > 0.5.
                     let mut b = if r <= 0.5 {
                         (2.0 * r).powf(1.0 / (dis_c + 1.0))
                     } else {
-                        (2.0 * r).powf(-1.0 / (dis_c + 1.0))
+                        (2.0 - 2.0 * r).powf(-1.0 / (dis_c + 1.0))
                     };
                     if self.rng.uniform01() > 0.5 {
                         b = -b;
@@ -414,7 +416,8 @@ impl Mode {
                         op[i] += scale
                             * (1.0
                                 - (2.0 * (1.0 - mu)
-                                    + 2.0 * (mu - 0.5) * (1.0 - norm).powf(dis_m + 1.0))
+                                    // upward branch uses 1 - delta2 = norm
+                                    + 2.0 * (mu - 0.5) * norm.powf(dis_m + 1.0))
                                 .powf(1.0 / (dis_m + 1.0)));
                     }
                 }
@@ -497,39 +500,59 @@ impl Mode {
 
     // ---- pareto ranking ----
 
-    /// `true` if individual `i` is dominated by `index` (index is <= i in all
-    /// objectives). `objs[k]` is the length-`nobj` objective vector of k.
-    fn is_dominated(objs: &[Vec<f64>], i: usize, index: usize) -> bool {
-        for j in 0..objs[i].len() {
-            if objs[i][j] < objs[index][j] {
-                return false;
-            }
-        }
-        true
-    }
-
+    /// Non-dominated sorting (Deb et al. 2002). Returns one level per point,
+    /// higher = better: the first front gets the highest level, the second
+    /// front one less, and so on. Dominated points are thus ranked by how far
+    /// they are from the front, which gives convergence pressure when the
+    /// first front is small.
     fn pareto_levels(objs: &[Vec<f64>]) -> Vec<f64> {
         let n = objs.len();
-        let mut domination = vec![0.0; n];
-        let mut mask = vec![true; n];
-        let mut index = 0;
-        while index < n {
-            for i in 0..n {
-                if i != index && mask[i] && Self::is_dominated(objs, i, index) {
-                    mask[i] = false;
+        let mut dominated_by: Vec<Vec<usize>> = vec![Vec::new(); n];
+        let mut count = vec![0usize; n];
+        for p in 0..n {
+            for q in (p + 1)..n {
+                let (mut p_le, mut q_le, mut p_lt, mut q_lt) = (true, true, false, false);
+                for (a, b) in objs[p].iter().zip(objs[q].iter()) {
+                    if a > b {
+                        p_le = false;
+                    }
+                    if b > a {
+                        q_le = false;
+                    }
+                    if a < b {
+                        p_lt = true;
+                    }
+                    if b < a {
+                        q_lt = true;
+                    }
                 }
-            }
-            for i in 0..n {
-                if mask[i] {
-                    domination[i] += 1.0;
+                if p_le && p_lt {
+                    dominated_by[p].push(q);
+                    count[q] += 1;
+                } else if q_le && q_lt {
+                    dominated_by[q].push(p);
+                    count[p] += 1;
                 }
-            }
-            index += 1;
-            while index < n && !mask[index] {
-                index += 1;
             }
         }
-        domination
+        let mut rank = vec![0usize; n];
+        let mut front: Vec<usize> = (0..n).filter(|&i| count[i] == 0).collect();
+        let mut level = 0;
+        while !front.is_empty() {
+            let mut next = Vec::new();
+            for &p in &front {
+                rank[p] = level;
+                for &q in &dominated_by[p] {
+                    count[q] -= 1;
+                    if count[q] == 0 {
+                        next.push(q);
+                    }
+                }
+            }
+            front = next;
+            level += 1;
+        }
+        rank.iter().map(|&r| (level - 1 - r) as f64).collect()
     }
 
     fn objranks(objs: &[Vec<f64>]) -> Vec<f64> {
@@ -1103,5 +1126,111 @@ mod tests {
         assert!(mode.try_tell(&vec![vec![0.0]; 3]).is_err());
         assert!(mode.try_tell(&vec![vec![0.0, 1.0]; 4]).is_err());
         assert_eq!(mode.try_tell(&vec![vec![0.0]; 4]).unwrap(), 0);
+    }
+
+    #[test]
+    fn pareto_levels_rank_successive_fronts() {
+        let ys = vec![
+            vec![1.0, 4.0],
+            vec![2.0, 2.0],
+            vec![4.0, 1.0],
+            vec![2.0, 4.0],
+            vec![3.0, 3.0],
+            vec![4.0, 4.0],
+        ];
+        // front 1: first three, front 2: (2,4) and (3,3), front 3: (4,4); higher = better
+        assert_eq!(Mode::pareto_levels(&ys), vec![2.0, 2.0, 2.0, 1.0, 1.0, 0.0]);
+    }
+
+    #[test]
+    fn sbx_can_expand_beyond_parents() {
+        let dim = 200;
+        let fit = Fitness::bounded(dim, 2, &vec![0.0; dim], &vec![1.0; dim]);
+        let params = ModeParams {
+            popsize: 4,
+            pro_c: 1.0,
+            pro_m: 0.0,
+            seed: 1,
+            ..Default::default()
+        };
+        let mut mode = Mode::try_new(fit, 2, 0, None, &params).unwrap();
+        let parents = vec![vec![0.4; dim], vec![0.6; dim]];
+        let offspring = mode.variation(&parents);
+        let outside = offspring
+            .iter()
+            .flatten()
+            .any(|&v| !(0.4 - 1e-12..=0.6 + 1e-12).contains(&v));
+        assert!(
+            outside,
+            "SBX never produced a child outside the parents' interval"
+        );
+    }
+
+    fn zdt2(x: &[f64]) -> Vec<f64> {
+        let g = 1.0 + 9.0 * x[1..].iter().sum::<f64>() / (x.len() - 1) as f64;
+        vec![x[0], g * (1.0 - (x[0] / g).powi(2))]
+    }
+
+    fn zdt4_g(x: &[f64]) -> f64 {
+        let k = (x.len() - 1) as f64;
+        1.0 + 10.0 * k
+            + x[1..]
+                .iter()
+                .map(|v| v * v - 10.0 * (4.0 * std::f64::consts::PI * v).cos())
+                .sum::<f64>()
+    }
+
+    fn zdt4(x: &[f64]) -> Vec<f64> {
+        let g = zdt4_g(x);
+        vec![x[0], g * (1.0 - (x[0] / g).sqrt())]
+    }
+
+    fn run_problem(
+        f: fn(&[f64]) -> Vec<f64>,
+        lower: &[f64],
+        upper: &[f64],
+        nsga: bool,
+        generations: usize,
+        seed: u64,
+    ) -> Vec<Vec<f64>> {
+        let fit = Fitness::bounded(lower.len(), 2, lower, upper);
+        let params = ModeParams {
+            popsize: 64,
+            nsga_update: nsga,
+            seed,
+            ..Default::default()
+        };
+        let mut mode = Mode::new(fit, 2, 0, None, &params);
+        for _ in 0..generations {
+            let xs = mode.ask();
+            let ys: Vec<Vec<f64>> = xs.iter().map(|x| f(x)).collect();
+            mode.tell(&ys);
+        }
+        mode.population()
+    }
+
+    #[test]
+    fn nsga_update_keeps_spread_on_zdt2() {
+        // seeds that collapsed to the single extreme point x0 = 0 before the
+        // SBX / polynomial-mutation fixes
+        for seed in [1000, 1001, 1002] {
+            let pop = run_problem(zdt2, &[0.0; 30], &[1.0; 30], true, 470, seed);
+            let lo = pop.iter().map(|x| x[0]).fold(f64::MAX, f64::min);
+            let hi = pop.iter().map(|x| x[0]).fold(f64::MIN, f64::max);
+            assert!(hi - lo > 0.5, "seed {seed}: x0 spread {}", hi - lo);
+        }
+    }
+
+    #[test]
+    fn de_update_converges_on_zdt4() {
+        let mut lower = vec![-5.0; 10];
+        let mut upper = vec![5.0; 10];
+        lower[0] = 0.0;
+        upper[0] = 1.0;
+        let pop = run_problem(zdt4, &lower, &upper, false, 940, 1000);
+        let mut g: Vec<f64> = pop.iter().map(|x| zdt4_g(x)).collect();
+        g.sort_by(|a, b| a.total_cmp(b));
+        // median distance function was ~170 before non-dominated sorting
+        assert!(g[g.len() / 2] < 5.0, "median g {}", g[g.len() / 2]);
     }
 }
