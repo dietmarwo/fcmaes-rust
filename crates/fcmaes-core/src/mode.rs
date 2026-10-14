@@ -203,9 +203,6 @@ pub struct Mode {
     v_x: Vec<Vec<f64>>, // NSGA variation buffer
     vp: usize,
 
-    last_con: Option<Vec<Vec<f64>>>,
-    last_eps: Vec<f64>,
-
     iterations: i32,
     stop: i32,
     pending: bool,
@@ -294,8 +291,6 @@ impl Mode {
             pop_y: vec![],
             v_x: vec![],
             vp: 0,
-            last_con: None,
-            last_eps: vec![0.0; ncon],
             iterations: 0,
             stop: 0,
             pending: false,
@@ -595,7 +590,7 @@ impl Mode {
         csum
     }
 
-    fn pareto(&mut self, ys: &[Vec<f64>]) -> Vec<f64> {
+    fn pareto(&self, ys: &[Vec<f64>]) -> Vec<f64> {
         if self.ncon == 0 {
             return Self::pareto_levels(ys);
         }
@@ -611,27 +606,12 @@ impl Mode {
             })
             .collect();
 
-        let mut eps = vec![0.0; self.ncon];
-        if self.iterations > 1
-            && let Some(last) = &self.last_con
-        {
-            let last_max = last
-                .iter()
-                .flat_map(|c| c.iter().cloned())
-                .fold(f64::MIN, f64::max);
-            if last_max < 1e90 {
-                let mut eps_mean = vec![0.0; self.ncon];
-                for j in 0..self.ncon {
-                    let mean_j = last.iter().map(|c| c[j]).sum::<f64>() / last.len() as f64;
-                    eps_mean[j] = 0.5 * (self.last_eps[j] + 0.5 * mean_j);
-                }
-                if eps_mean.iter().cloned().fold(f64::MIN, f64::max) > 1e-8 {
-                    eps = eps_mean;
-                }
-            }
-        }
-        self.last_con = Some(cons.clone());
-        self.last_eps = eps.clone();
+        // Feasibility first: a point counts as feasible only if it violates no
+        // constraint. An adaptive tolerance (eps, derived from the mean violation of
+        // the previous generation) let slightly infeasible points displace all
+        // strictly feasible ones once the population converged onto active
+        // constraints, so the final population could contain no feasible point.
+        let eps = vec![0.0; self.ncon];
 
         let feasible: Vec<bool> = cons
             .iter()
@@ -1232,5 +1212,41 @@ mod tests {
         g.sort_by(|a, b| a.total_cmp(b));
         // median distance function was ~170 before non-dominated sorting
         assert!(g[g.len() / 2] < 5.0, "median g {}", g[g.len() / 2]);
+    }
+
+    #[test]
+    fn constrained_population_keeps_feasible_points() {
+        // min x^2 s.t. 1 - x <= 0 on [-2, 3]: the optimum x = 1 lies on the
+        // constraint. With an adaptive constraint tolerance the population drifted
+        // to slightly infeasible x < 1 and lost every strictly feasible point.
+        for nsga in [true, false] {
+            for seed in [1, 2, 42] {
+                let fit = Fitness::bounded(1, 2, &[-2.0], &[3.0]);
+                let params = ModeParams {
+                    popsize: 32,
+                    nsga_update: nsga,
+                    seed,
+                    ..Default::default()
+                };
+                let mut mode = Mode::new(fit, 1, 1, None, &params);
+                for _ in 0..40 {
+                    let xs = mode.ask();
+                    let ys: Vec<Vec<f64>> =
+                        xs.iter().map(|x| vec![x[0] * x[0], 1.0 - x[0]]).collect();
+                    mode.tell(&ys);
+                }
+                let result = mode.result();
+                let best = result
+                    .y
+                    .iter()
+                    .filter(|y| y[1] <= 0.0)
+                    .map(|y| y[0])
+                    .fold(f64::INFINITY, f64::min);
+                assert!(
+                    best < 1.05,
+                    "nsga={nsga} seed={seed}: best strictly feasible objective {best}"
+                );
+            }
+        }
     }
 }
