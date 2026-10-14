@@ -1,40 +1,56 @@
-//! Timing smoke: little-endian u64 count followed by objective f64 pairs.
-use fcmaes_core::{ParetoArchive2D, ParetoBounds2D, ParetoScore};
-use std::{fs, time::Instant};
+//! Insertion throughput of `ParetoArchive2D` on three synthetic streams.
+//!
+//! `cargo run --release -p fcmaes-core --example pareto_bench [points]`
+use fcmaes_core::ParetoArchive2D;
+use std::time::Instant;
+
+struct SplitMix(u64);
+impl SplitMix {
+    fn unit(&mut self) -> f64 {
+        self.0 = self.0.wrapping_add(0x9e3779b97f4a7c15);
+        let mut z = self.0;
+        z = (z ^ (z >> 30)).wrapping_mul(0xbf58476d1ce4e5b9);
+        z = (z ^ (z >> 27)).wrapping_mul(0x94d049bb133111eb);
+        ((z ^ (z >> 31)) >> 11) as f64 / (1u64 << 53) as f64
+    }
+}
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let path = std::env::args()
+    let n: usize = std::env::args()
         .nth(1)
-        .ok_or("expected binary input path")?;
-    let data = fs::read(path)?;
-    if data.len() < 8 {
-        return Err("missing input header".into());
-    }
-    let n = u64::from_le_bytes(data[..8].try_into()?) as usize;
-    if data.len() != 8 + 16 * n {
-        return Err("invalid input length".into());
-    }
-    let points: Vec<[f64; 2]> = data[8..]
-        .chunks_exact(16)
-        .map(|bytes| {
-            [
-                f64::from_le_bytes(bytes[..8].try_into().unwrap()),
-                f64::from_le_bytes(bytes[8..].try_into().unwrap()),
-            ]
+        .map_or(Ok(1_000_000), |s| s.parse())?;
+    let mut rng = SplitMix(42);
+    let uniform: Vec<[f64; 2]> = (0..n).map(|_| [rng.unit(), rng.unit()]).collect();
+    // Noise around the front x + y = 1 shrinks over the run, like an optimizer converging.
+    let converging: Vec<[f64; 2]> = (0..n)
+        .map(|i| {
+            let x = rng.unit();
+            let noise = 0.5 * (1.0 - i as f64 / n as f64) * rng.unit();
+            [x, 1.0 - x + noise]
         })
         .collect();
-    let payloads = vec![vec![0.0; 16]; n];
-    for rep in 0..8 {
-        let mut archive =
-            ParetoArchive2D::new(ParetoBounds2D::nonnegative([1.0; 2])?, ParetoScore::Linear);
+    // Every point is nondominated; random order exercises interior inserts.
+    let antichain: Vec<[f64; 2]> = (0..n)
+        .map(|_| {
+            let x = rng.unit();
+            [x, 1.0 - x]
+        })
+        .collect();
+    let ids: Vec<u64> = (0..n as u64).collect();
+    println!("stream,points,ns_per_point,archive,hypervolume");
+    for (name, points) in [
+        ("uniform", &uniform),
+        ("converging", &converging),
+        ("antichain", &antichain),
+    ] {
+        let mut archive = ParetoArchive2D::new([1.5, 1.5])?;
         let start = Instant::now();
-        let mask = archive.add_batch(&points, &payloads)?;
-        let ms = start.elapsed().as_secs_f64() * 1000.0;
+        archive.insert_batch(points, &ids)?;
+        let ns = start.elapsed().as_secs_f64() * 1e9 / n as f64;
         println!(
-            "{rep},{ms:.9},{},{:.17e},{}",
+            "{name},{n},{ns:.1},{},{:.15}",
             archive.len(),
-            archive.hypervolume(),
-            mask.iter().filter(|&&x| x).count()
+            archive.hypervolume()
         );
     }
     Ok(())

@@ -47,8 +47,8 @@ pub use moretry::{
     pareto_indices, scalarize,
 };
 pub use pareto::{
-    BatchUpdateError, Bounds as ParetoBounds2D, Error as ParetoError, ParetoArchive2D,
-    Score as ParetoScore,
+    BatchUpdateError as ParetoBatchError, Bounds as ParetoBounds2D, Entry as ParetoEntry,
+    Error as ParetoError, ParetoArchive2D, Score as ParetoScore, Update as ParetoUpdate,
 };
 pub use pgpe::{Pgpe, PgpeParams, PgpeResult};
 pub use retry::{

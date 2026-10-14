@@ -1,5 +1,94 @@
 use super::*;
 
+/// Independent reference implementation: a vector sorted by preference score,
+/// full scans for dominance and a full hypervolume recomputation per insertion.
+struct ScoredArchive2d<P> {
+    reference: [f64; 2],
+    preference: Option<(Bounds, Score)>,
+    entries: Vec<Entry<P>>,
+    area: Sum,
+}
+impl<P> ScoredArchive2d<P> {
+    fn new(reference: [f64; 2]) -> Self {
+        Self {
+            reference,
+            preference: None,
+            entries: Vec::new(),
+            area: Sum::default(),
+        }
+    }
+    fn with_preference(bounds: Bounds, score: Score) -> Self {
+        Self {
+            preference: Some((bounds, score)),
+            ..Self::new(bounds.reference())
+        }
+    }
+    fn hypervolume(&self) -> f64 {
+        self.area.value
+    }
+    fn entries(&self) -> &[Entry<P>] {
+        &self.entries
+    }
+    fn preferred(&self) -> Option<&Entry<P>> {
+        self.entries.first()
+    }
+    fn insert(&mut self, point: [f64; 2], payload: P) -> Result<Update, Error> {
+        self.insert_with(point, || payload)
+    }
+    fn insert_with(
+        &mut self,
+        point: [f64; 2],
+        make_payload: impl FnOnce() -> P,
+    ) -> Result<Update, Error> {
+        if !is_finite(point) {
+            return Err(Error::InvalidPoint);
+        }
+        if outside(point, self.reference) {
+            return Ok(Update::Outside);
+        }
+        let point = point.map(canonical);
+        let score = preference_score(self.preference, point);
+        // A monotone score puts every weak dominator at or before `hi`.
+        let hi = self.entries.partition_point(|e| e.score <= score);
+        if self.entries[..hi].iter().any(|e| weak(e.point, point)) {
+            return Ok(Update::Rejected);
+        }
+        let mut remaining: Vec<_> = self
+            .entries
+            .iter()
+            .filter(|e| !weak(point, e.point))
+            .map(|e| e.point)
+            .collect();
+        remaining.push(point);
+        let area = recompute(remaining, self.reference)?;
+        let entry = Entry {
+            point,
+            score,
+            payload: make_payload(),
+        };
+        let before = self.entries.len();
+        self.entries.retain(|e| !weak(point, e.point));
+        let removed = before - self.entries.len();
+        let slot = self
+            .entries
+            .partition_point(|e| compare(score, point, e) == Ordering::Greater);
+        self.entries.insert(slot, entry);
+        self.area = area;
+        Ok(Update::Accepted { removed })
+    }
+}
+fn recompute(mut points: Vec<[f64; 2]>, reference: [f64; 2]) -> Result<Sum, Error> {
+    points.sort_unstable_by(|a, b| a[0].total_cmp(&b[0]).then(a[1].total_cmp(&b[1])));
+    let mut sum = Sum::default();
+    let mut prev_y = reference[1];
+    for p in points {
+        assert!(p[1] <= prev_y);
+        sum.add(rectangle(reference[0], p[0], prev_y, p[1])?)?;
+        prev_y = p[1];
+    }
+    Ok(sum)
+}
+
 #[test]
 fn batch_payload_deferral_partial_error_snapshot_and_reset() {
     use std::cell::Cell;
@@ -14,15 +103,16 @@ fn batch_payload_deferral_partial_error_snapshot_and_reset() {
     }
     let clones = Rc::new(Cell::new(0));
     let payloads: Vec<_> = (0..4).map(|id| Payload(clones.clone(), id)).collect();
-    let mut archive = ParetoArchive2D::new(Bounds::nonnegative([1.0; 2]).unwrap(), Score::Linear);
+    let mut archive =
+        ParetoArchive2D::with_preference(Bounds::nonnegative([1.0; 2]).unwrap(), Score::Linear);
     let points = [[0.5, 0.5], [0.6, 0.6], [0.4, 0.6], [f64::NAN, 0.1]];
-    let error = archive.add_batch(&points, &payloads).unwrap_err();
+    let error = archive.insert_batch(&points, &payloads).unwrap_err();
     assert_eq!(error.row, Some(3));
     assert_eq!(error.accepted, [true, false, true]);
     assert_eq!(error.source, Error::InvalidPoint);
     assert_eq!(clones.get(), 2);
-    assert_eq!(archive.size(), 2);
-    let error = archive.add_batch(&points, &payloads[..1]).unwrap_err();
+    assert_eq!(archive.len(), 2);
+    let error = archive.insert_batch(&points, &payloads[..1]).unwrap_err();
     assert_eq!(error.row, None);
     assert!(error.accepted.is_empty());
     assert_eq!(clones.get(), 2);
@@ -32,8 +122,8 @@ fn batch_payload_deferral_partial_error_snapshot_and_reset() {
     assert_eq!(archive.hypervolume(), 0.0);
     assert_eq!(snapshot[0].0, [0.4, 0.6]);
     assert_eq!(snapshot[0].1.1, 2);
-    assert_eq!(archive.add_batch(&[], &[]).unwrap(), Vec::<bool>::new());
-    archive.add([0.1, 0.1], Payload(clones, 9)).unwrap();
+    assert_eq!(archive.insert_batch(&[], &[]).unwrap(), Vec::<bool>::new());
+    archive.insert([0.1, 0.1], Payload(clones, 9)).unwrap();
     assert_eq!(archive.len(), 1);
 }
 
@@ -54,7 +144,7 @@ fn mode_tracking_preserves_population_and_all_feasible_evaluations() {
         )
         .unwrap();
         let mut archive =
-            ParetoArchive2D::new(Bounds::nonnegative([2.0; 2]).unwrap(), Score::Linear);
+            ParetoArchive2D::with_preference(Bounds::nonnegative([2.0; 2]).unwrap(), Score::Linear);
         let mut rows = Vec::new();
         let mut trace = Vec::new();
         for _ in 0..20 {
@@ -75,7 +165,7 @@ fn mode_tracking_preserves_population_and_all_feasible_evaluations() {
                 if y.iter().all(|v| v.is_finite()) && y[2] <= 0.0 {
                     rows.push(([y[0], y[1]], id));
                     if track {
-                        archive.add([y[0], y[1]], id).unwrap();
+                        archive.insert([y[0], y[1]], id).unwrap();
                     }
                 }
             }
@@ -138,15 +228,31 @@ fn close(a: f64, b: f64) {
         "{a} != {b}"
     );
 }
+/// Compare both implementations and the oracle after every insertion, for the
+/// plain-mean preference and both normalized scores. Points outside the
+/// reference box must be reported as such and leave no trace.
 fn check_stream(points: &[[f64; 2]], bounds: Bounds) {
-    for score in [Score::Linear, Score::SquaredEuclidean] {
-        let mut a = ScoredArchive2d::new(bounds, score);
-        let mut b = ParetoArchive2D::new(bounds, score);
+    let reference = bounds.reference();
+    for preference in [None, Some(Score::Linear), Some(Score::SquaredEuclidean)] {
+        let (mut a, mut b) = match preference {
+            None => (
+                ScoredArchive2d::new(reference),
+                ParetoArchive2D::new(reference).unwrap(),
+            ),
+            Some(score) => (
+                ScoredArchive2d::with_preference(bounds, score),
+                ParetoArchive2D::with_preference(bounds, score),
+            ),
+        };
         let mut rows = Vec::new();
         for (id, &p) in points.iter().enumerate() {
             let aa = a.insert(p, id as u64).unwrap();
             let bb = b.insert(p, id as u64).unwrap();
             assert_eq!(aa, bb);
+            if p[0] > reference[0] || p[1] > reference[1] {
+                assert_eq!(bb, Update::Outside);
+                continue;
+            }
             rows.push((p.map(|x| if x == 0.0 { 0.0 } else { x }), id as u64));
             let expected = oracle(&rows);
             let actual: Vec<_> = b.entries().map(|e| (e.point(), *e.payload())).collect();
@@ -202,16 +308,17 @@ fn signed_and_unsigned_streams_600() {
                     (0..100)
                         .map(|_| {
                             [
-                                (rng.next() % 17) as f64 - 8.0,
-                                (rng.next() % 17) as f64 - 8.0,
+                                (rng.next() % 21) as f64 - 10.0,
+                                (rng.next() % 21) as f64 - 10.0,
                             ]
                         })
                         .collect::<Vec<_>>(),
+                    // Some points lie below `lower`, some outside the reference.
                     Bounds::new([-8.0; 2], [8.0; 2]).unwrap(),
                 ),
                 1 => (
                     (0..100)
-                        .map(|_| [2.0 * rng.unit() - 1.0, 2.0 * rng.unit() - 1.0])
+                        .map(|_| [2.4 * rng.unit() - 1.2, 2.4 * rng.unit() - 1.2])
                         .collect(),
                     Bounds::new([-1.0; 2], [1.0; 2]).unwrap(),
                 ),
@@ -228,7 +335,6 @@ fn signed_and_unsigned_streams_600() {
             check_stream(&points, bounds);
         }
     }
-    println!("600 streams; 60,000 updates per backend/score; 240,000 archive updates checked");
 }
 
 #[test]
@@ -245,7 +351,7 @@ fn original_nan_failure_and_extreme_finite_coordinates() {
         ],
         bounds,
     );
-    let mut a = ParetoArchive2D::new(bounds, Score::Linear);
+    let mut a = ParetoArchive2D::with_preference(bounds, Score::Linear);
     for p in [
         [0.0, 1.0],
         [1e308, 0.0],
@@ -283,8 +389,8 @@ fn fixed_hv_values_boundaries_and_preference() {
     for score in [Score::Linear, Score::SquaredEuclidean] {
         for (reference, expected) in [([4.0, 4.0], 5.0), ([5.0, 5.0], 12.0)] {
             let bounds = Bounds::nonnegative(reference).unwrap();
-            let mut a = ScoredArchive2d::new(bounds, score);
-            let mut b = ParetoArchive2D::new(bounds, score);
+            let mut a = ScoredArchive2d::with_preference(bounds, score);
+            let mut b = ParetoArchive2D::with_preference(bounds, score);
             for p in [[1.0, 3.0], [3.0, 1.0]] {
                 a.insert(p, ()).unwrap();
                 b.insert(p, ()).unwrap();
@@ -292,7 +398,8 @@ fn fixed_hv_values_boundaries_and_preference() {
             assert_eq!(a.hypervolume(), expected);
             assert_eq!(b.hypervolume(), expected);
         }
-        let mut a = ParetoArchive2D::new(Bounds::nonnegative([10.0; 2]).unwrap(), score);
+        let mut a =
+            ParetoArchive2D::with_preference(Bounds::nonnegative([10.0; 2]).unwrap(), score);
         a.insert([1.0, 9.0], 1).unwrap();
         a.insert([6.0, 6.0], 2).unwrap();
         assert_eq!(
@@ -332,8 +439,8 @@ fn invalid_inputs_and_numeric_overflow_leave_state_unchanged() {
         assert_eq!(Bounds::new(lo, hi), Err(Error::InvalidBounds));
     }
     let bounds = Bounds::new([-f64::MAX, 0.0], [f64::MAX, 1.0]).unwrap();
-    let mut a = ScoredArchive2d::new(bounds, Score::Linear);
-    let mut b = ParetoArchive2D::new(bounds, Score::Linear);
+    let mut a = ScoredArchive2d::with_preference(bounds, Score::Linear);
+    let mut b = ParetoArchive2D::with_preference(bounds, Score::Linear);
     for p in [[-f64::MAX, 1.0], [0.0, 0.0]] {
         a.insert(p, 7).unwrap();
         b.insert(p, 7).unwrap();
@@ -348,10 +455,17 @@ fn invalid_inputs_and_numeric_overflow_leave_state_unchanged() {
     assert_eq!(b.hypervolume(), f64::MAX);
     assert_eq!(a.insert([-f64::MAX, 0.0], 9), Err(Error::NonFiniteArea));
     assert_eq!(b.insert([-f64::MAX, 0.0], 9), Err(Error::NonFiniteArea));
-    for p in [[f64::NAN, 0.0], [f64::INFINITY, 0.0], [0.0, -1.0]] {
+    for p in [
+        [f64::NAN, 0.0],
+        [f64::INFINITY, 0.0],
+        [0.0, f64::NEG_INFINITY],
+    ] {
         assert_eq!(a.insert(p, 9), Err(Error::InvalidPoint));
         assert_eq!(b.insert(p, 9), Err(Error::InvalidPoint));
     }
+    // Outside the reference box: not archived, not an error.
+    assert_eq!(a.insert([0.0, 2.0], 9), Ok(Update::Outside));
+    assert_eq!(b.insert([0.0, 2.0], 9), Ok(Update::Outside));
     assert_eq!(
         state_a,
         a.entries()
@@ -373,8 +487,8 @@ fn invalid_inputs_and_numeric_overflow_leave_state_unchanged() {
 #[test]
 fn payload_duplicates_and_mass_deletion() {
     let bounds = Bounds::nonnegative([1.0; 2]).unwrap();
-    let mut a = ScoredArchive2d::new(bounds, Score::Linear);
-    let mut b = ParetoArchive2D::new(bounds, Score::Linear);
+    let mut a = ScoredArchive2d::with_preference(bounds, Score::Linear);
+    let mut b = ParetoArchive2D::with_preference(bounds, Score::Linear);
     for i in 0..256 {
         let p = [i as f64 / 256.0, 1.0 - i as f64 / 256.0];
         a.insert(p, vec![i as f64, 42.0]).unwrap();
@@ -402,8 +516,8 @@ fn lazy_payload_is_not_built_for_rejection_or_errors() {
     use std::cell::Cell;
     let calls = Cell::new(0);
     let bounds = Bounds::nonnegative([1.0; 2]).unwrap();
-    let mut a = ScoredArchive2d::new(bounds, Score::Linear);
-    let mut b = ParetoArchive2D::new(bounds, Score::Linear);
+    let mut a = ScoredArchive2d::with_preference(bounds, Score::Linear);
+    let mut b = ParetoArchive2D::with_preference(bounds, Score::Linear);
     let make = || {
         calls.set(calls.get() + 1);
         vec![12.0, 34.0]
@@ -424,8 +538,8 @@ fn lazy_payload_is_not_built_for_rejection_or_errors() {
     );
     assert_eq!(calls.get(), 2);
     let large = Bounds::new([-f64::MAX, 0.0], [f64::MAX, 1.0]).unwrap();
-    let mut a = ScoredArchive2d::new(large, Score::Linear);
-    let mut b = ParetoArchive2D::new(large, Score::Linear);
+    let mut a = ScoredArchive2d::with_preference(large, Score::Linear);
+    let mut b = ParetoArchive2D::with_preference(large, Score::Linear);
     assert_eq!(
         a.insert_with([-f64::MAX, 0.0], make),
         Err(Error::NonFiniteArea)
@@ -441,7 +555,7 @@ fn lazy_payload_is_not_built_for_rejection_or_errors() {
 fn integer_cell_union_and_long_accepted_stream() {
     let mut rng = Rng(7654);
     for _ in 0..200 {
-        let mut a = ParetoArchive2D::new(
+        let mut a = ParetoArchive2D::with_preference(
             Bounds::new([-8.0; 2], [8.0; 2]).unwrap(),
             Score::SquaredEuclidean,
         );
@@ -464,7 +578,8 @@ fn integer_cell_union_and_long_accepted_stream() {
         }
         assert_eq!(a.hypervolume(), cells as f64);
     }
-    let mut a = ParetoArchive2D::new(Bounds::nonnegative([1.0; 2]).unwrap(), Score::Linear);
+    let mut a =
+        ParetoArchive2D::with_preference(Bounds::nonnegative([1.0; 2]).unwrap(), Score::Linear);
     for i in 1..=50_000 {
         let x = i as f64 / 50_001.0;
         a.insert([x, 1.0 - x], i).unwrap();
@@ -483,12 +598,12 @@ fn integer_cell_union_and_long_accepted_stream() {
 fn cached_map_reference_reset_and_payload_panic() {
     use std::panic::{AssertUnwindSafe, catch_unwind};
     for score in [Score::Linear, Score::SquaredEuclidean] {
-        let mut a = ParetoArchive2D::new(Bounds::nonnegative([1.0; 2]).unwrap(), score);
-        assert!(a.add([1.0; 2], 1).unwrap().accepted());
+        let mut a = ParetoArchive2D::with_preference(Bounds::nonnegative([1.0; 2]).unwrap(), score);
+        assert!(a.insert([1.0; 2], 1).unwrap().accepted());
         assert_eq!(a.hypervolume(), 0.0);
-        assert_eq!(a.add([1.0; 2], 2).unwrap(), Update::Rejected);
+        assert_eq!(a.insert([1.0; 2], 2).unwrap(), Update::Rejected);
         assert_eq!(*a.preferred().unwrap().payload(), 1);
-        assert!(a.add([0.5; 2], 3).unwrap().accepted());
+        assert!(a.insert([0.5; 2], 3).unwrap().accepted());
         let before = a.front();
         let hv = a.hypervolume();
         assert!(
@@ -500,11 +615,11 @@ fn cached_map_reference_reset_and_payload_panic() {
         assert_eq!(a.front(), before);
         assert_eq!(a.hypervolume(), hv);
         assert_eq!(*a.preferred().unwrap().payload(), 3);
-        assert_eq!(a.add([2.0; 2], 4), Err(Error::InvalidPoint));
-        assert!(a.add([0.25; 2], 5).unwrap().accepted());
+        assert_eq!(a.insert([2.0; 2], 4), Ok(Update::Outside));
+        assert!(a.insert([0.25; 2], 5).unwrap().accepted());
         a.clear();
         assert!(a.preferred().is_none());
-        assert!(a.add([1.0; 2], 6).unwrap().accepted());
+        assert!(a.insert([1.0; 2], 6).unwrap().accepted());
         assert_eq!(a.front(), vec![([1.0; 2], 6)]);
         assert_eq!(a.hypervolume(), 0.0);
     }
@@ -514,7 +629,8 @@ fn cached_map_reference_reset_and_payload_panic() {
 fn cached_acceptance_clone_and_panic_rollback() {
     use std::panic::{AssertUnwindSafe, catch_unwind};
     for score in [Score::Linear, Score::SquaredEuclidean] {
-        let mut original = ParetoArchive2D::new(Bounds::nonnegative([10.0; 2]).unwrap(), score);
+        let mut original =
+            ParetoArchive2D::with_preference(Bounds::nonnegative([10.0; 2]).unwrap(), score);
         for p in [[1.0, 9.0], [9.0, 1.0], [3.0, 7.0]] {
             original.insert(p, vec![42, 43]).unwrap();
         }
@@ -546,5 +662,102 @@ fn cached_acceptance_clone_and_panic_rollback() {
             assert!(moved.insert([10.0; 2], vec![8]).unwrap().accepted());
             assert_eq!(moved.hypervolume(), 0.0);
         }
+    }
+}
+
+#[test]
+fn outside_points_are_skipped_in_a_mode_run() {
+    use crate::{Fitness, Mode, ModeParams};
+    // ZDT1 with the usual reference (1.1, 1.1): every initial point lies
+    // outside the box because f2 starts around 4.
+    let dim = 10;
+    let zdt1 = |x: &[f64]| {
+        let g = 1.0 + 9.0 * x[1..].iter().sum::<f64>() / (dim - 1) as f64;
+        vec![x[0], g * (1.0 - (x[0] / g).sqrt())]
+    };
+    let mut mode = Mode::try_new(
+        Fitness::bounded(dim, 2, &vec![0.0; dim], &vec![1.0; dim]),
+        2,
+        0,
+        None,
+        &ModeParams {
+            popsize: 64,
+            seed: 7,
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    let reference = [1.1, 1.1];
+    let mut archive = ParetoArchive2D::new(reference).unwrap();
+    let mut inside = Vec::new();
+    for generation in 0..150 {
+        let xs = mode.try_ask().unwrap();
+        let ys: Vec<Vec<f64>> = xs.iter().map(|x| zdt1(x)).collect();
+        let points: Vec<[f64; 2]> = ys.iter().map(|y| [y[0], y[1]]).collect();
+        let ids: Vec<u64> = (0..points.len())
+            .map(|i| (generation * points.len() + i) as u64)
+            .collect();
+        let mask = archive.insert_batch(&points, &ids).unwrap();
+        if generation == 0 {
+            assert!(points.iter().all(|p| outside(*p, reference)));
+            assert!(mask.iter().all(|&m| !m));
+            assert!(archive.is_empty());
+        }
+        for (p, &id) in points.iter().zip(&ids) {
+            if !outside(*p, reference) {
+                inside.push((*p, id));
+            }
+        }
+        mode.try_tell(&ys).unwrap();
+    }
+    assert!(!archive.is_empty());
+    let actual: Vec<_> = archive
+        .entries()
+        .map(|e| (e.point(), *e.payload()))
+        .collect();
+    assert_eq!(actual, oracle(&inside));
+    close(archive.hypervolume(), union_hv(&inside, reference));
+}
+
+#[test]
+fn points_below_the_normalization_origin_are_archived() {
+    use std::cell::Cell;
+    for score in [Score::Linear, Score::SquaredEuclidean] {
+        let bounds = Bounds::nonnegative([1.0; 2]).unwrap();
+        let mut a = ScoredArchive2d::with_preference(bounds, score);
+        let mut b = ParetoArchive2D::with_preference(bounds, score);
+        let mut rows = Vec::new();
+        for (id, p) in [
+            [0.5, 0.5],
+            [-0.5, 0.8],
+            [0.8, -2.0],
+            [-1.0, -1.0],
+            [-3.0, 0.9],
+        ]
+        .into_iter()
+        .enumerate()
+        {
+            assert_eq!(a.insert(p, id), b.insert(p, id));
+            assert!(b.entries().any(|e| e.point() == p));
+            rows.push((p, id as u64));
+            close(b.hypervolume(), union_hv(&rows, [1.0; 2]));
+            assert!((0.0..=1.0).contains(&b.preferred().unwrap().score()));
+            assert_eq!(
+                a.preferred().map(|e| *e.payload()),
+                b.preferred().map(|e| *e.payload())
+            );
+        }
+        assert_eq!(b.len(), 3);
+        let calls = Cell::new(0);
+        let make = || {
+            calls.set(calls.get() + 1);
+            9
+        };
+        assert_eq!(b.insert_with([-5.0, 1.5], make), Ok(Update::Outside));
+        assert_eq!(
+            b.insert_with([1.0 + 1e-12, -5.0], make),
+            Ok(Update::Outside)
+        );
+        assert_eq!(calls.get(), 0);
     }
 }

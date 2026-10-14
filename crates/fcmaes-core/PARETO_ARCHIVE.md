@@ -1,125 +1,89 @@
-# Exact 2D archive
+# Exact 2D Pareto archive
 
-`ParetoArchive2D<P>` is a separate, unbounded archive of unique nondominated
-minimization objective pairs. It retains the first payload for duplicate pairs
-and maintains hypervolume against a fixed finite reference. It does not alter
-MODE's selection, scalar BiteOpt costs, QD archives or existing Pareto helpers.
+`ParetoArchive2D<P>` keeps every unique nondominated pair of two minimized
+objectives inside a fixed reference box, each with a payload `P` (for example
+the decision vector), and updates the dominated hypervolume with every
+insertion. It is independent of MODE: use it to record everything an
+optimizer evaluated, without changing the optimizer.
+
+```rust
+use fcmaes_core::{ParetoArchive2D, ParetoUpdate};
+
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let mut archive = ParetoArchive2D::new([4.0, 4.0])?;
+    let accepted = archive.insert_batch(
+        &[[1.0, 3.0], [3.0, 1.0], [2.0, 3.0], [5.0, 0.0]],
+        &["left", "right", "dominated", "outside"],
+    )?;
+    assert_eq!(accepted, [true, true, false, false]);
+    assert_eq!(archive.hypervolume(), 5.0);
+    assert_eq!(archive.insert([0.5, 0.5], "best")?, ParetoUpdate::Accepted { removed: 2 });
+    Ok(())
+}
+```
+
+## Semantics
+
+- **Membership.** A point is archived unless an archived point weakly
+  dominates it. Archiving it removes the points it dominates. Equal objective
+  pairs keep the first payload. `-0.0` is stored as `0.0`.
+- **Reference box.** Points with an objective above the reference return
+  `Update::Outside` and are not archived, since they add nothing to the
+  hypervolume. This matches `OutsidePolicy::Exclude` of the hypervolume
+  indicators. There is no lower bound: objectives may have any finite value.
+- **Errors.** Only non-finite objectives (`ParetoError::InvalidPoint`) and areas
+  beyond the `f64` range (`ParetoError::NonFiniteArea`) are errors. A failed
+  insertion leaves the archive unchanged. `insert_batch` stops at the failing
+  row; the rows before it stay applied and the error reports their flags.
+- **Payloads.** `insert_with(point, || payload)` builds the payload only when the
+  point is archived; `insert_batch` clones only archived payloads.
+- **Hypervolume.** Each insertion adds the exact area of the newly dominated
+  region, summed with Kahan compensation. After millions of insertions the
+  value agrees with a full recomputation to about 1e-16 relative error.
+- **Capacity.** The archive is unbounded. In the worst case (every point
+  nondominated) it keeps every point.
+
+## Preference
+
+`preferred()` returns the archived entry with the lowest preference score and
+`ranked()` sorts all entries by it. By default the score is the mean of both
+objectives. For objectives on different scales, normalize them:
 
 ```rust
 use fcmaes_core::{ParetoArchive2D, ParetoBounds2D, ParetoScore};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-let bounds = ParetoBounds2D::new([0.0, 0.0], [4.0, 4.0])?;
-let mut archive = ParetoArchive2D::new(bounds, ParetoScore::Linear);
-let accepted = archive.add_batch(
-    &[[1.0, 3.0], [3.0, 1.0], [2.0, 3.0]],
-    &["left", "right", "dominated"],
-)?;
-assert_eq!(accepted, [true, true, false]);
-assert_eq!(archive.hypervolume(), 5.0);
-Ok(())
+    let points = [[0.1, 60.0], [0.8, 10.0]];
+    // Plain mean: the second objective dominates the score.
+    let mut plain = ParetoArchive2D::new([1.0, 100.0])?;
+    plain.insert_batch(&points, &[1, 2])?;
+    assert_eq!(*plain.preferred().unwrap().payload(), 2);
+    // Normalized: `lower` is only the origin, e.g. an estimated ideal point.
+    let bounds = ParetoBounds2D::new([0.0, 0.0], [1.0, 100.0])?;
+    let mut scaled = ParetoArchive2D::with_preference(bounds, ParetoScore::Linear);
+    scaled.insert_batch(&points, &[1, 2])?;
+    assert_eq!(*scaled.preferred().unwrap().payload(), 1);
+    Ok(())
 }
 ```
 
-Bounds apply to objective coordinates, not decision variables. Signed finite
-values are supported inside declared bounds; signed zero is canonicalized.
-Preference scoring affects the cached dominator choice and preferred entry,
-not geometric membership. Keep lower bounds and reference fixed throughout
-the run. Finite but unrepresentable area arithmetic returns an error.
+Points below `lower` are archived normally; their normalized coordinates are
+clamped to zero. The score never changes membership or hypervolume.
 
-Use `insert_with(point, factory)` to defer construction of accepted payloads.
-`add`/`insert` accept an already constructed payload. `add_batch` clones only
-accepted payloads. A length mismatch performs no updates. A numeric row error
-returns `BatchUpdateError` with its zero-based row, underlying error and the
-acceptance mask for the processed prefix; earlier rows remain applied.
-Allocation failure is not a recoverable transactional guarantee.
+## Complexity
 
-`entries()` borrows sorted entries directly from the coordinate B-tree.
-`front()` creates an owned payload snapshot; `clear()` resets contents and HV
-while preserving bounds and preference scoring. There is no capacity pruning.
-An antichain can consume memory proportional to every evaluated point.
+Entries are stored in a `BTreeMap` ordered by the first objective, so the
+second objective strictly decreases along the front. The entry with the lowest
+score serves as a cached dominator that rejects most points in O(1). Otherwise
+an insertion costs one O(log n) predecessor lookup plus O(k log n) for the k
+removed points. Appending after the last entry, or inserting into the gap
+behind the previous insertion, skips the lookup.
 
-## Cached acceptance and ownership (13 October 2026)
-
-Append and interior-gap conditions from BiteOpt commit
-`6f3a63a02da75f55242a5d51edf8f5b7e4ff680c` now skip range walks when
-coordinates prove that a candidate fits without deleting entries. Only owned
-coordinates are cached: the last point and the latest accepted point's surviving
-successor. Every successful insertion refreshes or invalidates the gap; `clear()`
-resets all state. Stable Rust's `BTreeMap::insert` still costs O(log n).
-
-`Clone` is available for cloneable payloads and owns independent entries and
-cache values. Numeric checks and the payload factory run before membership,
-HV or acceptance-cache changes, including the shortcuts. Payload-factory panics
-leave the archive usable and unchanged. Rust allocation exhaustion retains the
-standard allocator's abort behavior; there is no recoverable OOM API.
-
-No experimental ZDT4 scalar cost or stopping threshold is enabled. MODE selection
-is unchanged. The delivery report records gains and regressions by stream order.
-
-## Single-map design (12 October 2026)
-
-The archive now uses one `BTreeMap` and one cached dominance witness.
-The small sorted-vector path and its 64-entry promotion threshold are removed.
-After validation, a cache hit rejects immediately; a miss tests the predecessor
-and computes the contiguous dominated-successor interval. The reusable victim-key
-buffer separates area preflight from mutation using stable Rust 1.88 APIs.
-It is scratch storage, not another front.
-
-`preferred()` and both normalized scoring policies retain their existing
-semantics. Computed score ties use original-coordinate tie-breaks. The cache
-starts empty and `clear()` resets it, so the reference corner is accepted in
-an empty archive with zero HV. Invalid inputs still fail before cached rejection.
-Numeric checks and payload creation complete before membership changes.
-
-This follows Aleksey Vaneev's simplified cached-map design in BiteOpt commit
-`02427c2f1dad87f3a146eda8b4613f01ee2eb8d8`. It preserves fcmaes's stronger numeric
-contract. The companion delivery report records before/after measurements:
-removing compact storage is a maintainability tradeoff, not a universal speedup.
-
-## MODE example and checks
-
-From the repository root:
-
-```sh
-cargo run --release -p fcmaes-core --example pareto_mode
-cargo test --locked -p fcmaes-core
-cargo test --release --locked -p fcmaes-core
-cargo clippy --locked -p fcmaes-core --all-targets
-```
-
-The example archives finite feasible evaluated offspring before `tell`, using
-constraints `<= 0`. Include evaluated initial guesses in application drivers.
-Filtering invalid evaluations precedes MODE's sentinel sanitization. The
-archive result is distinct from the breeding population. For parallel runs,
-keep one archive owner and merge worker-local fronts in a stable ID order.
-
-The module includes independent prefix-front/HV oracles, numerical rollback
-tests, batch and payload checks, and a fixed-seed MODE trace comparison with
-tracking enabled and disabled. The latter requires identical populations and
-objective evaluation traces, with no extra objective calls.
-
-The shared fixture is `tests/data/pareto_archive_2d.csv`. Build the replay:
-
-```sh
-cargo build --release -p fcmaes-core --example pareto_trace
-python tests/check_pareto_cross_language.py target/release/examples/pareto_trace
-```
-
-The Python replay additionally requires the corresponding integrated
-`fast-cma-es` wheel. The Rust Python archive binding, ND batch filtering,
-indicator replacement and hypervolume-driven optimizer are follow-ups.
+`cargo run --release -p fcmaes-core --example pareto_bench` measures three
+synthetic streams; `--example pareto_mode` records a constrained MODE run.
 
 ## Provenance
 
-Adapted from the optimized `bitehv2_rust/src/lib.rs`, SHA-256:
-
-```text
-a3a1df4620d35a59705f142f3ddf3557450baa49eec66cb83b0191db1615a5ea
-```
-
-The original numerical update logic is retained. The initial compact/B-tree
-strategy was replaced by one B-tree on 12 October 2026. The insertion API, batch errors, reset/snapshot methods and examples are
-unchanged; cloneable archives gained an owned `Clone` implementation.
-The comparison scan implementation exists only in tests. Retain the full MIT
-notice in `NOTICE.pareto`, including Aleksey Vaneev's attribution.
+The algorithm is Aleksey Vaneev's 2D archive from BiteOpt (`bitehv2.h`), adapted
+with compensated summation, error handling and payloads. MIT license; keep
+`NOTICE.pareto` with copies of `src/pareto.rs`.

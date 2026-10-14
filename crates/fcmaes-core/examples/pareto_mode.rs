@@ -1,5 +1,8 @@
 //! Constrained MODE with a separate exact archive of every feasible evaluation.
-use fcmaes_core::{Fitness, Mode, ModeParams, ParetoArchive2D, ParetoBounds2D, ParetoScore};
+//! The archive only observes `ask`/`tell`; the MODE run is unchanged.
+//!
+//! `cargo run --release -p fcmaes-core --example pareto_mode`
+use fcmaes_core::{Fitness, Mode, ModeParams, ParetoArchive2D};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut mode = Mode::try_new(
@@ -13,10 +16,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             ..Default::default()
         },
     )?;
-    let mut archive = ParetoArchive2D::new(
-        ParetoBounds2D::new([0.0; 2], [2.0; 2])?,
-        ParetoScore::Linear,
-    );
+    // Objectives lie in [0, 2]; points outside the reference would be skipped.
+    let mut archive = ParetoArchive2D::new([2.0, 2.0])?;
     let mut evaluations = 0;
     for _ in 0..40 {
         let xs = mode.try_ask()?;
@@ -31,6 +32,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             })
             .collect();
         for (x, y) in xs.iter().zip(&ys) {
+            // Archive feasible evaluations only; non-finite objectives are errors.
             if y.iter().all(|v| v.is_finite()) && y[2] <= 0.0 {
                 archive.insert_with([y[0], y[1]], || x.clone())?;
             }
