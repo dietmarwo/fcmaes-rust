@@ -84,6 +84,10 @@ synthetic streams; `--example pareto_mode` records a constrained MODE run.
 
 ## Provenance
 
-The algorithm is Aleksey Vaneev's 2D archive from BiteOpt (`bitehv2.h`), adapted
-with compensated summation, error handling and payloads. MIT license; keep
-`NOTICE.pareto` with copies of `src/pareto.rs`.
+`src/pareto.rs` is a Rust port derived from the C++ code of `bitehv2.h` in
+Aleksey Vaneev's BiteOpt repository, <https://github.com/avaneev/biteopt>
+(commit 5f86f50, 2026-10-13): the ordered front, the delta hypervolume
+updates, the cached rejection point and the append/gap fast paths come from
+there. The Rust port and its additions (compensated summation, error
+handling, outside points, payloads, preference scores) are by Dietmar Wolz.
+MIT license; keep `NOTICE.pareto` with copies of `src/pareto.rs`.

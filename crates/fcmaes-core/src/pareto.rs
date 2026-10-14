@@ -1,6 +1,17 @@
-// Copyright (c) 2026 Dietmar Wolz (fcmaes adaptation and Rust implementation).
-// Copyright (c) 2026 Aleksey Vaneev (original archive, BiteOpt bitehv2.h).
-// MIT license; see NOTICE.pareto.
+// Exact 2D Pareto archive with incremental hypervolume.
+//
+// This is a Rust port derived from the C++ code of bitehv2.h in Aleksey
+// Vaneev's BiteOpt repository, https://github.com/avaneev/biteopt (bitehv2.h
+// as of commit 5f86f50, 2026-10-13). From there come the front ordered by the
+// first objective, the delta hypervolume updates, the cached rejection point
+// and the append/gap fast paths. The Rust port and its adaptations
+// (compensated area sums, error handling, outside points, payloads,
+// preference scores) are by Dietmar Wolz; Aleksey Vaneev's copyright covers
+// the original C++ code only.
+//
+// Original C++ code (bitehv2.h): Copyright (c) 2026 Aleksey Vaneev.
+// Rust port: Copyright (c) 2026 Dietmar Wolz.
+// MIT license; keep NOTICE.pareto with copies of this file.
 #![doc = include_str!("../PARETO_ARCHIVE.md")]
 
 use std::{cmp::Ordering, collections::BTreeMap, fmt};

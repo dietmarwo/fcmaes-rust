@@ -1,10 +1,12 @@
-src/pareto.rs is derived from the 2D Pareto archive in Aleksey Vaneev's BiteOpt
-(https://github.com/avaneev/biteopt, bitehv2.h) and is distributed under:
+src/pareto.rs is a Rust port derived from the C++ code of bitehv2.h in
+Aleksey Vaneev's BiteOpt repository (https://github.com/avaneev/biteopt,
+commit 5f86f50, 2026-10-13). The Rust port is by Dietmar Wolz; Aleksey
+Vaneev's copyright covers the original C++ code. Both are distributed under:
 
 MIT License
 
-Copyright (c) 2026 Aleksey Vaneev (original archive, BiteOpt bitehv2.h)
-Copyright (c) 2026 Dietmar Wolz (fcmaes adaptation and Rust implementation)
+Copyright (c) 2026 Aleksey Vaneev (original C++ code, BiteOpt bitehv2.h)
+Copyright (c) 2026 Dietmar Wolz (Rust port and adaptations)
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
