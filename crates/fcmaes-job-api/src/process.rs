@@ -138,9 +138,13 @@ pub fn group_stopped(pgid: u32) -> io::Result<bool> {
         if entry.file_name().to_string_lossy().parse::<u32>().is_err() {
             continue;
         }
+        // A process that exits during the scan is gone, not unknown.
+        let vanished = |e: &io::Error| {
+            e.kind() == io::ErrorKind::NotFound || e.raw_os_error() == Some(libc::ESRCH)
+        };
         let status = match std::fs::read_to_string(entry.path().join("status")) {
             Ok(s) => s,
-            Err(e) if e.kind() == io::ErrorKind::NotFound => continue,
+            Err(e) if vanished(&e) => continue,
             Err(e) => return Err(e),
         };
         let groups: Vec<_> = status
@@ -155,7 +159,7 @@ pub fn group_stopped(pgid: u32) -> io::Result<bool> {
         }
         let other = match std::fs::read_link(entry.path().join("ns/pid")) {
             Ok(n) => n,
-            Err(e) if e.kind() == io::ErrorKind::NotFound => continue,
+            Err(e) if vanished(&e) => continue,
             Err(e) => return Err(e),
         };
         if other != namespace {

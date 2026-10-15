@@ -226,7 +226,14 @@ fn queued_job_waits_and_both_cancel_modes_work() {
     let (long_id, small_id) = (job_id("long"), job_id("small"));
 
     let mut long_child = node.spawn_run(&long);
-    node.wait_state(&long_id, "running");
+    let long_dir = PathBuf::from(
+        node.wait_state(&long_id, "running")["directory"]
+            .as_str()
+            .unwrap(),
+    );
+    // The worker must be inside its endless wave, or `--now` legitimately
+    // stops it cleanly at the first wave boundary.
+    wait_for_journal(&long_dir);
     let mut small_child = node.spawn_run(&small);
     node.wait_state(&small_id, "waiting");
     thread::sleep(Duration::from_millis(500));
@@ -250,7 +257,6 @@ fn queued_job_waits_and_both_cancel_modes_work() {
     node.ok(&["jobs", "cancel", &long_id, "--now"]);
     wait_child(&mut long_child);
     assert!(started.elapsed() < Duration::from_secs(15));
-    let long_dir = PathBuf::from(node.get(&long_id)["directory"].as_str().unwrap());
     let long_run = read(&long_dir.join("run.json"));
     assert_eq!(long_run["status"], "cancelled");
     assert_eq!(long_run["actual_evaluations"], Value::Null);
@@ -299,18 +305,31 @@ fn wall_time_kills_after_the_declared_grace() {
     let node = Node::new(2);
     let spec = node.spec("timeout", |s| {
         s["budget"]["evaluations_per_retry"] = json!(ENDLESS_RETRY);
-        s["budget"]["wall_time_seconds"] = json!(3.0);
+        s["budget"]["wall_time_seconds"] = json!(6.0);
         s["budget"]["grace_seconds"] = json!(0.5);
     });
+    let id = job_id("timeout");
     let started = Instant::now();
-    let job = node.ok(&["run", "--spec", &spec]);
+    let mut child = node.spawn_run(&spec);
+    let dir = PathBuf::from(
+        node.wait_state(&id, "running")["directory"]
+            .as_str()
+            .unwrap(),
+    );
+    wait_for_journal(&dir);
+    // Only a worker that is inside its wave at the deadline exercises the kill.
+    assert!(
+        started.elapsed() < Duration::from_secs(5),
+        "worker start-up too slow"
+    );
+    wait_child(&mut child);
     let elapsed = started.elapsed();
-    assert_eq!(job["state"], "timed_out");
-    let run = read(&Path::new(job["directory"].as_str().unwrap()).join("run.json"));
+    let run = read(&dir.join("run.json"));
+    assert_eq!(run["status"], "timed_out");
     assert_eq!(run["actual_evaluations"], Value::Null);
     assert_eq!(run["runner"]["accounting_complete"], false);
     assert!(
-        elapsed >= Duration::from_millis(3400) && elapsed < Duration::from_secs(20),
+        elapsed >= Duration::from_millis(6400) && elapsed < Duration::from_secs(30),
         "{elapsed:?}"
     );
 }
@@ -320,7 +339,7 @@ fn killed_launcher_releases_slots_and_repair_keeps_the_worker_result() {
     let node = Node::new(2);
     let spec = node.spec("killed", |s| {
         s["budget"]["retries"] = json!(2);
-        s["budget"]["evaluations_per_retry"] = json!(LONG_RETRY);
+        s["budget"]["evaluations_per_retry"] = json!(4 * LONG_RETRY);
     });
     let id = job_id("killed");
     let mut child = node.spawn_run(&spec);
@@ -351,7 +370,7 @@ fn killed_launcher_releases_slots_and_repair_keeps_the_worker_result() {
     };
     assert_eq!(repaired["state"], "completed");
     let run = read(&dir.join("run.json"));
-    assert_eq!(run["actual_evaluations"], 2 * LONG_RETRY);
+    assert_eq!(run["actual_evaluations"], 2 * 4 * LONG_RETRY);
     assert_eq!(run["runner"]["accounting_complete"], true);
     assert_eq!(node.ledger(), json!({}));
 
