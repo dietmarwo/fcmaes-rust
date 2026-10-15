@@ -23,6 +23,7 @@ API examples, and primary algorithm references are in the
 | [Architecture](architecture.md) | Workspace layout, execution paths, concurrency, and scope |
 | [Optimizers](optimizers.md) | Pure-Rust optimizer APIs, defaults, one-shot operation, and ask/tell operation |
 | [Retry](retry.md) | Basic, coordinated, and multi-objective retry |
+| [Experiment runner](experiment-runner.md) | `fcmaes-run`: reproducible native optimization jobs with budgets, CPU-slot admission, cancellation, recovery and comparison |
 | [Optional Python bindings](python-bindings.md) | Direct PyO3 extension surface and GIL considerations |
 | [Examples](examples.md) | Every native binary, data input, GTOP problem, monitor, and benchmark |
 | [Combinatorial encodings](combinatorial-encodings.md) | Turning fixed real vectors into integers, categories, subsets, permutations, partitions, and repaired schedules |

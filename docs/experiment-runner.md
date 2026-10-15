@@ -1,23 +1,27 @@
-# Native experiment runner: source release 0.1
+# Native experiment runner (source release 0.1)
 
-This implementation follows the revised 15 October 2026 plan against
-`3ef267342c01b5ba4dee60d81501884b7e1807c0`. Numerical algorithms are unchanged.
-The optimizer and objective execute together in a small native worker.
-The CLI uses per-job files; it has no daemon, database or RPC server.
+`fcmaes-run` runs native optimization experiments as numbered, reproducible
+jobs that a person or a shell-capable agent can launch, inspect, stop and
+compare. The objective and the optimizer run together in a small native
+worker; the CLI coordinates jobs through per-job files. There is no daemon,
+database or RPC server. Numerical algorithms in `fcmaes-core` are unchanged.
 
-The foreground release is implemented and integration-tested. The systemd
-backend is implemented but **not host-accepted in this environment**, which
-has no systemd user manager. Run the supplied host gate before relying on
-unattended detached jobs. The target 16-physical-core performance gate remains
-open; correctness with 16 retry workers does not establish scaling.
+Status:
+
+- The foreground runner is covered by the integration tests in
+  `crates/fcmaes-runner/tests` and `crates/fcmaes-native-worker/tests`.
+- The detached systemd backend (`submit`) is implemented but has **not** been
+  accepted on a host with a systemd user manager yet. Run the manual checks at
+  the end of this page before relying on unattended detached jobs.
+- No 16-core performance measurement has been made. Correctness with 16
+  retry workers says nothing about scaling.
 
 ## Build and first experiment
 
-Linux, a Rust toolchain supporting edition 2024 (manifest minimum 1.88), and
-Python 3 for the integration scripts are required. This delivery was compiled
-with Rust 1.99.1; the minimum version was not separately tested. The three new
-crates are source-only and deliberately set `publish = false`. The worker
-uses `fcmaes-core` and `fcmaes-gtop`, never `fcmaes-examples`.
+Linux and a Rust toolchain supporting edition 2024 (minimum 1.88) are
+required. The three crates (`fcmaes-job-api`, `fcmaes-runner`,
+`fcmaes-native-worker`) are source-only (`publish = false`). The worker
+depends on `fcmaes-core` and `fcmaes-gtop`, never on `fcmaes-examples`.
 
 From the repository root:
 
@@ -27,85 +31,84 @@ export FCMAES_RUN_ROOT="$PWD/experiments"
 RUN="$PWD/target/release/fcmaes-run"
 WORKER="$PWD/target/release/fcmaes-native-worker"
 
-# Choose physical-core capacity explicitly for this machine. This example uses 2.
+# Capacity is the number of retry workers this node may run at once.
+# Use the machine's physical-core count; this example uses 2.
 "$RUN" node init --capacity 2
 "$RUN" workers add --id native --executable "$WORKER"
-"$RUN" problems list --json
-"$RUN" problems describe benchmark.rosenbrock --json
-"$RUN" validate --spec docs/runner-jobs/sphere-bite.json --json
+"$RUN" problems list
+"$RUN" problems describe benchmark.rosenbrock
+"$RUN" validate --spec docs/runner-jobs/sphere-bite.json
 "$RUN" run --spec docs/runner-jobs/sphere-bite.json --output results/sphere-bite
-"$RUN" result results/sphere-bite --json
-"$RUN" run --spec docs/runner-jobs/rosenbrock-bite.json --output results/rosenbrock-bite
-"$RUN" run --spec docs/runner-jobs/cassini1-bite.json --output results/cassini1-bite
+"$RUN" result results/sphere-bite
+"$RUN" run --spec docs/runner-jobs/sphere-de.json --output results/sphere-de
+"$RUN" compare results/sphere-bite results/sphere-de
 ```
 
-All commands print JSON on stdout (the `--json` flag is accepted for agent
-workflows). Diagnostics go to stderr. Command/data errors exit 2 and contain
-`error.code = "runner_error"`; malformed CLI syntax uses clap's usage error.
-The worker exits 1 on errors. A successfully executed CLI operation may report
-a failed/timed-out job: automation must inspect `job.state` / `run.status`,
-not just the CLI exit code.
+All commands print JSON on stdout (`--json` is accepted for agent workflows
+and changes nothing). Diagnostics go to stderr. Runner errors exit 2 with
+`error.code = "runner_error"`; malformed CLI syntax uses clap's usage error;
+the worker exits 1 on errors. A successful CLI call can report a failed or
+timed-out job, so automation must inspect `state` / `run.json` `status`, not
+only the exit code.
 
-To test DE, copy the Sphere example, change `request_key`, set
-`optimizer.kind` to `de`, `parameters.population` to e.g. 31, and
-`budget.evaluation_limit_mode` to `soft`. The validator displays the maximum
-actual evaluation allowance. DE with `hard` is rejected. Compare matching
-Sphere results using:
+## Job specification
 
-```bash
-"$RUN" compare results/sphere-bite/run.json results/sphere-de/run.json --json
-```
+Inputs use schema `fcmaes.job/0.1` (`crates/fcmaes-job-api/src/spec.rs`;
+examples in `docs/runner-jobs/`). Every nested object rejects unknown fields.
 
-Never compare Sphere with Rosenbrock as competing solutions to one problem.
-The comparator refuses mismatched native problem/bounds/objective definitions.
-It retains failed and zero-feasible arms, distinguishes requested and actual
-work, and warns for differing seeds, workers, binary provenance or incomplete
-legacy metadata. It makes no statistical-winner or hypervolume claim.
-Existing route-search manifests without an `objectives` array remain readable
-as descriptive legacy arms; their scientific definitions require domain review.
+- Problems: `benchmark.sphere`, `benchmark.rosenbrock` (dimension >= 2) and
+  `gtop.cassini1` (dimension 6, bounds inside the canonical Cassini1 box).
+- Optimizers: `biteopt` with `evaluation_limit_mode: "hard"`, and `de` with
+  `"soft"`. `population` is optional; the resolved default is recorded.
+- Budget: positive `retries` and `evaluations_per_retry`; the requested total
+  is their checked product, never a separate, possibly conflicting input.
+- `wall_time_seconds`: no new retry wave starts after this execution time.
+  `grace_seconds` (optional, default 1, at most 86400): the worker is killed
+  this long after the wall-time deadline; a wave still running then is lost.
+- Workers, retry-wave size, retries and evaluations must be positive. Zero is
+  never forwarded to the core, where it would mean "all CPUs".
 
-## Input and seed contract
+Budget semantics, verified by the worker tests:
 
-Inputs use `fcmaes.job/0.1`; see the complete JSON examples and
-`crates/fcmaes-job-api/src/spec.rs`. Every nested struct rejects unknown fields.
-Only independent retry parallelism is supported. Workers, retry-wave size,
-retry count and evaluations per retry must be positive; bounds must be finite,
-strictly increasing and dimensionally consistent. Explicit scalar broadcast is
-normalized to full bounds. The total budget is checked multiplication, never
-an independent conflicting input. DE's full conservative bound is also checked
-for overflow.
+| Path | Limit | Actual evaluations per retry |
+| --- | --- | --- |
+| BiteOpt | hard | exactly `evaluations_per_retry` (or fewer on early stop) |
+| DE, population P | soft | at most `evaluations_per_retry + 2P - 1` |
 
-Supported objectives: Sphere, Rosenbrock (dimension >= 2), Cassini1 (dimension
-6). Supported optimizer parameters: optional explicit population, with the
-resolved default recorded. Other optimizer options and algorithms are rejected.
-The native worker ignores the core retry coordinator's schedule-dependent
-`sdev` and `seed`. It uses `retry_run_seed(root_seed, global_retry_id)`, uniform
-initialization in the resolved bounds, and solver `runid = 0` across waves.
-Sorted retry results are identical across the tested worker/wave configurations
-on this build/platform. Wall-time cuts can complete different subsets.
+`validate` prints the requested total and the maximum actual total. DE with a
+hard limit is rejected.
 
-Each retry completion is serialized, checksummed, appended, flushed and
-`sync_data()`-acknowledged before the optimizer closure returns. No shared
-per-evaluation atomic is used in the normal execution path. Progress counts
-are maintained in memory after acknowledged append, avoiding an O(retries²)
-journal replay during successive wave snapshots. Finalization validates the
-complete journal once.
+The spec digest recorded in journals and manifests covers the whole resolved
+specification except `request_key`, so identical experiments submitted under
+different keys share a digest.
+
+## Seeds and determinism
+
+The worker ignores the core retry coordinator's schedule-dependent `seed` and
+`sdev`. Retry `i` uses `retry_run_seed(root_seed, i)`, uniform initialization
+in the resolved bounds and solver `runid = 0`, across all waves. The worker
+tests check that the per-retry results (x, y, evaluations) are identical for
+1, 2 and 3 workers and different wave sizes, for both optimizers, on
+Rosenbrock and Cassini1. A wall-time cut can still complete different
+subsets of retries.
+
+Each completed retry is serialized, checksummed, appended, flushed and
+`sync_data()`-acknowledged before the optimizer closure returns. The normal
+execution path has no shared per-evaluation counter.
 
 ## Registry, idempotency and executable identity
 
-Registering a worker is a trusted local administrative action. Jobs cannot
-supply executable names, shell snippets or arbitrary environment variables.
-The initial registry accepts the verified native capability profile only.
-Every attempt stages a copy of the registered binary, checks its SHA-256, and
-runs that copy. Rebuilding the registered path requires explicit re-registration.
+Registering a worker is a trusted local administrative action; only the
+native worker protocol is accepted. Jobs cannot name executables, shell
+snippets or environment variables. Every attempt stages a copy of the
+registered binary, checks its SHA-256 and runs that copy. Rebuilding the
+registered path requires registering it again.
 
-A request key maps to a normalized spec plus worker digest. Repeating the same
-key/content returns the existing attempt without execution. Different content
-under the same key fails. A new scientific run needs a new request key. A
-request is durably recorded before launch. Lost launch acknowledgement leaves
-the recorded unit in `starting`; repeating submit does not blindly relaunch it.
-The current attempt ID equals the job ID. Explicit new attempts use new keys;
-continuation of missing retry IDs is intentionally not an implicit feature.
+A request key maps to a normalized spec plus worker digest. Repeating the
+same key and content returns the existing job without executing anything;
+different content under the same key is refused. A new run needs a new key.
+The request is recorded durably before launch. The job ID is derived from the
+request key, and the attempt ID currently equals the job ID.
 
 ## Files and recovery
 
@@ -114,135 +117,139 @@ continuation of missing retry IDs is intentionally not an implicit feature.
 | `submitted.json` | Original request |
 | `resolved.json` | Expanded bounds and resolved defaults |
 | `provenance.json` | Attempt, worker SHA-256, build metadata, boot/unit identity |
-| `worker` | Staged executable for the immutable attempt |
-| `job.json` | Atomic lifecycle state, queue and execution timestamps |
-| `run.json` | Canonical schema-v1 scientific manifest |
-| `retries.jsonl` | Durable checksummed completed-retry payloads |
-| `progress.json` | Atomic completed-retry projection |
-| `cancel.request` | Cooperative stop flag |
-| `stdout.log`, `stderr.log` | Each capped at 1 MiB; excess output drained/discarded |
+| `worker` | Staged executable for this attempt |
+| `job.json` | Lifecycle state, queue and execution timestamps |
+| `run.json` | Schema-v1 scientific manifest (see `tutorials/RESULT_SCHEMA.md`) |
+| `retries.jsonl` | Durable checksummed completed-retry records |
+| `progress.json` | Completed-retry snapshot, rewritten after each wave |
+| `cancel.request` | Stop request (`mode`: `graceful` or `immediate`) |
+| `stdout.log`, `stderr.log` | Each capped at 1 MiB; excess output is discarded |
 | `containment.unknown` | Group shutdown could not be verified; slots retained |
-| `job.lock`, `worker.lock` | Stable lock inodes; never unlink while active |
+| `job.lock`, `worker.lock` | Held by the launcher and the worker for their lifetimes |
 
-The generic journal retains the route archive v2 envelope fields and SHA-256
-algorithm. Retry journals use envelope version 1, a distinct typed payload,
-and semantic validation including duplicate IDs, spec digest, vector/budget
-validity and full-record checksum. Malformed newline-terminated records are
-fatal. Only a malformed unterminated final tail is recoverable. A valid final
-record without a newline is retained and repaired with a newline.
-
-`jobs get` is read-only and replays verified records even without `run.json`.
-`jobs artifact ID retries` resolves registered artifact names, rejects symlink
-or path escape, and refuses inline content larger than 1 MiB. For larger logs,
-use the reported job directory.
+The journal keeps the route-archive v2 envelope fields and SHA-256. Retry
+journals use envelope version 1 with semantic validation (duplicate IDs, spec
+digest, bounds, budget). A malformed newline-terminated record is fatal; only
+a malformed unterminated final record is recoverable. A valid final record
+without a newline is kept and its newline restored.
 
 ```bash
 "$RUN" jobs list
 "$RUN" jobs get JOB_ID
 "$RUN" jobs wait JOB_ID --timeout 30
-"$RUN" jobs cancel JOB_ID
+"$RUN" jobs cancel JOB_ID          # finish the active wave, then stop
+"$RUN" jobs cancel JOB_ID --now    # kill after 1 s; the active wave is lost
 "$RUN" jobs reconcile
 "$RUN" jobs repair JOB_ID
+"$RUN" jobs artifact JOB_ID retries
 ```
 
-Cancellation is a request until the worker actually stops. It is checked
-between waves. The launcher permits a fixed 1-second grace period, then kills
-the process group, reaps the child and verifies group termination. The active
-wall deadline starts after slot admission, including startup/initialization.
-Queue waiting does not consume this execution deadline; there is currently no
-separate queue timeout. A timeout can therefore take the configured execution
-time plus grace and cleanup/finalization time.
+**Stopping.** The worker checks `cancel.request` between retry waves.
 
-Normal cooperative termination records exact evaluations; forced termination
-records null actual evaluations and a lower bound from durable completions.
-Core optimizer state in active retries is not checkpointed. `jobs repair`
-requires exclusive launcher and worker locks and proven released reservation;
-it repairs an incomplete tail and publishes `interrupted`, with unknown total
-evaluations/duration. Corruption is never silently discarded.
+- A graceful cancel, or the first SIGINT/SIGTERM/SIGHUP to a foreground
+  `run`, lets the active wave finish. The job ends `cancelled` with exact
+  accounting.
+- `--now`, or a second signal, kills the worker group one second later.
+- The wall-time deadline stops new waves; the worker is killed at the deadline
+  plus `grace_seconds`.
 
-A stale foreground reservation on the same boot is deliberately retained when
-liveness cannot be proven. Do not delete the lock file or edit a live ledger.
-After a host reboot, old boot identities can be reconciled automatically.
-For a same-boot foreground launcher crash, inspect and terminate the remaining
-trusted processes before administrative recovery; this release has no unsafe
-force-release command. Foreground mode does not promise disconnect survival.
+A killed wave makes accounting incomplete: `actual_evaluations` is `null`, and
+`runner.known_evaluations_lower_bound` counts the journaled retries. Optimizer
+state of active retries is not checkpointed. The execution deadline starts
+after slot admission and includes start-up; time spent waiting for slots does
+not count, and there is no separate queue timeout.
+
+**Lost launcher.** If a foreground launcher dies without cleaning up (SIGKILL,
+crash), the worker keeps running until its current wave ends. `jobs get` then
+reports `observed_state: "launcher_lost"`. Because the launcher and the
+worker hold `job.lock` and `worker.lock` for their lifetimes, and the kernel
+releases those locks when a process exits, the runner can prove both are
+gone:
+
+- slot reconciliation releases the reservation as soon as both locks are free;
+- `jobs repair` (refused while either process lives) finalizes the job. If
+  the worker finished on its own, its exact result is kept; otherwise the job
+  becomes `interrupted` with unknown total evaluations and duration.
+
+Corruption is never silently discarded. Limitation: if the launcher dies in
+the milliseconds between starting the worker and the worker taking its lock,
+the reservation can be released while the worker still starts.
 
 ## Detached Linux user services
 
 ```bash
 "$RUN" node doctor
-"$RUN" submit --spec docs/runner-jobs/sphere-bite.json
+"$RUN" submit --spec docs/runner-jobs/rosenbrock-bite.json
 "$RUN" jobs list
-python3 scripts/runner/test_systemd.py
 ```
 
-Use a new request key if the example has already run in the same registry.
-The backend uses `systemd-run --user`, a predictable per-attempt `.service`,
-`KillMode=control-group`, `Restart=no`, an explicit working directory, and a
-small per-job launcher. Native stdout/stderr never remain attached to the
-submitting client. There is no `nohup` fallback. Manager failure refuses new
-submission; ambiguous start acknowledgement is retained for inspection.
+Use a new request key if the example already ran in the same registry. The
+backend uses `systemd-run --user`, a per-attempt `.service`,
+`KillMode=control-group`, `Restart=no`, an explicit working directory and a
+small per-job launcher. Worker output never stays attached to the submitting
+client. There is no `nohup` fallback: if the user manager is unavailable,
+submission is refused, and an ambiguous start acknowledgement is retained for
+inspection rather than relaunched.
 
-The slot ledger is protected by one stable advisory lock. Reservations are
-atomic and synced. The lock covers admission/update only, not execution. One
-slot represents one retry worker; BLAS/OpenMP thread counts are explicitly 1.
-Reservations coordinate this registry's jobs, not unrelated host processes.
-A stale reservation is released only on a changed boot identity or a proven
-inactive/failed unit with empty cgroup. Unknown liveness retains capacity.
-Worker-process verification accounts for nested PID namespaces. Foreground
-process-group containment cannot catch intentionally escaped sessions; jobs
-are trusted research programs, not hostile sandbox workloads.
+The slot ledger is protected by one stable advisory lock and updated
+atomically. One slot is one retry worker; BLAS/OpenMP thread counts are set
+to 1. Reservations coordinate this registry's jobs, not unrelated processes.
+A reservation is released on a changed boot ID, an inactive or failed unit
+with an empty cgroup, or free launcher and worker locks. Unknown liveness
+keeps the capacity reserved.
 
-Real-host gate (`test_systemd.py`): three jobs under two slots, two running and
-one waiting; idempotent repeated submit; submitting clients exit; waiting and
-active cancellation; launcher kill; cgroup reconciliation; explicit repair.
-A missing user manager exits 77 with an explicit SKIP, never success.
+Manual acceptance checks on the target host:
 
-Manual remaining acceptance checks:
+1. Run three jobs under two slots: two run, one waits. Repeat a submit
+   (idempotent), let the submitting shells exit, cancel one waiting and one
+   active job, kill a launcher, then reconcile and repair.
+2. If logout survival is required, enable user-manager lingering according to
+   local policy (the runner changes no privileged settings). Submit a long job,
+   close the SSH session, reconnect and check that the journal keeps growing.
+3. Submit a long service, reboot, then inspect, reconcile and repair. Completed
+   work must be preserved and nothing must resume.
+4. Make the user manager unavailable and check that unresolved reservations
+   stay allocated; restore it and reconcile.
+5. Run on the intended local filesystem. The tests cover process crashes and
+   an ENOSPC device, not power loss or storage failure.
 
-1. Enable/verify user-manager lingering according to local host administration
-   policy if OS-user logout survival is required. No privileged settings are
-   changed by the runner. Submit a long job, close the actual SSH/user session,
-   reconnect, and verify continuing journal entries.
-2. Submit a long service, reboot, inspect the old boot record, reconcile and
-   repair. Confirm old completed work is preserved and no execution resumes.
-3. Deliberately make the manager unavailable and verify unresolved reservations
-   stay allocated. Restore access and reconcile.
-4. Run on the intended local filesystem. Fsync tests here cover process crashes
-   and an ENOSPC device, not arbitrary power-loss/storage-failure guarantees.
+## Comparison
 
-## Verification and profiling
+`compare` reads `run.json` manifests (or job directories) and refuses arms
+with different problems, bounds, objectives or formulations. Its output
+starts with a per-arm `summary` (optimizer, limit mode, status, requested,
+actual and lower-bound evaluations, completed retries, best value, elapsed
+time), followed by the full manifests. `equal_requested_work`,
+`equal_actual_work` and `equal_wall_time_budget` state which comparison
+protocol the arms satisfy. Warnings flag differing seeds, worker counts,
+worker binaries, evaluation-limit modes and incomplete accounting.
+Failed and zero-feasible arms are kept. No statistical winner and no
+hypervolume comparison is inferred. Legacy tutorial manifests without the
+runner profile are readable as descriptive arms only.
+
+## Verification
 
 ```bash
-cargo test --locked -p fcmaes-job-api
-cargo test --locked --manifest-path tutorials/gtoc1-route-search/Cargo.toml --lib route_
-python3 scripts/runner/test_integration.py
-cargo clippy -p fcmaes-job-api -p fcmaes-runner -p fcmaes-native-worker --no-deps -- -D warnings
-python3 scripts/runner/benchmark_matrix.py --quick --output /tmp/fcmaes-smoke
-python3 scripts/runner/benchmark_matrix.py --output /path/to/new/target-results
+cargo test --locked -p fcmaes-job-api -p fcmaes-native-worker -p fcmaes-runner
+cargo clippy --locked -p fcmaes-job-api -p fcmaes-native-worker -p fcmaes-runner --all-targets -- -D warnings
 ```
 
-The matrix records CPU affinity/quota, toolchain, actual work, wall time and
-throughput. It pairs workers 1/2/4/8/16, Sphere/Cassini1, short/long equal-work
-retry campaigns, and no extra telemetry/shared atomic counter/durable retry
-journal modes. It also measures direct versus managed worker launches. The
-benchmark mode is an explicit fixed-work diagnostic, does not enforce the job
-wall cutoff, and never pretends its `benchmark.json` timing report is a
-scientific `run.json` result.
+The runner tests need the worker binary next to `fcmaes-run`; testing both
+packages together (or `cargo test --workspace`, as CI does) builds it.
 
-The shared counter is a focused coherence-cost diagnostic; the full examples
-`ProgressState` incumbent-CAS path, a sharded alternative, expensive simulator
-adapter, measured CPU time and detached timing arm remain additional profiling
-work. Fixed-work measurements need jobs lasting at least 30 seconds, paired
-repetitions and the actual 16-core target before applying the proposed <=2%
-median overhead gate. Adjust budgets if the default runs are too short. Tiny
-smoke timings are functionality evidence only.
+`fcmaes-native-worker benchmark SPEC OUTPUT_DIR none|shared_atomic|journal`
+is a fixed-work diagnostic for telemetry overhead. It does not enforce the
+wall-time cutoff, and its `benchmark.json` is a timing report, not a
+scientific `run.json`. Meaningful numbers need jobs of at least 30 seconds,
+paired repetitions and the actual 16-core target machine.
 
-## Scope deliberately deferred
+## Deferred
 
-No numerical-core stop-token changes, CMA/coordinated retry, Python objective
-loader, simulator plugin, distributed scheduler, auto-resume, or MCP frontend.
-MCP remains behind the plan's named-client/value gate, which has not been met.
-Registry publication and registry-only tutorial resolution are not claimed.
-The existing route tutorial keeps `fcmaes-core = "=0.1.3"` and imports only the
-new shared utilities via an explicit repository path dependency.
+- No stop token in `fcmaes-core`, CMA-ES or coordinated retry, Python
+  objective loader, simulator plugin, distributed scheduler, auto-resume or MCP
+  frontend. MCP stays behind the plan's named-client value gate.
+- No registry publication.
+- `fcmaes-job-api::storage` is extracted from the GTOC1 route-search tutorial,
+  which still keeps its own copy. Switching that tutorial to the shared crate
+  is a follow-up, because the tutorial is a standalone workspace pinned to
+  `fcmaes-core = "=0.1.3"`.

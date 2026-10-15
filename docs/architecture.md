@@ -17,6 +17,9 @@ The workspace has four crates:
 | `crates/fcmaes-gtop` | Internal dependency-free GTOP objective library shared by examples and Python |
 | `crates/fcmaes-py` | Optional PyO3 module packaged as `fcmaes_rust._fcmaes_ext` |
 | `examples` (`fcmaes-examples`) | Native GTOP and application objectives, data adapters, optimizer runners, and binaries |
+| `crates/fcmaes-job-api` | Source-only job contract, durable journal/snapshot helpers and process utilities for the [experiment runner](experiment-runner.md) |
+| `crates/fcmaes-native-worker` | Source-only native worker running Sphere, Rosenbrock and Cassini1 jobs with BiteOpt or DE |
+| `crates/fcmaes-runner` | Source-only `fcmaes-run` CLI: validation, idempotent jobs, CPU-slot admission, cancellation, recovery and comparison |
 
 `fcmaes-core` does not depend on Python, GTOP, or the examples crate. The
 bindings depend only on the core and focused GTOP crates; application

@@ -1,3 +1,5 @@
+//! Native worker: runs one fcmaes experiment job in its job directory.
+#![forbid(unsafe_code)]
 fn solve(
     spec: &JobSpec,
     bounds: &RetryBounds,
@@ -51,15 +53,22 @@ fn solve(
         }
     }
 }
-fn evaluate(spec: &JobSpec, x: &[f64]) -> f64 {
+fn sphere(x: &[f64]) -> f64 {
+    x.iter().map(|v| v * v).sum()
+}
+fn rosenbrock(x: &[f64]) -> f64 {
+    x.windows(2)
+        .map(|w| 100.0 * (w[1] - w[0] * w[0]).powi(2) + (1.0 - w[0]).powi(2))
+        .sum()
+}
+/// Resolve the objective once, so the evaluation loop does not dispatch on
+/// the problem name for every candidate.
+fn objective_for(spec: &JobSpec) -> fn(&[f64]) -> f64 {
     match spec.problem.id.as_str() {
-        "benchmark.sphere" => x.iter().map(|v| v * v).sum(),
-        "benchmark.rosenbrock" => x
-            .windows(2)
-            .map(|w| 100.0 * (w[1] - w[0] * w[0]).powi(2) + (1.0 - w[0]).powi(2))
-            .sum(),
-        "gtop.cassini1" => fcmaes_gtop::cassini1(x),
-        _ => unreachable!(),
+        "benchmark.sphere" => sphere,
+        "benchmark.rosenbrock" => rosenbrock,
+        "gtop.cassini1" => fcmaes_gtop::cassini1,
+        _ => unreachable!("problem id is validated by JobSpec::resolve"),
     }
 }
 use fcmaes_core::{
@@ -75,11 +84,13 @@ fn execute(dir: &Path) -> Result<()> {
     if dir.join("retries.jsonl").exists() {
         return Err("worker refuses to restart an existing attempt".into());
     }
+    // Finish start-up work first, so an existing journal means the first wave
+    // is about to start.
+    let digest = spec.digest()?;
+    let exe_digest = digest_file(&std::env::current_exe()?)?;
     // Create and directory-sync before any work, including a zero-completion kill.
     fs::File::create(dir.join("retries.jsonl"))?.sync_all()?;
     fs::File::open(dir)?.sync_all()?;
-    let digest = spec.digest()?;
-    let exe_digest = digest_file(&std::env::current_exe()?)?;
     let start = Instant::now();
     let errors = Mutex::new(None::<String>);
     let writer = Mutex::new(());
@@ -88,7 +99,8 @@ fn execute(dir: &Path) -> Result<()> {
         spec.problem.bounds.lower.clone(),
         spec.problem.bounds.upper.clone(),
     )?;
-    let objective = |x: &[f64]| evaluate(&spec, x);
+    let f = objective_for(&spec);
+    let objective = |x: &[f64]| f(x);
     let mut status = "completed";
     for offset in (0..spec.budget.retries).step_by(spec.execution.retry_wave_size) {
         if dir.join("cancel.request").exists() {
@@ -184,10 +196,11 @@ fn benchmark(path: &Path, dir: &Path, mode: &str) -> Result<()> {
     let start = Instant::now();
     let mut evaluations = 0u64;
     // Choose the wrapper before entering any solver; no branch in the uninstrumented objective.
-    let plain = |x: &[f64]| evaluate(&spec, x);
+    let f = objective_for(&spec);
+    let plain = |x: &[f64]| f(x);
     let atomic = |x: &[f64]| {
         count.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-        evaluate(&spec, x)
+        f(x)
     };
     #[allow(clippy::too_many_arguments)]
     fn campaign<O: Fn(&[f64]) -> f64 + Sync>(
@@ -273,7 +286,7 @@ fn main() {
         Some("benchmark") if args.len() == 5 => {
             benchmark(Path::new(&args[2]), Path::new(&args[3]), &args[4])
         }
-        _ => Err("usage: fcmaes-native-worker describe | execute JOB_DIRECTORY".into()),
+        _ => Err("usage: fcmaes-native-worker describe | execute JOB_DIRECTORY | benchmark SPEC OUTPUT_DIRECTORY none|shared_atomic|journal".into()),
     };
     if let Err(e) = result {
         eprintln!("{}", serde_json::json!({"error":e.to_string()}));

@@ -1,0 +1,52 @@
+{
+  "schema_version": "fcmaes.job/0.1",
+  "request_key": "cassini1-bite-42",
+  "problem": {
+    "id": "gtop.cassini1",
+    "version": "1",
+    "config": {
+      "dimension": 6
+    },
+    "bounds": {
+      "lower": [
+        -1000.0,
+        30.0,
+        100.0,
+        30.0,
+        400.0,
+        1000.0
+      ],
+      "upper": [
+        0.0,
+        400.0,
+        470.0,
+        400.0,
+        2000.0,
+        6000.0
+      ],
+      "broadcast": false
+    }
+  },
+  "optimizer": {
+    "kind": "biteopt",
+    "parameters": {
+      "population": null
+    }
+  },
+  "execution": {
+    "strategy": "independent_retry",
+    "seed": 42,
+    "workers": 2,
+    "retry_wave_size": 2
+  },
+  "budget": {
+    "retries": 16,
+    "evaluations_per_retry": 20000,
+    "evaluation_limit_mode": "hard",
+    "wall_time_seconds": 120.0,
+    "grace_seconds": 1.0
+  },
+  "outputs": {
+    "progress": "completed_retries"
+  }
+}

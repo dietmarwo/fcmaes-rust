@@ -149,6 +149,28 @@ pub fn repair_tail<T: DeserializeOwned>(path: &Path, version: u32) -> io::Result
     }
     Ok(records)
 }
+/// Liveness probe for a lock that a process holds for its whole lifetime.
+///
+/// The kernel releases `flock` locks when their holder exits, however it
+/// exits, so a free lock proves the holder is gone. Returns `Ok(true)` when
+/// the lock is free or the file does not exist, `Ok(false)` when another open
+/// file description holds it. The probe takes the lock only momentarily.
+///
+/// # Errors
+///
+/// Returns an error when the lock state cannot be determined.
+pub fn lock_is_free(path: &Path) -> io::Result<bool> {
+    let file = match OpenOptions::new().read(true).write(true).open(path) {
+        Ok(file) => file,
+        Err(e) if e.kind() == io::ErrorKind::NotFound => return Ok(true),
+        Err(e) => return Err(e),
+    };
+    match fs2::FileExt::try_lock_exclusive(&file) {
+        Ok(()) => Ok(true),
+        Err(e) if e.raw_os_error() == fs2::lock_contended_error().raw_os_error() => Ok(false),
+        Err(e) => Err(e),
+    }
+}
 /// Stable inode lock. Never unlink it; atomic replacement is for data only.
 pub fn lock(path: &Path) -> io::Result<File> {
     let file = OpenOptions::new()

@@ -5,7 +5,7 @@ use std::{
     fs,
     path::{Path, PathBuf},
     process::{Command, Stdio},
-    sync::atomic::{AtomicBool, Ordering},
+    sync::atomic::{AtomicUsize, Ordering},
     thread,
     time::{Duration, Instant, SystemTime, UNIX_EPOCH},
 };
@@ -105,8 +105,12 @@ enum Jobs {
         #[arg(long, default_value_t = 60.0)]
         timeout: f64,
     },
+    /// Stop a job. By default the active retry wave finishes and is kept;
+    /// `--now` kills the worker after one second and loses the active wave.
     Cancel {
         id: String,
+        #[arg(long)]
+        now: bool,
     },
     Reconcile,
     Repair {
@@ -117,12 +121,48 @@ enum Jobs {
         name: String,
     },
 }
-static STOP: AtomicBool = AtomicBool::new(false);
+/// Number of SIGINT/SIGTERM/SIGHUP received: one requests a graceful stop,
+/// two or more an immediate one.
+static SIGNALS: AtomicUsize = AtomicUsize::new(0);
 extern "C" fn stop_handler(_: i32) {
-    STOP.store(true, Ordering::Relaxed);
+    SIGNALS.fetch_add(1, Ordering::Relaxed);
+}
+/// Kill delay after an immediate stop request.
+const IMMEDIATE_GRACE: Duration = Duration::from_secs(1);
+#[derive(Clone, Copy, Debug, PartialEq, PartialOrd)]
+enum Stop {
+    None,
+    Graceful,
+    Immediate,
+}
+/// Pending stop request from signals or `cancel.request`. The launcher's own
+/// timeout marker (reason `timed_out`) is not a cancellation.
+fn stop_request(dir: &Path) -> Stop {
+    let from_signals = match SIGNALS.load(Ordering::Relaxed) {
+        0 => Stop::None,
+        1 => Stop::Graceful,
+        _ => Stop::Immediate,
+    };
+    let path = dir.join("cancel.request");
+    let from_file = if !path.exists() {
+        Stop::None
+    } else {
+        match read(&path) {
+            Ok(v) if v["reason"] == "timed_out" => Stop::None,
+            Ok(v) if v["mode"] == "graceful" => Stop::Graceful,
+            // An unreadable or unknown request is treated as the stronger one.
+            _ => Stop::Immediate,
+        }
+    };
+    if from_file > from_signals {
+        from_file
+    } else {
+        from_signals
+    }
 }
 fn read(path: &Path) -> Result<Value> {
-    Ok(serde_json::from_slice(&fs::read(path)?)?)
+    let bytes = fs::read(path).map_err(|e| format!("{}: {e}", path.display()))?;
+    Ok(serde_json::from_slice(&bytes).map_err(|e| format!("{}: {e}", path.display()))?)
 }
 fn optional(path: &Path) -> Result<Value> {
     if path.exists() {
@@ -147,7 +187,17 @@ fn output(value: Value) -> Result<()> {
     Ok(())
 }
 fn spec(path: &Path) -> Result<JobSpec> {
-    serde_json::from_slice::<JobSpec>(&fs::read(path)?)?.resolve()
+    let bytes = fs::read(path).map_err(|e| format!("{}: {e}", path.display()))?;
+    serde_json::from_slice::<JobSpec>(&bytes)
+        .map_err(|e| format!("{}: {e}", path.display()))?
+        .resolve()
+}
+/// True when neither the launcher (`job.lock`) nor the worker (`worker.lock`)
+/// of an attempt is alive. Both hold their lock for their whole lifetime and
+/// the native worker starts no processes of its own. Errors count as alive.
+fn attempt_processes_gone(dir: &Path) -> bool {
+    matches!(lock_is_free(&dir.join("job.lock")), Ok(true))
+        && matches!(lock_is_free(&dir.join("worker.lock")), Ok(true))
 }
 fn capacity(root: &Path) -> Result<u64> {
     read(&root.join("node.json"))?["capacity"]
@@ -292,7 +342,10 @@ fn submit(root: &Path, id: &str) -> Result<()> {
         _=>Err(format!("start acknowledgement unknown for {unit}; inspect recorded unit; repeating submit will NOT launch again").into()),
     }
 }
-fn reconcile_ledger(_root: &Path, ledger: &mut Value) -> Result<()> {
+/// Drop reservations whose holders are provably gone: a previous boot, an
+/// inactive systemd unit with an empty cgroup, or an attempt whose launcher
+/// and worker locks are both free. Unknown liveness keeps the reservation.
+fn reconcile_ledger(root: &Path, ledger: &mut Value) -> Result<()> {
     let current_boot = boot()?;
     let keys: Vec<String> = ledger
         .as_object()
@@ -336,14 +389,19 @@ fn reconcile_ledger(_root: &Path, ledger: &mut Value) -> Result<()> {
         } else {
             false
         };
-        if old_boot || stopped {
+        // Foreground jobs have no unit; a launcher killed by SIGKILL (or a
+        // closed terminal) would otherwise hold its slots until reboot.
+        let gone = directory(root, &id)
+            .map(|dir| attempt_processes_gone(&dir))
+            .unwrap_or(false);
+        if old_boot || stopped || gone {
             ledger.as_object_mut().unwrap().remove(&id);
         }
     }
     Ok(())
 }
 fn admit(root: &Path, id: &str, dir: &Path, slots: usize) -> Result<bool> {
-    if dir.join("cancel.request").exists() || STOP.load(Ordering::Relaxed) {
+    if stop_request(dir) != Stop::None {
         return Ok(false);
     }
     let _guard = lock(&root.join("slots.lock"))?;
@@ -404,21 +462,18 @@ fn launch(root: &Path, id: &str) -> Result<()> {
         return Err("attempt already started; no implicit restart".into());
     }
     let s = spec(&dir.join("resolved.json"))?;
-    unsafe {
-        libc::signal(
-            libc::SIGINT,
-            stop_handler as *const () as libc::sighandler_t,
-        );
-        libc::signal(
-            libc::SIGTERM,
-            stop_handler as *const () as libc::sighandler_t,
-        );
+    // SIGHUP matters for foreground runs: a closed terminal or agent shell
+    // must stop the job instead of orphaning the worker.
+    for signal in [libc::SIGINT, libc::SIGTERM, libc::SIGHUP] {
+        unsafe {
+            libc::signal(signal, stop_handler as *const () as libc::sighandler_t);
+        }
     }
     state["state"] = json!("waiting");
     write_atomic_json(&dir.join("job.json"), &state)?;
     let queue = Instant::now();
     loop {
-        if dir.join("cancel.request").exists() || STOP.load(Ordering::Relaxed) {
+        if stop_request(&dir) != Stop::None {
             finish(&dir, &s, "cancelled", true, 0.0)?;
             return Ok(());
         }
@@ -481,25 +536,47 @@ fn execute_worker(
     let b = child.stderr.take().unwrap();
     let ta = thread::spawn(move || drain_file(a, stdout, 1_048_576));
     let tb = thread::spawn(move || drain_file(b, stderr, 1_048_576));
+    // The worker checks `cancel.request` between retry waves. A graceful stop
+    // lets the active wave finish; the wall-time deadline plus the declared
+    // grace, or an immediate stop, kills the worker group.
+    let wall = Duration::from_secs_f64(s.budget.wall_time_seconds);
+    let hard_deadline = start + wall + Duration::from_secs_f64(s.budget.grace_seconds);
     let mut reason = None;
-    let mut stop_time = None;
+    let mut immediate_deadline: Option<Instant> = None;
     let polled = (|| -> Result<std::process::ExitStatus> {
         loop {
             if let Some(exit) = child.try_wait()? {
                 return Ok(exit);
             }
+            let request = stop_request(dir);
             if reason.is_none() {
-                if dir.join("cancel.request").exists() || STOP.load(Ordering::Relaxed) {
+                if request != Stop::None {
                     reason = Some("cancelled");
-                } else if start.elapsed().as_secs_f64() >= s.budget.wall_time_seconds {
+                } else if start.elapsed() >= wall {
                     reason = Some("timed_out");
-                }
-                if reason.is_some() {
-                    write_atomic_json(&dir.join("cancel.request"), &json!({"reason":reason}))?;
-                    stop_time = Some(Instant::now());
+                    write_atomic_json(
+                        &dir.join("cancel.request"),
+                        &json!({"mode":"graceful","reason":"timed_out"}),
+                    )?;
                 }
             }
-            if stop_time.is_some_and(|t| t.elapsed() >= Duration::from_secs(1)) {
+            // A signal-only request must still reach the worker.
+            if request != Stop::None && !dir.join("cancel.request").exists() {
+                let mode = if request == Stop::Immediate {
+                    "immediate"
+                } else {
+                    "graceful"
+                };
+                write_atomic_json(
+                    &dir.join("cancel.request"),
+                    &json!({"mode":mode,"reason":"signal","requested_at":now()}),
+                )?;
+            }
+            if request == Stop::Immediate && immediate_deadline.is_none() {
+                immediate_deadline = Some(Instant::now() + IMMEDIATE_GRACE);
+            }
+            let deadline = immediate_deadline.map_or(hard_deadline, |d| d.min(hard_deadline));
+            if Instant::now() >= deadline {
                 terminate_process_group(&mut child);
                 return Ok(child.wait()?);
             }
@@ -528,34 +605,41 @@ fn execute_worker(
     ta.join().map_err(|_| "stdout drainer panic")??;
     tb.join().map_err(|_| "stderr drainer panic")??;
     let exit = polled?;
+    let worker = if exit.success() {
+        worker_outcome(dir, s)?
+    } else {
+        None
+    };
+    let normal = worker.is_some();
+    let status = match (reason, worker) {
+        (Some(reason), _) => reason.to_string(),
+        (None, Some((status, _))) => status,
+        (None, None) => "failed".into(),
+    };
+    Ok((status, normal))
+}
+/// The worker's own `run.json`, if it is a complete manifest consistent with
+/// the journal: returns its status and elapsed time.
+fn worker_outcome(dir: &Path, s: &JobSpec) -> Result<Option<(String, f64)>> {
+    let path = dir.join("run.json");
+    if !path.exists() {
+        return Ok(None);
+    }
     let records = result::replay(dir, s)?;
-    let normal = if exit.success() && dir.join("run.json").exists() {
-        let r = read(&dir.join("run.json"))?;
-        r["runner"]["spec_digest"] == s.digest()?
-            && r["runner"]["accounting_complete"] == true
-            && matches!(
-                r["status"].as_str(),
-                Some("completed" | "cancelled" | "timed_out")
-            )
-            && r["actual_evaluations"].as_u64()
-                == Some(records.iter().map(|r| r.actual_evaluations).sum())
-    } else {
-        false
-    };
-    let status = if let Some(reason) = reason {
-        reason.to_string()
-    } else if normal {
-        read(&dir.join("run.json"))?["status"]
-            .as_str()
-            .unwrap()
-            .to_owned()
-    } else {
-        "failed".into()
-    };
+    let r = read(&path)?;
+    let status = r["status"].as_str().unwrap_or_default().to_owned();
+    let consistent = r["runner"]["spec_digest"] == s.digest()?
+        && r["runner"]["accounting_complete"] == true
+        && matches!(status.as_str(), "completed" | "cancelled" | "timed_out")
+        && r["actual_evaluations"].as_u64()
+            == Some(records.iter().map(|r| r.actual_evaluations).sum());
+    if !consistent {
+        return Ok(None);
+    }
     if status == "completed" && records.len() != s.budget.retries {
         return Err("worker completed without all retries".into());
     }
-    Ok((status, normal))
+    Ok(Some((status, r["elapsed_seconds"].as_f64().unwrap_or(0.0))))
 }
 fn get(root: &Path, id: &str) -> Result<Value> {
     let dir = directory(root, id)?;
@@ -567,6 +651,15 @@ fn get(root: &Path, id: &str) -> Result<Value> {
     v["known_evaluations_lower_bound"] = json!(r.iter().map(|r| r.actual_evaluations).sum::<u64>());
     if v["boot_id"].as_str() != Some(&boot()?) {
         v["observed_state"] = json!("interrupted_after_reboot");
+    }
+    // A launcher holds job.lock for its whole lifetime, so a free lock in an
+    // active state means it died (SIGKILL, closed terminal) without finishing.
+    if matches!(v["state"].as_str(), Some("waiting" | "running"))
+        && v["observed_state"].is_null()
+        && matches!(lock_is_free(&dir.join("job.lock")), Ok(true))
+    {
+        v["observed_state"] = json!("launcher_lost");
+        v["recovery"] = json!("run `jobs repair` after the worker has exited");
     }
     if matches!(
         v["state"].as_str(),
@@ -723,16 +816,24 @@ fn main_result() -> Result<()> {
                     if matches!(
                         v["state"].as_str(),
                         Some("completed" | "failed" | "cancelled" | "timed_out" | "interrupted")
-                    ) || t.elapsed().as_secs_f64() >= timeout
+                    ) || !v["observed_state"].is_null()
+                        || t.elapsed().as_secs_f64() >= timeout
                     {
                         return output(v);
                     }
                     thread::sleep(Duration::from_millis(250));
                 }
             }
-            Jobs::Cancel { id } => {
+            Jobs::Cancel { id, now: immediate } => {
                 let dir = directory(&root, &id)?;
-                write_atomic_json(&dir.join("cancel.request"), &json!({"requested_at":now()}))?;
+                let path = dir.join("cancel.request");
+                // Never downgrade an immediate request to a graceful one.
+                let existing = optional(&path)?;
+                if immediate || existing["mode"] != "immediate" || existing["reason"] == "timed_out"
+                {
+                    let mode = if immediate { "immediate" } else { "graceful" };
+                    write_atomic_json(&path, &json!({"mode":mode,"requested_at":now()}))?;
+                }
                 output(get(&root, &id)?)
             }
             Jobs::Reconcile => {
@@ -760,32 +861,40 @@ fn main_result() -> Result<()> {
                     .open(dir.join("worker.lock"))?;
                 fs2::FileExt::try_lock_exclusive(&worker)
                     .map_err(|_| "worker still owns this attempt")?;
-                let _g = lock(&root.join("slots.lock"))?;
-                let mut ledger = optional(&root.join("slots.json"))?;
-                reconcile_ledger(&root, &mut ledger)?;
-                write_atomic_json(&root.join("slots.json"), &ledger)?;
-                if !ledger[&id].is_null() {
-                    return Err("liveness unresolved; reservation retained, repair refused".into());
-                }
                 let state = read(&dir.join("job.json"))?;
                 if matches!(
                     state["state"].as_str(),
-                    Some("completed" | "failed" | "cancelled" | "timed_out")
+                    Some("completed" | "failed" | "cancelled" | "timed_out" | "interrupted")
                 ) {
                     return Err(
                         "attempt already finalized; repair is for interrupted attempts".into(),
                     );
+                }
+                // Holding both locks proves the launcher and worker are gone, so
+                // this attempt's reservation can be released.
+                {
+                    let _g = lock(&root.join("slots.lock"))?;
+                    let mut ledger = optional(&root.join("slots.json"))?;
+                    reconcile_ledger(&root, &mut ledger)?;
+                    ledger.as_object_mut().ok_or("invalid ledger")?.remove(&id);
+                    write_atomic_json(&root.join("slots.json"), &ledger)?;
                 }
                 let s = spec(&dir.join("resolved.json"))?;
                 result::replay(&dir, &s)?;
                 if dir.join("retries.jsonl").exists() {
                     repair_tail::<result::RetryRecord>(&dir.join("retries.jsonl"), 1)?;
                 }
-                finish(&dir, &s, "interrupted", false, 0.0)?;
-                // The execution duration is unknown after launcher loss.
-                let mut r = read(&dir.join("run.json"))?;
-                r["elapsed_seconds"] = Value::Null;
-                write_atomic_json(&dir.join("run.json"), &r)?;
+                // An orphaned worker may have finished on its own after the
+                // launcher died; keep its exact result.
+                if let Some((status, elapsed)) = worker_outcome(&dir, &s)? {
+                    finish(&dir, &s, &status, true, elapsed)?;
+                } else {
+                    finish(&dir, &s, "interrupted", false, 0.0)?;
+                    // The execution duration is unknown after launcher loss.
+                    let mut r = read(&dir.join("run.json"))?;
+                    r["elapsed_seconds"] = Value::Null;
+                    write_atomic_json(&dir.join("run.json"), &r)?;
+                }
                 output(get(&root, &id)?)
             }
             Jobs::Artifact { id, name } => {

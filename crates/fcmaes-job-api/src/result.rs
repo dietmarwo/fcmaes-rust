@@ -70,6 +70,13 @@ pub fn manifest(
         .iter()
         .filter(|r| r.feasible)
         .min_by(|a, b| a.y.unwrap().total_cmp(&b.y.unwrap()));
+    // Link only artifacts that exist: a job cancelled while waiting for CPU
+    // slots never created a journal.
+    let artifacts = if dir.join("retries.jsonl").exists() {
+        json!({"retries":"retries.jsonl"})
+    } else {
+        json!({})
+    };
     Ok(
         json!({"schema_version":1,"tutorial":"fcmaes-native-worker","formulation":"single_objective",
             "command":"fcmaes-native-worker execute JOB_DIRECTORY", "status":status,
@@ -78,7 +85,7 @@ pub fn manifest(
             "elapsed_seconds":elapsed,"objectives":[{"column":"objective","label":spec.problem.id,"unit":if spec.problem.id=="gtop.cassini1" {"km/s"}else{"dimensionless"}}],
             "descriptors":[],"feasible_results":records.iter().filter(|r|r.feasible).count(),
             "best":best.map(|r|json!({"x":r.x,"y":r.y,"retry_id":r.retry_id})),
-            "artifacts":{"retries":"retries.jsonl"},
+            "artifacts":artifacts,
             "runner":{"profile":"fcmaes.runner/0.1","spec_digest":spec.digest()?,"worker_digest":worker_digest,
                 "problem":spec.problem,"optimizer":spec.optimizer,"budget":spec.budget,"execution":spec.execution,
                 "termination_reason":status,"accounting_complete":complete,"known_evaluations_lower_bound":known,
@@ -127,16 +134,45 @@ pub fn compare(runs: &[Value]) -> Result<Value> {
         if r["workers"] != first["workers"] {
             warnings.push("Worker allocations differ".into());
         }
+        let mode = &r["runner"]["budget"]["evaluation_limit_mode"];
+        if !mode.is_null() && *mode != first["runner"]["budget"]["evaluation_limit_mode"] {
+            warnings.push(
+                "Evaluation limit modes differ (hard vs soft); compare actual, not requested, work"
+                    .into(),
+            );
+        }
     }
     if first["formulation"] != "single_objective" {
         warnings.push("No automatic Pareto or hypervolume comparison; common scaling/reference definitions required".into());
     }
+    for r in runs {
+        if r["actual_evaluations"].is_null() {
+            warnings.push(
+                "At least one arm has incomplete accounting (forced stop); its actual work is only a lower bound"
+                    .into(),
+            );
+        }
+    }
     warnings.sort();
     warnings.dedup();
+    let budget = |r: &Value| r["runner"]["budget"]["wall_time_seconds"].clone();
+    let summary: Vec<Value> = runs
+        .iter()
+        .enumerate()
+        .map(|(arm, r)| {
+            json!({"arm":arm,"optimizer":r["runner"]["optimizer"]["kind"],
+                "evaluation_limit_mode":r["runner"]["budget"]["evaluation_limit_mode"],
+                "status":r["status"],"seed":r["seed"],"workers":r["workers"],
+                "requested_evaluations":r["requested_evaluations"],"actual_evaluations":r["actual_evaluations"],
+                "known_evaluations_lower_bound":r["runner"]["known_evaluations_lower_bound"],
+                "completed_retries":r["runner"]["completed_retries"],"feasible_results":r["feasible_results"],
+                "best_y":r["best"]["y"],"elapsed_seconds":r["elapsed_seconds"]})
+        })
+        .collect();
     Ok(
-        json!({"arms":runs,"equal_requested_work":runs.iter().all(|r|r["requested_evaluations"]==first["requested_evaluations"]),
+        json!({"summary":summary,"arms":runs,"equal_requested_work":runs.iter().all(|r|r["requested_evaluations"]==first["requested_evaluations"]),
         "equal_actual_work":!first["actual_evaluations"].is_null() && runs.iter().all(|r|r["actual_evaluations"]==first["actual_evaluations"]),
-        "equal_wall_time":runs.iter().all(|r|r["elapsed_seconds"]==first["elapsed_seconds"]),
+        "equal_wall_time_budget":!budget(first).is_null() && runs.iter().all(|r|budget(r)==budget(first)),
         "warnings":warnings,"interpretation":"Descriptive arms; no statistical winner inferred. Incomplete and zero-feasible arms retained."}),
     )
 }

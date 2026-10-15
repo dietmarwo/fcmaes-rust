@@ -18,6 +18,7 @@
 - [Architecture](docs/architecture.md)
 - [Optimizer guide](docs/optimizers.md)
 - [Retry and coordinated search](docs/retry.md)
+- [Experiment runner](docs/experiment-runner.md)
 - [Combinatorial encodings](docs/combinatorial-encodings.md)
 - [Python bindings](docs/python-bindings.md)
 - [Examples](docs/examples.md)

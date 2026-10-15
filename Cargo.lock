@@ -479,6 +479,7 @@ dependencies = [
  "fcmaes-gtop",
  "fcmaes-job-api",
  "serde_json",
+ "tempfile",
 ]
 
 [[package]]
@@ -501,6 +502,7 @@ dependencies = [
  "libc",
  "serde",
  "serde_json",
+ "tempfile",
 ]
 
 [[package]]

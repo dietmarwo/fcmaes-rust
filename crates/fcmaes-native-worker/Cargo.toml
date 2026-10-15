@@ -10,3 +10,6 @@ fcmaes-core = { path = "../fcmaes-core" }
 fcmaes-gtop = { path = "../fcmaes-gtop" }
 fcmaes-job-api = { path = "../fcmaes-job-api" }
 serde_json = "1"
+
+[dev-dependencies]
+tempfile = "3"
