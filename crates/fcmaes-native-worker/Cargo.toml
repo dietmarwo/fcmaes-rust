@@ -1,0 +1,12 @@
+[package]
+name = "fcmaes-native-worker"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+[dependencies]
+fcmaes-core = { path = "../fcmaes-core" }
+fcmaes-gtop = { path = "../fcmaes-gtop" }
+fcmaes-job-api = { path = "../fcmaes-job-api" }
+serde_json = "1"

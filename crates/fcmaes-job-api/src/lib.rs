@@ -1,0 +1,8 @@
+//! Shared source-only experiment contract and extracted durable utilities.
+pub mod process;
+pub mod result;
+pub mod spec;
+pub mod storage;
+pub use spec::*;
+pub type Error = Box<dyn std::error::Error + Send + Sync>;
+pub type Result<T> = std::result::Result<T, Error>;
