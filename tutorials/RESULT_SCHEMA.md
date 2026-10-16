@@ -153,12 +153,14 @@ The source-only `fcmaes-native-worker` uses this same schema, with
 `formulation: "single_objective"`. All stored objectives remain minimized.
 `best` is either null or `{x, y, retry_id}`; `feasible_results` counts valid
 completed retries, not distinct mathematical feasible points. These initial
-objectives have no separately enforced constraints; finite penalty-free
-objective values qualify as valid. Cassini1 values >= 1e99 are invalid.
+objectives have no separately enforced constraints; finite objective values
+below 1e99 (the core's replacement for NaN) qualify as valid.
 
 Namespaced `runner` metadata records the resolved problem/bounds, optimizer,
 retry budget, execution settings, binary SHA-256, spec digest, attempt ID,
 build provenance, termination reason, completed retries and accounting status.
+The spec digest covers the resolved job specification except `request_key`,
+so identical experiments submitted under different keys share a digest.
 `retries.jsonl` is linked through `artifacts.retries`. The checksummed payload
 contains full-precision decisions/objective and the actual evaluation count.
 The job input schema (`fcmaes.job/0.1`) is an execution request, not another
@@ -172,13 +174,17 @@ contains transient `submitted/starting/waiting/running` lifecycle state;
 `skipped` retains the existing meaning of never executed.
 
 If the worker returns cooperatively, `actual_evaluations` is exact for the
-attempt, including all retries it performed. After a force kill, crash, or
+attempt, including all retries it performed. A graceful cancel stops at the
+next retry-wave boundary and stays exact. After a force kill (`jobs cancel
+--now`, the wall-time deadline plus `budget.grace_seconds`), crash, or
 unresolved accounting, `actual_evaluations` is null;
 `runner.known_evaluations_lower_bound` includes only verified journal records
 and `runner.accounting_complete` is false. Do not replace null with the lower
-bound. Repair after launcher loss also uses null elapsed time because the
-execution duration is unknown. Queue duration is reported separately in
-`job.json`; it is excluded from the execution deadline.
+bound. Repair after launcher loss keeps the worker's exact result when the
+orphaned worker finished on its own; otherwise it records `interrupted` with
+null elapsed time, because the execution duration is unknown. Queue duration
+is reported separately in `job.json`; it is excluded from the execution
+deadline.
 
 BiteOpt advertises a hard per-retry cap. Serial DE uses a generation-granular
 soft cap with at most `2 * population - 1` extra evaluations per retry at the

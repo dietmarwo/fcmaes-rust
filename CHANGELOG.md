@@ -20,6 +20,13 @@ phase, with breaking changes called out explicitly.
   jobs is included but not yet host-accepted. See
   `docs/experiment-runner.md`.
 
+- The GTOC1 route-search tutorial now delegates its durable JSONL, snapshot,
+  checksummed-archive and subprocess helpers to `fcmaes-job-api` through a
+  repository path dependency, and `tutorials/RESULT_SCHEMA.md` documents the
+  runner's `run.json` profile. `scripts/runner` adds a real-binary
+  integration suite (run in CI), a systemd host acceptance gate and a
+  telemetry benchmark matrix.
+
 ## [0.1.5] - 2026-08-13
 
 ### Added

@@ -44,6 +44,10 @@ jobs:
           cargo clippy --workspace --all-targets -- -D warnings
       - name: cargo test
         run: cargo test --workspace
+      - name: Experiment runner integration tests
+        run: |
+          cargo build --release --locked -p fcmaes-runner -p fcmaes-native-worker
+          python3 scripts/runner/test_integration.py
       - name: Python binding tests
         run: |
           python -m venv .venv

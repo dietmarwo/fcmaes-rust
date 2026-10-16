@@ -33,7 +33,8 @@ def main():
     wait_state(j['id'],'running' if i<2 else 'waiting')
    slots=json.loads((root/'slots.json').read_text());assert sum(x['slots'] for x in slots.values())==2
    cli('jobs','cancel',ids[2]);wait_state(ids[2],'cancelled')
-   cli('jobs','cancel',ids[0]);wait_state(ids[0],'cancelled')
+   # The active job has endless retries: a graceful cancel would wait for its wave.
+   cli('jobs','cancel',ids[0],'--now');wait_state(ids[0],'cancelled')
    # Killing a launcher lets the systemd control group contain its worker.
    unit=f'fcmaes-{ids[1]}.service'
    subprocess.run(['systemctl','--user','kill','--kill-whom=main','--signal=KILL',unit],check=True)

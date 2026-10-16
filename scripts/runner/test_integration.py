@@ -92,7 +92,9 @@ class Integration(unittest.TestCase):
         fa=self.base/'legacy1.json';fb=self.base/'legacy2.json';fa.write_text(json.dumps(ra));fb.write_text(json.dumps(rb))
         c=self.call('compare',fa,fb);self.assertEqual(c['arms'][0]['feasible_results'],0);self.assertTrue(c['warnings'])
     def test_timeout_forced_accounting_is_unknown(self):
-        _,_,j,d,r=self.run_job(budget__evaluations_per_retry=10**9,budget__retries=2,budget__wall_time_seconds=.05)
+        # One second leaves the worker time to enter its endless wave before the deadline;
+        # a worker still starting would stop cleanly at its first wave boundary instead.
+        _,_,j,d,r=self.run_job(budget__evaluations_per_retry=10**9,budget__retries=2,budget__wall_time_seconds=1.0)
         self.assertEqual(j['state'],'timed_out');self.assertIsNone(r['actual_evaluations']);self.assertFalse(r['runner']['accounting_complete'])
         self.assertEqual(self.call('jobs','reconcile'),{})
     def test_cancel_preserves_completed_work(self):
@@ -116,7 +118,8 @@ class Integration(unittest.TestCase):
         self.wait_state(cd,{'waiting'});time.sleep(.15)
         ledger=json.loads((self.root/'slots.json').read_text());self.assertEqual(sum(x['slots'] for x in ledger.values()),2);self.assertFalse((cd/'retries.jsonl').exists())
         self.call('jobs','cancel',cid);c.communicate(timeout=10);self.assertEqual(json.loads((cd/'run.json').read_text())['actual_evaluations'],0)
-        for p,id in [(a,aid),(b,bid)]:self.call('jobs','cancel',id);p.communicate(timeout=10)
+        # Endless retries never finish their wave: a graceful cancel would wait, --now kills.
+        for p,id in [(a,aid),(b,bid)]:self.call('jobs','cancel',id,'--now');p.communicate(timeout=10)
         self.assertEqual(self.call('jobs','reconcile'),{})
     def test_duplicate_journal_and_artifact_escape(self):
         _,_,j,d,_=self.run_job();p=d/'retries.jsonl';data=p.read_bytes();p.write_bytes(data+data.splitlines(keepends=True)[0]);self.call('jobs','get',j['id'],ok=False);p.write_bytes(data)

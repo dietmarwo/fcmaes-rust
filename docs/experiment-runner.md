@@ -198,11 +198,13 @@ A reservation is released on a changed boot ID, an inactive or failed unit
 with an empty cgroup, or free launcher and worker locks. Unknown liveness
 keeps the capacity reserved.
 
-Manual acceptance checks on the target host:
+Acceptance checks on the target host:
 
-1. Run three jobs under two slots: two run, one waits. Repeat a submit
-   (idempotent), let the submitting shells exit, cancel one waiting and one
-   active job, kill a launcher, then reconcile and repair.
+1. Run `python3 scripts/runner/test_systemd.py` (after the release build). It
+   runs three jobs under two slots (two run, one waits), repeats a submit
+   (idempotent), lets the submitting clients exit, cancels one waiting and one
+   active job, kills a launcher, then reconciles and repairs. Exit 77 means no
+   user manager was found and nothing was verified.
 2. If logout survival is required, enable user-manager lingering according to
    local policy (the runner changes no privileged settings). Submit a long job,
    close the SSH session, reconnect and check that the journal keeps growing.
@@ -237,11 +239,36 @@ cargo clippy --locked -p fcmaes-job-api -p fcmaes-native-worker -p fcmaes-runner
 The runner tests need the worker binary next to `fcmaes-run`; testing both
 packages together (or `cargo test --workspace`, as CI does) builds it.
 
+The real-binary integration suite uses only the Python standard library and
+the release binaries; CI runs it after the Rust tests:
+
+```bash
+cargo build --release --locked -p fcmaes-runner -p fcmaes-native-worker
+python3 scripts/runner/test_integration.py
+```
+
+It covers awkward budgets (1 to 101 evaluations per retry), determinism with
+up to 16 workers, comparison of real tutorial manifests, journal corruption,
+artifact path escape, a killed worker and unknown slot liveness.
+
 `fcmaes-native-worker benchmark SPEC OUTPUT_DIR none|shared_atomic|journal`
 is a fixed-work diagnostic for telemetry overhead. It does not enforce the
 wall-time cutoff, and its `benchmark.json` is a timing report, not a
-scientific `run.json`. Meaningful numbers need jobs of at least 30 seconds,
-paired repetitions and the actual 16-core target machine.
+scientific `run.json`. `python3 scripts/runner/benchmark_matrix.py --output
+DIR` pairs workers 1 to 16, Sphere and Cassini1, short and long retries and
+the three telemetry modes; `--quick` is a smoke run only. Meaningful numbers
+need jobs of at least 30 seconds, paired repetitions and the actual 16-core
+target machine.
+
+## Shared utilities in the route-search tutorial
+
+The GTOC1 route-search tutorial delegates its JSONL, atomic-snapshot,
+checksummed-archive and bounded-subprocess helpers to `fcmaes-job-api`, so
+there is one implementation. It keeps `fcmaes-core = "=0.1.3"` from the
+registry but takes `fcmaes-job-api` by repository path, so the tutorial now
+builds only inside a repository checkout. Two error details changed: JSON
+and checksum errors arrive as `RouteSearchError::Io`, and the subprocess
+helper also stops descendants of an agent command after it exits.
 
 ## Deferred
 
@@ -249,7 +276,3 @@ paired repetitions and the actual 16-core target machine.
   objective loader, simulator plugin, distributed scheduler, auto-resume or MCP
   frontend. MCP stays behind the plan's named-client value gate.
 - No registry publication.
-- `fcmaes-job-api::storage` is extracted from the GTOC1 route-search tutorial,
-  which still keeps its own copy. Switching that tutorial to the shared crate
-  is a follow-up, because the tutorial is a standalone workspace pinned to
-  `fcmaes-core = "=0.1.3"`.

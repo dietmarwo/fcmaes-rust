@@ -1201,11 +1201,23 @@ impl Phase0Record {
 pub fn append_jsonl<T: Serialize>(path: &Path, value: &T) -> Result<(), RouteSearchError> {
     Ok(fcmaes_job_api::storage::append_jsonl(path, value)?)
 }
-/// Reads records, tolerating an incomplete final record.
+/// Reads JSONL while ignoring only an incomplete final record.
+///
+/// A malformed newline-terminated record or corruption before the final line
+/// remains fatal.
+///
+/// # Errors
+///
+/// Returns an error for I/O or non-final JSON corruption.
 pub fn read_jsonl_resilient<T: DeserializeOwned>(path: &Path) -> Result<Vec<T>, RouteSearchError> {
     Ok(fcmaes_job_api::storage::read_jsonl_resilient(path)?)
 }
-/// Writes a durable atomic snapshot.
+/// Writes a JSON snapshot to a sibling temporary file and atomically renames
+/// it over the target.
+///
+/// # Errors
+///
+/// Returns an I/O or serialization error.
 pub fn write_atomic_json<T: Serialize>(path: &Path, value: &T) -> Result<(), RouteSearchError> {
     Ok(fcmaes_job_api::storage::write_atomic_json(path, value)?)
 }

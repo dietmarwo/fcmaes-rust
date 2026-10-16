@@ -22,6 +22,8 @@ exceptions = [
 [bans]
 multiple-versions = "warn"
 wildcards = "deny"
+# The unpublished tutorial uses fcmaes-job-api through a repository path.
+allow-wildcard-paths = true
 
 [sources]
 unknown-registry = "deny"

@@ -181,7 +181,6 @@ version = "0.1.0"
 dependencies = [
  "fcmaes-core",
  "fcmaes-job-api",
- "libc",
  "num_cpus",
  "pykep-core",
  "serde",
