@@ -5,6 +5,9 @@ members = [
     "crates/fcmaes-gtop",
     "crates/fcmaes-py",
     "examples",
+    "crates/fcmaes-job-api",
+    "crates/fcmaes-runner",
+    "crates/fcmaes-native-worker",
 ]
 
 [profile.release]

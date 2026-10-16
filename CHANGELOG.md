@@ -6,6 +6,27 @@ phase, with breaking changes called out explicitly.
 
 ## [Unreleased]
 
+### Added
+
+- Added a native experiment runner: `fcmaes-run` (crate `fcmaes-runner`), the
+  `fcmaes-native-worker` binary and the shared `fcmaes-job-api` contract, all
+  source-only. Jobs declare a problem, optimizer, retry budget and wall time;
+  BiteOpt honours a hard evaluation cap and DE a declared soft bound. Retries
+  are seeded from their global ID, so results do not depend on worker count or
+  wave size. Each completed retry is durably journaled. The CLI validates
+  specs, runs idempotent jobs under a node-wide CPU-slot ledger, supports
+  graceful and immediate cancellation, recovers from a lost launcher and
+  compares `run.json` manifests. A systemd user-service backend for detached
+  jobs is included but not yet host-accepted. See
+  `docs/experiment-runner.md`.
+
+- The GTOC1 route-search tutorial now delegates its durable JSONL, snapshot,
+  checksummed-archive and subprocess helpers to `fcmaes-job-api` through a
+  repository path dependency, and `tutorials/RESULT_SCHEMA.md` documents the
+  runner's `run.json` profile. `scripts/runner` adds a real-binary
+  integration suite (run in CI), a systemd host acceptance gate and a
+  telemetry benchmark matrix.
+
 ## [0.1.5] - 2026-08-13
 
 ### Added

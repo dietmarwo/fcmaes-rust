@@ -145,3 +145,50 @@ training and validation seeds, effective workers, requested and actual
 budgets, elapsed wall time, descriptor bounds and relevant optimizer
 parameters. Values are written at full `f64` precision; Markdown tables and
 plot labels perform display rounding.
+
+## Native experiment runner profile (source release 0.1)
+
+The source-only `fcmaes-native-worker` uses this same schema, with
+`tutorial: "fcmaes-native-worker"` as the stable non-tutorial producer ID and
+`formulation: "single_objective"`. All stored objectives remain minimized.
+`best` is either null or `{x, y, retry_id}`; `feasible_results` counts valid
+completed retries, not distinct mathematical feasible points. These initial
+objectives have no separately enforced constraints; finite objective values
+below 1e99 (the core's replacement for NaN) qualify as valid.
+
+Namespaced `runner` metadata records the resolved problem/bounds, optimizer,
+retry budget, execution settings, binary SHA-256, spec digest, attempt ID,
+build provenance, termination reason, completed retries and accounting status.
+The spec digest covers the resolved job specification except `request_key`,
+so identical experiments submitted under different keys share a digest.
+`retries.jsonl` is linked through `artifacts.retries`. The checksummed payload
+contains full-precision decisions/objective and the actual evaluation count.
+The job input schema (`fcmaes.job/0.1`) is an execution request, not another
+scientific result format.
+
+Additional terminal status values are `cancelled`, `timed_out`, `failed`, and
+`interrupted`. Readers must not assume every manifest is completed. `job.json`
+contains transient `submitted/starting/waiting/running` lifecycle state;
+`progress.json` is a rebuildable completed-retry snapshot. Neither replaces
+`run.json`. A normally completed zero-valid-result arm remains `completed`.
+`skipped` retains the existing meaning of never executed.
+
+If the worker returns cooperatively, `actual_evaluations` is exact for the
+attempt, including all retries it performed. A graceful cancel stops at the
+next retry-wave boundary and stays exact. After a force kill (`jobs cancel
+--now`, the wall-time deadline plus `budget.grace_seconds`), crash, or
+unresolved accounting, `actual_evaluations` is null;
+`runner.known_evaluations_lower_bound` includes only verified journal records
+and `runner.accounting_complete` is false. Do not replace null with the lower
+bound. Repair after launcher loss keeps the worker's exact result when the
+orphaned worker finished on its own; otherwise it records `interrupted` with
+null elapsed time, because the execution duration is unknown. Queue duration
+is reported separately in `job.json`; it is excluded from the execution
+deadline.
+
+BiteOpt advertises a hard per-retry cap. Serial DE uses a generation-granular
+soft cap with at most `2 * population - 1` extra evaluations per retry at the
+reviewed source revision. Requested and actual work must remain separate.
+Comparison of legacy manifests missing objective/data definitions is explicitly
+descriptive and warns that scientific compatibility has not been established.
+No objective transform, Pareto scaling or hypervolume reference is inferred.

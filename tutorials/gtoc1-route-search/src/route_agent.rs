@@ -5,10 +5,7 @@
 
 use std::collections::{BTreeMap, VecDeque};
 use std::fmt::Write as _;
-use std::io::{self, Read, Write};
 use std::path::PathBuf;
-use std::process::{Command, ExitStatus, Stdio};
-use std::thread;
 use std::time::{Duration, Instant};
 
 use serde::{Deserialize, Serialize};
@@ -878,58 +875,18 @@ fn bounded_command(
     config: &AgentConfig,
     request: &AgentRequest,
 ) -> Result<String, RouteSearchError> {
-    let mut command = Command::new(&config.command[0]);
-    command.args(&config.command[1..]);
-    command
-        .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped());
-    #[cfg(unix)]
-    {
-        use std::os::unix::process::CommandExt as _;
-        command.process_group(0);
+    let (status, stdout, stderr) = fcmaes_job_api::process::bounded_command(
+        &config.command,
+        serde_json::to_vec(request)?,
+        Duration::from_secs(config.timeout_seconds),
+        config.stream_maximum_bytes,
+    )?;
+    if !status.success() {
+        return Err(RouteSearchError::Duration(format!(
+            "agent command failed with {status}: {}",
+            bounded_text(&String::from_utf8_lossy(&stderr), 2_000)
+        )));
     }
-    let mut child = command.spawn()?;
-    let request_bytes = serde_json::to_vec(request)?;
-    let mut stdin = child
-        .stdin
-        .take()
-        .ok_or_else(|| RouteSearchError::Duration("agent stdin unavailable".to_owned()))?;
-    stdin.write_all(&request_bytes)?;
-    stdin.flush()?;
-    drop(stdin);
-
-    let stdout = child
-        .stdout
-        .take()
-        .ok_or_else(|| RouteSearchError::Duration("agent stdout unavailable".to_owned()))?;
-    let stderr = child
-        .stderr
-        .take()
-        .ok_or_else(|| RouteSearchError::Duration("agent stderr unavailable".to_owned()))?;
-    let maximum = config.stream_maximum_bytes;
-    let stdout_reader = thread::spawn(move || read_bounded(stdout, maximum));
-    let stderr_reader = thread::spawn(move || read_bounded(stderr, maximum));
-    let deadline = Instant::now() + Duration::from_secs(config.timeout_seconds);
-    let status = loop {
-        if let Some(status) = child.try_wait()? {
-            break status;
-        }
-        if Instant::now() >= deadline {
-            terminate_process_group(&mut child);
-            let _ = child.wait();
-            let _ = stdout_reader.join();
-            let _ = stderr_reader.join();
-            return Err(RouteSearchError::Duration(format!(
-                "agent command timed out after {} seconds",
-                config.timeout_seconds
-            )));
-        }
-        thread::sleep(Duration::from_millis(10));
-    };
-    let stdout = join_reader(stdout_reader)?;
-    let stderr = join_reader(stderr_reader)?;
-    check_status(status, &stderr)?;
     if !stderr.is_empty() {
         eprintln!(
             "agent stderr: {}",
@@ -938,54 +895,6 @@ fn bounded_command(
     }
     String::from_utf8(stdout)
         .map_err(|_| RouteSearchError::Duration("agent stdout is not valid UTF-8".to_owned()))
-}
-
-fn read_bounded(reader: impl Read, maximum: usize) -> io::Result<Vec<u8>> {
-    let limit = u64::try_from(maximum).unwrap_or(u64::MAX).saturating_add(1);
-    let mut bytes = Vec::new();
-    reader.take(limit).read_to_end(&mut bytes)?;
-    if bytes.len() > maximum {
-        return Err(io::Error::other("agent stream exceeds configured cap"));
-    }
-    Ok(bytes)
-}
-
-fn join_reader(
-    reader: thread::JoinHandle<io::Result<Vec<u8>>>,
-) -> Result<Vec<u8>, RouteSearchError> {
-    reader
-        .join()
-        .map_err(|_| RouteSearchError::Duration("agent reader thread panicked".to_owned()))?
-        .map_err(RouteSearchError::from)
-}
-
-fn check_status(status: ExitStatus, stderr: &[u8]) -> Result<(), RouteSearchError> {
-    if status.success() {
-        return Ok(());
-    }
-    let detail = String::from_utf8_lossy(stderr);
-    Err(RouteSearchError::Duration(format!(
-        "agent command failed with {status}: {}",
-        bounded_text(&detail, 2_000)
-    )))
-}
-
-#[cfg(unix)]
-fn terminate_process_group(child: &mut std::process::Child) {
-    let Ok(pid) = i32::try_from(child.id()) else {
-        let _ = child.kill();
-        return;
-    };
-    // SAFETY: `kill` receives the negative process-group identifier created
-    // for this child and a constant signal. No pointer is involved.
-    unsafe {
-        libc::kill(-pid, libc::SIGKILL);
-    }
-}
-
-#[cfg(not(unix))]
-fn terminate_process_group(child: &mut std::process::Child) {
-    let _ = child.kill();
 }
 
 fn body_id(name: &str) -> Result<usize, RouteSearchError> {

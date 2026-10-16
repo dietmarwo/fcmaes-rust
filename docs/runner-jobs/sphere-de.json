@@ -1,0 +1,42 @@
+{
+  "schema_version": "fcmaes.job/0.1",
+  "request_key": "sphere-de-42",
+  "problem": {
+    "id": "benchmark.sphere",
+    "version": "1",
+    "config": {
+      "dimension": 10
+    },
+    "bounds": {
+      "lower": [
+        -5.0
+      ],
+      "upper": [
+        5.0
+      ],
+      "broadcast": true
+    }
+  },
+  "optimizer": {
+    "kind": "de",
+    "parameters": {
+      "population": 31
+    }
+  },
+  "execution": {
+    "strategy": "independent_retry",
+    "seed": 42,
+    "workers": 2,
+    "retry_wave_size": 2
+  },
+  "budget": {
+    "retries": 8,
+    "evaluations_per_retry": 5000,
+    "evaluation_limit_mode": "soft",
+    "wall_time_seconds": 120.0,
+    "grace_seconds": 1.0
+  },
+  "outputs": {
+    "progress": "completed_retries"
+  }
+}

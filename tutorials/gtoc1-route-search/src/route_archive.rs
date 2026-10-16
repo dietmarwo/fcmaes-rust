@@ -13,7 +13,7 @@ use serde::{Deserialize, Serialize};
 use crate::route_grammar::compact_route;
 use crate::route_search::{
     FailureCode, FailureObservation, PhysicalDecision, RouteSearchError, RouteStructure,
-    RouteVariant, append_jsonl, read_jsonl_resilient, write_atomic_json,
+    RouteVariant, append_jsonl, write_atomic_json,
 };
 
 /// Legacy constraint-passing threshold retained by downstream result types.
@@ -602,15 +602,6 @@ impl RouteArchive {
     }
 }
 
-/// Checksummed archive line.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
-struct ArchiveLine {
-    schema_version: u32,
-    checksum: String,
-    payload_json: String,
-}
-
 /// Appends one checksummed archive result.
 ///
 /// # Errors
@@ -618,15 +609,7 @@ struct ArchiveLine {
 /// Returns an error for invalid data, serialization, or I/O.
 pub fn append_archive(path: &Path, result: &SearchResult) -> Result<(), RouteSearchError> {
     result.validate()?;
-    let payload_json = serde_json::to_string(result)?;
-    append_jsonl(
-        path,
-        &ArchiveLine {
-            schema_version: 2,
-            checksum: checksum_bytes(payload_json.as_bytes()),
-            payload_json,
-        },
-    )
+    Ok(fcmaes_job_api::storage::append_checked(path, 2, result)?)
 }
 
 /// Loads and verifies a checksummed archive, tolerating only a truncated final
@@ -637,17 +620,9 @@ pub fn append_archive(path: &Path, result: &SearchResult) -> Result<(), RouteSea
 /// Returns an error for I/O, mid-file corruption, checksum mismatch,
 /// duplicates, or invalid values.
 pub fn load_archive(path: &Path) -> Result<RouteArchive, RouteSearchError> {
-    let lines: Vec<ArchiveLine> = read_jsonl_resilient(path)?;
+    let records: Vec<SearchResult> = fcmaes_job_api::storage::read_checked(path, 2)?;
     let mut archive = RouteArchive::default();
-    for line in lines {
-        let actual_checksum = checksum_bytes(line.payload_json.as_bytes());
-        if line.schema_version != 2 || line.checksum != actual_checksum {
-            return Err(RouteSearchError::Duration(format!(
-                "archive checksum or schema mismatch: stored={}, actual={actual_checksum}",
-                line.checksum
-            )));
-        }
-        let result: SearchResult = serde_json::from_str(&line.payload_json)?;
+    for result in records {
         if archive.contains_variant(&result.variant_key) {
             archive.update(result)?;
         } else {
@@ -743,16 +718,7 @@ fn checksum<T: Serialize>(value: &T) -> Result<String, RouteSearchError> {
 }
 
 fn checksum_bytes(value: &[u8]) -> String {
-    use std::fmt::Write as _;
-
-    use sha2::{Digest, Sha256};
-
-    let digest = Sha256::digest(value);
-    let mut encoded = String::with_capacity(digest.len() * 2);
-    for byte in digest {
-        write!(encoded, "{byte:02x}").expect("writing to String cannot fail");
-    }
-    encoded
+    fcmaes_job_api::storage::digest(value)
 }
 
 #[cfg(test)]
