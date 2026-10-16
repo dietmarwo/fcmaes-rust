@@ -11,9 +11,12 @@
 use std::collections::BTreeMap;
 use std::fmt;
 use std::fmt::Write as _;
+#[cfg(test)]
 use std::fs::{self, File, OpenOptions};
-use std::io::{self, BufRead, BufReader, BufWriter, Write};
-use std::path::{Path, PathBuf};
+use std::io;
+#[cfg(test)]
+use std::io::Write;
+use std::path::Path;
 
 use fcmaes_core::RetryBounds;
 use serde::de::DeserializeOwned;
@@ -1196,89 +1199,15 @@ impl Phase0Record {
 ///
 /// Returns an I/O or serialization error.
 pub fn append_jsonl<T: Serialize>(path: &Path, value: &T) -> Result<(), RouteSearchError> {
-    let file = OpenOptions::new().create(true).append(true).open(path)?;
-    let mut writer = BufWriter::new(file);
-    serde_json::to_writer(&mut writer, value)?;
-    writer.write_all(b"\n")?;
-    writer.flush()?;
-    writer.get_ref().sync_data()?;
-    Ok(())
+    Ok(fcmaes_job_api::storage::append_jsonl(path, value)?)
 }
-
-/// Reads JSONL while ignoring only an incomplete final record.
-///
-/// A malformed newline-terminated record or corruption before the final line
-/// remains fatal.
-///
-/// # Errors
-///
-/// Returns an error for I/O or non-final JSON corruption.
+/// Reads records, tolerating an incomplete final record.
 pub fn read_jsonl_resilient<T: DeserializeOwned>(path: &Path) -> Result<Vec<T>, RouteSearchError> {
-    let file = File::open(path)?;
-    let mut reader = BufReader::new(file);
-    let mut records = Vec::new();
-    let mut line = Vec::new();
-    loop {
-        line.clear();
-        let bytes = reader.read_until(b'\n', &mut line)?;
-        if bytes == 0 {
-            break;
-        }
-        let terminated = line.last() == Some(&b'\n');
-        if terminated {
-            line.pop();
-            if line.last() == Some(&b'\r') {
-                line.pop();
-            }
-        }
-        if line.iter().all(u8::is_ascii_whitespace) {
-            continue;
-        }
-        match serde_json::from_slice(&line) {
-            Ok(record) => records.push(record),
-            Err(_) if !terminated => break,
-            Err(error) => return Err(RouteSearchError::Json(error)),
-        }
-    }
-    Ok(records)
+    Ok(fcmaes_job_api::storage::read_jsonl_resilient(path)?)
 }
-
-/// Writes a JSON snapshot to a sibling temporary file and atomically renames
-/// it over the target.
-///
-/// # Errors
-///
-/// Returns an I/O or serialization error.
+/// Writes a durable atomic snapshot.
 pub fn write_atomic_json<T: Serialize>(path: &Path, value: &T) -> Result<(), RouteSearchError> {
-    let parent = path.parent().unwrap_or_else(|| Path::new("."));
-    fs::create_dir_all(parent)?;
-    let filename = path
-        .file_name()
-        .and_then(|name| name.to_str())
-        .ok_or_else(|| RouteSearchError::Duration("snapshot path has no file name".to_owned()))?;
-    let temporary = temporary_path(parent, filename);
-    let result = (|| {
-        let file = OpenOptions::new()
-            .create_new(true)
-            .write(true)
-            .open(&temporary)?;
-        let mut writer = BufWriter::new(file);
-        serde_json::to_writer_pretty(&mut writer, value)?;
-        writer.write_all(b"\n")?;
-        writer.flush()?;
-        writer.get_ref().sync_all()?;
-        fs::rename(&temporary, path)?;
-        File::open(parent)?.sync_all()?;
-        Ok::<(), RouteSearchError>(())
-    })();
-    if result.is_err() {
-        let _ = fs::remove_file(&temporary);
-    }
-    result
-}
-
-fn temporary_path(parent: &Path, filename: &str) -> PathBuf {
-    parent.join(format!(".{filename}.{}.tmp", std::process::id()))
+    Ok(fcmaes_job_api::storage::write_atomic_json(path, value)?)
 }
 
 #[cfg(test)]
@@ -1495,7 +1424,13 @@ mod tests {
             serde_json::from_reader::<_, Vec<Vec<u64>>>(File::open(&snapshot).unwrap()).unwrap(),
             records
         );
-        assert!(!temporary_path(&directory, "snapshot.json").exists());
+        assert!(fs::read_dir(&directory).unwrap().all(|entry| {
+            !entry
+                .unwrap()
+                .file_name()
+                .to_string_lossy()
+                .ends_with(".tmp")
+        }));
 
         let route = runtime_case(JPL);
         let record = Phase0Record {
