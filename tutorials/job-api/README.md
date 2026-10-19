@@ -1,15 +1,20 @@
 # Tutorial: durable fcmaes optimization jobs
 
-The `fcmaes` worker accepts three profiles of the common job envelope:
+The `fcmaes` worker accepts four profiles of the common job envelope:
 
 | Profile | One task is | Result claim |
 | --- | --- | --- |
 | `fcmaes.retry/1` | one BiteOpt, DE or CMA-ES retry on a registered scalar objective | `best_found` |
 | `fcmaes.mode/1` | one MODE run on a registered multi-objective model | `non_dominated_set` |
 | `fcmaes.map-elites/1` | one MAP-Elites run on a registered quality-diversity model | `elite_archive` |
+| `fcmaes.evaluate/1` | one given point, evaluated on any of these models | `feasible` or `none` |
 
-Every task has its own seed, derived from the job seed and the task ID, so
-results do not depend on scheduling. The original `fcmaes.job/0.1` workflow
+Every optimizing task has its own seed, derived from the job seed and the task
+ID, so results do not depend on scheduling. Every outcome reports `evidence`:
+`rechecked` for every claim, because the worker re-evaluates what it returns
+outside the optimizer, and `claimed` for `none` without a refutation (a
+penalty value, an empty front or archive); see
+[result contract 0.2](../../docs/job-api.md#termination-claim-and-evidence). The original `fcmaes.job/0.1` workflow
 remains available; see [legacy experiment runner](../../docs/experiment-runner.md).
 
 ## Build and run the checked examples
@@ -34,10 +39,14 @@ existing attempts.
 | `zdt1-mode.json` | MODE, 8 runs × 250 generations × 64 | the recomputed ZDT1 values, non-dominance, nothing below the true front, hypervolume above 0.85 (the true front has 0.8767) |
 | `binh-korn-mode.json` | MODE, 8 runs × 100 generations × 64 | feasibility of every front point and non-dominance |
 | `rastrigin-map-elites.json` | MAP-Elites, 8 runs × 1,000 generations × 20, 400 niches | the recomputed fitness and descriptors of every elite, coverage above 50% |
+| `binh-korn-evaluate.json` | three given Binh-Korn points | the recomputed objectives and constraints; two points feasible, one not |
 
 None of these claims is a global optimum or Pareto-optimality certificate.
 Cassini1 uses the native GTOP model with its canonical bounds; nothing invokes
-Python during optimization.
+Python during optimization. If the `jsonschema` package is installed, the
+script also validates every job and result against the published
+[job](../../docs/job-api/schemas/optimization.job-0.1.schema.json) and
+[result](../../docs/job-api/schemas/optimization.result-0.2.schema.json) schemas.
 
 ## Run one job manually
 
@@ -53,8 +62,8 @@ Python during optimization.
 ```
 
 `problems describe fcmaes` lists each registered model with its `profile`, the
-optimizers with their defaults and ranges, the claims and the cancellation
-behavior. Read `run.json` in the returned `directory`, or use
+optimizers with their defaults and ranges, the evaluation profile, the claims
+and the cancellation behavior. Read `run.json` in the returned `directory`, or use
 `optimization-run result JOB_DIRECTORY`. `work.evaluations` sums optimizer
 work. The additional `validation_evaluations` counter counts independent
 re-evaluations: the best point of a retry, every member of MODE's final
@@ -87,6 +96,16 @@ wall limit bounds the entire batch after admission.
 BiteOpt and DE jobs resolve through the same definitions as legacy
 `fcmaes.job/0.1` jobs, so both give identical retries.
 
+`best_found` is the best point the optimizer evaluated, not a model mean or a
+recommended point. The worker evaluates it again (`evidence.checks`:
+`objective`, `bounds`). A point outside the box is reported with claim `none`
+and `evidence.refuted` (`best_found`, verdict `infeasible_point`) and is not
+evaluated, since the registered models are defined on their box only. A value
+the point does not evaluate to gives verdict `objective_mismatch` and leaves
+claim `feasible` with the recomputed value, or `none` if that value is itself
+unusable. A value of `1e99` or more, the fcmaes penalty, is no answer: claim
+`none`.
+
 ## Multi-objective MODE runs
 
 `fcmaes.mode/1` runs MODE (multi-objective differential evolution with the
@@ -112,8 +131,12 @@ A run's outcome has `claim: "non_dominated_set"` with no single `x` or
 of the final population, each with `x`, `objectives` and `constraints`, sorted
 by the first objective. Every member was re-evaluated outside the optimizer.
 `details.hypervolume` gives the exact hypervolume of the front with the
-reference point; points outside it are counted in `outside_reference`, not
-clipped. A run without a feasible member reports `claim: "none"`.
+reference point and `normalization: "none"` (raw objectives); points outside it
+are counted in `outside_reference`, not clipped. `details.front_source` is
+`final_population`: unlike COCO's bi-objective archive of every non-dominated
+point evaluated, the front holds the final population's survivors, so compare
+hypervolumes only with the same reference point and source. A run without a
+feasible member reports `claim: "none"`.
 
 ## MAP-Elites archives
 
@@ -136,6 +159,30 @@ re-evaluated and maps to its niche. `x` and `objective` are the best elite.
 `details` also reports `coverage`, `qd_score` (the `fcmaes-core` definition),
 `mean_fitness` and the grid layout. Compare `qd_score` only between archives
 with the same fitness, descriptor bounds and capacity.
+
+## Evaluating given points
+
+`fcmaes.evaluate/1` evaluates points you supply, for example candidates an
+agent proposed, on any registered model, without optimizing:
+
+```json
+"payload_schema": "fcmaes.evaluate/1",
+"payload": {
+  "problem": {"id": "benchmark.binh-korn", "version": "1", "config": {"dimension": 2},
+              "bounds": {"lower": [0.0, 0.0], "upper": [5.0, 3.0], "broadcast": false}},
+  "points": [[1.0, 1.0], [3.0, 2.0], [0.0, 3.0]]
+}
+```
+
+Each point is one task with `termination: "evaluated"`. A scalar or
+quality-diversity model gives claim `feasible` and the objective (fitness)
+for a usable value; a multi-objective model gives `details.objectives` and
+`details.constraints`, claim `feasible` when every constraint is at most zero,
+and no single objective. Points must lie inside the problem's bounds, where
+the registered models are defined; validation rejects any other point.
+`work.evaluations` counts one per point. Points are inline in the job, which
+the runner's validation echoes within 4 MiB: keep all points together well
+below that (about 100,000 two-dimensional points).
 
 ## Cancellation and deadlines
 

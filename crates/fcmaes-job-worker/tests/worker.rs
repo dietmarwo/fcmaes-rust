@@ -1,11 +1,15 @@
 //! Black-box checks of the fcmaes adapters: validation, resolved defaults,
 //! budgets, agreement with direct `fcmaes-core` runs from the same seeds, and
 //! cooperative stops.
+use fcmaes_core::RetryRunResult;
 use fcmaes_core::{
     Archive, Fitness, MapElitesParams, Mode, ModeParams, ReferencePoint, RetryBounds, Rng,
     hypervolume, map_elites_batch, pareto_indices, retry_run_seed,
 };
-use fcmaes_job_worker::{problems, retry::cmaes_retry};
+use fcmaes_job_worker::{
+    problems,
+    retry::{cmaes_retry, judge},
+};
 use fcmaes_native_worker::{objective_by_id, objective_for, solve};
 use serde_json::{Value, json};
 use std::{fs, path::Path, process::Command, thread, time::Duration};
@@ -76,11 +80,17 @@ fn describe_reports_profile_and_workspace_engine_version() {
     let out = worker(&["describe"]);
     assert!(out.status.success());
     let d: Value = serde_json::from_slice(&out.stdout).unwrap();
-    assert_eq!(d["protocol"], "optimization.worker/0.1");
+    assert_eq!(d["protocol"], "optimization.worker/0.2");
     assert_eq!(
         d["profiles"],
-        json!(["fcmaes.retry/1", "fcmaes.mode/1", "fcmaes.map-elites/1"])
+        json!([
+            "fcmaes.retry/1",
+            "fcmaes.mode/1",
+            "fcmaes.map-elites/1",
+            "fcmaes.evaluate/1"
+        ])
     );
+    assert_eq!(d["evaluation"]["profile"], "fcmaes.evaluate/1");
     assert_eq!(d["resources"]["inner_threads_max"], 1);
     let problems = d["problems"].as_array().unwrap();
     for (profile, id) in [
@@ -191,6 +201,11 @@ fn retries_match_the_shared_native_solver_and_honour_budgets() {
                     "{problem}/{optimizer}"
                 );
                 assert_eq!(r["outcome"]["x"], json!(native.x));
+                assert_eq!(r["outcome"]["claim"], "best_found");
+                assert_eq!(
+                    r["outcome"]["evidence"],
+                    json!({"level": "rechecked", "checks": ["objective", "bounds"]})
+                );
                 assert_eq!(r["work"]["evaluations"], native.evaluations);
                 let evaluations = native.evaluations;
                 if optimizer == "biteopt" {
@@ -365,6 +380,13 @@ fn mode_fronts_match_core_mode_and_are_feasible_and_non_dominated() {
         assert!(o["x"].is_null() && o["objective"].is_null());
         assert_eq!(o["termination"], "evaluation_limit");
         assert_eq!(r["work"]["validation_evaluations"], 16);
+        assert_eq!(
+            o["evidence"],
+            json!({"level": "rechecked",
+                   "checks": ["objective", "bounds", "constraints", "non_dominance"]})
+        );
+        assert_eq!(o["details"]["front_source"], "final_population");
+        assert_eq!(o["details"]["hypervolume"]["normalization"], "none");
 
         // The same run, driven directly through fcmaes-core.
         let seed = retry_run_seed(31, r["task_id"].as_u64().unwrap() as usize);
@@ -538,6 +560,10 @@ fn map_elites_archives_match_core_map_elites() {
                 assert_eq!(e["visits"], archive.counts()[niche]);
             }
             assert_eq!(o["claim"], "elite_archive");
+            assert_eq!(
+                o["evidence"],
+                json!({"level": "rechecked", "checks": ["objective", "bounds", "niche"]})
+            );
             assert_eq!(o["objective"], archive.best_y());
             assert_eq!(r["work"]["validation_evaluations"], archive.occupied());
         }
@@ -667,5 +693,189 @@ fn generation_runs_stop_cooperatively_at_the_deadline_and_on_cancel() {
         assert_eq!(r["outcome"]["claim"], "elite_archive");
         let generations = r["outcome"]["details"]["generations"].as_u64().unwrap();
         assert_eq!(r["work"]["evaluations"], generations * 20);
+    }
+}
+
+#[test]
+fn a_retry_answer_that_fails_its_recheck_is_refuted_not_reported() {
+    let bounds = RetryBounds::new(vec![-1.0; 2], vec![1.0; 2]).unwrap();
+    let sphere = objective_by_id("benchmark.sphere");
+    let run = |x: Vec<f64>, y: f64| {
+        let (o, validations) = judge(
+            RetryRunResult {
+                x,
+                y,
+                evaluations: 10,
+            },
+            &bounds,
+            sphere,
+        )
+        .unwrap();
+        // Termination is filled in by the caller.
+        let o = optimization_job_api::result::Outcome {
+            termination: "evaluation_limit".into(),
+            ..o
+        };
+        o.check().unwrap();
+        (serde_json::to_value(&o).unwrap(), validations)
+    };
+    let (ok, n) = run(vec![0.5, 0.5], 0.5);
+    assert_eq!((ok["claim"].as_str(), n), (Some("best_found"), 1));
+    // Outside the box: no claim survives, and the model is not evaluated
+    // where it is undefined.
+    let (outside, n) = run(vec![1.5, 0.0], 2.25);
+    assert_eq!((outside["claim"].as_str(), n), (Some("none"), 0));
+    assert_eq!(outside["feasible"], false);
+    assert!(outside["objective"].is_null());
+    assert_eq!(outside["evidence"]["checks"], json!(["bounds"]));
+    assert_eq!(outside["evidence"]["refuted"]["claim"], "best_found");
+    assert_eq!(
+        outside["evidence"]["refuted"]["verdict"],
+        "infeasible_point"
+    );
+    assert!(
+        outside["evidence"]["refuted"]["message"]
+            .as_str()
+            .unwrap()
+            .contains("x[0] = 1.5")
+    );
+    // A wrong value: the point is feasible with its recomputed value.
+    let (mismatch, _) = run(vec![0.5, 0.5], 0.25);
+    assert_eq!(mismatch["claim"], "feasible");
+    assert_eq!(mismatch["objective"], 0.5);
+    assert_eq!(mismatch["details"]["reported_objective"], 0.25);
+    assert_eq!(
+        mismatch["evidence"]["refuted"]["verdict"],
+        "objective_mismatch"
+    );
+    // A mismatch whose recomputed value is the penalty leaves no claim.
+    let unusable = |_: &[f64]| 1e99;
+    let (o, _) = judge(
+        RetryRunResult {
+            x: vec![0.5, 0.5],
+            y: 0.5,
+            evaluations: 10,
+        },
+        &bounds,
+        unusable,
+    )
+    .unwrap();
+    assert_eq!(o.claim, "none");
+    assert_eq!(o.feasible, Some(false));
+    assert_eq!(
+        o.evidence.unwrap().refuted.unwrap().verdict,
+        "objective_mismatch"
+    );
+    // The fcmaes penalty is no answer at all.
+    let (penalty, n) = run(vec![0.5, 0.5], 1e99);
+    assert_eq!((penalty["claim"].as_str(), n), (Some("none"), 0));
+    assert_eq!(
+        penalty["evidence"],
+        json!({"level": "claimed", "checks": []})
+    );
+    assert!(
+        judge(
+            RetryRunResult {
+                x: vec![0.0],
+                y: 0.0,
+                evaluations: 1
+            },
+            &bounds,
+            sphere
+        )
+        .is_err()
+    );
+}
+
+fn evaluate_job(problem: Value, points: Value) -> Value {
+    envelope(
+        "fcmaes.evaluate/1",
+        json!({"problem": problem, "points": points}),
+        2,
+        60.0,
+    )
+}
+
+#[test]
+fn evaluate_checks_given_points_on_every_model_family() {
+    let sphere = problem("benchmark.sphere", 3, json!([-5.0]), json!([5.0]));
+    let run = execute(&evaluate_job(
+        sphere.clone(),
+        json!([[1.0, 2.0, 2.0], [0.0, 0.0, 0.0]]),
+    ));
+    assert_eq!(run["status"], "completed");
+    assert_eq!(run["work"]["evaluations"], 2);
+    let first = &run["results"][0]["outcome"];
+    assert_eq!(first["termination"], "evaluated");
+    assert_eq!(first["claim"], "feasible");
+    assert_eq!(first["objective"], 9.0);
+    assert_eq!(first["x"], json!([1.0, 2.0, 2.0]));
+    assert_eq!(first["evidence"]["level"], "rechecked");
+    assert_eq!(run["results"][1]["outcome"]["objective"], 0.0);
+
+    // Binh-Korn: (1, 1) satisfies both constraints, (0, 3) violates the first.
+    let binh = problem(
+        "benchmark.binh-korn",
+        2,
+        json!([0.0, 0.0]),
+        json!([5.0, 3.0]),
+    );
+    let run = execute(&evaluate_job(binh, json!([[1.0, 1.0], [0.0, 3.0]])));
+    let (good, bad) = (&run["results"][0]["outcome"], &run["results"][1]["outcome"]);
+    assert_eq!(
+        (good["claim"].as_str(), good["feasible"].as_bool()),
+        (Some("feasible"), Some(true))
+    );
+    assert!(good["objective"].is_null());
+    assert_eq!(
+        good["details"]["objectives"],
+        json!(problems::binh_korn(&[1.0, 1.0])[..2])
+    );
+    assert_eq!(
+        (bad["claim"].as_str(), bad["feasible"].as_bool()),
+        (Some("none"), Some(false))
+    );
+    assert_eq!(
+        bad["details"]["constraints"],
+        json!(problems::binh_korn(&[0.0, 3.0])[2..])
+    );
+    assert_eq!(
+        good["evidence"]["checks"],
+        json!(["objective", "bounds", "constraints"])
+    );
+
+    let qd = problem(
+        "benchmark.sphere-projection",
+        2,
+        json!([-5.12]),
+        json!([5.12]),
+    );
+    let run = execute(&evaluate_job(qd, json!([[1.0, -2.0]])));
+    let o = &run["results"][0]["outcome"];
+    let (fitness, descriptor) = problems::sphere_projection(&[1.0, -2.0]);
+    assert_eq!(o["objective"], fitness);
+    assert_eq!(o["details"]["descriptor"], json!(descriptor));
+
+    let dir = tempfile::tempdir().unwrap();
+    for (spec, message) in [
+        (evaluate_job(sphere.clone(), json!([])), "1..1000000"),
+        (
+            evaluate_job(sphere.clone(), json!([[1.0, 2.0]])),
+            "dimension 3",
+        ),
+        (
+            evaluate_job(sphere.clone(), json!([[1.0, 2.0, 6.0]])),
+            "entry 2",
+        ),
+        (
+            evaluate_job(
+                problem("benchmark.ackley", 2, json!([-1.0]), json!([1.0])),
+                json!([[0.0, 0.0]]),
+            ),
+            "unknown problem",
+        ),
+    ] {
+        let err = validate(dir.path(), &spec).unwrap_err();
+        assert!(err.contains(message), "{message}: {err}");
     }
 }

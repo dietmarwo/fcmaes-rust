@@ -211,13 +211,25 @@ fn output(value: Value) -> Result<()> {
 fn spec(path: &Path) -> Result<Request> {
     Request::parse(&fs::read(path).map_err(|e| format!("{}: {e}", path.display()))?)
 }
+/// An error of the submitted job itself: `invalid_job`, unless it already
+/// has a code.
+fn invalid(e: Error) -> Error {
+    if e.downcast_ref::<Coded>().is_some() {
+        e
+    } else {
+        coded("invalid_job", e.to_string())
+    }
+}
 fn staged(root: &Path, input: &Path) -> Result<(Request, Value, Vec<u8>, tempfile::TempDir)> {
-    let mut s = spec(input)?;
+    let mut s = spec(input).map_err(invalid)?;
     let w = worker(root, s.worker())?;
     let exe = Path::new(w["executable"].as_str().ok_or("invalid executable")?);
     let bytes = fs::read(exe)?;
     if w["digest"] != digest(&bytes) {
-        return Err("worker changed since registration; register again explicitly".into());
+        return Err(coded(
+            "worker_changed",
+            "worker changed since registration; register again explicitly",
+        ));
     }
     // The node root must allow execution anyway (attempts run their staged
     // worker there); TMPDIR may be mounted noexec.
@@ -231,12 +243,18 @@ fn staged(root: &Path, input: &Path) -> Result<(Request, Value, Vec<u8>, tempfil
         fs::set_permissions(&executable, fs::Permissions::from_mode(0o700))?;
     }
     if let Request::Job(ref mut job) = s {
-        if w["description"]["protocol"] != PROTOCOL
+        if !protocol_supported(&w["description"]["protocol"])
             || !w["description"]["profiles"]
                 .as_array()
                 .is_some_and(|a| a.iter().any(|v| v.as_str() == Some(&job.payload_schema)))
         {
-            return Err("worker does not support this payload schema".into());
+            return Err(coded(
+                "unsupported_profile",
+                format!(
+                    "worker {} does not support payload schema {}",
+                    job.worker, job.payload_schema
+                ),
+            ));
         }
         stage_inputs(
             job,
@@ -245,7 +263,8 @@ fn staged(root: &Path, input: &Path) -> Result<(Request, Value, Vec<u8>, tempfil
                 .filter(|p| !p.as_os_str().is_empty())
                 .unwrap_or(Path::new(".")),
             tmp.path(),
-        )?;
+        )
+        .map_err(|e| coded("invalid_job", format!("input: {e}")))?;
         write_atomic_json(&tmp.path().join("request.json"), job)?;
         // A signal during validation stops the validator too: it runs in its
         // own process group, which a terminal's SIGINT does not reach.
@@ -263,13 +282,25 @@ fn staged(root: &Path, input: &Path) -> Result<(Request, Value, Vec<u8>, tempfil
             Duration::from_secs(30),
             4 * 1024 * 1024,
             &|| SIGNALS.load(Ordering::Relaxed) > 0,
-        )?;
+        )
+        .map_err(|e| match e.kind() {
+            std::io::ErrorKind::TimedOut => {
+                coded("invalid_job", "worker validation took longer than 30 s")
+            }
+            _ if e.to_string().contains("exceeds configured cap") => coded(
+                "invalid_job",
+                "the resolved job exceeds the 4 MiB validation output; keep inline starts or points well below 4 MiB",
+            ),
+            _ => e.into(),
+        })?;
         if !status.success() {
-            return Err(format!(
-                "worker validation failed: {}",
-                String::from_utf8_lossy(&err)
-            )
-            .into());
+            return Err(coded(
+                "invalid_job",
+                format!(
+                    "worker validation failed: {}",
+                    String::from_utf8_lossy(&err)
+                ),
+            ));
         }
         let answer: Value = serde_json::from_slice(&out)?;
         let resolved: JobSpec = serde_json::from_value(answer["resolved"].clone())?;
@@ -293,13 +324,20 @@ fn attempt_processes_gone(dir: &Path) -> bool {
     if !locks {
         return false;
     }
+    // Nothing of an attempt survives a reboot: its processes and transient
+    // unit ended with the boot that recorded them, and a recorded process
+    // group ID may since belong to an unrelated process.
+    let current = boot().ok();
+    let earlier_boot = |v: &Value| current.is_some() && v["boot_id"].as_str() != current.as_deref();
     if let Ok(p) = read(&dir.join("worker-process.json")) {
-        return p["pgid"]
-            .as_u64()
-            .and_then(|n| u32::try_from(n).ok())
-            .is_some_and(|pid| group_stopped(pid).unwrap_or(false));
+        return earlier_boot(&p)
+            || p["pgid"]
+                .as_u64()
+                .and_then(|n| u32::try_from(n).ok())
+                .is_some_and(|pid| group_stopped(pid).unwrap_or(false));
     }
-    read(&dir.join("job.json")).is_ok_and(|s| terminal(&s["state"]) || never_started(&s))
+    read(&dir.join("job.json"))
+        .is_ok_and(|s| terminal(&s["state"]) || never_started(&s) || earlier_boot(&s))
 }
 /// Without a recorded process group, a worker can exist only if the attempt
 /// reached `running`, which is recorded before the worker is spawned. A
@@ -327,25 +365,35 @@ fn never_admitted(root: &Path, id: &str, dir: &Path) -> Result<bool> {
     Ok(optional(&root.join("slots.json"))?[id].is_null())
 }
 fn capacity(root: &Path) -> Result<u64> {
-    read(&root.join("node.json"))?["capacity"]
+    let path = root.join("node.json");
+    if !path.exists() {
+        return Err(coded(
+            "node_not_initialized",
+            "node init --capacity required",
+        ));
+    }
+    read(&path)?["capacity"]
         .as_u64()
-        .ok_or_else(|| "node init --capacity required".into())
+        .ok_or_else(|| "node.json has no valid capacity".into())
 }
 fn worker(root: &Path, id: &str) -> Result<Value> {
-    let w = read(&root.join("workers.json"))?[id].clone();
+    let w = optional(&root.join("workers.json"))?[id].clone();
     if w.is_null() {
-        return Err(format!("register worker {id} first").into());
+        return Err(coded(
+            "unknown_worker",
+            format!("register worker {id} first"),
+        ));
     }
     Ok(w)
 }
 fn directory(root: &Path, id: &str) -> Result<PathBuf> {
     if id.len() != 32 || !id.bytes().all(|b| b.is_ascii_hexdigit()) {
-        return Err("invalid job id".into());
+        return Err(coded("unknown_job", format!("invalid job id {id:?}")));
     }
-    let entry = read(&root.join("requests.json"))?[id].clone();
-    Ok(PathBuf::from(
-        entry["directory"].as_str().ok_or("unknown job")?,
-    ))
+    let entry = optional(&root.join("requests.json"))?[id].clone();
+    Ok(PathBuf::from(entry["directory"].as_str().ok_or_else(
+        || coded("unknown_job", format!("no job {id} on this node")),
+    )?))
 }
 fn check_systemd() -> Result<()> {
     let (s, out, _) = bounded_command(
@@ -364,7 +412,10 @@ fn check_systemd() -> Result<()> {
             .lines()
             .any(|x| x.starts_with("Version=") && x.len() > 8)
     {
-        return Err("systemd user manager unavailable; use foreground run".into());
+        return Err(coded(
+            "systemd_unavailable",
+            "systemd user manager unavailable; use foreground run",
+        ));
     }
     Ok(())
 }
@@ -375,8 +426,15 @@ fn prepare(
     detached: bool,
 ) -> Result<(String, bool)> {
     let (mut resolved, w, bytes, tmp) = staged(root, input)?;
-    if resolved.slots() as u64 > capacity(root)? {
-        return Err("CPU slots exceed node capacity".into());
+    let node = capacity(root)?;
+    if resolved.slots() as u64 > node {
+        return Err(coded(
+            "capacity_exceeded",
+            format!(
+                "the job requests {} CPU slots but the node capacity is {node}; it can never be admitted here",
+                resolved.slots()
+            ),
+        ));
     }
     let executable = Path::new(
         w["executable"]
@@ -392,7 +450,13 @@ fn prepare(
     let mut requests = optional(&root.join("requests.json"))?;
     if !requests[&id].is_null() {
         if requests[&id]["identity"] != identity {
-            return Err("request_key conflict: normalized spec or worker differs".into());
+            return Err(coded(
+                "request_key_conflict",
+                format!(
+                    "request_key conflict: {:?} already names job {id} with a different normalized spec or worker; use a new key",
+                    resolved.request_key()
+                ),
+            ));
         }
         return Ok((id, false));
     }
@@ -468,9 +532,14 @@ fn submit(root: &Path, id: &str) -> Result<()> {
         "launch".into(),
         id.into(),
     ];
-    match bounded_command(&args,vec![],Duration::from_secs(15),65536) {
-        Ok((s,_,_)) if s.success()=>Ok(()),
-        _=>Err(format!("start acknowledgement unknown for {unit}; inspect recorded unit; repeating submit will NOT launch again").into()),
+    match bounded_command(&args, vec![], Duration::from_secs(15), 65536) {
+        Ok((s, _, _)) if s.success() => Ok(()),
+        _ => Err(coded(
+            "start_unknown",
+            format!(
+                "start acknowledgement unknown for {unit}; inspect recorded unit; repeating submit will NOT launch again"
+            ),
+        )),
     }
 }
 /// Drop reservations whose holders are provably gone: a previous boot, an
@@ -809,7 +878,22 @@ fn get(root: &Path, id: &str) -> Result<Value> {
     Ok(v)
 }
 fn main_result() -> Result<()> {
-    let cli = Cli::parse();
+    // Usage errors are coded like every other error; help and version print
+    // normally.
+    let cli = match Cli::try_parse() {
+        Ok(cli) => cli,
+        Err(e)
+            if matches!(
+                e.kind(),
+                clap::error::ErrorKind::DisplayHelp
+                    | clap::error::ErrorKind::DisplayVersion
+                    | clap::error::ErrorKind::DisplayHelpOnMissingArgumentOrSubcommand
+            ) =>
+        {
+            e.exit()
+        }
+        Err(e) => return Err(coded("invalid_command", e.render().to_string())),
+    };
     let selected = cli
         .root
         .or_else(|| std::env::var_os("FCMAES_RUN_ROOT").map(PathBuf::from))
@@ -859,7 +943,7 @@ fn main_result() -> Result<()> {
                 65536,
             )?;
             let description: Value = serde_json::from_slice(&out)?;
-            let generic = description["protocol"] == PROTOCOL
+            let generic = protocol_supported(&description["protocol"])
                 && description["profiles"]
                     .as_array()
                     .is_some_and(|p| !p.is_empty() && p.iter().all(Value::is_string));
@@ -915,7 +999,7 @@ fn main_result() -> Result<()> {
                 )
             }
         }
-        Cmd::Validate { spec: p } => match spec(&p)? {
+        Cmd::Validate { spec: p } => match spec(&p).map_err(invalid)? {
             Request::Legacy(s) => output(
                 json!({"valid":true,"requested_evaluations":s.requested()?,"maximum_actual_evaluations":s.maximum_evaluations()?,"resolved":s}),
             ),
@@ -996,6 +1080,18 @@ fn main_result() -> Result<()> {
             }
             Jobs::Cancel { id, now: immediate } => {
                 let dir = directory(&root, &id)?;
+                // Like a 409: a finished job has nothing to stop, and a late
+                // request must not look as if it had stopped anything.
+                let state = read(&dir.join("job.json"))?["state"].clone();
+                if terminal(&state) {
+                    return Err(coded(
+                        "already_terminal",
+                        format!(
+                            "job {id} already ended as {}; nothing to cancel",
+                            state.as_str().unwrap_or_default()
+                        ),
+                    ));
+                }
                 let path = dir.join("cancel.request");
                 // Never downgrade an immediate request to a graceful one.
                 let existing = optional(&path)?;
@@ -1015,19 +1111,29 @@ fn main_result() -> Result<()> {
             }
             Jobs::Repair { id } => {
                 let dir = directory(&root, &id)?;
+                if terminal(&read(&dir.join("job.json"))?["state"]) {
+                    return Err(coded(
+                        "already_terminal",
+                        "attempt already finalized; repair is for interrupted attempts",
+                    ));
+                }
                 // Decided before the reservation is touched below.
                 let unadmitted = never_admitted(&root, &id, &dir)?;
                 if !attempt_processes_gone(&dir) {
+                    // A held lock is a live launcher or worker: waiting helps.
+                    // Without one, liveness stays unknown (a process group
+                    // that still exists, or a detached unit that may yet
+                    // start); waiting alone may never settle it.
                     if matches!(lock_is_free(&dir.join("worker.lock")), Ok(false)) {
-                        return Err("worker still owns this attempt".into());
+                        return Err(coded("attempt_active", "worker still owns this attempt"));
                     }
                     if matches!(lock_is_free(&dir.join("job.lock")), Ok(false)) {
-                        return Err("launcher still owns this attempt".into());
+                        return Err(coded("attempt_active", "launcher still owns this attempt"));
                     }
-                    return Err(
-                        "attempt processes still alive or liveness unknown; reservation retained"
-                            .into(),
-                    );
+                    return Err(coded(
+                        "liveness_unknown",
+                        "no process holds this attempt, but its process group still exists or its detached unit may still start; inspect it (jobs get, systemctl --user) before repairing",
+                    ));
                 }
                 let owner = fs::OpenOptions::new()
                     .create(true)
@@ -1036,7 +1142,7 @@ fn main_result() -> Result<()> {
                     .write(true)
                     .open(dir.join("job.lock"))?;
                 fs2::FileExt::try_lock_exclusive(&owner)
-                    .map_err(|_| "launcher still owns this attempt")?;
+                    .map_err(|_| coded("attempt_active", "launcher still owns this attempt"))?;
                 let worker = fs::OpenOptions::new()
                     .create(true)
                     .truncate(false)
@@ -1044,15 +1150,16 @@ fn main_result() -> Result<()> {
                     .write(true)
                     .open(dir.join("worker.lock"))?;
                 fs2::FileExt::try_lock_exclusive(&worker)
-                    .map_err(|_| "worker still owns this attempt")?;
+                    .map_err(|_| coded("attempt_active", "worker still owns this attempt"))?;
                 let state = read(&dir.join("job.json"))?;
                 if matches!(
                     state["state"].as_str(),
                     Some("completed" | "failed" | "cancelled" | "timed_out" | "interrupted")
                 ) {
-                    return Err(
-                        "attempt already finalized; repair is for interrupted attempts".into(),
-                    );
+                    return Err(coded(
+                        "already_terminal",
+                        "attempt already finalized; repair is for interrupted attempts",
+                    ));
                 }
                 // Holding both locks proves the launcher and worker are gone, so
                 // this attempt's reservation can be released.
@@ -1111,9 +1218,10 @@ pub fn main() {
         std::process::exit(2);
     }
     if let Err(e) = main_result() {
+        let code = error_code(&e);
         eprintln!(
             "{}",
-            json!({"error":{"code":"runner_error","message":e.to_string()}})
+            json!({"error":{"code":code,"message":e.to_string(),"retryable":retryable(code)}})
         );
         std::process::exit(2);
     }

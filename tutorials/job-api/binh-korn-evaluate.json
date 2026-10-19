@@ -1,0 +1,50 @@
+{
+  "schema_version": "optimization.job/0.1",
+  "request_key": "tutorial.fcmaes.binh-korn-evaluate.v1",
+  "worker": "fcmaes",
+  "payload_schema": "fcmaes.evaluate/1",
+  "resources": {
+    "cpu_slots": 1,
+    "outer_workers": 1,
+    "inner_threads": 1
+  },
+  "limits": {
+    "wall_time_seconds": 30.0,
+    "grace_seconds": 1.0
+  },
+  "inputs": [],
+  "payload": {
+    "problem": {
+      "id": "benchmark.binh-korn",
+      "version": "1",
+      "config": {
+        "dimension": 2
+      },
+      "bounds": {
+        "lower": [
+          0.0,
+          0.0
+        ],
+        "upper": [
+          5.0,
+          3.0
+        ],
+        "broadcast": false
+      }
+    },
+    "points": [
+      [
+        1.0,
+        1.0
+      ],
+      [
+        3.0,
+        2.0
+      ],
+      [
+        0.0,
+        3.0
+      ]
+    ]
+  }
+}

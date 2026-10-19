@@ -91,7 +91,7 @@ else:
     def test_discovery_and_strict_validation(self):
         self.assertTrue(WORKERS,'build at least one real worker')
         for name in WORKERS:
-            self.assertEqual(self.call('problems','describe',name)['protocol'],'optimization.worker/0.1')
+            self.assertEqual(self.call('problems','describe',name)['protocol'],'optimization.worker/0.2')
             s=self.fixture(name);p,_=self.write(s);self.assertTrue(self.call('validate','--spec',p)['valid'])
             for mutate in [lambda s:s.update(extra=1),lambda s:s['resources'].update(inner_threads=8),lambda s:s.update(payload_schema='unknown/9'),lambda s:s['payload'].update(ignored_option=True)]:
                 bad=copy.deepcopy(s);mutate(bad);p,_=self.write(bad);self.call('validate','--spec',p,ok=False)
@@ -100,7 +100,7 @@ else:
             p,s,j,d,r=self.run_spec(self.fixture(name))
             self.assertEqual(j['state'],'completed');self.assertTrue(r['runner']['accounting_complete']);self.assertEqual(r['completed_tasks'],16)
             for rec in r['results']:
-                o=rec['outcome'];self.assertTrue(o['feasible']);self.assertIsNotNone(o['objective'])
+                o=rec['outcome'];self.assertTrue(o['feasible']);self.assertIsNotNone(o['objective']);self.assertEqual(o['evidence']['level'],'rechecked',o)
                 if name=='lp-ip':self.assertAlmostEqual(o['objective'],7.);self.assertEqual(o['claim'],'numerical_optimum');self.assertAlmostEqual(o['details']['best_bound'],7.,places=10);self.assertLessEqual(o['details']['best_bound'],7.)
                 if name=='sqp':self.assertAlmostEqual(o['objective'],.25,places=6);self.assertEqual(o['claim'],'first_order');self.assertLessEqual(o['details']['kkt']['stationarity'],1e-6)
                 if name=='fcmaes':self.assertEqual(rec['work']['evaluations'],1000);self.assertEqual(o['claim'],'best_found');self.assertAlmostEqual(o['objective'],sum(x*x for x in o['x']))
@@ -176,9 +176,10 @@ else:
         model=json.loads((self.base/s['inputs'][0]['file']).read_text());model['kinds']=['continuous']*2;self.model(s,model)
         _,_,_,_,r=self.run_spec(s);self.assertEqual(r['results'][0]['outcome']['termination'],'optimal');self.assertIsNotNone(r['results'][0]['outcome']['details']['lp_residuals'])
         model['row_lower']=[3.];model['row_upper']=[3.];self.model(s,model)
-        _,_,j,_,r=self.run_spec(s);self.assertEqual(j['state'],'completed');self.assertEqual(r['results'][0]['outcome']['termination'],'infeasible');self.assertEqual(r['results'][0]['outcome']['claim'],'none')
+        _,_,j,_,r=self.run_spec(s);self.assertEqual(j['state'],'completed');o=r['results'][0]['outcome']
+        self.assertEqual((o['termination'],o['claim'],o['evidence']['level']),('infeasible','infeasible','claimed'))
         model.update(objective=[-1.,0.],variable_upper=[None,None],row_lower=[],row_upper=[],matrix={'indptr':[0],'indices':[],'values':[]});self.model(s,model)
-        _,_,_,_,r=self.run_spec(s);self.assertEqual(r['results'][0]['outcome']['termination'],'unbounded')
+        _,_,_,_,r=self.run_spec(s);o=r['results'][0]['outcome'];self.assertEqual((o['termination'],o['claim']),('unbounded','unbounded'))
         model['matrix']['indptr']=[1];self.model(s,model);p,_=self.write(s);self.call('validate','--spec',p,ok=False)
     def test_sqp_backends_and_initial_point_validation(self):
         if 'sqp' not in WORKERS:self.skipTest('SQP worker not supplied')
@@ -223,5 +224,19 @@ else:
         mo['payload']['generations']=10**9;mo['limits']={'wall_time_seconds':.3,'grace_seconds':.5}
         _,_,j,_,r=self.run_spec(mo);self.assertEqual(j['state'],'timed_out');self.assertTrue(r['runner']['accounting_complete'])
         for rec in r['results']:self.assertEqual(rec['outcome']['termination'],'cancelled');self.assertEqual(rec['outcome']['claim'],'non_dominated_set')
+
+    def test_evaluate_profiles_check_given_points(self):
+        sphere={'id':'benchmark.sphere','version':'1','config':{'dimension':2},'bounds':{'lower':[-5.],'upper':[5.],'broadcast':True}}
+        cases={'fcmaes':('fcmaes.evaluate/1',{'problem':sphere,'points':[[1.,2.],[0.,0.]]},[(True,5.),(True,0.)]),
+               'lp-ip':('lp-ip.evaluate/1',{'model_input':'model','points':[[1.,0.],[0.,0.]],'feasibility_tolerance':1e-7,'integrality_tolerance':1e-7},[(True,7.),(False,5.)]),
+               'sqp':('sqp.evaluate/1',{'problem':'benchmark.simplex','dimension':4,'points':[[.25]*4,[.5]*4],'feasibility_tolerance':1e-7},[(True,.25),(False,1.)])}
+        for name in WORKERS:
+            profile,payload,expected=cases[name]
+            s=self.fixture(name);s['payload_schema']=profile;s['payload']=payload
+            _,_,j,_,r=self.run_spec(s);self.assertEqual(j['state'],'completed');self.assertEqual(r['completed_tasks'],2)
+            for rec,(feasible,objective) in zip(r['results'],expected):
+                o=rec['outcome'];self.assertEqual(o['termination'],'evaluated');self.assertEqual(o['feasible'],feasible,o)
+                self.assertEqual(o['claim'],'feasible' if feasible else 'none');self.assertAlmostEqual(o['objective'],objective,places=12)
+                self.assertEqual(o['evidence']['level'],'rechecked')
 
 if __name__=='__main__':unittest.main(argv=[__file__,*REST],verbosity=2)

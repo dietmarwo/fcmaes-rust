@@ -1,13 +1,25 @@
 #!/usr/bin/env python3
 """Runnable native job tutorial. Build release binaries before running."""
-import argparse, json, math, subprocess, tempfile
+import argparse, json, math, os, subprocess, tempfile
 from pathlib import Path
+try:
+    import jsonschema
+except ImportError:
+    jsonschema=None
 REPO=Path(__file__).resolve().parents[2]
 HERE=Path(__file__).resolve().parent
 WORKER='fcmaes'
 BINARY='fcmaes-job-worker'
 EXAMPLES=['sphere', 'rosenbrock', 'cassini1', 'rosenbrock-cmaes', 'zdt1-mode', 'binh-korn-mode',
-          'rastrigin-map-elites']
+          'rastrigin-map-elites', 'binh-korn-evaluate']
+SCHEMAS=REPO/'docs/job-api/schemas'
+if jsonschema is None and os.environ.get('JOB_API_REQUIRE_SCHEMA')=='1':
+    raise SystemExit('the jsonschema package is required (JOB_API_REQUIRE_SCHEMA=1)')
+
+def conforms(schema,value):
+    """Checks value against a published JSON Schema if jsonschema is installed."""
+    if jsonschema is not None:
+        jsonschema.validate(value,json.loads((SCHEMAS/schema).read_text()),cls=jsonschema.Draft202012Validator)
 
 p=argparse.ArgumentParser();p.add_argument('--root',type=Path);args=p.parse_args()
 root=(args.root or Path(tempfile.mkdtemp(prefix=WORKER+'-jobs-'))).resolve()
@@ -24,11 +36,14 @@ def check_retry(spec,record,outcome):
     payload=spec['payload'];limit=payload['evaluations_per_retry']
     if payload['optimizer']['kind']=='cmaes':limit+=payload['optimizer']['parameters']['population']-1
     assert outcome['claim']=='best_found',outcome
+    assert outcome['evidence']=={'level':'rechecked','checks':['objective','bounds']},outcome
     assert record['work']['evaluations']<=limit,record
 
 def check_mode(spec,record,outcome):
     assert outcome['claim']=='non_dominated_set' and outcome['x'] is None,outcome
+    assert outcome['evidence']['level']=='rechecked' and 'non_dominance' in outcome['evidence']['checks'],outcome
     details=outcome['details'];front=details['front'];problem=spec['payload']['problem']['id']
+    assert details['front_source']=='final_population' and details['hypervolume']['normalization']=='none',details
     assert front and details['hypervolume']['exact'],details
     for point in front:
         x,f=point['x'],point['objectives']
@@ -55,14 +70,27 @@ def check_map_elites(spec,record,outcome):
         assert math.isclose(elite['descriptor'][0],sum(x[:half]),abs_tol=1e-9),elite
         assert math.isclose(elite['descriptor'][1],sum(x[half:]),abs_tol=1e-9),elite
     assert outcome['objective']==min(e['fitness'] for e in elites)
+    assert outcome['evidence']=={'level':'rechecked','checks':['objective','bounds','niche']},outcome
+
+def check_evaluate(spec,record,outcome):
+    """Binh-Korn points: feasible exactly when both constraints are <= 0."""
+    x=spec['payload']['points'][record['task_id']];a,b=x
+    f=[4*a*a+4*b*b,(a-5)**2+(b-5)**2];c=[(a-5)**2+b*b-25,7.7-(a-8)**2-(b+3)**2]
+    feasible=all(v<=0 for v in c)
+    assert outcome['termination']=='evaluated' and outcome['x']==x,outcome
+    assert outcome['claim']==('feasible' if feasible else 'none') and outcome['feasible']==feasible,outcome
+    details=outcome['details']
+    assert all(math.isclose(u,v,rel_tol=1e-12,abs_tol=1e-12) for u,v in zip(details['objectives']+details['constraints'],f+c)),details
 
 if not (root/'node.json').exists():call('node','init','--capacity',8)
 call('workers','add','--id',WORKER,'--executable',REPO/'target/release'/BINARY)
 report=[]
 for example in EXAMPLES:
     spec_path=HERE/(example+'.json');spec=json.loads(spec_path.read_text())
+    conforms('optimization.job-0.1.schema.json',spec)
     call('validate','--spec',spec_path)
     job=call('run','--spec',spec_path);result=call('result',job['directory'])
+    conforms('optimization.result-0.2.schema.json',result)
     assert job['state']=='completed',result
     assert result['runner']['accounting_complete'],result
     for record in result['results']:
@@ -74,12 +102,14 @@ for example in EXAMPLES:
             assert outcome['claim']=='first_order',outcome
             assert math.isclose(outcome['objective'],.25 if example=='simplex' else 0.,abs_tol=1e-6),outcome
         else:
-            {'fcmaes.retry/1':check_retry,'fcmaes.mode/1':check_mode,
-             'fcmaes.map-elites/1':check_map_elites}[spec['payload_schema']](spec,record,outcome)
+            {'fcmaes.retry/1':check_retry,'fcmaes.mode/1':check_mode,'fcmaes.map-elites/1':check_map_elites,
+             'fcmaes.evaluate/1':check_evaluate}[spec['payload_schema']](spec,record,outcome)
     if example=='rosenbrock-cmaes':
         assert min(r['outcome']['objective'] for r in result['results'])<1e-10
     first=result['results'][0]['outcome']
     summary={k:v for k,v in first['details'].items() if k not in ('front','elites')}
+    if example=='binh-korn-evaluate':
+        assert [r['outcome']['claim'] for r in result['results']]==['feasible','feasible','none'],result
     report.append({'example':example,'profile':spec['payload_schema'],'job_id':job['id'],'directory':job['directory'],
                    'state':job['state'],'completed_tasks':result['completed_tasks'],
                    'first_outcome':{**first,'details':summary},'work':result['work']})

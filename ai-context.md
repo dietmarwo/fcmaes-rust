@@ -1,8 +1,10 @@
 # AI context for solving user optimization problems with fcmaes-rust
 
-Last reviewed 2026-10-19 against `main` at `09bb847`, which includes the
-shared agent job API 0.1 (#5), plus the CMA-ES, MODE and MAP-Elites job
-profiles and the 0.1.1 synchronization of the shared crates. In another checkout, check `Cargo.toml`, the available worker's
+Last reviewed 2026-10-19 against `main` at `b9d64c9`, which includes the
+shared agent job API 0.1 (#5), the CMA-ES, MODE and MAP-Elites job profiles
+and the 0.1.1 synchronization of the shared crates, plus the result contract
+0.2 (evidence, refutations, evaluation profiles, error codes and JSON
+Schemas). In another checkout, check `Cargo.toml`, the available worker's
 discovery output, and the linked guides before using a command or claiming a
 capability.
 
@@ -252,7 +254,7 @@ is no agent, Python, or network round trip for each objective evaluation.
 |---|---|
 | `crates/optimization-job-api` | Strict envelopes, result contracts, hashes, durable journals and worker SDK. |
 | `crates/optimization-runner` / `optimization-run` | Worker registration, staging, idempotency, CPU admission, process supervision and recovery. |
-| `crates/fcmaes-job-worker` | Native adapter for `fcmaes.retry/1` (BiteOpt, DE, CMA-ES retries), `fcmaes.mode/1` (MODE) and `fcmaes.map-elites/1` (MAP-Elites); a library plus a thin binary. |
+| `crates/fcmaes-job-worker` | Native adapter for `fcmaes.retry/1` (BiteOpt, DE, CMA-ES retries), `fcmaes.mode/1` (MODE), `fcmaes.map-elites/1` (MAP-Elites) and `fcmaes.evaluate/1` (given points); a library plus a thin binary. |
 | `crates/fcmaes-job-api` | Compatibility facade re-exporting the original API from the shared crate's `legacy` module. |
 | `crates/fcmaes-runner` / `fcmaes-run` | Compatibility CLI entry point into the common runner. |
 | `crates/fcmaes-native-worker` | Original worker for `fcmaes.job/0.1` specifications. |
@@ -260,7 +262,8 @@ is no agent, Python, or network round trip for each objective evaluation.
 [LP-IP-craft](https://github.com/dietmarwo/LP-IP-craft) and
 [SQP-craft](https://github.com/dietmarwo/SQP-craft) carry their own copies of
 the shared crates and their own workers: `lp-ip-job-worker` with
-`lp-ip.solve/1`, and `sqp-job-worker` with `sqp.solve/1`. Each has its own
+`lp-ip.solve/1` and `lp-ip.evaluate/1`, and `sqp-job-worker` with `sqp.solve/1`
+and `sqp.evaluate/1`. Each has its own
 `ai-context.md` for its solver. Build those workers in their respective
 repositories and register their executables with one runner using one absolute
 node root. The fcmaes checkout builds independently and does not link either
@@ -277,12 +280,19 @@ leaving it `running`, appends that end a torn journal tail first, validators
 stopped by a signal, `./`-relative input paths, `optimization-job-ID.service`
 unit names, and no reboot flag on finished jobs. It also carries the fcmaes
 `non_dominated_set` and `elite_archive` claims. `scripts/job-api/test_review.py`
-covers the runner fixes in all three repositories. The job envelope, worker
-protocol and result schema identifiers are unchanged, so any runner copy can
-drive any of the three workers, and the workers report the shared version as
-`build.job_api_version`. Use one runner build for all jobs that share a node
-root. A cross-project change must update all three copies and their
-manifests.
+covers the runner fixes in all three repositories.
+
+Version 0.2.0 of the shared crates adds the result contract
+`optimization.result/0.2` and worker protocol `optimization.worker/0.2`: five
+new claims (`infeasible`, `unbounded`, `infeasible_or_unbounded`,
+`locally_infeasible`, `certified_optimum`), `evidence` with checks,
+refutations and a certificate slot, `objective_bounds`, an `imprecise` flag,
+coded runner errors and JSON Schemas in `docs/job-api/schemas/`. The job
+envelope stays `optimization.job/0.1`. A 0.2 runner still accepts 0.1
+workers; a 0.1 runner rejects 0.2 workers at registration. The workers report
+the shared version as `build.job_api_version`. Use one runner build for all
+jobs that share a node root. A cross-project change must update all three
+copies and their manifests.
 
 The new runner defaults to `.optimization-jobs`; `fcmaes-run` retains
 `.fcmaes-jobs`. Root precedence is `--root`, `OPTIMIZATION_RUN_ROOT`, then
@@ -505,26 +515,50 @@ starting path.
 
 ### Interpret results and compare experiments
 
-Common `run.json` uses `optimization.result/0.1`; its `status` and the job's
+Common `run.json` uses `optimization.result/0.2`; its `status` and the job's
 `state` describe execution, while each `results` entry contains `task_id`,
 `outcome` and `work`. Inspect all three layers. A completed job is not a proof
-of optimality. The fcmaes claims are:
+of optimality. Each outcome separates `termination` (why the task stopped),
+`claim` (what is asserted) and `evidence` (`claimed`, `rechecked` with the
+list of recomputed `checks`, or `certified`). fcmaes claims are always
+`rechecked`; `none` without a refutation (a penalty value, an empty front or
+archive) is `claimed`. The fcmaes claims are:
 
-- `best_found` (retries): candidate inside the bounds and re-evaluated; no
-  global certificate.
+- `best_found` (retries): the best point the optimizer evaluated, inside the
+  bounds and re-evaluated; no global certificate. If the re-evaluation
+  disagrees, the claim is not reported: `evidence.refuted` names `best_found`
+  with verdict `infeasible_point` (claim `none`; the point is not evaluated
+  outside the box) or `objective_mismatch` (claim `feasible` with the
+  recomputed value, or `none` if that value is unusable). Treat a refutation
+  as a defect report, not as an optimization result.
 - `non_dominated_set` (MODE): `details.front` lists the feasible, mutually
   non-dominated final-population members, each re-evaluated, with `x`,
   `objectives` and `constraints`; `details.hypervolume` is the exact
-  hypervolume for the declared reference point, counting points outside it
-  instead of clipping them. The outcome has no single `x` or `objective`. No
+  hypervolume for the declared reference point (raw objectives,
+  `normalization: "none"`), counting points outside it instead of clipping
+  them. `front_source` is `final_population`, not an archive of every
+  evaluated point. The outcome has no single `x` or `objective`. No
   Pareto-optimality certificate.
 - `elite_archive` (MAP-Elites): `details.elites` lists every occupied niche,
   re-evaluated and mapped back to its niche; `x` and `objective` are the best
   elite. Report `coverage`, `qd_score`, `mean_fitness` and representative
   elites, not only the best one.
 
-Other workers have different claims (`numerical_optimum` for LP/MIP,
-`first_order` for SQP). Do not equate those meanings across solvers.
+- `feasible` (`fcmaes.evaluate/1`): the given point has a usable value, or for
+  a multi-objective model satisfies every constraint; objectives and
+  constraints are in `details`.
+
+Use `fcmaes.evaluate/1` when you, the agent, propose candidates: the worker
+evaluates them with the registered model instead of you computing or
+estimating values. Points must lie inside the problem's bounds and are
+inline in the job, which must stay below the runner's 4 MiB validation
+output.
+
+Other workers have different claims (`numerical_optimum`, `infeasible` and
+`unbounded` for LP/MIP; `first_order` and `locally_infeasible` for SQP). Do not
+equate those meanings across solvers. Runner errors are JSON on stderr with a
+`code` and `retryable`; only `attempt_active` is worth repeating unchanged, and
+`request_key_conflict` means the key already names different content.
 
 `results.jsonl` commits checksummed task records; `events.jsonl` records lifecycle
 transitions. `resolved.json` and `provenance.json` preserve execution inputs and
@@ -563,12 +597,15 @@ per-task seeds. Multi-objective and quality-diversity models live in
 add the model, its canonical box and discovery entry, and tests that compare a
 job run with a direct `fcmaes-core` run from the same seed. To add a new
 solver profile, implement `worker::Worker::prepare` and `Prepared`, return task
-outcomes/work counters, and let the SDK own concurrency and journal commits.
+outcomes with evidence and work counters (record a claim that fails your
+independent check with `Evidence::refuting`), and let the SDK own concurrency
+and journal commits.
 Version profiles when mathematical input or output semantics change.
 
-Current scope: local single-user trusted executables; no HTTP/MCP service,
-distributed scheduler, arbitrary Python callback transport, solver checkpoint
-resume or automatic cross-solver pipeline. Direct integration can compose
+Current scope: local single-user trusted executables; no HTTP/MCP service
+(the guide maps the runner onto the MCP Tasks extension), distributed
+scheduler, arbitrary Python callback transport, solver checkpoint resume or
+automatic cross-solver pipeline. Direct integration can compose
 algorithms, but that is not a capability of this job protocol yet.
 
 ## Algorithm comparison

@@ -1,4 +1,4 @@
-# Job API 0.1 validation
+# Job API validation
 
 ## Continuous checks in this repository
 
@@ -11,7 +11,7 @@ CI runs these on every push and pull request (`.github/workflows/ci.yml`):
 | Rust tests | `cargo test --workspace` (shared contracts and durability, worker SDK adapter, legacy and common CLI lifecycle) |
 | Legacy runner integration | `python3 scripts/runner/test_integration.py` |
 | Common job API integration | `python3 scripts/job-api/test_integration.py` |
-| Shared runner regressions | `python3 scripts/job-api/test_review.py` |
+| Shared runner regressions, error codes and schema checks | `JOB_API_REQUIRE_SCHEMA=1 python3 scripts/job-api/test_review.py` |
 | Runnable tutorial | `python3 tutorials/job-api/run.py` |
 | Shared-source identity | `sha256sum -c docs/job-api/SHARED-SOURCES.sha256` |
 | Route-search tutorial (uses the shared crate by path) | tutorial matrix job: fmt, clippy, tests |
@@ -131,6 +131,44 @@ other two repositories ran their own suites; see their validation reports. The
 shared harness with all three workers on one node passed (12 tests, none
 skipped) under each repository's runner build, and every worker reports
 `build.job_api_version: "0.1.1"`.
+
+## Result contract 0.2 (19 October 2026)
+
+The shared crates moved to 0.2.0 with the result contract 0.2: five new
+claims, evidence (levels, checks, refutations, certificate slot), objective
+bounds, worker protocol 0.2 with 0.1 still accepted, coded runner errors,
+`already_terminal` on cancelling a finished job, and JSON Schemas for the job
+envelope and the result manifest. The shared set grew to 23 files with the
+two schemas and `scripts/job-api/outcome_cases.json`. CI installs `jsonschema`
+and sets `JOB_API_REQUIRE_SCHEMA=1`, so the schema checks cannot be skipped
+there.
+
+An independent review before the merge reported 13 defects; all were fixed
+and are covered by tests (see the [plan](PLAN.md#6-result-contract-02-october-2026)).
+After the fixes, 1.2 million generated outcomes found no disagreement between
+the JSON Schema and `Outcome::check`, and every case of `outcome_cases.json`
+behaves the same as a journal record through the runner.
+
+In this repository the fcmaes worker reports evidence for all three profiles,
+records a retry whose re-check fails as a refutation instead of failing the
+job, labels MODE fronts as `final_population` with an unnormalized
+hypervolume, and adds `fcmaes.evaluate/1`. Checked with Rust 1.97 on Linux
+x86_64:
+
+| Check | Observed result |
+| --- | --- |
+| `cargo fmt --check`, Clippy `-D warnings`, `cargo doc` | Passed |
+| Workspace tests (`cargo test --workspace`) | 298 passed, including 26 shared (5 legacy spec, 13 contracts, 8 durability) and 10 fcmaes worker tests |
+| Legacy runner suite (`scripts/runner/test_integration.py`) | 14 passed |
+| Shared harness | 13 passed, 2 skipped without LP/SQP workers |
+| Shared review and schema tests (`JOB_API_REQUIRE_SCHEMA=1`) | 15 passed |
+| Tutorial | 8 examples completed; results and jobs validated against the schemas |
+| Route-search tutorial | 56 passed |
+| Mixed node with all three workers, under each repository's runner build | 13 passed, none skipped, three times |
+| `sha256sum -c docs/job-api/SHARED-SOURCES.sha256` | 23 files OK |
+
+MSRV 1.88 is checked by CI; the toolchain could not be installed on the
+review host.
 
 ## Reproduce with sibling workers
 

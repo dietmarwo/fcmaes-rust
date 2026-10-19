@@ -1,5 +1,5 @@
 use optimization_job_api::{
-    result::{self, Outcome, Record},
+    result::{self, Certificate, Evidence, ObjectiveBounds, Outcome, Record},
     storage, *,
 };
 use serde_json::json;
@@ -99,6 +99,7 @@ fn journal_claims_duplicates_tail_recovery_and_incomplete_accounting() {
             objective: None,
             x: None,
             details: json!({}),
+            ..Outcome::default()
         },
     };
     let path = d.path().join("results.jsonl");
@@ -139,8 +140,8 @@ fn false_success_and_mixed_claim_comparison_are_rejected() {
     assert!(result::worker_outcome(d.path(), &Request::Job(s)).is_err());
     assert!(
         result::compare(&[
-            json!({"schema_version":"optimization.result/0.1","payload_schema":"lp-ip.solve/1"}),
-            json!({"schema_version":"optimization.result/0.1","payload_schema":"sqp.solve/1"})
+            json!({"schema_version":"optimization.result/0.2","payload_schema":"lp-ip.solve/1"}),
+            json!({"schema_version":"optimization.result/0.2","payload_schema":"sqp.solve/1"})
         ])
         .is_err()
     );
@@ -178,6 +179,7 @@ fn numerical_json_round_trips_preserve_manifest_and_digest() {
             objective: Some(3.1554436208840472e-30),
             x: Some(values),
             details: json!({}),
+            ..Outcome::default()
         },
     };
     storage::append_checked(&dir.path().join("results.jsonl"), 1, &record).unwrap();
@@ -209,6 +211,7 @@ fn set_and_archive_claims_follow_their_rules() {
             objective,
             x,
             details: json!({"front": [{"x": [0.5], "objectives": [1.0, 2.0]}]}),
+            ..Outcome::default()
         },
     };
     let replay = |r: Record| {
@@ -245,4 +248,272 @@ fn set_and_archive_claims_follow_their_rules() {
     assert!(replay(record("elite_archive", Some(true), None, None)).is_err());
     assert!(replay(record("best_found", Some(true), None, None)).is_err());
     assert!(replay(record("pareto_optimal", Some(true), None, None)).is_err());
+}
+
+fn point(
+    claim: &str,
+    feasible: Option<bool>,
+    x: Option<Vec<f64>>,
+    objective: Option<f64>,
+) -> Outcome {
+    Outcome {
+        termination: "test".into(),
+        claim: claim.into(),
+        feasible,
+        objective,
+        x,
+        details: json!({}),
+        ..Outcome::default()
+    }
+}
+
+#[test]
+fn claims_of_result_schema_0_2_follow_their_rules() {
+    let x = || Some(vec![1.0]);
+    let ok = |o: Outcome| o.check().map_err(|e| format!("{o:?}: {e}")).unwrap();
+    let bad = |o: Outcome| assert!(o.check().is_err(), "{o:?}");
+    // No feasible point: never marked feasible; an infeasible point may stay.
+    for claim in ["infeasible", "locally_infeasible"] {
+        ok(point(claim, None, None, None));
+        ok(point(claim, Some(false), x(), Some(3.0)));
+        bad(point(claim, Some(true), x(), Some(3.0)));
+    }
+    // A feasible point narrows infeasible_or_unbounded down to unbounded.
+    ok(point("infeasible_or_unbounded", Some(true), x(), Some(3.0)));
+    // Unbounded may carry a feasible point, or none.
+    ok(point("unbounded", Some(true), x(), Some(-5.0)));
+    ok(point("unbounded", None, None, None));
+    // A feasible point of a multi-objective or constraint-only model has no
+    // single objective; the objective claims need one.
+    ok(point("feasible", Some(true), x(), None));
+    bad(point("best_found", Some(true), x(), None));
+    bad(point("feasible", Some(false), x(), Some(1.0)));
+    bad(point("none", None, None, Some(1.0)));
+    // certified_optimum needs a verified certificate.
+    let mut o = point("certified_optimum", Some(true), x(), Some(1.0));
+    bad(o.clone());
+    let certificate = Certificate {
+        format: "vipr".into(),
+        artifact: Some("proof.vipr".into()),
+        sha256: "a".repeat(64),
+        checker: "viprchk-1.1".into(),
+        verdict: "verified".into(),
+    };
+    o.evidence = Some(Evidence {
+        level: "certified".into(),
+        certificate: Some(certificate.clone()),
+        ..Evidence::default()
+    });
+    ok(o.clone());
+    o.evidence
+        .as_mut()
+        .unwrap()
+        .certificate
+        .as_mut()
+        .unwrap()
+        .verdict = "rejected".into();
+    bad(o.clone());
+    o.evidence
+        .as_mut()
+        .unwrap()
+        .certificate
+        .as_mut()
+        .unwrap()
+        .sha256 = "A".repeat(64);
+    bad(o);
+    // Whole-problem claims are never "rechecked".
+    let mut o = point("infeasible", None, None, None);
+    o.evidence = Some(Evidence::rechecked(&["constraints"]));
+    bad(o.clone());
+    o.evidence = Some(Evidence::claimed(&[]));
+    ok(o);
+    // Evidence names known, distinct checks; rechecked names at least one.
+    let mut o = point("best_found", Some(true), x(), Some(1.0));
+    for evidence in [
+        Evidence::rechecked(&[]),
+        Evidence::rechecked(&["objective", "objective"]),
+        Evidence::rechecked(&["optimality"]),
+        Evidence {
+            level: "verified".into(),
+            ..Evidence::default()
+        },
+    ] {
+        o.evidence = Some(evidence);
+        bad(o.clone());
+    }
+    o.evidence = Some(Evidence::rechecked(&["objective", "bounds"]));
+    ok(o.clone());
+    // A refutation names another claim and the verdict of a failed check;
+    // the surviving claim is what the checks support.
+    let mut refuted = point("feasible", Some(true), x(), Some(1.0));
+    refuted.evidence = Some(Evidence::rechecked(&["objective", "kkt"]).refuting(
+        "first_order",
+        "false_optimality",
+        "stationarity 1e-2 above 1e-6",
+    ));
+    ok(refuted.clone());
+    for (claim, verdict) in [
+        ("feasible", "false_optimality"),
+        ("first_order", "wrong"),
+        ("none", "false_optimality"),
+        ("first_order", "invalid_certificate"),
+    ] {
+        let mut o = refuted.clone();
+        let r = o.evidence.as_mut().unwrap().refuted.as_mut().unwrap();
+        r.claim = claim.into();
+        r.verdict = verdict.into();
+        bad(o);
+    }
+    let mut o = refuted.clone();
+    o.evidence.as_mut().unwrap().level = "claimed".into();
+    bad(o);
+    // invalid_certificate goes with a rejected certificate, and only then.
+    let mut o = point("numerical_optimum", Some(true), x(), Some(1.0));
+    o.evidence = Some(
+        Evidence {
+            certificate: Some(Certificate {
+                verdict: "rejected".into(),
+                ..certificate
+            }),
+            ..Evidence::rechecked(&["objective"])
+        }
+        .refuting(
+            "certified_optimum",
+            "invalid_certificate",
+            "checker rejected step 12",
+        ),
+    );
+    ok(o);
+    // imprecise qualifies a claim.
+    let mut o = point("numerical_optimum", Some(true), x(), Some(1.0));
+    o.imprecise = true;
+    ok(o.clone());
+    o.claim = "none".into();
+    bad(o);
+    // Objective bounds have a sense and finite bounds or null.
+    let mut o = point("numerical_optimum", Some(true), x(), Some(7.0));
+    o.objective_bounds = Some(ObjectiveBounds {
+        sense: "minimize".into(),
+        primal: Some(7.0),
+        dual: None,
+    });
+    ok(o.clone());
+    o.objective_bounds.as_mut().unwrap().sense = "min".into();
+    bad(o);
+}
+
+#[test]
+fn records_without_0_2_fields_replay_and_serialize_unchanged() {
+    // A 0.1 record: no evidence, bounds or imprecise flag in the JSON.
+    let s = job();
+    let text = format!(
+        r#"{{"task_id":0,"spec_digest":"{}","elapsed_seconds":0.5,"work":{{"evaluations":3}},"outcome":{{"termination":"evaluation_limit","claim":"best_found","feasible":true,"objective":1.5,"x":[0.5],"details":{{}}}}}}"#,
+        s.digest().unwrap()
+    );
+    let record: Record = serde_json::from_str(&text).unwrap();
+    assert_eq!(record.outcome.evidence, None);
+    assert_eq!(serde_json::to_string(&record).unwrap(), text);
+    let d = tempfile::tempdir().unwrap();
+    storage::append_checked(&d.path().join("results.jsonl"), 1, &record).unwrap();
+    assert_eq!(result::replay(d.path(), &s).unwrap().len(), 1);
+    // An invalid record names its task and the rule it breaks.
+    let mut wrong = record;
+    wrong.task_id = 1;
+    wrong.outcome.claim = "infeasible".into();
+    storage::append_checked(&d.path().join("results.jsonl"), 1, &wrong).unwrap();
+    let error = result::replay(d.path(), &s).unwrap_err().to_string();
+    assert!(
+        error.contains("task 1") && error.contains("contradicts"),
+        "{error}"
+    );
+}
+
+#[test]
+fn compare_reads_0_1_and_0_2_manifests_of_one_spec() {
+    let arm = |version: &str| json!({"schema_version":version,"payload_schema":"lp-ip.solve/1","runner":{"spec_digest":"d"}});
+    let same = result::compare(&[
+        arm("optimization.result/0.2"),
+        arm("optimization.result/0.2"),
+    ])
+    .unwrap();
+    assert_eq!(same["warnings"].as_array().unwrap().len(), 1);
+    let mixed = result::compare(&[
+        arm("optimization.result/0.1"),
+        arm("optimization.result/0.2"),
+    ])
+    .unwrap();
+    assert_eq!(mixed["warnings"].as_array().unwrap().len(), 2);
+    assert!(
+        result::compare(&[arm("optimization.result/0.2"), json!({"schema_version":1})]).is_err()
+    );
+}
+
+#[test]
+fn published_json_schema_lists_the_same_vocabulary() {
+    let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../docs/job-api/schemas/optimization.result-0.2.schema.json");
+    let schema: serde_json::Value = serde_json::from_slice(&std::fs::read(&path).unwrap()).unwrap();
+    let names = |pointer: &str| -> Vec<String> {
+        let mut v: Vec<String> = schema
+            .pointer(pointer)
+            .unwrap_or_else(|| panic!("{pointer}"))
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|v| v.as_str().unwrap().to_owned())
+            .collect();
+        v.sort();
+        v
+    };
+    let sorted = |a: &[&str]| -> Vec<String> {
+        let mut v: Vec<String> = a.iter().map(|s| s.to_string()).collect();
+        v.sort();
+        v
+    };
+    assert_eq!(names("/$defs/claim/enum"), sorted(&result::CLAIMS));
+    assert_eq!(names("/$defs/check/enum"), sorted(&result::CHECKS));
+    assert_eq!(names("/$defs/verdict/enum"), sorted(&result::VERDICTS));
+    assert_eq!(
+        names("/$defs/evidence/properties/level/enum"),
+        sorted(&result::LEVELS)
+    );
+    assert_eq!(
+        schema["properties"]["schema_version"]["enum"],
+        json!(result::SCHEMAS)
+    );
+}
+
+#[test]
+fn error_codes_and_worker_protocols() {
+    let e = coded("already_terminal", "job ended");
+    assert_eq!(error_code(&e), "already_terminal");
+    assert_eq!(e.to_string(), "job ended");
+    assert_eq!(error_code(&"plain".into()), "runner_error");
+    assert!(retryable("attempt_active") && !retryable("already_terminal"));
+    assert!(protocol_supported(&json!("optimization.worker/0.1")));
+    assert!(protocol_supported(&json!(PROTOCOL)));
+    assert!(!protocol_supported(&json!("optimization.worker/0.3")));
+    let bad = Request::parse(b"{\"schema_version\":\"x\"}").unwrap_err();
+    assert_eq!(error_code(&bad), "invalid_job");
+}
+
+/// The same cases check the JSON Schema (scripts/job-api/test_review.py).
+#[test]
+fn shared_outcome_cases_match_the_rules() {
+    let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../scripts/job-api/outcome_cases.json");
+    let cases: Vec<serde_json::Value> =
+        serde_json::from_slice(&std::fs::read(&path).unwrap()).unwrap();
+    assert!(cases.len() > 30);
+    for case in cases {
+        let checked = serde_json::from_value::<Outcome>(case["outcome"].clone())
+            .map_err(|e| e.to_string())
+            .and_then(|o| o.check());
+        assert_eq!(
+            checked.is_ok(),
+            case["valid"].as_bool().unwrap(),
+            "{}: {checked:?}",
+            case["name"]
+        );
+    }
 }

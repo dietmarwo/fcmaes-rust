@@ -50,7 +50,11 @@ jobs:
       - name: cargo test
         run: cargo test --workspace
       - name: Experiment runner and job API integration tests
+        env:
+          # The shared review tests and the tutorial validate against the JSON Schemas.
+          JOB_API_REQUIRE_SCHEMA: "1"
         run: |
+          python3 -m pip install "jsonschema>=4.18,<5"
           cargo build --release --locked -p fcmaes-runner -p fcmaes-native-worker \
             -p optimization-runner -p fcmaes-job-worker
           python3 scripts/runner/test_integration.py

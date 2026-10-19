@@ -1,4 +1,4 @@
-use crate::{Result, legacy, storage};
+use crate::{Result, coded, legacy, storage};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::{
@@ -8,7 +8,18 @@ use std::{
 };
 
 pub const SCHEMA: &str = "optimization.job/0.1";
-pub const PROTOCOL: &str = "optimization.worker/0.1";
+/// The worker protocol of this build. It adds the result contract 0.2
+/// (evidence, refutations, objective bounds and the infeasibility and
+/// certified claims) to the process protocol of 0.1.
+pub const PROTOCOL: &str = "optimization.worker/0.2";
+/// Worker protocols the runner accepts. Every 0.1 result record is a valid
+/// 0.2 record, so 0.1 workers keep working; a 0.1 runner rejects 0.2 workers
+/// at registration instead of failing on their journals.
+pub const PROTOCOLS: [&str; 2] = ["optimization.worker/0.1", PROTOCOL];
+/// True if the runner accepts a worker that describes itself with `protocol`.
+pub fn protocol_supported(protocol: &Value) -> bool {
+    protocol.as_str().is_some_and(|p| PROTOCOLS.contains(&p))
+}
 pub const MAX_INPUT_BYTES: u64 = 64 * 1024 * 1024;
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
@@ -162,7 +173,11 @@ pub enum Request {
     Job(JobSpec),
 }
 impl Request {
+    /// Parses and validates a submitted job; every failure is `invalid_job`.
     pub fn parse(bytes: &[u8]) -> Result<Self> {
+        Self::parse_unchecked(bytes).map_err(|e| coded("invalid_job", e.to_string()))
+    }
+    fn parse_unchecked(bytes: &[u8]) -> Result<Self> {
         let v: Value = serde_json::from_slice(bytes)?;
         match v["schema_version"].as_str() {
             Some("fcmaes.job/0.1") => Ok(Self::Legacy(

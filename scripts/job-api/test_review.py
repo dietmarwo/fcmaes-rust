@@ -1,14 +1,18 @@
 #!/usr/bin/env python3
-"""Runner regression tests from the review of the job API 0.1.0, shared by
-fcmaes-rust, LP-IP-craft and SQP-craft (see docs/job-api.md).
+"""Runner regression tests, shared by fcmaes-rust, LP-IP-craft and SQP-craft
+(see docs/job-api.md): the review of the job API 0.1.0, the error codes of
+0.2 and the JSON Schemas of the job envelope and the result manifest.
 
-Each test failed on the delivered runner and passes now. It runs the release
-runner against `fake_worker.py`, a protocol fixture, and against the
-repository's own worker where a solver result is needed. Build first, with the
-worker package of this repository:
+The tests run the release runner against `fake_worker.py`, a protocol fixture
+that still speaks protocol 0.1, and against the repository's own worker where
+a solver result is needed. Build first, with the worker package of this
+repository:
 
     cargo build --release --locked -p optimization-runner -p WORKER_PACKAGE
     python3 scripts/job-api/test_review.py
+
+The schema tests need the `jsonschema` package; without it they are skipped,
+unless JOB_API_REQUIRE_SCHEMA=1 (as in CI) makes them fail.
 """
 import copy
 import hashlib
@@ -21,7 +25,14 @@ import time
 import unittest
 from pathlib import Path
 
+try:
+    import jsonschema
+except ImportError:
+    jsonschema = None
+
 REPO = Path(__file__).resolve().parents[2]
+SCHEMAS = REPO / "docs/job-api/schemas"
+CASES = Path(__file__).resolve().parent / "outcome_cases.json"
 RUN = REPO / "target/release/optimization-run"
 FAKE = Path(__file__).resolve().parent / "fake_worker.py"
 TERMINAL = {"completed", "failed", "cancelled", "timed_out", "interrupted"}
@@ -67,7 +78,9 @@ def job_id(key):
     return hashlib.sha256(key.encode()).hexdigest()[:32]
 
 
-class Review(unittest.TestCase):
+class Node(unittest.TestCase):
+    """A fresh node with the fake worker and this repository's worker."""
+
     def setUp(self):
         temporary = tempfile.TemporaryDirectory()
         self.addCleanup(temporary.cleanup)
@@ -104,6 +117,12 @@ class Review(unittest.TestCase):
         result = self.raw(*args, **kw)
         self.assertEqual(result.returncode, 0, result.stderr)
         return json.loads(result.stdout)
+
+    def error(self, *args):
+        """The runner's JSON error for a command that must fail."""
+        result = self.raw(*args)
+        self.assertEqual(result.returncode, 2, result.stdout)
+        return json.loads(result.stderr.strip().splitlines()[-1])["error"]
 
     def real_job(self):
         """A small job of this repository's worker that completes quickly."""
@@ -146,6 +165,7 @@ class Review(unittest.TestCase):
         except (FileNotFoundError, json.JSONDecodeError):
             return None
 
+class Review(Node):
     def test_unreadable_journal_ends_failed_and_keeps_listing(self):
         path, key = self.write(envelope("fake", {"mode": "garbage_journal"}))
         # `run` reports the journal error; the delivery also left the job
@@ -236,6 +256,181 @@ class Review(unittest.TestCase):
         self.assertEqual(job["state"], "failed")
         self.assertIsNone(self.call("result", job["directory"])["work"])
         self.assertEqual(json.loads((self.root / "slots.json").read_text()), {})
+
+
+    def test_cancel_after_the_end_is_a_conflict_and_repair_of_a_live_job_is_retryable(self):
+        process, ident, directory = self.start(envelope("fake", {"mode": "sleep"}, wall=60))
+        self.wait_for(lambda: self.state(directory) == "running")
+        self.wait_for(lambda: (directory / "worker-process.json").exists())
+        error = self.error("jobs", "repair", ident)
+        self.assertEqual((error["code"], error["retryable"]), ("attempt_active", True))
+        self.call("jobs", "cancel", ident, "--now")
+        process.communicate(timeout=10)
+        self.assertEqual(self.state(directory), "cancelled")
+        (directory / "cancel.request").unlink()
+        # Like HTTP 409: nothing is left to stop, and nothing is written.
+        error = self.error("jobs", "cancel", ident)
+        self.assertEqual((error["code"], error["retryable"]), ("already_terminal", False))
+        self.assertIn("cancelled", error["message"])
+        self.assertFalse((directory / "cancel.request").exists())
+        self.assertEqual(self.error("jobs", "repair", ident)["code"], "already_terminal")
+
+    def test_request_errors_have_stable_codes(self):
+        path, key = self.write(envelope("fake", {"mode": "sleep", "seconds": 0}))
+        self.call("run", "--spec", path)
+        # Same key, different content: rejected, never a second job.
+        spec = json.loads(path.read_text())
+        spec["payload"]["seconds"] = 1
+        path.write_text(json.dumps(spec))
+        error = self.error("run", "--spec", path)
+        self.assertEqual((error["code"], error["retryable"]), ("request_key_conflict", False))
+        self.assertIn(job_id(key), error["message"])
+        big = envelope("fake", {"mode": "sleep", "seconds": 0})
+        big["resources"] = {"cpu_slots": 16, "outer_workers": 16, "inner_threads": 1}
+        error = self.error("run", "--spec", self.write(big)[0])
+        self.assertEqual(error["code"], "capacity_exceeded")
+        self.assertIn("requests 16 CPU slots but the node capacity is 8", error["message"])
+        self.assertEqual(self.error("jobs", "get", "0" * 32)["code"], "unknown_job")
+        self.assertEqual(self.error("jobs", "get", "nonsense")["code"], "unknown_job")
+        nobody = envelope("fake", {})
+        nobody["worker"] = "nobody"
+        self.assertEqual(self.error("validate", "--spec", self.write(nobody)[0])["code"], "unknown_worker")
+        other = envelope("fake", {})
+        other["payload_schema"] = "test.other/1"
+        self.assertEqual(self.error("validate", "--spec", self.write(other)[0])["code"], "unsupported_profile")
+        broken = self.base / "broken.json"
+        broken.write_text("{")
+        self.assertEqual(self.error("validate", "--spec", broken)["code"], "invalid_job")
+        unknown = envelope("fake", {})
+        unknown["priority"] = 1
+        self.assertEqual(self.error("validate", "--spec", self.write(unknown)[0])["code"], "invalid_job")
+        # Inputs are part of the job: a wrong hash or a missing file.
+        (self.base / "model.json").write_text("{}")
+        hashed = envelope("fake", {})
+        hashed["inputs"] = [{"name": "model", "file": "model.json", "sha256": "0" * 64}]
+        self.assertEqual(self.error("validate", "--spec", self.write(hashed)[0])["code"], "invalid_job")
+        hashed["inputs"][0]["file"] = "missing.json"
+        self.assertEqual(self.error("validate", "--spec", self.write(hashed)[0])["code"], "invalid_job")
+        self.assertEqual(self.error("validate", "--spec", self.base / "missing.json")["code"], "invalid_job")
+        # A resolved job beyond the 4 MiB validation output.
+        error = self.error("validate", "--spec", self.write(envelope("fake", {"pad": "x" * 5_000_000}))[0])
+        self.assertEqual(error["code"], "invalid_job")
+        self.assertIn("4 MiB", error["message"])
+        # Usage errors are coded too.
+        self.assertEqual(self.error("jobs", "frobnicate")["code"], "invalid_command")
+
+    def test_repair_settles_liveness_by_boot_and_reports_unknown_liveness(self):
+        process, ident, directory = self.start(envelope("fake", {"mode": "sleep"}, wall=60))
+        self.wait_for(lambda: (directory / "worker-process.json").exists())
+        group = json.loads((directory / "worker-process.json").read_text())
+        process.kill()
+        process.communicate(timeout=10)
+        os.killpg(group["pgid"], signal.SIGKILL)
+        # No lock is held, but the recorded process group is alive (here: this
+        # test's own group, as after a process-group ID reuse). Waiting alone
+        # would not settle that, so it is not retryable.
+        record = directory / "worker-process.json"
+        record.write_text(json.dumps(dict(group, pgid=os.getpgrp())))
+        errors = []
+        try:
+            # The killed worker releases its lock as it exits.
+            self.wait_for(lambda: errors.append(self.error("jobs", "repair", ident))
+                          or errors[-1]["code"] != "attempt_active")
+        finally:
+            # The cleanup kills the recorded group: never leave this test's own.
+            record.write_text(json.dumps(group))
+        self.assertEqual((errors[-1]["code"], errors[-1]["retryable"]), ("liveness_unknown", False))
+        # Recorded on an earlier boot: nothing of the attempt survives a reboot.
+        record.write_text(json.dumps(dict(group, pgid=os.getpgrp(),
+                                          boot_id="00000000-0000-0000-0000-000000000000")))
+        try:
+            repaired = self.call("jobs", "repair", ident)
+        finally:
+            record.write_text(json.dumps(group))
+        self.assertEqual(repaired["state"], "interrupted")
+        self.assertEqual(json.loads((self.root / "slots.json").read_text()), {})
+
+    def test_a_protocol_0_1_worker_still_runs(self):
+        self.assertEqual(self.call("workers", "list")["fake"]["description"]["protocol"],
+                         "optimization.worker/0.1")
+        path, _ = self.write(envelope("fake", {"mode": "complete"}))
+        job = self.call("run", "--spec", path)
+        self.assertEqual(job["state"], "completed")
+        run = self.call("result", job["directory"])
+        # The runner seals the attempt with its own manifest; the 0.1 record
+        # keeps its exact content (no evidence is invented for it).
+        self.assertEqual(run["schema_version"], "optimization.result/0.2")
+        self.assertTrue(run["runner"]["accounting_complete"])
+        self.assertEqual(run["results"][0]["outcome"]["claim"], "best_found")
+        self.assertNotIn("evidence", run["results"][0]["outcome"])
+
+
+class Schemas(Node):
+    """The published JSON Schemas agree with the runner and the workers."""
+
+    def setUp(self):
+        if jsonschema is None:
+            if os.environ.get("JOB_API_REQUIRE_SCHEMA") == "1":
+                self.fail("the jsonschema package is required (JOB_API_REQUIRE_SCHEMA=1)")
+            self.skipTest("the jsonschema package is not installed")
+        super().setUp()
+        self.job_schema = json.loads((SCHEMAS / "optimization.job-0.1.schema.json").read_text())
+        self.result_schema = json.loads((SCHEMAS / "optimization.result-0.2.schema.json").read_text())
+        for schema in [self.job_schema, self.result_schema]:
+            jsonschema.Draft202012Validator.check_schema(schema)
+
+    def valid(self, schema, value):
+        errors = sorted(jsonschema.Draft202012Validator(schema).iter_errors(value), key=str)
+        self.assertEqual(errors, [], [e.message for e in errors[:3]])
+
+    def test_outcome_cases_agree_with_the_runner_rules(self):
+        # The Rust contract tests check the same cases against Outcome::check.
+        outcome = {key: value for key, value in self.result_schema.items()
+                   if key not in ("type", "required", "properties", "additionalProperties")}
+        outcome["$ref"] = "#/$defs/outcome"
+        validator = jsonschema.Draft202012Validator(outcome)
+        for case in json.loads(CASES.read_text()):
+            self.assertEqual(validator.is_valid(case["outcome"]), case["valid"], case["name"])
+
+    def test_job_envelopes_and_tutorial_jobs_are_valid(self):
+        self.valid(self.job_schema, envelope("fake", {"mode": "sleep"}))
+        for path in sorted((REPO / "tutorials/job-api").glob("*.json")):
+            spec = json.loads(path.read_text())
+            if spec.get("schema_version") == "optimization.job/0.1":
+                self.valid(self.job_schema, spec)
+        bad = envelope("fake", {})
+        bad["resources"]["cpu_slots"] = 0
+        self.assertFalse(jsonschema.Draft202012Validator(self.job_schema).is_valid(bad))
+
+    def test_the_runner_judges_journal_records_like_the_schema(self):
+        # Each shared case as the only record of a protocol 0.1 job: the
+        # runner seals a valid one completed, with a manifest the schema
+        # accepts, and an invalid one failed, with no results.
+        for case in json.loads(CASES.read_text()):
+            path, key = self.write(envelope("fake", {"mode": "complete", "outcome": case["outcome"]}))
+            result = self.raw("run", "--spec", path)
+            run = json.loads((self.root / "jobs" / job_id(key) / "run.json").read_text())
+            self.valid(self.result_schema, run)
+            if case["valid"]:
+                self.assertEqual((result.returncode, run["status"]), (0, "completed"), case["name"])
+            else:
+                self.assertEqual((run["status"], run["results"]), ("failed", []), case["name"])
+                self.assertIn("journal_error", run["runner"], case["name"])
+
+    def test_result_manifests_are_valid(self):
+        path, _ = self.write(envelope("fake", {"mode": "garbage_journal"}))
+        self.raw("run", "--spec", path)
+        failed = json.loads(next((self.root / "jobs").iterdir()).joinpath("run.json").read_text())
+        self.valid(self.result_schema, failed)
+        # A protocol 0.1 worker's results, sealed by this runner.
+        job = self.call("run", "--spec", self.write(envelope("fake", {"mode": "complete"}))[0])
+        self.valid(self.result_schema, self.call("result", job["directory"]))
+        if WORKER:
+            job = self.call("run", "--spec", self.write(self.real_job())[0])
+            run = self.call("result", job["directory"])
+            self.valid(self.result_schema, run)
+            for record in run["results"]:
+                self.assertIn("evidence", record["outcome"])
 
 
 if __name__ == "__main__":

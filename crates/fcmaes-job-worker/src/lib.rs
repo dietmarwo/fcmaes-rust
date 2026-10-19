@@ -5,11 +5,15 @@
 //! - `fcmaes.mode/1`: independent MODE runs on registered multi-objective
 //!   models, each returning a re-evaluated non-dominated set;
 //! - `fcmaes.map-elites/1`: independent MAP-Elites runs on registered
-//!   quality-diversity models, each returning a re-evaluated elite archive.
+//!   quality-diversity models, each returning a re-evaluated elite archive;
+//! - `fcmaes.evaluate/1`: evaluates given points on any of these models
+//!   without optimizing.
 //!
-//! Every task is one seeded run with its own optimizer state. The legacy
+//! Every optimizing task is one seeded run with its own optimizer state.
+//! Every outcome carries evidence (result schema 0.2). The legacy
 //! `fcmaes-native-worker` and its `fcmaes.job/0.1` contract are unchanged.
 #![forbid(unsafe_code)]
+pub mod evaluate;
 pub mod map_elites;
 pub mod mode;
 pub mod problems;
@@ -26,7 +30,12 @@ use std::{
 };
 
 /// All profiles accepted by this worker.
-pub const PROFILES: [&str; 3] = [retry::PROFILE, mode::PROFILE, map_elites::PROFILE];
+pub const PROFILES: [&str; 4] = [
+    retry::PROFILE,
+    mode::PROFILE,
+    map_elites::PROFILE,
+    evaluate::PROFILE,
+];
 
 /// Cooperative stop for generation-based runs. The SDK calls
 /// [`Prepared::cancel`] both for a cancel request and at the wall deadline,
@@ -85,15 +94,19 @@ impl Worker for Adapter {
         optimizers["mode"] = mode::describe();
         optimizers["map_elites"] = map_elites::describe();
         d["optimizers"] = optimizers;
+        d["evaluation"] = evaluate::describe();
         d["claims"] = json!({
-            "best_found":"fcmaes.retry/1: candidate re-evaluated and inside the bounds; no global certificate",
-            "non_dominated_set":"fcmaes.mode/1: details.front is re-evaluated, feasible and mutually non-dominated; no Pareto-optimality certificate",
-            "elite_archive":"fcmaes.map-elites/1: every elite in details.elites is re-evaluated and maps to its niche; x/objective are the best elite"
+            "best_found":"fcmaes.retry/1: the best point the optimizer evaluated (not a model mean or recommendation), re-evaluated and inside the bounds; evidence rechecked [objective, bounds]; no global certificate",
+            "non_dominated_set":"fcmaes.mode/1: details.front is the feasible non-dominated part of the final population, re-evaluated; evidence rechecked; no Pareto-optimality certificate",
+            "elite_archive":"fcmaes.map-elites/1: every elite in details.elites is re-evaluated and maps to its niche; x/objective are the best elite; evidence rechecked [objective, bounds, niche]",
+            "feasible":"fcmaes.evaluate/1: the given point has a usable value (or satisfies the constraints); fcmaes.retry/1 after an objective_mismatch refutation",
+            "none":"no usable answer (claimed evidence: a penalty value, an empty front or archive); with evidence.refuted, a best_found claim that failed its re-check"
         });
         d["cancellation"] = json!({
             retry::PROFILE: "between retries; active retries run until their budget or process deadline",
             mode::PROFILE: "between generations; the run returns what it has",
-            map_elites::PROFILE: "between generations; the run returns what it has"
+            map_elites::PROFILE: "between generations; the run returns what it has",
+            evaluate::PROFILE: "between points"
         });
         d
     }
@@ -115,7 +128,8 @@ impl Worker for Adapter {
         match s.payload_schema.as_str() {
             retry::PROFILE => retry::prepare(s),
             mode::PROFILE => mode::prepare(s),
-            _ => map_elites::prepare(s),
+            map_elites::PROFILE => map_elites::prepare(s),
+            _ => evaluate::prepare(s),
         }
     }
 }

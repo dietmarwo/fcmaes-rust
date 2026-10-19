@@ -9,7 +9,7 @@ use fcmaes_core::{
 };
 use optimization_job_api::{
     JobSpec, Result, legacy,
-    result::Outcome,
+    result::{Evidence, Outcome},
     worker::{Prepared, TaskResult},
 };
 use serde::{Deserialize, Serialize};
@@ -308,10 +308,15 @@ impl Prepared for Run {
                 .map_err(|e| format!("hypervolume: {e:?}"))?;
             json!({"value":h.estimate.value(),
                 "exact":matches!(h.estimate, HypervolumeEstimate::Exact(_)),
-                "reference_point":self.reference.as_slice(),
+                "reference_point":self.reference.as_slice(),"normalization":"none",
                 "retained_points":h.retained_points,"outside_reference":h.outside_reference})
         };
         let claimed = !points.is_empty();
+        let checks: &[&str] = if ncon > 0 {
+            &["objective", "bounds", "constraints", "non_dominance"]
+        } else {
+            &["objective", "bounds", "non_dominance"]
+        };
         Ok(TaskResult {
             outcome: Outcome {
                 termination: run.termination.into(),
@@ -319,12 +324,21 @@ impl Prepared for Run {
                 feasible: (run.generations > 0).then_some(claimed),
                 objective: None,
                 x: None,
+                // The front is the feasible non-dominated part of the final
+                // population, not an archive of every point evaluated (as in
+                // COCO's bbob-biobj); the hypervolume uses raw objectives.
                 details: json!({"run_seed":seed,"generations":run.generations,
                     "requested_generations":self.payload.generations,"population":population,
-                    "objectives":nobj,"constraints":ncon,
+                    "objectives":nobj,"constraints":ncon,"front_source":"final_population",
                     "front_size":points.len(),"feasible_members":feasible.len(),
                     "unevaluated_members":unevaluated,"front":points,"hypervolume":hypervolume,
                     "pareto_optimality_certified":false}),
+                evidence: Some(if claimed {
+                    Evidence::rechecked(checks)
+                } else {
+                    Evidence::claimed(&[])
+                }),
+                ..Outcome::default()
             },
             work: [
                 ("evaluations".into(), run.generations * population),
