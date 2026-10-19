@@ -124,7 +124,11 @@ re-checked and runs reproduced (see the fcmaes guide to application models).
 Implemented in fcmaes-rust: a model registry (`Registry`, `Instance`) in the
 fcmaes worker, with the built-in benchmarks registered through it and an
 example application worker; per-task evaluation pools for CMA-ES, CR-FM-NES,
-PGPE, MODE and MAP-Elites; CR-FM-NES and PGPE retries; IPOP and BIPOP restarts
+PGPE, MODE and MAP-Elites; an opt-in `batch` for BiteOpt (ask/tell batches)
+and DE (the delayed update of the Python fcmaes `de.minimize(workers=...)`,
+told in ask order) that lets them use the pools too, while BiteOpt and DE
+without `batch` stay identical to `fcmaes.job/0.1`; CR-FM-NES and PGPE
+retries; IPOP and BIPOP restarts
 for CMA-ES; CVT archives and CMA-ME and CMA-MAE emitter phases with exact
 budgets for MAP-Elites; a deterministic CVT construction in fcmaes-core. Jobs
 on the built-in models resolve to the same payloads and give the same results
@@ -132,6 +136,8 @@ as before. The shared crates are unchanged; this guide, this plan and the
 shared harness describe and test the new fcmaes behavior.
 
 Gate: every population-based run identical with one and several inner threads;
+batch BiteOpt and DE runs identical to direct library runs, the delayed DE
+identical to a sequential reference that tells in ask order;
 CR-FM-NES, PGPE and CMA-ES restarts identical to direct library runs, with
 re-checked best points; CVT and grid archives identical to `fcmaes-core`
 MAP-Elites; emitter phases that only add or improve elites and spend exact

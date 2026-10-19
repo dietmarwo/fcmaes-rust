@@ -10,8 +10,8 @@ use crate::{
     threads::Threads,
 };
 use fcmaes_core::{
-    Cmaes, CmaesParams, Crfmnes, CrfmnesParams, Fitness, Pgpe, PgpeParams, RetryBounds,
-    RetryRunResult, Rng, retry_run_seed,
+    BiteOpt, BiteParams, Cmaes, CmaesParams, Crfmnes, CrfmnesParams, De, DeParams, Fitness, Pgpe,
+    PgpeParams, RetryBounds, RetryRunResult, Rng, retry_run_seed,
 };
 use fcmaes_native_worker::solve;
 use optimization_job_api::{
@@ -85,6 +85,10 @@ pub struct Parameters {
     /// PGPE: learning rate of the standard deviations.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub stdev_learning_rate: Option<f64>,
+    /// BiteOpt, DE: candidates generated and evaluated together, with
+    /// delayed feedback (ask/tell); absent for the serial algorithm.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub batch: Option<usize>,
 }
 
 /// The population-based optimizers of this profile.
@@ -134,8 +138,12 @@ impl EsSettings {
 }
 
 enum Engine {
-    /// BiteOpt or DE through the shared native solver.
-    Legacy(Box<LegacySpec>),
+    /// BiteOpt or DE: serially through the shared native solver, or in
+    /// delayed-feedback batches of `batch` candidates.
+    Legacy {
+        spec: Box<LegacySpec>,
+        batch: Option<usize>,
+    },
     Es(EsSettings),
 }
 pub struct Run {
@@ -152,9 +160,12 @@ pub fn describe() -> Value {
     let pgpe = PgpeParams::default();
     json!({
         "biteopt":{"profile":PROFILE,"limit":"hard","defaults":{"population":"9 + 3 * dimension"},
-            "inner_threads":"1; evaluates one point at a time"},
-        "de":{"profile":PROFILE,"limit":"soft","maximum_overshoot_per_retry":"2*population-1",
-            "defaults":{"population":31},"inner_threads":"1; evaluates one point at a time"},
+            "batch":"optional, 1..1000000 (batch * dimension <= 1e7): ask, evaluate and tell batches of this many candidates (delayed feedback); absent: the serial algorithm of fcmaes.job/0.1",
+            "inner_threads":"1 without batch; with batch, evaluates each batch on inner_threads threads"},
+        "de":{"profile":PROFILE,"limit":"soft","maximum_overshoot_per_retry":"2*population-1; none with batch",
+            "defaults":{"population":31},
+            "batch":"optional, 1..1000000 (batch * dimension <= 1e7): candidates in flight, the delayed update of the Python fcmaes de.minimize(workers=batch); when the oldest is evaluated it is told and one new candidate is asked; results are told in ask order and a batch run spends at most evaluations_per_retry",
+            "inner_threads":"1 without batch; with batch, evaluates the candidates in flight on inner_threads threads"},
         "cmaes":{"profile":PROFILE,"limit":"soft",
             "maximum_overshoot_per_retry":"population-1; max_population-1 with restarts",
             "defaults":{"population":CMAES_POPULATION,"sigma":CMAES_SIGMA,"restarts":"none",
@@ -192,16 +203,33 @@ pub fn prepare(registry: &Registry, s: &mut JobSpec, base: &Path) -> Result<Box<
     let threads = s.resources.inner_threads;
     let (engine, per_retry_limit) = match p.optimizer.kind.as_str() {
         "biteopt" | "de" => {
-            if threads != 1 {
+            let batch = p.optimizer.parameters.batch;
+            if threads != 1 && batch.is_none() {
                 return Err(format!(
-                    "{} evaluates one point at a time and needs inner_threads=1; outer_workers runs retries in parallel",
+                    "{} evaluates one point at a time; with inner_threads > 1 set optimizer.parameters.batch to evaluate candidate batches in parallel (delayed feedback), or use inner_threads=1",
                     p.optimizer.kind
                 )
                 .into());
             }
+            let n = p.problem.config.dimension;
+            if let Some(b) = batch
+                && (!(1..=POPULATION_LIMIT).contains(&b) || b.saturating_mul(n) > MAX_CELLS)
+            {
+                return Err("batch must be 1..1000000 with batch * dimension <= 1e7".into());
+            }
             let spec = legacy_spec(s, &mut p)?;
-            let limit = spec.maximum_evaluations()? / p.retries as u64;
-            (Engine::Legacy(Box::new(spec)), limit)
+            // A batch run never exceeds the budget: its last batch is cut.
+            let limit = match batch {
+                Some(_) => p.evaluations_per_retry,
+                None => spec.maximum_evaluations()? / p.retries as u64,
+            };
+            (
+                Engine::Legacy {
+                    spec: Box::new(spec),
+                    batch,
+                },
+                limit,
+            )
         }
         "cmaes" | "crfmnes" | "pgpe" => {
             let settings = es_settings(&mut p)?;
@@ -329,6 +357,13 @@ fn es_settings(p: &mut Payload) -> Result<EsSettings> {
         }
         Ok(())
     };
+    if q.batch.is_some() {
+        return Err(format!(
+            "optimizer.parameters.batch applies only to biteopt and de; {} evaluates whole populations",
+            p.optimizer.kind
+        )
+        .into());
+    }
     only("restarts", q.restarts.is_some(), EsKind::Cmaes, "cmaes")?;
     only(
         "max_population",
@@ -430,6 +465,7 @@ fn es_settings(p: &mut Payload) -> Result<EsSettings> {
         max_population: restarting.then_some(max_population),
         center_learning_rate: pgpe.then_some(settings.center_learning_rate),
         stdev_learning_rate: pgpe.then_some(settings.stdev_learning_rate),
+        batch: None,
     };
     Ok(settings)
 }
@@ -648,6 +684,73 @@ fn es_run(
     )
 }
 
+/// One BiteOpt or DE retry with `batch` candidates evaluated concurrently on
+/// `threads`, with the settings and seed of the serial native solver.
+/// BiteOpt asks, evaluates and tells batches of `batch` candidates. DE keeps
+/// `batch` candidates in flight, the delayed update of the Python fcmaes
+/// `de.minimize(workers=...)`: when the oldest is evaluated it is told and
+/// one new candidate is asked. Both tell in ask order, so the result depends
+/// on `batch` but not on the number of threads, and neither exceeds the
+/// budget.
+pub fn batch_retry(
+    spec: &LegacySpec,
+    batch: usize,
+    bounds: &RetryBounds,
+    seed: u64,
+    objective: &(dyn Fn(&[f64]) -> f64 + Send + Sync),
+    threads: &Threads,
+) -> RetryRunResult {
+    let population = spec.optimizer.parameters.population.unwrap() as i32;
+    let evaluations = spec.budget.evaluations_per_retry;
+    let evaluate = |rows: &[Vec<f64>]| threads.map(rows, |x| objective(x));
+    if spec.optimizer.kind == "biteopt" {
+        let r = BiteOpt::new(
+            bounds.lower(),
+            bounds.upper(),
+            None,
+            &BiteParams {
+                seed,
+                runid: 0,
+                popsize: population,
+                max_evaluations: evaluations,
+                ..Default::default()
+            },
+        )
+        .optimize_batch(batch, evaluate);
+        RetryRunResult {
+            x: r.x,
+            y: r.y,
+            evaluations: r.evaluations,
+        }
+    } else {
+        let fitness = Fitness::new(
+            bounds.dim(),
+            1,
+            bounds.lower().to_vec(),
+            bounds.upper().to_vec(),
+        );
+        let mut de = De::new(
+            fitness,
+            &[],
+            &[],
+            None,
+            &DeParams {
+                seed,
+                runid: 0,
+                popsize: population,
+                max_evaluations: evaluations,
+                ..Default::default()
+            },
+        );
+        let r = threads.install(|| de.optimize_delayed(&|x: &[f64]| objective(x), batch));
+        RetryRunResult {
+            x: r.x,
+            y: r.y,
+            evaluations: r.evaluations,
+        }
+    }
+}
+
 /// Judges one retry's answer: the best point it evaluated and its value. A
 /// value at or above `1e99` (the fcmaes penalty) or non-finite is no answer.
 /// A point outside the box refutes `best_found` (`infeasible_point`) and is
@@ -749,7 +852,13 @@ impl Run {
         let mut details = json!({"run_seed":seed,"evaluation_limit_mode":self.payload.evaluation_limit_mode,
             "requested_evaluations":self.payload.evaluations_per_retry,"global_optimum_certified":false});
         let r = match &self.engine {
-            Engine::Legacy(spec) => solve(spec, &self.bounds, seed, &|x: &[f64]| objective(x)),
+            Engine::Legacy { spec, batch: None } => {
+                solve(spec, &self.bounds, seed, &|x: &[f64]| objective(x))
+            }
+            Engine::Legacy {
+                spec,
+                batch: Some(batch),
+            } => batch_retry(spec, *batch, &self.bounds, seed, objective, threads),
             Engine::Es(settings) => {
                 let run = es_retry(
                     settings,

@@ -6,7 +6,7 @@ use common::{envelope, execute, problem, results, validate};
 use fcmaes_core::{Archive, MapElitesParams, RetryBounds, Rng, map_elites_batch, retry_run_seed};
 use fcmaes_job_worker::{
     problems,
-    retry::{EsKind, EsSettings, Restarts, es_retry},
+    retry::{EsKind, EsSettings, Restarts, batch_retry, es_retry},
     threads::Threads,
 };
 use fcmaes_native_worker::objective_by_id;
@@ -147,6 +147,68 @@ fn crfmnes_and_pgpe_retries_report_their_best_evaluated_points() {
 }
 
 #[test]
+fn biteopt_and_de_batches_match_the_library_and_keep_their_budgets() {
+    let dir = tempfile::tempdir().unwrap();
+    let bounds = RetryBounds::new(vec![-5.0; 6], vec![5.0; 6]).unwrap();
+    let objective = objective_by_id("benchmark.rosenbrock");
+    for (kind, mode, population) in [("biteopt", "hard", 27), ("de", "soft", 31)] {
+        let mut spec = retry(kind, json!({"batch": 10}), 6, 3000, 3);
+        spec["payload"]["evaluation_limit_mode"] = json!(mode);
+        let resolved = validate(dir.path(), &spec).unwrap();
+        assert_eq!(
+            resolved["payload"]["optimizer"]["parameters"],
+            json!({"population": population, "batch": 10})
+        );
+        let legacy: fcmaes_job_api::JobSpec = serde_json::from_value(json!({
+            "schema_version": "fcmaes.job/0.1", "request_key": "k",
+            "problem": resolved["payload"]["problem"],
+            "optimizer": {"kind": kind, "parameters": {"population": population}},
+            "execution": {"strategy": "independent_retry", "seed": 5, "workers": 1,
+                          "retry_wave_size": 1},
+            "budget": {"retries": 4, "evaluations_per_retry": 3000,
+                       "evaluation_limit_mode": mode, "wall_time_seconds": 60.0},
+            "outputs": {"progress": "completed_retries"}
+        }))
+        .unwrap();
+        let legacy = legacy.resolve().unwrap();
+        let run = execute(&spec);
+        assert_eq!(run["status"], "completed");
+        for r in results(&run) {
+            let seed = retry_run_seed(5, r["task_id"].as_u64().unwrap() as usize);
+            let direct = batch_retry(
+                &legacy,
+                10,
+                &bounds,
+                seed,
+                &objective,
+                &Threads::new(1).unwrap(),
+            );
+            let o = &r["outcome"];
+            assert_eq!(o["objective"], json!(direct.y), "{kind}");
+            assert_eq!(o["x"], json!(direct.x));
+            assert_eq!(o["claim"], "best_found");
+            assert_eq!(r["work"]["evaluations"], direct.evaluations);
+            // The last batch is cut: never more than the budget.
+            assert!(direct.evaluations <= 3000);
+        }
+    }
+    for (spec, message) in [
+        (
+            retry("biteopt", json!({}), 6, 100, 2),
+            "set optimizer.parameters.batch",
+        ),
+        (retry("de", json!({"batch": 0}), 6, 100, 1), "batch must be"),
+        (
+            retry("cmaes", json!({"batch": 8}), 6, 100, 1),
+            "batch applies only to biteopt and de",
+        ),
+    ] {
+        let err = validate(dir.path(), &spec).unwrap_err();
+        assert!(err.contains(message), "{message}: {err}");
+    }
+}
+
+#[test]
 fn cmaes_restarts_spend_the_budget_and_match_the_library() {
     let dir = tempfile::tempdir().unwrap();
     for (name, restarts) in [("ipop", Restarts::Ipop), ("bipop", Restarts::Bipop)] {
@@ -220,6 +282,18 @@ fn population_runs_do_not_depend_on_inner_threads() {
                     inner,
                 )
             }),
+        ),
+        (
+            "biteopt batch",
+            Box::new(|inner| {
+                let mut s = retry("biteopt", json!({"batch": 12}), 6, 3000, inner);
+                s["payload"]["evaluation_limit_mode"] = json!("hard");
+                s
+            }),
+        ),
+        (
+            "de batch",
+            Box::new(|inner| retry("de", json!({"batch": 16}), 6, 3000, inner)),
         ),
         (
             "crfmnes",

@@ -102,7 +102,7 @@ impl Worker for Adapter {
             MAX_INNER_THREADS,
         );
         d["resources"]["inner_threads"] = json!(
-            "population evaluation threads per task for cmaes, crfmnes, pgpe, mode and map_elites (results do not depend on their number); 1 for biteopt, de and fcmaes.evaluate/1"
+            "population evaluation threads per task for cmaes, crfmnes, pgpe, mode, map_elites, and biteopt and de with optimizer.parameters.batch (results do not depend on their number); 1 for serial biteopt and de and for fcmaes.evaluate/1"
         );
         d["inputs"] = json!(
             "files a registered model reads, by name, checked against their SHA-256; a job may name only inputs its model reads"

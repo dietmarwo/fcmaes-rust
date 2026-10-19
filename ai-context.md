@@ -203,8 +203,9 @@ an optimizer dependency to core merely because one application needs it.
 | Python code calling Rust optimizers | `fcmaes_rust` | Optional PyO3 API, with the callback/GIL constraints below. |
 
 Use the common job API for agent-driven experiments when its worker supports
-the problem and algorithm. Its fcmaes profiles expose independent BiteOpt, DE,
-CMA-ES (with optional IPOP/BIPOP restarts), CR-FM-NES and PGPE retries,
+the problem and algorithm. Its fcmaes profiles expose independent BiteOpt
+and DE (serial or in parallel delayed-feedback batches), CMA-ES (with
+optional IPOP/BIPOP restarts), CR-FM-NES and PGPE retries,
 independent MODE runs and independent MAP-Elites runs (grid or CVT archives,
 optional CMA-ME/CMA-MAE emitters), each on registered native models. An
 application objective becomes a registered model in an application worker
@@ -449,9 +450,12 @@ parallel, on threads of that task's own:
 
 CMA-ES, CR-FM-NES, PGPE, MODE and MAP-Elites accept `inner_threads > 1`, and
 their results do not depend on it: populations are evaluated in parallel and
-returned in order, while the optimizer state stays serial. BiteOpt, DE and
-`fcmaes.evaluate/1` evaluate one point at a time and require
-`inner_threads=1`. Core ask/tell remains available through the direct
+returned in order, while the optimizer state stays serial. BiteOpt and DE
+accept it with `optimizer.parameters.batch`: BiteOpt evaluates batches of
+`batch` candidates, DE keeps `batch` candidates in flight (the delayed
+update of the Python fcmaes `de.minimize(workers=...)`, told in ask order),
+both with delayed feedback that costs some convergence per evaluation.
+Serial BiteOpt and DE and `fcmaes.evaluate/1` require `inner_threads=1`. Core ask/tell remains available through the direct
 Rust/Python APIs; the job API deliberately has no ask/tell profile (see
 [application models](docs/job-api/models.md#why-there-is-no-callback-or-asktell-profile)).
 

@@ -514,6 +514,95 @@ impl De {
         self.make_result(self.fitfun.evaluations())
     }
 
+    /// Delayed-update DE with `workers` candidates in flight, the parallel
+    /// mode of the Python fcmaes `de.minimize(..., workers=...)`
+    /// (`do_optimize_delayed_update`): `workers` candidates are asked and
+    /// evaluated concurrently on the current Rayon pool; whenever the oldest
+    /// one is evaluated, it is told and one new candidate is asked.
+    ///
+    /// Unlike the Python version, results are told in the order the
+    /// candidates were asked, not in completion order, so the run depends on
+    /// `workers` and the seed only, never on thread timing; candidates still
+    /// in flight when the budget is spent are told too. At most
+    /// `max_evaluations` are spent. With one worker this is the ask/tell
+    /// variant of the serial [`optimize`](De::optimize), which updates the
+    /// population after every evaluation and evaluates the temporal-locality
+    /// trial immediately.
+    ///
+    /// Run it inside the Rayon pool that should evaluate (`ThreadPool::install`);
+    /// outside any pool, evaluations run on Rayon's global pool.
+    ///
+    /// # Panics
+    ///
+    /// Resumes a panic of the objective in the caller.
+    pub fn optimize_delayed(&mut self, obj: &impl Objective, workers: usize) -> DeResult {
+        use std::collections::BTreeMap;
+        use std::sync::mpsc;
+        type Evaluated = (u64, std::thread::Result<f64>);
+
+        let workers = workers.max(1) as u64;
+        let budget = self.max_evaluations;
+        let (sender, receiver) = mpsc::channel::<Evaluated>();
+        let mut asked: VecDeque<(u64, usize, Vec<f64>)> = VecDeque::new();
+        let mut finished: BTreeMap<u64, f64> = BTreeMap::new();
+        let (mut dispatched, mut told) = (0u64, 0u64);
+        rayon::in_place_scope(|scope| {
+            let dispatch = |de: &mut Self,
+                            asked: &mut VecDeque<(u64, usize, Vec<f64>)>,
+                            dispatched: &mut u64| {
+                let (p, x) = de.ask_one();
+                let row = de.fitfun.decode_clamped(&x).into_owned();
+                let (id, sender) = (*dispatched, sender.clone());
+                scope.spawn(move |_| {
+                    let y = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                        obj.eval_scalar(&row)
+                    }));
+                    let _ = sender.send((id, y));
+                });
+                asked.push_back((id, p, x));
+                *dispatched += 1;
+            };
+            while dispatched < budget.min(workers) {
+                dispatch(self, &mut asked, &mut dispatched);
+            }
+            while let Some(&(oldest, _, _)) = asked.front() {
+                // Wait for the oldest candidate, running queued evaluations
+                // on this thread meanwhile.
+                let y = loop {
+                    if let Some(y) = finished.remove(&oldest) {
+                        break y;
+                    }
+                    let (id, result) = match receiver.try_recv() {
+                        Ok(r) => r,
+                        Err(_) => match rayon::yield_now() {
+                            Some(rayon::Yield::Executed) => continue,
+                            _ => receiver.recv().expect("an evaluation is in flight"),
+                        },
+                    };
+                    match result {
+                        Ok(y) => {
+                            finished.insert(id, y);
+                        }
+                        Err(panic) => std::panic::resume_unwind(panic),
+                    }
+                };
+                let (_, p, x) = asked.pop_front().expect("the oldest candidate");
+                let y = if y.is_finite() {
+                    y
+                } else {
+                    crate::fitness::NAN_REPLACEMENT
+                };
+                self.tell_one(y, &x, p);
+                told += 1;
+                if self.stop == 0 && dispatched < budget && !self.fitfun.terminate() {
+                    dispatch(self, &mut asked, &mut dispatched);
+                }
+            }
+        });
+        self.external_evaluations += told;
+        self.make_result(told)
+    }
+
     fn make_result(&self, evaluations: u64) -> DeResult {
         DeResult {
             x: self.best_x.clone(),
@@ -580,6 +669,74 @@ mod tests {
         };
         let mut de = De::new(fit, &[], &[], None, &params);
         de.optimize(&obj).y
+    }
+
+    fn de(seed: u64) -> De {
+        let fit = Fitness::new(6, 1, vec![-5.0; 6], vec![5.0; 6]);
+        let params = DeParams {
+            popsize: 16,
+            max_evaluations: 20_000,
+            seed,
+            ..Default::default()
+        };
+        De::new(fit, &[], &[], None, &params)
+    }
+
+    fn delayed(seed: u64, workers: usize, threads: usize) -> DeResult {
+        rayon::ThreadPoolBuilder::new()
+            .num_threads(threads)
+            .build()
+            .unwrap()
+            .install(|| de(seed).optimize_delayed(&rosen, workers))
+    }
+
+    /// The delayed update without threads: ask `workers`, then tell the
+    /// oldest and ask one more, until the budget is dispatched; tell the rest.
+    fn delayed_reference(seed: u64, workers: usize) -> DeResult {
+        let mut de = de(seed);
+        let mut asked = VecDeque::new();
+        let mut dispatched = 0;
+        while dispatched < workers.min(20_000) {
+            asked.push_back(de.ask_one());
+            dispatched += 1;
+        }
+        let mut told = 0;
+        while let Some((p, x)) = asked.pop_front() {
+            de.tell_one(rosen(&x), &x, p);
+            told += 1;
+            if de.stop == 0 && dispatched < 20_000 {
+                asked.push_back(de.ask_one());
+                dispatched += 1;
+            }
+        }
+        de.make_result(told)
+    }
+
+    #[test]
+    fn delayed_updates_tell_in_ask_order_whatever_the_threads() {
+        for workers in [1, 7, 32] {
+            let reference = delayed_reference(3, workers);
+            for threads in [1, 4] {
+                let r = delayed(3, workers, threads);
+                assert_eq!(r.x, reference.x, "{workers} workers, {threads} threads");
+                assert_eq!(r.y, reference.y);
+                assert_eq!(r.evaluations, 20_000);
+            }
+            assert_eq!(rosen(&reference.x), reference.y);
+        }
+        // Delayed feedback still converges: the median of five seeds.
+        for workers in [8, 32] {
+            let mut ys: Vec<f64> = (0..5).map(|seed| delayed(seed, workers, 4).y).collect();
+            ys.sort_by(f64::total_cmp);
+            assert!(ys[2] < 1e-3, "{workers} workers: {ys:?}");
+        }
+    }
+
+    #[test]
+    #[should_panic(expected = "objective failed")]
+    fn a_panicking_objective_fails_the_delayed_run() {
+        let failing = |_: &[f64]| -> f64 { panic!("objective failed") };
+        de(1).optimize_delayed(&failing, 4);
     }
 
     #[test]

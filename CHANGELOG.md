@@ -21,8 +21,18 @@ phase, with breaking changes called out explicitly.
 - Parallel population evaluation in the fcmaes job worker: CMA-ES,
   CR-FM-NES, PGPE, MODE and MAP-Elites accept `inner_threads > 1` and
   evaluate each population on threads of the task's own, with results that
-  do not depend on the number of threads. BiteOpt, DE and `fcmaes.evaluate/1`
-  still require `inner_threads=1`.
+  do not depend on the number of threads. BiteOpt and DE accept it with
+  `optimizer.parameters.batch`: BiteOpt evaluates batches of candidates and
+  DE keeps `batch` candidates in flight, the delayed update of the Python
+  fcmaes `de.minimize(workers=...)`, told in ask order so that results do not
+  depend on timing. Without `batch` they run the serial algorithm, as in
+  `fcmaes.job/0.1`, and require `inner_threads=1`, as does
+  `fcmaes.evaluate/1`.
+- `fcmaes-core`: `De::optimize_delayed(objective, workers)`, the delayed
+  update with `workers` candidates in flight on the current Rayon pool, and
+  `BiteOpt::optimize_batch(batch, eval_batch)`, the ask/tell loop in batches.
+  Both keep the evaluation budget and give results that do not depend on
+  thread scheduling.
 - More algorithms behind the fcmaes job profiles: CR-FM-NES and PGPE retries
   in `fcmaes.retry/1`; IPOP and BIPOP restarts for CMA-ES within a retry's
   budget; CVT archives (any descriptor dimension, one tessellation per job)

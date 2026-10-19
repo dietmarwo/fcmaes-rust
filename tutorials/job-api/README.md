@@ -93,11 +93,12 @@ seeds.
 `inner_threads` evaluates the population of one task in parallel, on threads
 of that task's own; `outer_workers * inner_threads` must not exceed
 `cpu_slots`. Use `inner_threads > 1` for CMA-ES, CR-FM-NES, PGPE, MODE and
-MAP-Elites when there are fewer tasks than slots or one evaluation is
-expensive. A run's result does not depend on `inner_threads`: populations are
-evaluated in parallel but returned in order, and the optimizer's state stays
-serial. BiteOpt and DE evaluate one point at a time and `fcmaes.evaluate/1`
-one point per task, so they require `inner_threads=1`.
+MAP-Elites, and for BiteOpt and DE with `batch`, when there are fewer tasks
+than slots or one evaluation is expensive. A run's result does not depend on
+`inner_threads`: populations are evaluated in parallel but returned in order,
+and the optimizer's state stays serial. Serial BiteOpt and DE evaluate one
+point at a time and `fcmaes.evaluate/1` one point per task, so they require
+`inner_threads=1`.
 
 ## Scalar retries: BiteOpt, DE, CMA-ES, CR-FM-NES and PGPE
 
@@ -109,6 +110,18 @@ entire batch after admission.
 - **BiteOpt** (`kind: biteopt`) uses a hard limit: `evaluation_limit_mode: hard`.
 - **DE** (`kind: de`) needs `evaluation_limit_mode: soft`. For population P, it
   may spend at most `2P-1` extra evaluations per retry.
+- **BiteOpt and DE with `batch`** evaluate `batch` candidates concurrently
+  (on `inner_threads` threads), with delayed feedback. BiteOpt asks, evaluates
+  and tells batches of `batch` candidates. DE keeps `batch` candidates in
+  flight, the delayed update of the Python fcmaes `de.minimize(workers=...)`
+  that the Rust DE derives from: when the oldest candidate is evaluated, it is
+  told and one new candidate is asked. Unlike the Python version, results are
+  told in the order the candidates were asked, so the run depends on `batch`
+  and the seed, never on thread timing. Neither exceeds
+  `evaluations_per_retry`. Delayed feedback costs some convergence per
+  evaluation, more for DE than for BiteOpt; keep `batch` small against the
+  population (DE's default is 31) and use it when evaluations are expensive.
+  Without `batch`, both run the serial algorithm of `fcmaes.job/0.1`.
 - **CMA-ES** (`kind: cmaes`) needs `soft` too: it evaluates whole generations,
   so it may spend at most `population-1` extra evaluations. Its parameters are
   `population` (default 31) and `sigma` (default 0.3), the initial step size in
@@ -144,8 +157,8 @@ CMA-ES holds dimension × dimension matrices and accepts at most 3,162
 variables; CR-FM-NES and PGPE scale further. `population × dimension` (with
 restarts `max_population × dimension`) is at most 10⁷.
 
-BiteOpt and DE jobs resolve through the same definitions as legacy
-`fcmaes.job/0.1` jobs, so both give identical retries.
+BiteOpt and DE jobs without `batch` resolve through the same definitions as
+legacy `fcmaes.job/0.1` jobs, so both give identical retries.
 
 `best_found` is the best point the optimizer evaluated, not a model mean or a
 recommended point. The worker evaluates it again (`evidence.checks`:

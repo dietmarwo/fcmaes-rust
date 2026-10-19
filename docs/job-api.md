@@ -19,7 +19,7 @@ and [`optimization.result-0.2.schema.json`](job-api/schemas/optimization.result-
 | --- | --- |
 | `optimization-job-api` | Strict versioned envelope, resources, input hashes, checked journals, result contract and worker SDK |
 | `optimization-runner` / `optimization-run` | Worker discovery, staging, idempotency, admission, process supervision, cancellation, deadlines, journal recovery and coded errors |
-| `fcmaes-job-worker` | `fcmaes.retry/1` (BiteOpt, DE, CMA-ES with optional IPOP/BIPOP restarts, CR-FM-NES or PGPE retries on registered scalar models), `fcmaes.mode/1` (MODE Pareto fronts), `fcmaes.map-elites/1` (MAP-Elites grid or CVT archives, optional CMA-ME/CMA-MAE emitters) and `fcmaes.evaluate/1` (given points): deterministic task seeds, exact or declared evaluation budgets, parallel population evaluation; application workers register their own models with parameters and hashed inputs |
+| `fcmaes-job-worker` | `fcmaes.retry/1` (BiteOpt or DE, serial or with parallel delayed-feedback batches, CMA-ES with optional IPOP/BIPOP restarts, CR-FM-NES or PGPE retries on registered scalar models), `fcmaes.mode/1` (MODE Pareto fronts), `fcmaes.map-elites/1` (MAP-Elites grid or CVT archives, optional CMA-ME/CMA-MAE emitters) and `fcmaes.evaluate/1` (given points): deterministic task seeds, exact or declared evaluation budgets, parallel population evaluation; application workers register their own models with parameters and hashed inputs |
 | `lp-ip-job-worker` | `lp-ip.solve/1`: sparse LP/MIP artifacts, candidate starts, node/pivot budgets and numerical checks; `lp-ip.evaluate/1`: given points |
 | `sqp-job-worker` | `sqp.solve/1`: registered smooth Rust models, initial points, active-set/Clarabel backends and independent KKT checks; `sqp.evaluate/1`: given points |
 
@@ -131,8 +131,9 @@ outer_workers * inner_threads <= cpu_slots <= 1024
 For eight independent solves or fcmaes runs, use `8 / 8 / 1`. For one LP or
 SQP solve with up to eight numerical workers, use `8 / 1 / 8`. `8 / 2 / 4` is
 also valid. `8 / 8 / 8` is rejected. fcmaes evaluates the populations of
-CMA-ES, CR-FM-NES, PGPE, MODE and MAP-Elites on `inner_threads` threads per
-task, with results that do not depend on the thread count; BiteOpt, DE and the
+CMA-ES, CR-FM-NES, PGPE, MODE and MAP-Elites, and the candidate batches of
+BiteOpt and DE with `batch`, on `inner_threads` threads per task, with
+results that do not depend on the thread count; serial BiteOpt and DE and the
 evaluation profiles require `inner_threads=1`. LP-IP and SQP solves support
 1–8 inner workers.
 

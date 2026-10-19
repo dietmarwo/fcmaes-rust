@@ -229,8 +229,9 @@ else:
         if 'fcmaes' not in WORKERS:self.skipTest('fcmaes worker not supplied')
         def results(r):return sorted([(x['task_id'],x['outcome'],x['work']) for x in r['results']],key=lambda t:t[0])
         jobs=[]
-        for kind,parameters in [('cmaes',{'population':8,'restarts':'bipop'}),('crfmnes',{}),('pgpe',{})]:
-            s=self.fixture('fcmaes');s['payload']['optimizer']={'kind':kind,'parameters':parameters};s['payload']['evaluation_limit_mode']='soft';s['payload']['retries']=4
+        for kind,parameters in [('cmaes',{'population':8,'restarts':'bipop'}),('crfmnes',{}),('pgpe',{}),('biteopt',{'batch':8}),('de',{'batch':8})]:
+            s=self.fixture('fcmaes');s['payload']['optimizer']={'kind':kind,'parameters':parameters};s['payload']['retries']=4
+            s['payload']['evaluation_limit_mode']='hard' if kind=='biteopt' else 'soft'
             jobs.append(s)
         qd=envelope('fcmaes',{'problem':{'id':'benchmark.sphere-projection','version':'1','config':{'dimension':4},'bounds':{'lower':[-5.12],'upper':[5.12],'broadcast':True}},'archive':{'capacity':25,'kind':'cvt'},'optimizer':{'kind':'map_elites','parameters':{'chunk_size':8,'cma_generations':10,'emitter':'cma_mae','threshold_init':20.,'emitters':2,'population':8}},'seed':5,'runs':4,'generations':10})
         qd['payload_schema']='fcmaes.map-elites/1';jobs.append(qd)

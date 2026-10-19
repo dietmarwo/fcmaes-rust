@@ -173,15 +173,16 @@ review host.
 ## Application models, parallel populations and more algorithms (19 October 2026)
 
 The fcmaes worker gains a model registry for application workers,
-`inner_threads > 1` for its population-based optimizers, CR-FM-NES and PGPE
-retries, IPOP/BIPOP restarts, CVT archives and CMA-ME/CMA-MAE emitter phases
+`inner_threads > 1` for its population-based optimizers and for BiteOpt and
+DE with `batch`, CR-FM-NES and PGPE retries, IPOP/BIPOP restarts, CVT
+archives and CMA-ME/CMA-MAE emitter phases
 ([plan](PLAN.md#7-application-models-parallel-populations-and-more-algorithms-october-2026),
 [application models](models.md)). Checked with Rust 1.97 on Linux x86_64:
 
 | Check | Observed result |
 | --- | --- |
 | `cargo fmt --check`, Clippy `-D warnings`, mdBook link check | Passed |
-| Workspace tests (`cargo test --workspace`) | 313 passed, including 24 fcmaes worker tests: 9 profile, 6 algorithm and 5 registry integration tests, 3 unit tests and a doctest |
+| Workspace tests (`cargo test --workspace`) | 317 passed, including 25 fcmaes worker tests (9 profile, 7 algorithm and 5 registry integration tests, 3 unit tests and a doctest) and the batch BiteOpt and delayed DE tests of fcmaes-core |
 | Legacy runner suite | 14 passed |
 | Shared harness | 14 passed, 2 skipped without LP/SQP workers; 14 passed, none skipped, on a mixed node under each repository's runner build |
 | Shared review and schema tests (`JOB_API_REQUIRE_SCHEMA=1`) | 15 passed |
@@ -189,8 +190,9 @@ retries, IPOP/BIPOP restarts, CVT archives and CMA-ME/CMA-MAE emitter phases
 | The 8 tutorial jobs of `main` on `main`'s and this worker | Identical resolved payloads; identical results apart from the new `details.archive_kind` of MAP-Elites |
 | `sha256sum -c docs/job-api/SHARED-SOURCES.sha256` | 23 files OK |
 
-The tests run every population-based profile with one and with several
-inner threads and require identical results; compare CR-FM-NES, PGPE and
+The tests run every population-based profile, and batch BiteOpt and DE, with
+one and with several inner threads and require identical results; compare
+the delayed DE with a sequential reference that tells in ask order; compare CR-FM-NES, PGPE and
 CMA-ES restart retries, and grid and CVT archives, with direct library runs
 from the same seeds; check that emitter phases spend exact budgets and only
 add or improve elites; and exercise the registry's rejections (unknown or
@@ -208,6 +210,19 @@ emitter did not rank candidates that fill an empty niche first, as Fontaine
 et al. do. With the paper's ranking, CMA-ME on the 20-dimensional sphere
 projection (400 niches, 4 × 16 × 400 emitter evaluations) reaches 82–98%
 coverage instead of 38–48%.
+
+Delayed feedback costs some convergence per evaluation, more for DE than for
+BiteOpt (16 retries each, seed 7; best and median objective):
+
+| Optimizer | 10-D Rosenbrock, 30,000 evaluations | Cassini1, 50,000 evaluations |
+| --- | --- | --- |
+| BiteOpt, serial | 0 / 0 | 4.931 / 11.03 |
+| BiteOpt, `batch` 16 | 0 / 0 | 4.945 / 11.00 |
+| BiteOpt, `batch` 64 | 0 / 0 | 5.303 / 11.16 |
+| DE, serial | 0 / 8.6e-29 | 4.932 / 5.306 |
+| DE, `batch` 4 | 0 / 8.0e-30 | 4.956 / 8.447 |
+| DE, `batch` 16 | 0 / 2.0e-29 | 5.304 / 11.03 |
+| DE, `batch` 64 | 3.3e-26 / 0.53 | 5.304 / 13.81 |
 
 At equal budgets of 20,000 evaluations per run (four runs, 20 dimensions,
 400 grid niches), coverage was:
