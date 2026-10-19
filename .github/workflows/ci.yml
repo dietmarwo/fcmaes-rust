@@ -32,6 +32,11 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - name: cargo fmt
         run: cargo fmt --all -- --check
+      - name: Shared job API files match their manifest
+        # optimization-job-api, optimization-runner and their guide are kept
+        # byte-identical with LP-IP-craft and SQP-craft. Update the manifest
+        # (and the sibling repositories) when changing one of these files.
+        run: sha256sum -c docs/job-api/SHARED-SOURCES.sha256
       - name: cargo clippy
         id: clippy
         # Lint failures still fail the job (last step), but no longer
@@ -44,10 +49,13 @@ jobs:
           cargo clippy --workspace --all-targets -- -D warnings
       - name: cargo test
         run: cargo test --workspace
-      - name: Experiment runner integration tests
+      - name: Experiment runner and job API integration tests
         run: |
-          cargo build --release --locked -p fcmaes-runner -p fcmaes-native-worker
+          cargo build --release --locked -p fcmaes-runner -p fcmaes-native-worker \
+            -p optimization-runner -p fcmaes-job-worker
           python3 scripts/runner/test_integration.py
+          python3 scripts/job-api/test_integration.py
+          python3 tutorials/job-api/run.py --root "$RUNNER_TEMP/job-api-tutorial"
       - name: Python binding tests
         run: |
           python -m venv .venv

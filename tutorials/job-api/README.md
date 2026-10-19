@@ -72,10 +72,13 @@ cargo build --release --locked -p fcmaes-runner -p fcmaes-native-worker
   --spec docs/runner-jobs/sphere-bite.json
 ```
 
-The legacy manifest and `retries.jsonl` retain their original meaning. For a new
-native objective, extend the registry/validation and objective resolver in
-`crates/fcmaes-job-worker/src/main.rs`, add a versioned profile if semantics
-change, and test bounds, budgets and deterministic seeds. Jobs select registered
+The legacy manifest and `retries.jsonl` retain their original meaning. Both
+workers evaluate objectives through one registry, so a new native objective
+needs three changes: its validation and discovery entry in
+`crates/optimization-job-api/src/legacy/spec.rs` (a shared file), its function
+in `objective_for` in `crates/fcmaes-native-worker/src/lib.rs`, and tests for
+bounds, budgets and deterministic seeds. Add a versioned profile if the
+mathematical meaning of a job changes. Jobs select registered
 models; they cannot deserialize a function or execute arbitrary source text.
 
 See the [shared API guide](../../docs/job-api.md) for mixed-worker nodes,

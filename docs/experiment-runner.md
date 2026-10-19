@@ -1,10 +1,3 @@
-> **Common-runner update:** `fcmaes-run` now delegates to the shared runner,
-> while the legacy schema and native worker described here remain supported.
-> For new `optimization.job/0.1` jobs, use the
-> [common API guide](job-api.md) and [fcmaes tutorial](../tutorials/job-api/README.md).
-> Liveness reconciliation also checks the recorded worker process group and
-> conservatively retains slots when process creation was not durably recorded.
-
 # Native experiment runner (source release 0.1)
 
 `fcmaes-run` runs native optimization experiments as numbered, reproducible
@@ -12,6 +5,13 @@ jobs that a person or a shell-capable agent can launch, inspect, stop and
 compare. The objective and the optimizer run together in a small native
 worker; the CLI coordinates jobs through per-job files. There is no daemon,
 database or RPC server. Numerical algorithms in `fcmaes-core` are unchanged.
+
+This page covers the original `fcmaes.job/0.1` jobs. `fcmaes-run` is the shared
+[`optimization-run`](job-api.md) runner under its legacy name and default root
+(`.fcmaes-jobs`), so it also accepts the common `optimization.job/0.1`
+envelope; the [native job API tutorial](../tutorials/job-api/README.md) shows
+that workflow for fcmaes. Both profiles use the same retry seeds and give
+identical per-retry results for the same problem, optimizer and budget.
 
 Status:
 
@@ -26,9 +26,11 @@ Status:
 ## Build and first experiment
 
 Linux and a Rust toolchain supporting edition 2024 (minimum 1.88) are
-required. The three crates (`fcmaes-job-api`, `fcmaes-runner`,
-`fcmaes-native-worker`) are source-only (`publish = false`). The worker
-depends on `fcmaes-core` and `fcmaes-gtop`, never on `fcmaes-examples`.
+required. All job-layer crates are source-only (`publish = false`).
+`fcmaes-runner` (`fcmaes-run`) wraps the shared `optimization-runner`,
+`fcmaes-job-api` re-exports the legacy contract from `optimization-job-api`, and
+the worker depends on `fcmaes-core` and `fcmaes-gtop`, never on
+`fcmaes-examples`.
 
 From the repository root:
 
@@ -60,8 +62,9 @@ only the exit code.
 
 ## Job specification
 
-Inputs use schema `fcmaes.job/0.1` (`crates/fcmaes-job-api/src/spec.rs`;
-examples in `docs/runner-jobs/`). Every nested object rejects unknown fields.
+Inputs use schema `fcmaes.job/0.1`
+(`crates/optimization-job-api/src/legacy/spec.rs`; examples in
+`docs/runner-jobs/`). Every nested object rejects unknown fields.
 
 - Problems: `benchmark.sphere`, `benchmark.rosenbrock` (dimension >= 2) and
   `gtop.cassini1` (dimension 6, bounds inside the canonical Cassini1 box).
@@ -105,9 +108,10 @@ execution path has no shared per-evaluation counter.
 
 ## Registry, idempotency and executable identity
 
-Registering a worker is a trusted local administrative action; only the
-native worker protocol is accepted. Jobs cannot name executables, shell
-snippets or environment variables. Every attempt stages a copy of the
+Registering a worker is a trusted local administrative action. A worker
+registered as `native` must report exactly this page's capability profile;
+any other ID must speak the common worker protocol (`optimization.worker/0.1`).
+Jobs cannot name executables, shell snippets or environment variables. Every attempt stages a copy of the
 registered binary, checks its SHA-256 and runs that copy. Rebuilding the
 registered path requires registering it again.
 
@@ -126,6 +130,8 @@ request key, and the attempt ID currently equals the job ID.
 | `provenance.json` | Attempt, worker SHA-256, build metadata, boot/unit identity |
 | `worker` | Staged executable for this attempt |
 | `job.json` | Lifecycle state, queue and execution timestamps |
+| `events.jsonl` | Checksummed lifecycle transitions (`jobs events JOB_ID`) |
+| `worker-process.json` | Worker process group and boot ID, for liveness checks |
 | `run.json` | Schema-v1 scientific manifest (see `tutorials/RESULT_SCHEMA.md`) |
 | `retries.jsonl` | Durable checksummed completed-retry records |
 | `progress.json` | Completed-retry snapshot, rewritten after each wave |
@@ -168,19 +174,22 @@ not count, and there is no separate queue timeout.
 
 **Lost launcher.** If a foreground launcher dies without cleaning up (SIGKILL,
 crash), the worker keeps running until its current wave ends. `jobs get` then
-reports `observed_state: "launcher_lost"`. Because the launcher and the
-worker hold `job.lock` and `worker.lock` for their lifetimes, and the kernel
-releases those locks when a process exits, the runner can prove both are
-gone:
+reports `observed_state: "launcher_lost"`. The launcher and the worker hold
+`job.lock` and `worker.lock` for their lifetimes, and the kernel releases
+those locks when a process exits. The runner treats an attempt as gone only
+when both locks are free *and* the process group recorded in
+`worker-process.json` has no live member:
 
-- slot reconciliation releases the reservation as soon as both locks are free;
+- slot reconciliation then releases the reservation;
 - `jobs repair` (refused while either process lives) finalizes the job. If
   the worker finished on its own, its exact result is kept; otherwise the job
   becomes `interrupted` with unknown total evaluations and duration.
 
-Corruption is never silently discarded. Limitation: if the launcher dies in
-the milliseconds between starting the worker and the worker taking its lock,
-the reservation can be released while the worker still starts.
+Corruption is never silently discarded. Limitation: if the launcher dies after
+admission but before it has recorded the worker's process group (a window of
+milliseconds), liveness cannot be established. The reservation is then kept,
+and `jobs repair` refused, until the next boot, when reconciliation releases
+it. Slots are never released while a worker might still run.
 
 ## Detached Linux user services
 
