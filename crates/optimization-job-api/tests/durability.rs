@@ -144,3 +144,41 @@ fn process_group_liveness_uses_current_pid_namespace() {
     child.wait().unwrap();
     assert!(group_stopped(child.id()).unwrap());
 }
+
+/// An append that was cut short leaves a tail without its newline. The next
+/// append must not join it with its own record into one invalid line, which
+/// would make every earlier record unreadable (review of 0.1.0).
+#[test]
+fn append_after_a_torn_tail_keeps_earlier_records() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("results.jsonl");
+    append_checked(&path, 1, &json!({"task": 0})).unwrap();
+    fs::OpenOptions::new()
+        .append(true)
+        .open(&path)
+        .unwrap()
+        .write_all(br#"{"schema_version":1,"checksum":"ab"#)
+        .unwrap();
+    append_checked(&path, 1, &json!({"task": 2})).unwrap();
+    let records = read_checked::<Value>(&path, 1).unwrap();
+    assert_eq!(records, [json!({"task": 0}), json!({"task": 2})]);
+    // A complete record that only lacks its newline is a record for readers,
+    // so it is kept and terminated.
+    let whole = serde_json::to_string(&Envelope {
+        schema_version: 1,
+        checksum: digest(br#"{"task":3}"#),
+        payload_json: r#"{"task":3}"#.into(),
+    })
+    .unwrap();
+    fs::OpenOptions::new()
+        .append(true)
+        .open(&path)
+        .unwrap()
+        .write_all(whole.as_bytes())
+        .unwrap();
+    append_checked(&path, 1, &json!({"task": 4})).unwrap();
+    let records = read_checked::<Value>(&path, 1).unwrap();
+    assert_eq!(records.len(), 4);
+    assert_eq!(records[2], json!({"task": 3}));
+    assert!(fs::read(&path).unwrap().ends_with(b"\n"));
+}

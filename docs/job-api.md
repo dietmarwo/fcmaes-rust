@@ -21,7 +21,9 @@ record the implementation and its acceptance gates.
 | `sqp-job-worker` | `sqp.solve/1`: registered smooth Rust models, initial points, active-set/Clarabel backends and independent KKT checks |
 
 The shared crates and this guide are identical in the three repositories.
-They are source packages, version 0.1.0, with publishing disabled. A future
+They are source packages, version 0.1.1, with publishing disabled; 0.1.1 is
+the 0.1.0 delivery with the review fixes of all three repositories and the
+fcmaes set and archive claims. A future
 shared repository or published crate can replace these synchronized copies
 without changing the job protocol. Solver dependencies remain in the individual
 worker crates; the runner never links all three engines.
@@ -81,13 +83,17 @@ widths are errors. Validation resolves defaults through the selected worker;
 it does not run an optimization. `validate` does not reserve slots. `run` and
 `submit` also check the requested slots against the node capacity.
 
-Input paths are relative to the submitted specification. Absolute paths,
-parent traversal, duplicate names and symlinks escaping that directory are
-rejected. Each file is limited to 64 MiB, with at most 16 inputs. The runner
-checks hashes, copies inputs into the attempt directory and validates using a
-staged copy of the registered executable. The LP worker checks the model hash
-again when it starts. The model is loaded once per worker execution and shared
-immutably by its tasks. Worker validation output is capped at 4 MiB.
+Input paths are relative to the submitted specification (`model.json` or
+`./model.json`). Absolute paths, parent traversal, duplicate names and symlinks
+escaping that directory are rejected. Each file is limited to 64 MiB, with at
+most 16 inputs. The runner checks hashes, copies inputs into the attempt
+directory and validates using a staged copy of the registered executable, in a
+`.staging-*` directory under the node root; the root must allow execution,
+`TMPDIR` need not. The LP worker checks the model hash again when it starts. The
+model is loaded once per worker execution and shared immutably by its tasks.
+Worker validation output is capped at 4 MiB. Validation prints the resolved
+specification, so this also bounds the specification itself: about 600,000
+one-dimensional SQP starts fit, not the 1,000,000 tasks the envelope allows.
 
 The JSON parser enables exact f64 round trips, preserving small numerical
 values and reproducible content digests across journal/manifest reads.
@@ -145,7 +151,10 @@ The examples use the executable name for brevity; use `./target/release/optimiza
 unless it is on your PATH. `run` blocks, prints a final JSON job object, and
 captures bounded worker logs. Its exit code reports runner/protocol errors;
 a normal cancellation, timeout or solver failure can still return a job object.
-Always inspect job `state`, then each mathematical outcome.
+Always inspect job `state`, then each mathematical outcome. With a request key
+that already names a job, `run` and `submit` start nothing and print that job's
+current state, which need not be final; use `jobs wait`. A signal during
+validation also stops the validator.
 
 Lifecycle states are `submitted`, `starting` (detached only), `waiting`,
 `running`, then `completed`, `cancelled`, `timed_out`, `failed` or `interrupted`.
@@ -210,15 +219,23 @@ optimization-run --root NODE jobs repair JOB_ID
 ```
 
 Reconciliation only releases slots when process termination is established.
-Repair refuses a live worker or unknown liveness. It tolerates a torn final
-journal fragment, rejects earlier corruption/duplicate task IDs, preserves a
+Repair refuses a live worker or unknown liveness. A launcher that dies while its
+job is still queued never started a worker: repair then seals the attempt as
+interrupted with zero work and complete accounting, without a liveness proof.
+Detached `submitted`/`starting` attempts may still be started by their unit and
+stay unknown. Repair tolerates a torn final journal fragment, preserves a
 consistent final worker manifest if available, and otherwise seals the attempt
-as interrupted. After launcher loss, elapsed time may be unknown. Repair never
-resumes solver state. Use a new request key for a fresh solve. If the launcher
-dies between process creation and durable process-group recording, reservations
-are conservatively retained; reboot reconciliation can clear the old boot. A
-launcher that dies while its job is still queued never started a worker: repair
-then seals the attempt as interrupted with zero work, without a liveness proof.
+as interrupted. A journal with earlier corruption or duplicate task IDs is never
+trusted: such an attempt, and any attempt whose worker wrote one, is sealed
+`failed` with no results, `work` null and `runner.journal_error`. `jobs get` then
+reports the journal error, and `jobs list` shows it for that job only. Appends
+end a torn final fragment first (a valid record gets its newline, anything else
+is dropped), so a later record never joins it. After launcher loss, elapsed time
+may be unknown. Repair never resumes solver state. Use a new request key for a
+fresh solve. If the launcher dies between process creation and durable
+process-group recording, reservations are conservatively retained; reboot
+reconciliation can clear the old boot. Only unfinished jobs are flagged after a
+reboot.
 
 `compare` supports the legacy fcmaes behavior. Common results require identical
 resolved experiment digests and payload profiles and never select a winner
@@ -228,7 +245,8 @@ changing algorithms or resource widths.
 ## Detached operation and current limits
 
 `submit` uses a real Linux systemd user manager with `KillMode=control-group`
-and `Restart=no`; run `node doctor` first. Logout survival requires host-specific
+and `Restart=no`, in unit `optimization-job-ID.service` (`fcmaes-ID.service` for
+legacy fcmaes jobs); run `node doctor` first. Logout survival requires host-specific
 user-manager lingering. Foreground execution and the refusal without a systemd
 user manager are tested; detached execution has not yet been accepted on a real
 service host. There is no simulated background-success fallback.
@@ -252,6 +270,7 @@ runner. Bump a profile version when changing mathematical input/result meaning.
 ```sh
 cargo test --release --locked -p optimization-job-api -p optimization-runner
 python3 scripts/job-api/test_integration.py
+python3 scripts/job-api/test_review.py
 # Add independently built workers to test a mixed node:
 python3 scripts/job-api/test_integration.py \
   --fcmaes /path/to/fcmaes-job-worker \
@@ -259,6 +278,10 @@ python3 scripts/job-api/test_integration.py \
 ```
 
 The harness auto-detects the local worker and skips unavailable solver-specific
-cases. The 0.1 acceptance run supplied all three workers; see the
+cases. `test_review.py` holds the runner regression tests of the 0.1.1 review; it
+drives a protocol fixture (`fake_worker.py`) and the repository's own worker.
+The 0.1 acceptance run supplied all three workers; see the
 [validation report](job-api/VALIDATION.md). `job-api/SHARED-SOURCES.sha256`
-records the content of the files shared by the three repositories.
+records the content of the files shared by the three repositories, and each
+repository's CI checks it. Change a shared file in all three repositories
+together.

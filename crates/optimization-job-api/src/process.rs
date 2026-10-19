@@ -45,6 +45,18 @@ pub fn bounded_command(
     timeout: Duration,
     maximum: usize,
 ) -> io::Result<(ExitStatus, Vec<u8>, Vec<u8>)> {
+    bounded_command_until(argv, input, timeout, maximum, &|| false)
+}
+/// [`bounded_command`] that also stops the command's process group, with an
+/// `Interrupted` error, as soon as `abort` returns true. The command runs in
+/// its own group, so a terminal's SIGINT to the caller does not reach it.
+pub fn bounded_command_until(
+    argv: &[String],
+    input: Vec<u8>,
+    timeout: Duration,
+    maximum: usize,
+    abort: &dyn Fn() -> bool,
+) -> io::Result<(ExitStatus, Vec<u8>, Vec<u8>)> {
     let exe = argv.first().ok_or_else(|| io::Error::other("empty argv"))?;
     let mut command = Command::new(exe);
     command
@@ -61,9 +73,14 @@ pub fn bounded_command(
     let a = thread::spawn(move || drain(stdout, maximum));
     let b = thread::spawn(move || drain(stderr, maximum));
     let start = Instant::now();
+    let mut aborted = false;
     let status = loop {
         if let Some(s) = child.try_wait()? {
             break Some(s);
+        }
+        if abort() {
+            aborted = true;
+            break None;
         }
         if start.elapsed() >= timeout {
             break None;
@@ -83,6 +100,12 @@ pub fn bounded_command(
     let (err, ob) = b
         .join()
         .map_err(|_| io::Error::other("stderr thread panicked"))??;
+    if aborted {
+        return Err(io::Error::new(
+            io::ErrorKind::Interrupted,
+            "command interrupted",
+        ));
+    }
     let status = status
         .ok_or_else(|| io::Error::new(io::ErrorKind::TimedOut, "command deadline exceeded"))?;
     write_result?;

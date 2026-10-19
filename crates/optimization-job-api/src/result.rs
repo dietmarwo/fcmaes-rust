@@ -33,7 +33,8 @@ pub fn replay(dir: &Path, spec: &JobSpec) -> Result<Vec<Record>> {
     if !path.exists() {
         return Ok(vec![]);
     }
-    let mut records: Vec<Record> = storage::read_checked(&path, 1)?;
+    let mut records: Vec<Record> =
+        storage::read_checked(&path, 1).map_err(|e| format!("{}: {e}", path.display()))?;
     let digest = spec.digest()?;
     let mut ids = BTreeSet::new();
     for r in &records {
@@ -66,7 +67,11 @@ pub fn replay(dir: &Path, spec: &JobSpec) -> Result<Vec<Record>> {
             || (!set && o.feasible == Some(true) && o.x.is_none())
             || r.work.keys().any(|k| !crate::safe_name(k))
         {
-            return Err("invalid, mismatched or duplicate result record".into());
+            return Err(format!(
+                "{}: invalid, mismatched or duplicate result record",
+                path.display()
+            )
+            .into());
         }
     }
     records.sort_by_key(|r| r.task_id);
@@ -107,6 +112,30 @@ pub fn manifest(
         "artifacts":if dir.join("results.jsonl").exists(){json!({"results":"results.jsonl"})}else{json!({})},
         "runner":{"profile":"optimization.runner/0.1","spec_digest":s.digest()?,"worker_digest":worker_digest,"accounting_complete":complete,"resources":s.resources,"recovery":"journal_only_no_resume"}
     }))
+}
+/// The manifest of an attempt whose journal cannot be replayed (a corrupt or
+/// invalid record before its final line). No record is trusted, so there are
+/// no results and no work totals; `runner.journal_error` says why.
+pub fn unreadable_manifest(
+    spec: &Request,
+    elapsed: f64,
+    worker_digest: &str,
+    error: &str,
+) -> Value {
+    match spec {
+        Request::Legacy(_) => json!({
+            "schema_version":1,"status":"failed","actual_evaluations":null,
+            "elapsed_seconds":elapsed,
+            "runner":{"worker_digest":worker_digest,"accounting_complete":false,"journal_error":error}
+        }),
+        Request::Job(s) => json!({
+            "schema_version":"optimization.result/0.1", "status":"failed",
+            "worker":s.worker,"payload_schema":s.payload_schema,"elapsed_seconds":elapsed,
+            "completed_tasks":null,"requested_tasks":s.task_count,
+            "work":null,"known_work_lower_bound":null,"results":[],"artifacts":{},
+            "runner":{"profile":"optimization.runner/0.1","spec_digest":s.digest().ok(),"worker_digest":worker_digest,"accounting_complete":false,"resources":s.resources,"recovery":"journal_only_no_resume","journal_error":error}
+        }),
+    }
 }
 pub fn progress(dir: &Path, s: &Request) -> Result<Value> {
     match s {

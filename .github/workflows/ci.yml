@@ -55,6 +55,7 @@ jobs:
             -p optimization-runner -p fcmaes-job-worker
           python3 scripts/runner/test_integration.py
           python3 scripts/job-api/test_integration.py
+          python3 scripts/job-api/test_review.py
           python3 tutorials/job-api/run.py --root "$RUNNER_TEMP/job-api-tutorial"
       - name: Python binding tests
         run: |

@@ -69,6 +69,13 @@ fn artifact_staging_hashes_and_path_containment() {
     assert!(s.input_bytes(b.path(), "matrix").is_err());
     s.inputs[0].file = "../escape".into();
     assert!(s.validate().is_err());
+    // "./model" is relative and contained; "." and "./" name no file.
+    s.inputs[0].file = "./model".into();
+    s.validate().unwrap();
+    for bad in [".", "./", "/model", "a/../model"] {
+        s.inputs[0].file = bad.into();
+        assert!(s.validate().is_err(), "{bad}");
+    }
     #[cfg(unix)]
     {
         s.inputs[0].file = "link".into();

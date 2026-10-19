@@ -7,13 +7,47 @@ use std::io::{self, BufRead, BufReader, BufWriter, Write};
 use std::path::{Path, PathBuf};
 static TEMP_ID: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
 pub fn append_jsonl<T: Serialize>(path: &Path, value: &T) -> Result<(), io::Error> {
-    let file = OpenOptions::new().create(true).append(true).open(path)?;
+    let mut file = OpenOptions::new()
+        .create(true)
+        .read(true)
+        .append(true)
+        .open(path)?;
+    seal_tail(&mut file)?;
     let mut writer = BufWriter::new(file);
     serde_json::to_writer(&mut writer, value)?;
     writer.write_all(b"\n")?;
     writer.flush()?;
     writer.get_ref().sync_data()?;
     Ok(())
+}
+
+/// Ends a file whose last line lacks its newline (an append that was cut
+/// short) the way readers see it: a valid JSON tail is a record and gets its
+/// newline, anything else is dropped. Appending after an unsealed tail would
+/// join it with the next record into one invalid line, making every earlier
+/// record unreadable.
+fn seal_tail(file: &mut File) -> io::Result<()> {
+    use std::io::{Read, Seek, SeekFrom};
+    let len = file.metadata()?.len();
+    if len == 0 {
+        return Ok(());
+    }
+    let mut last = [0u8];
+    file.seek(SeekFrom::Start(len - 1))?;
+    file.read_exact(&mut last)?;
+    if last[0] == b'\n' {
+        return Ok(());
+    }
+    let mut data = Vec::new();
+    file.seek(SeekFrom::Start(0))?;
+    file.read_to_end(&mut data)?;
+    let start = data.iter().rposition(|b| *b == b'\n').map_or(0, |i| i + 1);
+    if serde_json::from_slice::<serde_json::Value>(&data[start..]).is_ok() {
+        file.write_all(b"\n")?;
+    } else {
+        file.set_len(start as u64)?;
+    }
+    file.sync_data()
 }
 
 /// Reads JSONL while ignoring only an incomplete final record.

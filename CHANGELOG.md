@@ -8,6 +8,22 @@ phase, with breaking changes called out explicitly.
 
 ### Added
 
+- Synchronized the shared job crates with LP-IP-craft and SQP-craft as
+  version 0.1.1. The three copies had drifted after the 0.1.0 delivery; they
+  are byte-identical again and every repository's CI checks the manifest.
+  Changes taken from the SQP-craft review: a worker that writes an invalid
+  journal record no longer leaves its job `running` and breaks `jobs list`
+  (the attempt is sealed `failed` with `runner.journal_error`); staging uses
+  a directory under the node root, so a `noexec` `TMPDIR` works; a signal
+  during validation stops the validator; an append after a torn journal tail
+  no longer destroys earlier records; finished jobs are not flagged after a
+  reboot; `./model.json` is a valid input path; detached common jobs run in
+  `optimization-job-ID.service`. The repair of a job whose launcher died
+  while queued combines both reviews: it keeps the zero-work, complete
+  accounting of this repository's fix, and detached attempts that their
+  unit may still start stay unknown. The shared
+  `scripts/job-api/test_review.py` and `fake_worker.py` run in CI.
+
 - The common fcmaes job worker covers CMA-ES, MODE and MAP-Elites.
   `fcmaes.retry/1` accepts `optimizer.kind: "cmaes"` (soft limit of at most
   `population-1` extra evaluations, normalized `sigma`, a seeded random
