@@ -115,6 +115,11 @@ pub fn execute(worker: &dyn Worker, dir: &Path) -> Result<()> {
                             task,
                             (s.limits.wall_time_seconds - start.elapsed().as_secs_f64()).max(0.0),
                         )?;
+                        // A record the runner would reject must never reach
+                        // the journal, where it would discard every result.
+                        r.outcome
+                            .check()
+                            .map_err(|e| format!("task {task}: invalid outcome: {e}"))?;
                         let record = Record {
                             task_id: task,
                             spec_digest: digest.clone(),

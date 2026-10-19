@@ -289,7 +289,9 @@ impl Outcome {
                 || r.claim == "none"
                 || r.claim == claim
                 || !VERDICTS.contains(&r.verdict.as_str())
-                || (r.verdict == "invalid_certificate") != rejected
+                // A rejected certificate may accompany another refutation;
+                // invalid_certificate needs one.
+                || (r.verdict == "invalid_certificate" && !rejected)
                 || (r.verdict != "invalid_certificate" && level != "rechecked")
             {
                 return Err(
@@ -302,7 +304,7 @@ impl Outcome {
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Record {
     pub task_id: usize,
@@ -464,8 +466,11 @@ pub fn worker_outcome(dir: &Path, s: &Request) -> Result<Option<(String, f64)>> 
             (
                 rr.len(),
                 s.task_count.ok_or("unresolved task count")?,
+                // Compared as records, not as JSON text: an absent optional
+                // field and an explicit null mean the same.
                 r["work"] == serde_json::to_value(counts(&rr)?)?
-                    && r["results"] == serde_json::to_value(&rr)?,
+                    && serde_json::from_value::<Vec<Record>>(r["results"].clone())
+                        .is_ok_and(|reported| reported == rr),
             )
         }
     };

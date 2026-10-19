@@ -40,9 +40,10 @@ elif mode == "complete":
     spec = json.loads((directory / "resolved.json").read_text())
     spec.pop("request_key")
     digest = hashlib.sha256(json.dumps(spec, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+    outcome = payload.get("outcome", {"termination": "evaluation_limit", "claim": "best_found",
+                                      "feasible": True, "objective": 1.0, "x": [1.0], "details": {}})
     record = {"task_id": 0, "spec_digest": digest, "elapsed_seconds": 0.0, "work": {"evaluations": 1},
-              "outcome": {"termination": "evaluation_limit", "claim": "best_found", "feasible": True,
-                          "objective": 1.0, "x": [1.0], "details": {}}}
+              "outcome": outcome}
     payload = json.dumps(record)
     envelope = {"schema_version": 1, "checksum": hashlib.sha256(payload.encode()).hexdigest(),
                 "payload_json": payload}

@@ -95,8 +95,18 @@ JSON Schemas for the job envelope 0.1 and the result 0.2; evidence and
 refutations in all three workers; `fcmaes.evaluate/1`, `lp-ip.evaluate/1` and
 `sqp.evaluate/1`.
 
-Gate: shared outcome cases checked by both the Rust validator and the JSON
-Schema; contract tests of every claim rule, 0.1 compatibility and the schema
-vocabulary; worker tests that force each refutation with synthetic solver
-results; the shared harness on a mixed node with all three workers; tutorial
-results validated against the schemas.
+Gate: shared outcome cases checked by the Rust validator, the JSON Schema and
+the runner (as journal records); contract tests of every claim rule, 0.1
+compatibility and the schema vocabulary; worker tests that force each
+refutation with synthetic solver results; the shared harness on a mixed node
+with all three workers; tutorial results validated against the schemas.
+
+An independent review before the merge found that LP and SQP evaluation
+failed whole jobs on a point whose values overflow, that the validation
+output cap bounded the advertised point counts, that the schema and the Rust
+validator disagreed on a rejected certificate and on null fields, that some
+evidence claimed more than was checked (SQP `locally_infeasible`, refutations
+without a check), that repair returned a retryable code where waiting could
+never help, and several documentation errors. All were fixed; a differential
+fuzz of 1.2 million generated outcomes then found no disagreement between
+the schema and `Outcome::check`.

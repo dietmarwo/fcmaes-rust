@@ -100,7 +100,7 @@ impl Worker for Adapter {
             "non_dominated_set":"fcmaes.mode/1: details.front is the feasible non-dominated part of the final population, re-evaluated; evidence rechecked; no Pareto-optimality certificate",
             "elite_archive":"fcmaes.map-elites/1: every elite in details.elites is re-evaluated and maps to its niche; x/objective are the best elite; evidence rechecked [objective, bounds, niche]",
             "feasible":"fcmaes.evaluate/1: the given point has a usable value (or satisfies the constraints); fcmaes.retry/1 after an objective_mismatch refutation",
-            "none":"no usable answer; evidence.refuted names a best_found claim that failed its re-check"
+            "none":"no usable answer (claimed evidence: a penalty value, an empty front or archive); with evidence.refuted, a best_found claim that failed its re-check"
         });
         d["cancellation"] = json!({
             retry::PROFILE: "between retries; active retries run until their budget or process deadline",

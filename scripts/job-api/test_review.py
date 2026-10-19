@@ -289,7 +289,7 @@ class Review(Node):
         big["resources"] = {"cpu_slots": 16, "outer_workers": 16, "inner_threads": 1}
         error = self.error("run", "--spec", self.write(big)[0])
         self.assertEqual(error["code"], "capacity_exceeded")
-        self.assertIn("cpu_slots 16 exceed the node capacity 8", error["message"])
+        self.assertIn("requests 16 CPU slots but the node capacity is 8", error["message"])
         self.assertEqual(self.error("jobs", "get", "0" * 32)["code"], "unknown_job")
         self.assertEqual(self.error("jobs", "get", "nonsense")["code"], "unknown_job")
         nobody = envelope("fake", {})
@@ -304,6 +304,51 @@ class Review(Node):
         unknown = envelope("fake", {})
         unknown["priority"] = 1
         self.assertEqual(self.error("validate", "--spec", self.write(unknown)[0])["code"], "invalid_job")
+        # Inputs are part of the job: a wrong hash or a missing file.
+        (self.base / "model.json").write_text("{}")
+        hashed = envelope("fake", {})
+        hashed["inputs"] = [{"name": "model", "file": "model.json", "sha256": "0" * 64}]
+        self.assertEqual(self.error("validate", "--spec", self.write(hashed)[0])["code"], "invalid_job")
+        hashed["inputs"][0]["file"] = "missing.json"
+        self.assertEqual(self.error("validate", "--spec", self.write(hashed)[0])["code"], "invalid_job")
+        self.assertEqual(self.error("validate", "--spec", self.base / "missing.json")["code"], "invalid_job")
+        # A resolved job beyond the 4 MiB validation output.
+        error = self.error("validate", "--spec", self.write(envelope("fake", {"pad": "x" * 5_000_000}))[0])
+        self.assertEqual(error["code"], "invalid_job")
+        self.assertIn("4 MiB", error["message"])
+        # Usage errors are coded too.
+        self.assertEqual(self.error("jobs", "frobnicate")["code"], "invalid_command")
+
+    def test_repair_settles_liveness_by_boot_and_reports_unknown_liveness(self):
+        process, ident, directory = self.start(envelope("fake", {"mode": "sleep"}, wall=60))
+        self.wait_for(lambda: (directory / "worker-process.json").exists())
+        group = json.loads((directory / "worker-process.json").read_text())
+        process.kill()
+        process.communicate(timeout=10)
+        os.killpg(group["pgid"], signal.SIGKILL)
+        # No lock is held, but the recorded process group is alive (here: this
+        # test's own group, as after a process-group ID reuse). Waiting alone
+        # would not settle that, so it is not retryable.
+        record = directory / "worker-process.json"
+        record.write_text(json.dumps(dict(group, pgid=os.getpgrp())))
+        errors = []
+        try:
+            # The killed worker releases its lock as it exits.
+            self.wait_for(lambda: errors.append(self.error("jobs", "repair", ident))
+                          or errors[-1]["code"] != "attempt_active")
+        finally:
+            # The cleanup kills the recorded group: never leave this test's own.
+            record.write_text(json.dumps(group))
+        self.assertEqual((errors[-1]["code"], errors[-1]["retryable"]), ("liveness_unknown", False))
+        # Recorded on an earlier boot: nothing of the attempt survives a reboot.
+        record.write_text(json.dumps(dict(group, pgid=os.getpgrp(),
+                                          boot_id="00000000-0000-0000-0000-000000000000")))
+        try:
+            repaired = self.call("jobs", "repair", ident)
+        finally:
+            record.write_text(json.dumps(group))
+        self.assertEqual(repaired["state"], "interrupted")
+        self.assertEqual(json.loads((self.root / "slots.json").read_text()), {})
 
     def test_a_protocol_0_1_worker_still_runs(self):
         self.assertEqual(self.call("workers", "list")["fake"]["description"]["protocol"],
@@ -356,6 +401,21 @@ class Schemas(Node):
         bad = envelope("fake", {})
         bad["resources"]["cpu_slots"] = 0
         self.assertFalse(jsonschema.Draft202012Validator(self.job_schema).is_valid(bad))
+
+    def test_the_runner_judges_journal_records_like_the_schema(self):
+        # Each shared case as the only record of a protocol 0.1 job: the
+        # runner seals a valid one completed, with a manifest the schema
+        # accepts, and an invalid one failed, with no results.
+        for case in json.loads(CASES.read_text()):
+            path, key = self.write(envelope("fake", {"mode": "complete", "outcome": case["outcome"]}))
+            result = self.raw("run", "--spec", path)
+            run = json.loads((self.root / "jobs" / job_id(key) / "run.json").read_text())
+            self.valid(self.result_schema, run)
+            if case["valid"]:
+                self.assertEqual((result.returncode, run["status"]), (0, "completed"), case["name"])
+            else:
+                self.assertEqual((run["status"], run["results"]), ("failed", []), case["name"])
+                self.assertIn("journal_error", run["runner"], case["name"])
 
     def test_result_manifests_are_valid(self):
         path, _ = self.write(envelope("fake", {"mode": "garbage_journal"}))

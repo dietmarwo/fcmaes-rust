@@ -11,8 +11,10 @@ The `fcmaes` worker accepts four profiles of the common job envelope:
 
 Every optimizing task has its own seed, derived from the job seed and the task
 ID, so results do not depend on scheduling. Every outcome reports `evidence`:
-here always `rechecked`, because the worker re-evaluates what it returns
-outside the optimizer (see [result contract 0.2](../../docs/job-api.md#termination-claim-and-evidence)). The original `fcmaes.job/0.1` workflow
+`rechecked` for every claim, because the worker re-evaluates what it returns
+outside the optimizer, and `claimed` for `none` without a refutation (a
+penalty value, an empty front or archive); see
+[result contract 0.2](../../docs/job-api.md#termination-claim-and-evidence). The original `fcmaes.job/0.1` workflow
 remains available; see [legacy experiment runner](../../docs/experiment-runner.md).
 
 ## Build and run the checked examples
@@ -96,10 +98,12 @@ BiteOpt and DE jobs resolve through the same definitions as legacy
 `best_found` is the best point the optimizer evaluated, not a model mean or a
 recommended point. The worker evaluates it again (`evidence.checks`:
 `objective`, `bounds`). A point outside the box is reported with claim `none`
-and `evidence.refuted` (`best_found`, verdict `infeasible_point`); a value the
-point does not evaluate to leaves claim `feasible` with the recomputed value
-and verdict `objective_mismatch`. A value of `1e99` or more, the fcmaes
-penalty, is no answer: claim `none`.
+and `evidence.refuted` (`best_found`, verdict `infeasible_point`) and is not
+evaluated, since the registered models are defined on their box only. A value
+the point does not evaluate to gives verdict `objective_mismatch` and leaves
+claim `feasible` with the recomputed value, or `none` if that value is itself
+unusable. A value of `1e99` or more, the fcmaes penalty, is no answer: claim
+`none`.
 
 ## Multi-objective MODE runs
 
@@ -175,7 +179,9 @@ for a usable value; a multi-objective model gives `details.objectives` and
 `details.constraints`, claim `feasible` when every constraint is at most zero,
 and no single objective. Points must lie inside the problem's bounds, where
 the registered models are defined; validation rejects any other point.
-`work.evaluations` counts one per point.
+`work.evaluations` counts one per point. Points are inline in the job, which
+the runner's validation echoes within 4 MiB: keep all points together well
+below that (about 100,000 two-dimensional points).
 
 ## Cancellation and deadlines
 

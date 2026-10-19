@@ -35,7 +35,7 @@ pub struct Run {
 
 pub fn describe() -> Value {
     json!({"profile":PROFILE,"problems":"every registered model of fcmaes.retry/1, fcmaes.mode/1 and fcmaes.map-elites/1",
-        "points":"1..1000000 points, each of the problem's dimension and inside its bounds; one task per point",
+        "points":"1 or more points (inline: the resolved job, points included, must stay below the runner's 4 MiB validation output), each of the problem's dimension and inside its bounds; one task per point",
         "result":"claim feasible for a usable value (scalar, fitness) or satisfied constraints (multi-objective); objectives, constraints or descriptor in details"})
 }
 

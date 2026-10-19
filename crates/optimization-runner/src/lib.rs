@@ -211,8 +211,17 @@ fn output(value: Value) -> Result<()> {
 fn spec(path: &Path) -> Result<Request> {
     Request::parse(&fs::read(path).map_err(|e| format!("{}: {e}", path.display()))?)
 }
+/// An error of the submitted job itself: `invalid_job`, unless it already
+/// has a code.
+fn invalid(e: Error) -> Error {
+    if e.downcast_ref::<Coded>().is_some() {
+        e
+    } else {
+        coded("invalid_job", e.to_string())
+    }
+}
 fn staged(root: &Path, input: &Path) -> Result<(Request, Value, Vec<u8>, tempfile::TempDir)> {
-    let mut s = spec(input)?;
+    let mut s = spec(input).map_err(invalid)?;
     let w = worker(root, s.worker())?;
     let exe = Path::new(w["executable"].as_str().ok_or("invalid executable")?);
     let bytes = fs::read(exe)?;
@@ -254,7 +263,8 @@ fn staged(root: &Path, input: &Path) -> Result<(Request, Value, Vec<u8>, tempfil
                 .filter(|p| !p.as_os_str().is_empty())
                 .unwrap_or(Path::new(".")),
             tmp.path(),
-        )?;
+        )
+        .map_err(|e| coded("invalid_job", format!("input: {e}")))?;
         write_atomic_json(&tmp.path().join("request.json"), job)?;
         // A signal during validation stops the validator too: it runs in its
         // own process group, which a terminal's SIGINT does not reach.
@@ -272,7 +282,17 @@ fn staged(root: &Path, input: &Path) -> Result<(Request, Value, Vec<u8>, tempfil
             Duration::from_secs(30),
             4 * 1024 * 1024,
             &|| SIGNALS.load(Ordering::Relaxed) > 0,
-        )?;
+        )
+        .map_err(|e| match e.kind() {
+            std::io::ErrorKind::TimedOut => {
+                coded("invalid_job", "worker validation took longer than 30 s")
+            }
+            _ if e.to_string().contains("exceeds configured cap") => coded(
+                "invalid_job",
+                "the resolved job exceeds the 4 MiB validation output; keep inline starts or points well below 4 MiB",
+            ),
+            _ => e.into(),
+        })?;
         if !status.success() {
             return Err(coded(
                 "invalid_job",
@@ -304,13 +324,20 @@ fn attempt_processes_gone(dir: &Path) -> bool {
     if !locks {
         return false;
     }
+    // Nothing of an attempt survives a reboot: its processes and transient
+    // unit ended with the boot that recorded them, and a recorded process
+    // group ID may since belong to an unrelated process.
+    let current = boot().ok();
+    let earlier_boot = |v: &Value| current.is_some() && v["boot_id"].as_str() != current.as_deref();
     if let Ok(p) = read(&dir.join("worker-process.json")) {
-        return p["pgid"]
-            .as_u64()
-            .and_then(|n| u32::try_from(n).ok())
-            .is_some_and(|pid| group_stopped(pid).unwrap_or(false));
+        return earlier_boot(&p)
+            || p["pgid"]
+                .as_u64()
+                .and_then(|n| u32::try_from(n).ok())
+                .is_some_and(|pid| group_stopped(pid).unwrap_or(false));
     }
-    read(&dir.join("job.json")).is_ok_and(|s| terminal(&s["state"]) || never_started(&s))
+    read(&dir.join("job.json"))
+        .is_ok_and(|s| terminal(&s["state"]) || never_started(&s) || earlier_boot(&s))
 }
 /// Without a recorded process group, a worker can exist only if the attempt
 /// reached `running`, which is recorded before the worker is spawned. A
@@ -404,7 +431,7 @@ fn prepare(
         return Err(coded(
             "capacity_exceeded",
             format!(
-                "cpu_slots {} exceed the node capacity {node}; this job can never be admitted here",
+                "the job requests {} CPU slots but the node capacity is {node}; it can never be admitted here",
                 resolved.slots()
             ),
         ));
@@ -851,7 +878,22 @@ fn get(root: &Path, id: &str) -> Result<Value> {
     Ok(v)
 }
 fn main_result() -> Result<()> {
-    let cli = Cli::parse();
+    // Usage errors are coded like every other error; help and version print
+    // normally.
+    let cli = match Cli::try_parse() {
+        Ok(cli) => cli,
+        Err(e)
+            if matches!(
+                e.kind(),
+                clap::error::ErrorKind::DisplayHelp
+                    | clap::error::ErrorKind::DisplayVersion
+                    | clap::error::ErrorKind::DisplayHelpOnMissingArgumentOrSubcommand
+            ) =>
+        {
+            e.exit()
+        }
+        Err(e) => return Err(coded("invalid_command", e.render().to_string())),
+    };
     let selected = cli
         .root
         .or_else(|| std::env::var_os("FCMAES_RUN_ROOT").map(PathBuf::from))
@@ -957,7 +999,7 @@ fn main_result() -> Result<()> {
                 )
             }
         }
-        Cmd::Validate { spec: p } => match spec(&p)? {
+        Cmd::Validate { spec: p } => match spec(&p).map_err(invalid)? {
             Request::Legacy(s) => output(
                 json!({"valid":true,"requested_evaluations":s.requested()?,"maximum_actual_evaluations":s.maximum_evaluations()?,"resolved":s}),
             ),
@@ -1069,17 +1111,29 @@ fn main_result() -> Result<()> {
             }
             Jobs::Repair { id } => {
                 let dir = directory(&root, &id)?;
+                if terminal(&read(&dir.join("job.json"))?["state"]) {
+                    return Err(coded(
+                        "already_terminal",
+                        "attempt already finalized; repair is for interrupted attempts",
+                    ));
+                }
                 // Decided before the reservation is touched below.
                 let unadmitted = never_admitted(&root, &id, &dir)?;
                 if !attempt_processes_gone(&dir) {
-                    let why = if matches!(lock_is_free(&dir.join("worker.lock")), Ok(false)) {
-                        "worker still owns this attempt"
-                    } else if matches!(lock_is_free(&dir.join("job.lock")), Ok(false)) {
-                        "launcher still owns this attempt"
-                    } else {
-                        "attempt processes still alive or liveness unknown; reservation retained"
-                    };
-                    return Err(coded("attempt_active", why));
+                    // A held lock is a live launcher or worker: waiting helps.
+                    // Without one, liveness stays unknown (a process group
+                    // that still exists, or a detached unit that may yet
+                    // start); waiting alone may never settle it.
+                    if matches!(lock_is_free(&dir.join("worker.lock")), Ok(false)) {
+                        return Err(coded("attempt_active", "worker still owns this attempt"));
+                    }
+                    if matches!(lock_is_free(&dir.join("job.lock")), Ok(false)) {
+                        return Err(coded("attempt_active", "launcher still owns this attempt"));
+                    }
+                    return Err(coded(
+                        "liveness_unknown",
+                        "no process holds this attempt, but its process group still exists or its detached unit may still start; inspect it (jobs get, systemctl --user) before repairing",
+                    ));
                 }
                 let owner = fs::OpenOptions::new()
                     .create(true)

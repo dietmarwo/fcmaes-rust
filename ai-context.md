@@ -520,15 +520,17 @@ Common `run.json` uses `optimization.result/0.2`; its `status` and the job's
 `outcome` and `work`. Inspect all three layers. A completed job is not a proof
 of optimality. Each outcome separates `termination` (why the task stopped),
 `claim` (what is asserted) and `evidence` (`claimed`, `rechecked` with the
-list of recomputed `checks`, or `certified`). fcmaes outcomes are always
-`rechecked`. The fcmaes claims are:
+list of recomputed `checks`, or `certified`). fcmaes claims are always
+`rechecked`; `none` without a refutation (a penalty value, an empty front or
+archive) is `claimed`. The fcmaes claims are:
 
 - `best_found` (retries): the best point the optimizer evaluated, inside the
   bounds and re-evaluated; no global certificate. If the re-evaluation
   disagrees, the claim is not reported: `evidence.refuted` names `best_found`
-  with verdict `infeasible_point` (claim `none`) or `objective_mismatch` (claim
-  `feasible` with the recomputed value). Treat a refutation as a defect report,
-  not as an optimization result.
+  with verdict `infeasible_point` (claim `none`; the point is not evaluated
+  outside the box) or `objective_mismatch` (claim `feasible` with the
+  recomputed value, or `none` if that value is unusable). Treat a refutation
+  as a defect report, not as an optimization result.
 - `non_dominated_set` (MODE): `details.front` lists the feasible, mutually
   non-dominated final-population members, each re-evaluated, with `x`,
   `objectives` and `constraints`; `details.hypervolume` is the exact
@@ -548,7 +550,9 @@ list of recomputed `checks`, or `certified`). fcmaes outcomes are always
 
 Use `fcmaes.evaluate/1` when you, the agent, propose candidates: the worker
 evaluates them with the registered model instead of you computing or
-estimating values. Points must lie inside the problem's bounds.
+estimating values. Points must lie inside the problem's bounds and are
+inline in the job, which must stay below the runner's 4 MiB validation
+output.
 
 Other workers have different claims (`numerical_optimum`, `infeasible` and
 `unbounded` for LP/MIP; `first_order` and `locally_infeasible` for SQP). Do not

@@ -229,14 +229,14 @@ pub fn cmaes_retry(
     )
 }
 
-/// Judges one retry's answer: the best point it evaluated and its value.
-/// The point is re-evaluated with `objective`; a value at or above `1e99`
-/// (the fcmaes penalty) or non-finite is no answer. A point outside the box
-/// refutes `best_found` (`infeasible_point`); a value that differs from the
-/// re-evaluation refutes it too (`objective_mismatch`), leaving a feasible
-/// point with the recomputed value. Returns the outcome without termination
-/// and details (apart from `reported_objective`), and the number of
-/// validation evaluations.
+/// Judges one retry's answer: the best point it evaluated and its value. A
+/// value at or above `1e99` (the fcmaes penalty) or non-finite is no answer.
+/// A point outside the box refutes `best_found` (`infeasible_point`) and is
+/// not evaluated. Otherwise the point is re-evaluated with `objective`; a
+/// value that differs refutes `best_found` too (`objective_mismatch`),
+/// leaving a feasible point with the recomputed value if that value is
+/// usable. Returns the outcome without termination and details (apart from
+/// `reported_objective`), and the number of validation evaluations.
 pub fn judge(
     r: RetryRunResult,
     bounds: &RetryBounds,
@@ -260,23 +260,31 @@ pub fn judge(
         r.x.iter()
             .zip(bounds.lower().iter().zip(bounds.upper()))
             .position(|(v, (l, u))| v < l || v > u);
-    let value = objective(&r.x);
-    let outcome = if let Some(i) = outside {
+    if let Some(i) = outside {
+        // Registered models are defined on their box only (GTOP models are
+        // not defined outside it), so the point is not evaluated.
         let message = format!(
             "x[{i}] = {} lies outside [{}, {}]",
             r.x[i],
             bounds.lower()[i],
             bounds.upper()[i]
         );
-        Outcome {
+        let outcome = Outcome {
             claim: "none".into(),
             feasible: Some(false),
-            objective: value.is_finite().then_some(value),
             x: Some(r.x),
-            evidence: Some(checks.refuting("best_found", "infeasible_point", message)),
+            details: json!({"reported_objective":r.y}),
+            evidence: Some(Evidence::rechecked(&["bounds"]).refuting(
+                "best_found",
+                "infeasible_point",
+                message,
+            )),
             ..Outcome::default()
-        }
-    } else if value != r.y {
+        };
+        return Ok((outcome, 0));
+    }
+    let value = objective(&r.x);
+    let outcome = if value != r.y {
         let message = format!("reported {} but the point evaluates to {value}", r.y);
         let refuted = checks.refuting("best_found", "objective_mismatch", message);
         let feasible = usable(value);

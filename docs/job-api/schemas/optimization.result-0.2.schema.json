@@ -231,9 +231,6 @@
       "required": [
         "termination",
         "claim",
-        "feasible",
-        "objective",
-        "x",
         "details"
       ],
       "properties": {
@@ -275,10 +272,24 @@
           "description": "Profile-specific diagnostics."
         },
         "evidence": {
-          "$ref": "#/$defs/evidence"
+          "oneOf": [
+            {
+              "$ref": "#/$defs/evidence"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "objective_bounds": {
-          "$ref": "#/$defs/objective_bounds"
+          "oneOf": [
+            {
+              "$ref": "#/$defs/objective_bounds"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "imprecise": {
           "type": "boolean"
@@ -298,6 +309,9 @@
             ]
           },
           "then": {
+            "required": [
+              "x"
+            ],
             "properties": {
               "x": {
                 "type": "array"
@@ -324,6 +338,9 @@
             ]
           },
           "then": {
+            "required": [
+              "x"
+            ],
             "properties": {
               "x": {
                 "type": "array"
@@ -350,6 +367,10 @@
             ]
           },
           "then": {
+            "required": [
+              "feasible",
+              "x"
+            ],
             "properties": {
               "feasible": {
                 "const": true
@@ -378,6 +399,9 @@
             ]
           },
           "then": {
+            "required": [
+              "objective"
+            ],
             "properties": {
               "objective": {
                 "type": "number"
@@ -399,6 +423,9 @@
             ]
           },
           "then": {
+            "required": [
+              "feasible"
+            ],
             "properties": {
               "feasible": {
                 "const": true
@@ -455,6 +482,10 @@
             ],
             "properties": {
               "evidence": {
+                "type": "object",
+                "required": [
+                  "level"
+                ],
                 "properties": {
                   "level": {
                     "const": "certified"
@@ -833,7 +864,8 @@
             }
           }
         }
-      ]
+      ],
+      "description": "An absent feasible, objective or x reads as null; an absent or null evidence as claimed. The runner writes all three and omits absent optional objects."
     },
     "evidence": {
       "type": "object",
@@ -858,10 +890,24 @@
           }
         },
         "refuted": {
-          "$ref": "#/$defs/refutation"
+          "oneOf": [
+            {
+              "$ref": "#/$defs/refutation"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "certificate": {
-          "$ref": "#/$defs/certificate"
+          "oneOf": [
+            {
+              "$ref": "#/$defs/certificate"
+            },
+            {
+              "type": "null"
+            }
+          ]
         }
       },
       "allOf": [
@@ -898,6 +944,7 @@
             ],
             "properties": {
               "certificate": {
+                "type": "object",
                 "properties": {
                   "verdict": {
                     "const": "verified"
@@ -914,6 +961,10 @@
             ],
             "properties": {
               "refuted": {
+                "type": "object",
+                "required": [
+                  "verdict"
+                ],
                 "properties": {
                   "verdict": {
                     "const": "invalid_certificate"
@@ -928,6 +979,7 @@
             ],
             "properties": {
               "certificate": {
+                "type": "object",
                 "properties": {
                   "verdict": {
                     "const": "rejected"
@@ -940,7 +992,12 @@
             "if": {
               "required": [
                 "refuted"
-              ]
+              ],
+              "properties": {
+                "refuted": {
+                  "type": "object"
+                }
+              }
             },
             "then": {
               "properties": {
@@ -1004,14 +1061,21 @@
           }
         },
         "artifact": {
-          "type": "string",
-          "pattern": "^[A-Za-z0-9._-]{1,80}$",
-          "not": {
-            "enum": [
-              ".",
-              ".."
-            ]
-          }
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9._-]{1,80}$",
+              "not": {
+                "enum": [
+                  ".",
+                  ".."
+                ]
+              }
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "sha256": {
           "type": "string",

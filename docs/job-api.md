@@ -91,8 +91,9 @@ Unknown envelope and payload fields, unsupported profiles and unsupported thread
 widths are errors. Validation resolves defaults through the selected worker;
 it does not run an optimization. `validate` does not reserve slots. `run` and
 `submit` also check the requested slots against the node capacity. The schema
-cannot express three rules the runner enforces: `outer_workers * inner_threads
-<= cpu_slots`, the 200-byte key limit and contained input paths.
+cannot express four rules the runner enforces: `outer_workers * inner_threads
+<= cpu_slots`, the 200-byte key limit, unique input names and contained input
+paths.
 
 Input paths are relative to the submitted specification (`model.json` or
 `./model.json`). Absolute paths, parent traversal, duplicate names and symlinks
@@ -183,7 +184,8 @@ the wall deadline may report `termination: "cancelled"`; the job state says
 `timed_out`. `--now` allows at most one further second before process-group
 termination. The wall limit plus its declared grace always bounds process
 supervision. Cancelling a job that has already ended is an error
-(`already_terminal`, like HTTP 409) and writes nothing.
+(`already_terminal`, like HTTP 409) and writes nothing; a cancel that races
+with the job's own end may still be accepted, without effect.
 
 A completed job says that its tasks returned normally. It does not assert an
 optimal solution. An infeasible LP is a completed job with claim `infeasible`.
@@ -193,7 +195,8 @@ decision, independent of a solver's termination reason.
 
 ### Errors
 
-A runner error exits with status 2 and prints one JSON line on stderr:
+A runner error, including a malformed command line, exits with status 2 and
+prints one JSON line on stderr (`--help` and `--version` print normally):
 
 ```json
 {"error":{"code":"request_key_conflict","message":"...","retryable":false}}
@@ -201,7 +204,8 @@ A runner error exits with status 2 and prints one JSON line on stderr:
 
 | Code | Meaning | What helps |
 | --- | --- | --- |
-| `invalid_job` | The specification is not a valid envelope, or the worker rejected its payload | Fix the job |
+| `invalid_job` | The specification is missing or not a valid envelope; an input is missing, escapes its directory or fails its hash; the worker rejected the payload; or the resolved job exceeds the 4 MiB validation output or 30 s | Fix the job |
+| `invalid_command` | The command line does not parse | See `--help` |
 | `unknown_worker` | No worker is registered under that ID | `workers add` |
 | `unsupported_profile` | The worker does not accept the `payload_schema` | Another worker or profile |
 | `worker_changed` | The registered executable changed since registration | Register it again |
@@ -210,16 +214,20 @@ A runner error exits with status 2 and prints one JSON line on stderr:
 | `node_not_initialized` | The root has no `node.json` | `node init --capacity N` |
 | `unknown_job` | No job with this ID on this root | Check the ID and root |
 | `already_terminal` | Cancel or repair of a job that has already ended | Nothing to do |
-| `attempt_active` | Repair while the attempt's processes may still run | Wait, then repeat |
+| `attempt_active` | Repair while the attempt's launcher or worker still holds its lock | Wait, then repeat |
+| `liveness_unknown` | Repair of an attempt whose locks are free, but whose process group still exists or whose detached unit may still start | Inspect it (`jobs get`, `systemctl --user`); an attempt recorded on an earlier boot counts as ended |
 | `systemd_unavailable` | `submit` without a systemd user manager | Foreground `run` |
 | `start_unknown` | `submit` could not confirm the unit start; repeating does not launch again | Inspect the unit |
 | `runner_error` | Anything else (I/O, a corrupt node file, a worker protocol violation) | Read the message |
 
-`retryable` is true only for `attempt_active`: repeating the identical command
-later can succeed. Every other error needs a changed request or operator
-action. At the job level, `interrupted` (launcher or host lost) may be run
-again with a new request key; `failed` comes from the worker and, with
-deterministic seeds, repeats with the same input.
+`retryable` is true only for `attempt_active`: a live process holds the
+attempt, and repeating the identical command after it exits can succeed.
+Every other error needs a changed request or operator action. At the job
+level, `interrupted` (launcher or host lost) may be run again with a new
+request key. A `failed` job needs its `runner.journal_error`, its worker's
+`stderr.log` or the runner's message: a worker error repeats with the same
+input and deterministic seeds, while a crash, an out-of-memory kill or an I/O
+error need not.
 
 ## Results and durable recovery
 
@@ -271,7 +279,8 @@ holds within tolerances only.
 
 `evidence.level` is one of:
 
-- `claimed`: the claim rests on the solver's report alone.
+- `claimed`: the claim rests on the solver's report alone. `none` without a
+  refutation is `claimed` too; `checks` may still list what was recomputed.
 - `rechecked`: the returned points were recomputed from the registered model
   outside the solver; `evidence.checks` lists what (`objective`, `bounds`,
   `constraints`, `integrality`, `kkt`, `non_dominance`, `niche`). Parts of a
@@ -297,14 +306,19 @@ verdicts are the solver competitions' categories of wrong answers:
 | Verdict | Example | Surviving claim |
 | --- | --- | --- |
 | `infeasible_point` | LP optimal status, but the candidate violates a row; an fcmaes point outside the box | `none` |
-| `objective_mismatch` | fcmaes reported a value its point does not evaluate to | `feasible`, with the recomputed value; the reported one in `details.reported_objective` |
-| `false_optimality` | SQP converged, or an LP is optimal, but the recomputed KKT residuals fail the acceptance | `feasible` |
-| `false_infeasibility` | LP infeasible, but the returned point or the task's start is feasible; SQP locally infeasible at a feasible point | `feasible` |
+| `objective_mismatch` | fcmaes reported a value its point does not evaluate to | `feasible` with the recomputed value, or `none` if that value is unusable; the reported one in `details.reported_objective` |
+| `false_optimality` | SQP converged, or an LP is optimal, but the recomputed KKT residuals fail the acceptance (or overflow) | `feasible` |
+| `false_infeasibility` | LP infeasible, but the returned point or the task's start is feasible (the outcome then reports that point); SQP locally or linearly infeasible at a feasible point | `feasible` |
 | `invalid_certificate` | A checker rejected a certificate | what the other checks support |
 
-Failures that are not mathematical claims still fail the task: wrong
-dimensions, non-finite values, work counts outside the declared budget, and set
-members whose stored values disagree with their re-evaluation.
+A refutation needs a check that actually ran: a status with nothing to check
+(LP optimal without a candidate, SQP converged without multipliers) is
+neither confirmed nor refuted, and `details.note` says so. Failures that are
+not mathematical claims still fail the task: wrong dimensions, non-finite
+solver values, work counts outside the declared budget, and set members whose
+stored values disagree with their re-evaluation. The SDK checks every outcome
+against the rules before committing it, so a worker defect fails one task and
+the job, but never discards the results already committed.
 
 `objective_bounds` gives `primal` (the objective of the best feasible point)
 and `dual` (a bound on the optimum the solver proved: a lower bound when
@@ -313,9 +327,12 @@ be null. LP/MIP results and LP evaluations report it. `imprecise: true` marks
 a claim the engine reached only at relaxed accuracy; it never qualifies `none`.
 No current worker sets it.
 
-The runner checks these rules on every journal record; the schema, the Rust
-validator and `scripts/job-api/outcome_cases.json` (a shared list of valid and
-invalid outcomes that both test suites run) agree.
+The runner checks these rules on every journal record and writes manifests
+in canonical form: optional objects are omitted rather than null. The schema
+and the Rust validator agree, also on null and absent fields:
+`scripts/job-api/outcome_cases.json`, a shared list of valid and invalid
+outcomes, runs through `Outcome::check`, through the schema, and as journal
+records through the runner.
 
 ### Details
 
@@ -339,7 +356,12 @@ solver can have its own candidates checked by the same model and rules. Each
 outcome has `termination: "evaluated"`, claim `feasible` or `none`, the
 recomputed objective (none for several objectives) and `rechecked` evidence.
 fcmaes points must lie inside the model's box, where its registered models are
-defined; LP and SQP points may lie anywhere and are reported infeasible.
+defined; LP and SQP points may lie outside the bounds and are then
+infeasible. A finite point whose values overflow is `none` with no objective,
+unknown feasibility, `claimed` evidence and the reason in `details.message`.
+Points, like starts, are inline: the resolved job must stay below the 4 MiB
+validation output, which bounds a job to far fewer points than the 1,000,000
+tasks the envelope allows.
 
 ### Accounting and recovery
 
@@ -354,7 +376,9 @@ optimization-run --root NODE jobs repair JOB_ID
 ```
 
 Reconciliation only releases slots when process termination is established.
-Repair refuses a live worker or unknown liveness (`attempt_active`). A launcher
+Repair refuses a live launcher or worker (`attempt_active`) and unknown
+liveness (`liveness_unknown`); an attempt recorded on an earlier boot has no
+surviving processes. A launcher
 that dies while its job is still queued never started a worker: repair then
 seals the attempt as interrupted with zero work and complete accounting,
 without a liveness proof. Detached `submitted`/`starting` attempts may still be

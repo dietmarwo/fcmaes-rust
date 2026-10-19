@@ -804,5 +804,201 @@
    "details": {},
    "score": 1
   }
+ },
+ {
+  "name": "a rejected certificate may accompany another refutation",
+  "valid": true,
+  "outcome": {
+   "termination": "test",
+   "claim": "feasible",
+   "feasible": true,
+   "objective": 1.0,
+   "x": [
+    1.0
+   ],
+   "details": {},
+   "evidence": {
+    "level": "rechecked",
+    "checks": [
+     "objective"
+    ],
+    "refuted": {
+     "claim": "numerical_optimum",
+     "verdict": "false_optimality",
+     "message": "m"
+    },
+    "certificate": {
+     "format": "vipr",
+     "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+     "checker": "viprchk-1.1",
+     "verdict": "rejected"
+    }
+   }
+  }
+ },
+ {
+  "name": "null optional objects read as absent",
+  "valid": true,
+  "outcome": {
+   "termination": "test",
+   "claim": "best_found",
+   "feasible": true,
+   "objective": 1.0,
+   "x": [
+    1.0
+   ],
+   "details": {},
+   "evidence": null,
+   "objective_bounds": null
+  }
+ },
+ {
+  "name": "null refutation and certificate read as absent",
+  "valid": true,
+  "outcome": {
+   "termination": "test",
+   "claim": "best_found",
+   "feasible": true,
+   "objective": 1.0,
+   "x": [
+    1.0
+   ],
+   "details": {},
+   "evidence": {
+    "level": "rechecked",
+    "checks": [
+     "objective"
+    ],
+    "refuted": null,
+    "certificate": null
+   }
+  }
+ },
+ {
+  "name": "certified_optimum with null evidence",
+  "valid": false,
+  "outcome": {
+   "termination": "test",
+   "claim": "certified_optimum",
+   "feasible": true,
+   "objective": 1.0,
+   "x": [
+    1.0
+   ],
+   "details": {},
+   "evidence": null
+  }
+ },
+ {
+  "name": "certified evidence with a null certificate",
+  "valid": false,
+  "outcome": {
+   "termination": "test",
+   "claim": "certified_optimum",
+   "feasible": true,
+   "objective": 1.0,
+   "x": [
+    1.0
+   ],
+   "details": {},
+   "evidence": {
+    "level": "certified",
+    "checks": [],
+    "certificate": null
+   }
+  }
+ },
+ {
+  "name": "absent feasible, objective and x read as null",
+  "valid": true,
+  "outcome": {
+   "termination": "test",
+   "claim": "none",
+   "details": {}
+  }
+ },
+ {
+  "name": "absent details",
+  "valid": false,
+  "outcome": {
+   "termination": "test",
+   "claim": "none",
+   "feasible": null,
+   "objective": null,
+   "x": null
+  }
+ },
+ {
+  "name": "null checks",
+  "valid": false,
+  "outcome": {
+   "termination": "test",
+   "claim": "best_found",
+   "feasible": true,
+   "objective": 1.0,
+   "x": [
+    1.0
+   ],
+   "details": {},
+   "evidence": {
+    "level": "claimed",
+    "checks": null
+   }
+  }
+ },
+ {
+  "name": "a null certificate artifact reads as absent",
+  "valid": true,
+  "outcome": {
+   "termination": "test",
+   "claim": "certified_optimum",
+   "feasible": true,
+   "objective": 1.0,
+   "x": [
+    1.0
+   ],
+   "details": {},
+   "evidence": {
+    "level": "certified",
+    "checks": [],
+    "certificate": {
+     "format": "vipr",
+     "artifact": null,
+     "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+     "checker": "viprchk-1.1",
+     "verdict": "verified"
+    }
+   }
+  }
+ },
+ {
+  "name": "an absent point with a point claim",
+  "valid": false,
+  "outcome": {
+   "termination": "test",
+   "claim": "best_found",
+   "feasible": true,
+   "objective": 1.0,
+   "details": {}
+  }
+ },
+ {
+  "name": "an absent feasible flag with a set claim",
+  "valid": false,
+  "outcome": {
+   "termination": "test",
+   "claim": "non_dominated_set",
+   "details": {}
+  }
+ },
+ {
+  "name": "an absent point with an objective",
+  "valid": false,
+  "outcome": {
+   "termination": "test",
+   "claim": "none",
+   "objective": 1.0,
+   "details": {}
+  }
  }
 ]

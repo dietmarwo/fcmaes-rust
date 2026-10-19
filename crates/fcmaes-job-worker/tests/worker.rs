@@ -721,10 +721,13 @@ fn a_retry_answer_that_fails_its_recheck_is_refuted_not_reported() {
     };
     let (ok, n) = run(vec![0.5, 0.5], 0.5);
     assert_eq!((ok["claim"].as_str(), n), (Some("best_found"), 1));
-    // Outside the box: no claim survives.
-    let (outside, _) = run(vec![1.5, 0.0], 2.25);
-    assert_eq!(outside["claim"], "none");
+    // Outside the box: no claim survives, and the model is not evaluated
+    // where it is undefined.
+    let (outside, n) = run(vec![1.5, 0.0], 2.25);
+    assert_eq!((outside["claim"].as_str(), n), (Some("none"), 0));
     assert_eq!(outside["feasible"], false);
+    assert!(outside["objective"].is_null());
+    assert_eq!(outside["evidence"]["checks"], json!(["bounds"]));
     assert_eq!(outside["evidence"]["refuted"]["claim"], "best_found");
     assert_eq!(
         outside["evidence"]["refuted"]["verdict"],
@@ -743,6 +746,24 @@ fn a_retry_answer_that_fails_its_recheck_is_refuted_not_reported() {
     assert_eq!(mismatch["details"]["reported_objective"], 0.25);
     assert_eq!(
         mismatch["evidence"]["refuted"]["verdict"],
+        "objective_mismatch"
+    );
+    // A mismatch whose recomputed value is the penalty leaves no claim.
+    let unusable = |_: &[f64]| 1e99;
+    let (o, _) = judge(
+        RetryRunResult {
+            x: vec![0.5, 0.5],
+            y: 0.5,
+            evaluations: 10,
+        },
+        &bounds,
+        unusable,
+    )
+    .unwrap();
+    assert_eq!(o.claim, "none");
+    assert_eq!(o.feasible, Some(false));
+    assert_eq!(
+        o.evidence.unwrap().refuted.unwrap().verdict,
         "objective_mismatch"
     );
     // The fcmaes penalty is no answer at all.
