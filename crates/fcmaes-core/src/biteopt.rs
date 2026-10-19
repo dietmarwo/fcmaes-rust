@@ -2385,6 +2385,40 @@ impl BiteOpt {
         self.stop
     }
 
+    /// Run the delayed-feedback (ask/tell) loop, evaluating up to `batch`
+    /// candidates at a time through `eval_batch(rows) -> costs`.
+    ///
+    /// The candidates of a batch are generated before any of them is told,
+    /// as in [`ask`](BiteOpt::ask)/[`tell`](BiteOpt::tell), so `eval_batch`
+    /// may evaluate them in parallel. The result depends on `batch` but not
+    /// on how `eval_batch` schedules its work, and it differs from the
+    /// serial [`optimize`](BiteOpt::optimize). A batch never exceeds the
+    /// remaining budget, so the evaluation limit stays hard.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `eval_batch` does not return one cost per row.
+    pub fn optimize_batch<F>(&mut self, batch: usize, mut eval_batch: F) -> BiteResult
+    where
+        F: FnMut(&[Vec<f64>]) -> Vec<f64>,
+    {
+        let batch = batch.max(1);
+        while self.evaluations < self.max_evaluations && self.stop == 0 {
+            let rows = self.ask(batch);
+            if rows.is_empty() {
+                break;
+            }
+            let costs = eval_batch(&rows);
+            assert_eq!(
+                costs.len(),
+                rows.len(),
+                "eval_batch must return one cost per row"
+            );
+            self.tell(&costs);
+        }
+        self.result()
+    }
+
     /// Number of candidates awaiting a matching [`tell`](Self::tell).
     pub fn current_batch_size(&self) -> usize {
         self.asked.len()
@@ -2736,6 +2770,54 @@ mod tests {
             3,
         );
         assert!(r.y < 1e-2, "deep rosen: {}", r.y);
+    }
+
+    fn quality(batch: usize, seed: u64) -> f64 {
+        let params = BiteParams {
+            max_evaluations: 20_000,
+            seed,
+            ..Default::default()
+        };
+        BiteOpt::new(&[-5.0; 6], &[5.0; 6], None, &params)
+            .optimize_batch(batch, |rows| rows.iter().map(|x| rosen(x)).collect())
+            .y
+    }
+
+    #[test]
+    fn batch_runs_keep_the_hard_budget_and_do_not_depend_on_scheduling() {
+        use rayon::prelude::*;
+        let run = |parallel: bool, batch: usize| {
+            let params = BiteParams {
+                max_evaluations: 20_001,
+                seed: 5,
+                ..Default::default()
+            };
+            let mut bite = BiteOpt::new(&[-5.0; 6], &[5.0; 6], None, &params);
+            let mut largest = 0;
+            let r = bite.optimize_batch(batch, |rows| {
+                largest = largest.max(rows.len());
+                if parallel {
+                    rows.par_iter().map(|x| rosen(x)).collect()
+                } else {
+                    rows.iter().map(|x| rosen(x)).collect()
+                }
+            });
+            assert!(largest <= batch);
+            r
+        };
+        for batch in [1, 8, 32] {
+            let (serial, parallel) = (run(false, batch), run(true, batch));
+            assert_eq!(serial.x, parallel.x);
+            assert_eq!(serial.y, parallel.y);
+            assert_eq!(serial.evaluations, 20_001);
+            assert_eq!(rosen(&serial.x), serial.y);
+        }
+        // Delayed feedback still converges: the median of five seeds.
+        for batch in [8, 32] {
+            let mut ys: Vec<f64> = (0..5).map(|seed| quality(batch, seed)).collect();
+            ys.sort_by(f64::total_cmp);
+            assert!(ys[2] < 1e-2, "batch {batch}: {ys:?}");
+        }
     }
 
     #[test]

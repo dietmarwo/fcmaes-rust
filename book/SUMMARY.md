@@ -21,6 +21,7 @@
 - [Experiment runner](docs/experiment-runner.md)
 - [Shared job API](docs/job-api.md)
   - [Native job API tutorial](tutorials/job-api/README.md)
+  - [Application models](docs/job-api/models.md)
   - [Implementation plan](docs/job-api/PLAN.md)
   - [Validation](docs/job-api/VALIDATION.md)
 - [Combinatorial encodings](docs/combinatorial-encodings.md)

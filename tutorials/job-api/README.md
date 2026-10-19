@@ -4,10 +4,16 @@ The `fcmaes` worker accepts four profiles of the common job envelope:
 
 | Profile | One task is | Result claim |
 | --- | --- | --- |
-| `fcmaes.retry/1` | one BiteOpt, DE or CMA-ES retry on a registered scalar objective | `best_found` |
+| `fcmaes.retry/1` | one BiteOpt, DE, CMA-ES (optionally with IPOP or BIPOP restarts), CR-FM-NES or PGPE retry on a registered scalar model | `best_found` |
 | `fcmaes.mode/1` | one MODE run on a registered multi-objective model | `non_dominated_set` |
-| `fcmaes.map-elites/1` | one MAP-Elites run on a registered quality-diversity model | `elite_archive` |
+| `fcmaes.map-elites/1` | one MAP-Elites run on a grid or CVT archive of a registered quality-diversity model, optionally followed by CMA-ME or CMA-MAE emitters | `elite_archive` |
 | `fcmaes.evaluate/1` | one given point, evaluated on any of these models | `feasible` or `none` |
+
+A job names a registered model; it never carries code. The stock worker
+registers benchmark models. An application builds its own worker that
+registers its models as Rust closures, which can read parameters and
+SHA-256-checked data files from the job
+([application models](../../docs/job-api/models.md)).
 
 Every optimizing task has its own seed, derived from the job seed and the task
 ID, so results do not depend on scheduling. Every outcome reports `evidence`:
@@ -23,11 +29,13 @@ From the repository root, on Linux with Rust 1.88+ and Python 3:
 
 ```sh
 cargo build --release --locked -p optimization-runner -p fcmaes-job-worker
+cargo build --release --locked -p fcmaes-job-worker --example custom_worker
 python3 tutorials/job-api/run.py --root /tmp/fcmaes-job-tutorial
 ```
 
-The script initializes an eight-slot node, registers the executable, validates
-and runs every example, then checks the results independently in Python. It
+The script initializes an eight-slot node, registers the stock worker as
+`fcmaes` and the example application worker as `curve-fit`, validates and runs
+every example, then checks the results independently in Python. It
 prints the attempt directories and writes `tutorial-report.json` under the
 node. Re-running it with the same node and unmodified inputs returns the
 existing attempts.
@@ -36,10 +44,14 @@ existing attempts.
 | --- | --- | --- |
 | `sphere.json`, `rosenbrock.json`, `cassini1.json` | BiteOpt, 16 × 1,000 evaluations | `best_found`, the hard budget |
 | `rosenbrock-cmaes.json` | CMA-ES, 16 × 20,000 evaluations | `best_found`, the soft budget, best value below 1e-10 |
+| `cassini1-bipop.json` | CMA-ES with BIPOP restarts, 8 × 50,000 evaluations, 2 workers × 4 threads | at least one restart per retry, the soft budget, best value below 5.4 (the best known is 4.9307) |
+| `rosenbrock-crfmnes.json` | CR-FM-NES on 50 dimensions, 8 × 100,000 evaluations, 4 workers × 2 threads | `best_found`, best value below 1e-20 |
 | `zdt1-mode.json` | MODE, 8 runs × 250 generations × 64 | the recomputed ZDT1 values, non-dominance, nothing below the true front, hypervolume above 0.85 (the true front has 0.8767) |
 | `binh-korn-mode.json` | MODE, 8 runs × 100 generations × 64 | feasibility of every front point and non-dominance |
 | `rastrigin-map-elites.json` | MAP-Elites, 8 runs × 1,000 generations × 20, 400 niches | the recomputed fitness and descriptors of every elite, coverage above 50% |
+| `sphere-cvt-cma-mae.json` | MAP-Elites on a 200-niche CVT archive, then CMA-MAE: 100 × 20 + 300 × 4 emitters × 16 per run, 2 workers × 4 threads | the exact budget, every elite recomputed, coverage above 50% |
 | `binh-korn-evaluate.json` | three given Binh-Korn points | the recomputed objectives and constraints; two points feasible, one not |
+| `exponential-fit.json` | worker `curve-fit`: CMA-ES fits `a·exp(-b·t) + c` to the input `decay.csv` | the default `loss` recorded in the resolved job, the recomputed loss, `(a, b, c)` near `(3, 0.7, 0.5)` |
 
 None of these claims is a global optimum or Pareto-optimality certificate.
 Cassini1 uses the native GTOP model with its canonical bounds; nothing invokes
@@ -72,29 +84,81 @@ population, every MAP-Elites elite.
 Copy an example, choose a new `request_key`, and change the typed payload.
 Unknown fields are rejected, not ignored. Bounds may be broadcast from a single
 lower/upper pair; validation expands them and resolves every default into the
-payload. Keep `inner_threads=1`: the parallelism is across tasks. Set
-`outer_workers=1, cpu_slots=1` for a serial run with the same task seeds.
+payload. Set `outer_workers=1, cpu_slots=1` for a serial run with the same task
+seeds.
 
-## Scalar retries: BiteOpt, DE and CMA-ES
+## Threads: `outer_workers` and `inner_threads`
 
-`problem` selects `benchmark.sphere`, `benchmark.rosenbrock` or
-`gtop.cassini1`; `retries` and `evaluations_per_retry` must be positive. The job's
-wall limit bounds the entire batch after admission.
+`outer_workers` runs tasks (retries, runs, points) concurrently.
+`inner_threads` evaluates the population of one task in parallel, on threads
+of that task's own; `outer_workers * inner_threads` must not exceed
+`cpu_slots`. Use `inner_threads > 1` for CMA-ES, CR-FM-NES, PGPE, MODE and
+MAP-Elites, and for BiteOpt and DE with `batch`, when there are fewer tasks
+than slots or one evaluation is expensive. A run's result does not depend on
+`inner_threads`: populations are evaluated in parallel but returned in order,
+and the optimizer's state stays serial. Serial BiteOpt and DE evaluate one
+point at a time and `fcmaes.evaluate/1` one point per task, so they require
+`inner_threads=1`.
+
+## Scalar retries: BiteOpt, DE, CMA-ES, CR-FM-NES and PGPE
+
+`problem` selects a registered scalar model: `benchmark.sphere`,
+`benchmark.rosenbrock` or `gtop.cassini1` in the stock worker; `retries` and
+`evaluations_per_retry` must be positive. The job's wall limit bounds the
+entire batch after admission.
 
 - **BiteOpt** (`kind: biteopt`) uses a hard limit: `evaluation_limit_mode: hard`.
 - **DE** (`kind: de`) needs `evaluation_limit_mode: soft`. For population P, it
   may spend at most `2P-1` extra evaluations per retry.
+- **BiteOpt and DE with `batch`** evaluate `batch` candidates concurrently
+  (on `inner_threads` threads), with delayed feedback. BiteOpt asks, evaluates
+  and tells batches of `batch` candidates. DE keeps `batch` candidates in
+  flight, the delayed update of the Python fcmaes `de.minimize(workers=...)`
+  that the Rust DE derives from: when the oldest candidate is evaluated, it is
+  told and one new candidate is asked. Unlike the Python version, results are
+  told in the order the candidates were asked, so the run depends on `batch`
+  and the seed, never on thread timing. Neither exceeds
+  `evaluations_per_retry`. Delayed feedback costs some convergence per
+  evaluation, more for DE than for BiteOpt; keep `batch` small against the
+  population (DE's default is 31) and use it when evaluations are expensive.
+  Without `batch`, both run the serial algorithm of `fcmaes.job/0.1`.
 - **CMA-ES** (`kind: cmaes`) needs `soft` too: it evaluates whole generations,
   so it may spend at most `population-1` extra evaluations. Its parameters are
   `population` (default 31) and `sigma` (default 0.3), the initial step size in
   the box normalized to `[-1, 1]` (0.3 is about 15% of each range). Each retry
   starts from a uniform random point drawn from its seed. CMA-ES can stop
   before its budget on its own convergence tests; the task then reports
-  `termination: "optimizer_stop"` and `details.stop_code`. `sigma` is rejected
-  for BiteOpt and DE.
+  `termination: "optimizer_stop"` and `details.stop_code`.
+- **CMA-ES with restarts** (`restarts: ipop` or `bipop`) restarts until the
+  retry's budget is spent, each run from a new uniform random point. IPOP
+  (Auger and Hansen 2005) doubles the population after every stop. BIPOP
+  (Hansen 2009) alternates doubled populations with small populations and
+  smaller step sizes, choosing the regime that has used fewer evaluations.
+  Populations stop growing at `max_population` (default 512 × `population`,
+  at most 10⁶ and 10⁷ / dimension), which bounds the overshoot to
+  `max_population-1`. `details.restarts` and
+  `details.largest_population` report what happened.
+- **CR-FM-NES** (`kind: crfmnes`, Nomura and Ono 2022) is a natural evolution
+  strategy with a restricted covariance whose cost is linear in the dimension,
+  for problems with hundreds or thousands of variables. `population` (even,
+  default 32) and `sigma` (default 0.3, normalized box) as for CMA-ES.
+- **PGPE** (`kind: pgpe`, Sehnke et al. 2010) samples mirrored pairs around a
+  center it moves with Adam; a common choice for neural-network weights.
+  `population` (even, default 32), `sigma` (default 0.1), and the
+  `center_learning_rate` (0.15) and `stdev_learning_rate` (0.1).
 
-BiteOpt and DE jobs resolve through the same definitions as legacy
-`fcmaes.job/0.1` jobs, so both give identical retries.
+Settings of another optimizer are rejected, never ignored: `sigma` for
+BiteOpt, `restarts` for CR-FM-NES, `center_learning_rate` for CMA-ES. CMA-ES,
+CR-FM-NES and PGPE use a soft limit (`evaluation_limit_mode: soft`) and may
+spend `population-1` extra evaluations. CR-FM-NES adds a bound penalty to the
+values it ranks and keeps unclamped points, so for CR-FM-NES and PGPE the
+worker takes the best point from the evaluated, clamped populations.
+CMA-ES holds dimension × dimension matrices and accepts at most 3,162
+variables; CR-FM-NES and PGPE scale further. `population × dimension` (with
+restarts `max_population × dimension`) is at most 10⁷.
+
+BiteOpt and DE jobs without `batch` resolve through the same definitions as
+legacy `fcmaes.job/0.1` jobs, so both give identical retries.
 
 `best_found` is the best point the optimizer evaluated, not a model mean or a
 recommended point. The worker evaluates it again (`evidence.checks`:
@@ -140,25 +204,53 @@ feasible member reports `claim: "none"`.
 
 ## MAP-Elites archives
 
-`fcmaes.map-elites/1` fills a regular two-dimensional grid of
-`archive.capacity` niches (1–10,000). The registered models are the linear
-projection benchmarks of CMA-ME (Fontaine et al. 2020):
-`benchmark.sphere-projection` and `benchmark.rastrigin-projection`, with an even
-dimension, bounds inside `[-5.12, 5.12]`, minimized fitness, and as descriptor
-the sums of the first and second halves of `x`.
+`fcmaes.map-elites/1` fills an archive of `archive.capacity` niches
+(1–10,000). The stock worker registers the linear projection benchmarks of
+CMA-ME (Fontaine et al. 2020): `benchmark.sphere-projection` and
+`benchmark.rastrigin-projection`, with an even dimension, bounds inside
+`[-5.12, 5.12]`, minimized fitness, and as descriptor the sums of the first and
+second halves of `x`.
 
-`optimizer.parameters` takes `chunk_size` (even, default 20), `variation`
-(`sbx`, the default, with `dis_c`/`dis_m`; or `iso_dd`, with
-`iso_sigma`/`line_sigma` in raw variable units). Each run spends exactly
-`generations × chunk_size` evaluations. CMA-ES emitter generations and CVT
-archives are not part of this profile: their work is unbounded or parallel.
+The archive is a regular grid (`archive.kind: grid`, the default for
+two-dimensional descriptors) or a CVT archive (`kind: cvt`, the default for
+any other descriptor dimension; Vassiliades et al. 2016): `capacity` niches
+from k-means over `samples_per_niche` (default 20) uniform samples per niche,
+with `capacity × samples_per_niche ≤ 10⁶` and `capacity² × samples_per_niche
+× descriptor dimension ≤ 10⁹`. Descriptors have 1–100 dimensions. The tessellation comes from
+`archive.seed` (default: the job seed), so every run of a job, and every job
+with the same archive settings, shares its niches.
+
+A run has two phases with exact budgets. First `generations` of the
+`chunk_size` (even, default 20) emitter: `variation: sbx`, the default, with
+`dis_c`/`dis_m`, or `iso_dd`, with `iso_sigma`/`line_sigma` in raw variable
+units. Then, with `cma_generations > 0`, `emitters` CMA-ES instances (default
+4; `emitters × dimension² ≤ 10⁷`) each evaluate `population` candidates
+(default 16, initial `sigma` 0.1 in the normalized box) per generation, ranked
+by archive improvement:
+
+- `emitter: cma_me` (default): CMA-ME's improvement ranking (Fontaine et al.
+  2020). Candidates that fill an empty niche come first, by fitness; then
+  candidates that beat their niche's elite, by `fitness - elite`; then the
+  rest.
+- `emitter: cma_mae`: CMA-MAE (Fontaine and Nikolaidis 2023) ranks by
+  `fitness - threshold` of the niche; a fitness below the threshold moves the
+  threshold towards it by `archive_learning_rate` (default 0.01).
+  `threshold_init`, the threshold of an empty niche, is required: a fitness
+  worth keeping, comparable to pyribs' `threshold_min`.
+
+An emitter restarts from a random elite when CMA-ES stops or a generation
+improves nothing. A run spends exactly `generations × chunk_size +
+cma_generations × emitters × population` evaluations; `generations` may be 0
+if `cma_generations` is positive. The emitter settings are rejected without
+`cma_generations` and absent from the resolved job then.
 
 A run's outcome has `claim: "elite_archive"`. `details.elites` lists every
 occupied niche with `x`, `fitness`, `descriptor` and `visits`; each elite was
 re-evaluated and maps to its niche. `x` and `objective` are the best elite.
 `details` also reports `coverage`, `qd_score` (the `fcmaes-core` definition),
-`mean_fitness` and the grid layout. Compare `qd_score` only between archives
-with the same fitness, descriptor bounds and capacity.
+`mean_fitness`, `archive_kind`, the grid layout (null for CVT) and, with
+emitters, `cma_generations` and `emitter_restarts`. Compare `qd_score` only
+between archives with the same fitness, descriptor bounds and niches.
 
 ## Evaluating given points
 
@@ -187,14 +279,38 @@ below that (about 100,000 two-dimensional points).
 ## Cancellation and deadlines
 
 Retries check cancellation between retries; an active retry may continue until
-its evaluation budget. MODE and MAP-Elites runs check it between generations:
+its evaluation budget. MODE and MAP-Elites runs check it between generations,
+in both MAP-Elites phases:
 an active run stops and returns its current front or archive, re-evaluated as
 usual, with `termination: "cancelled"`. The SDK uses the same signal at the wall
 deadline, so read the job state (`cancelled` or `timed_out`) for the reason.
 The runner's process deadline remains authoritative; forced termination
 preserves committed tasks and marks total work unknown.
 
-## Use existing jobs and extend the registries
+## Your own models
+
+The stock worker's models are benchmarks. Real problems run in an
+application worker: a small binary that registers its models in a
+`Registry` and runs the fcmaes adapter. `examples/custom_worker.rs` in
+`crates/fcmaes-job-worker` registers `app.exponential-fit`, which reads its
+data from the job's input `data` and takes a `loss` parameter;
+`exponential-fit.json` runs it:
+
+```json
+"worker": "curve-fit",
+"inputs": [{"name": "data", "file": "decay.csv", "sha256": "d864222f..."}],
+"payload": {"problem": {"id": "app.exponential-fit", "version": "1",
+    "config": {"dimension": 3},
+    "bounds": {"lower": [0.0, 0.0, -10.0], "upper": [10.0, 5.0, 10.0], "broadcast": false}},
+  "optimizer": {"kind": "cmaes", "parameters": {}}, ...}
+```
+
+The runner copies the input into the attempt and checks its SHA-256; the
+resolved job records `"parameters": {"loss": "squared"}`, the default the
+model used. [Application models](../../docs/job-api/models.md) explains the
+registry, the checks and how to build and register such a worker.
+
+## Legacy jobs
 
 ```sh
 cargo build --release --locked -p fcmaes-runner -p fcmaes-native-worker
@@ -205,16 +321,12 @@ cargo build --release --locked -p fcmaes-runner -p fcmaes-native-worker
   --spec docs/runner-jobs/sphere-bite.json
 ```
 
-The legacy manifest and `retries.jsonl` retain their original meaning. Both
-workers evaluate scalar objectives through one registry, so a new scalar
-objective needs three changes: its validation and discovery entry in
-`crates/optimization-job-api/src/legacy/spec.rs` (a shared file), its function
-in `objective_by_id` in `crates/fcmaes-native-worker/src/lib.rs`, and tests for
-bounds, budgets and deterministic seeds. Multi-objective and quality-diversity
-models live in `crates/fcmaes-job-worker/src/problems.rs`, which only this
-worker uses. Add a versioned profile if the mathematical meaning of a job
-changes. Jobs select registered models; they cannot deserialize a function or
-execute arbitrary source text.
+The legacy manifest and `retries.jsonl` retain their original meaning. The
+legacy worker and `fcmaes.retry/1` evaluate the three built-in scalar models
+with the same functions (`objective_by_id` in
+`crates/fcmaes-native-worker/src/lib.rs`), so BiteOpt and DE retries are
+identical in both. Add a versioned profile if the mathematical meaning of a
+job changes.
 
 See the [shared API guide](../../docs/job-api.md) for mixed-worker nodes,
 lifecycle inspection, cancellation and recovery. Run `python3

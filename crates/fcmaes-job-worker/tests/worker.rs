@@ -8,7 +8,8 @@ use fcmaes_core::{
 };
 use fcmaes_job_worker::{
     problems,
-    retry::{cmaes_retry, judge},
+    retry::{EsSettings, es_retry, judge},
+    threads::Threads,
 };
 use fcmaes_native_worker::{objective_by_id, objective_for, solve};
 use serde_json::{Value, json};
@@ -91,7 +92,7 @@ fn describe_reports_profile_and_workspace_engine_version() {
         ])
     );
     assert_eq!(d["evaluation"]["profile"], "fcmaes.evaluate/1");
-    assert_eq!(d["resources"]["inner_threads_max"], 1);
+    assert_eq!(d["resources"]["inner_threads_max"], 1024);
     let problems = d["problems"].as_array().unwrap();
     for (profile, id) in [
         ("fcmaes.retry/1", "gtop.cassini1"),
@@ -105,7 +106,15 @@ fn describe_reports_profile_and_workspace_engine_version() {
             "{profile} {id}"
         );
     }
-    for kind in ["biteopt", "de", "cmaes", "mode", "map_elites"] {
+    for kind in [
+        "biteopt",
+        "de",
+        "cmaes",
+        "crfmnes",
+        "pgpe",
+        "mode",
+        "map_elites",
+    ] {
         assert!(d["optimizers"][kind]["profile"].is_string(), "{kind}");
     }
     // fcmaes-core and this worker both inherit [workspace.package] version.
@@ -303,7 +312,7 @@ fn cmaes_retries_match_the_library_run_and_keep_soft_budgets() {
     assert!(
         validate(dir.path(), &sigma)
             .unwrap_err()
-            .contains("only to cmaes")
+            .contains("does not apply to biteopt")
     );
 
     let spec = cmaes_job(json!({"population": 12, "sigma": 0.25}));
@@ -314,7 +323,15 @@ fn cmaes_retries_match_the_library_run_and_keep_soft_budgets() {
     let mut total = 0;
     for r in run["results"].as_array().unwrap() {
         let seed = retry_run_seed(23, r["task_id"].as_u64().unwrap() as usize);
-        let (native, stop) = cmaes_retry(&bounds, seed, 12, 0.25, 3000, objective);
+        let run = es_retry(
+            &EsSettings::cmaes(12, 0.25),
+            &bounds,
+            seed,
+            3000,
+            &objective,
+            &Threads::new(1).unwrap(),
+        );
+        let (native, stop) = (run.result, run.stop);
         assert_eq!(r["outcome"]["objective"], json!(native.y));
         assert_eq!(r["outcome"]["x"], json!(native.x));
         assert_eq!(r["outcome"]["details"]["stop_code"], stop);
@@ -439,15 +456,15 @@ fn mode_fronts_match_core_mode_and_are_feasible_and_non_dominated() {
     for (spec, message) in [
         (
             mode_job("benchmark.zdt7", 5, json!([0.0]), json!([1.0]), json!({})),
-            "unknown multi-objective",
+            "unknown problem",
         ),
         (
             mode_job("benchmark.zdt1", 1, json!([0.0]), json!([1.0]), json!({})),
-            "invalid dimension",
+            "needs a dimension in 2..=10000",
         ),
         (
             mode_job("benchmark.dtlz2", 4, json!([0.0]), json!([2.0]), json!({})),
-            "canonical box",
+            "bounds must lie inside [0, 1] in every coordinate",
         ),
         (binh_korn_job(json!({"population": 3})), "population"),
         (
@@ -620,7 +637,7 @@ fn map_elites_archives_match_core_map_elites() {
         ),
         (
             qd_job("benchmark.ackley-projection", 4, 36, json!({})),
-            "unknown quality-diversity",
+            "unknown problem",
         ),
     ] {
         let err = validate(dir.path(), &spec).unwrap_err();
@@ -708,7 +725,7 @@ fn a_retry_answer_that_fails_its_recheck_is_refuted_not_reported() {
                 evaluations: 10,
             },
             &bounds,
-            sphere,
+            &sphere,
         )
         .unwrap();
         // Termination is filled in by the caller.
@@ -757,7 +774,7 @@ fn a_retry_answer_that_fails_its_recheck_is_refuted_not_reported() {
             evaluations: 10,
         },
         &bounds,
-        unusable,
+        &unusable,
     )
     .unwrap();
     assert_eq!(o.claim, "none");
@@ -781,7 +798,7 @@ fn a_retry_answer_that_fails_its_recheck_is_refuted_not_reported() {
                 evaluations: 1
             },
             &bounds,
-            sphere
+            &sphere
         )
         .is_err()
     );

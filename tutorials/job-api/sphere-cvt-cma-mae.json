@@ -1,0 +1,54 @@
+{
+  "schema_version": "optimization.job/0.1",
+  "request_key": "tutorial.fcmaes.sphere-cvt-cma-mae.v1",
+  "worker": "fcmaes",
+  "payload_schema": "fcmaes.map-elites/1",
+  "resources": {
+    "cpu_slots": 8,
+    "outer_workers": 2,
+    "inner_threads": 4
+  },
+  "limits": {
+    "wall_time_seconds": 60.0,
+    "grace_seconds": 1.0
+  },
+  "inputs": [],
+  "payload": {
+    "problem": {
+      "id": "benchmark.sphere-projection",
+      "version": "1",
+      "config": {
+        "dimension": 20
+      },
+      "bounds": {
+        "lower": [
+          -5.12
+        ],
+        "upper": [
+          5.12
+        ],
+        "broadcast": true
+      }
+    },
+    "archive": {
+      "capacity": 200,
+      "kind": "cvt",
+      "samples_per_niche": 20
+    },
+    "optimizer": {
+      "kind": "map_elites",
+      "parameters": {
+        "chunk_size": 20,
+        "cma_generations": 300,
+        "emitter": "cma_mae",
+        "emitters": 4,
+        "population": 16,
+        "threshold_init": 300.0,
+        "archive_learning_rate": 0.01
+      }
+    },
+    "seed": 42,
+    "runs": 4,
+    "generations": 100
+  }
+}

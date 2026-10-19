@@ -354,7 +354,7 @@ impl Fitness {
 
     /// Decode and clamp for evaluation. Already feasible real-space points
     /// are borrowed, so the common non-normalized path does not allocate.
-    fn decode_clamped<'a>(&self, x: &'a [f64]) -> Cow<'a, [f64]> {
+    pub(crate) fn decode_clamped<'a>(&self, x: &'a [f64]) -> Cow<'a, [f64]> {
         if self.normalize {
             if self.has_bounds() {
                 Cow::Owned(

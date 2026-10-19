@@ -1,15 +1,22 @@
 //! fcmaes adapters for the common job protocol (`optimization.job/0.1`).
 //!
-//! - `fcmaes.retry/1`: independent BiteOpt, DE or CMA-ES retries on
-//!   registered scalar objectives;
+//! - `fcmaes.retry/1`: independent BiteOpt, DE, CMA-ES (optionally with
+//!   IPOP or BIPOP restarts), CR-FM-NES or PGPE retries on registered scalar
+//!   models;
 //! - `fcmaes.mode/1`: independent MODE runs on registered multi-objective
 //!   models, each returning a re-evaluated non-dominated set;
 //! - `fcmaes.map-elites/1`: independent MAP-Elites runs on registered
-//!   quality-diversity models, each returning a re-evaluated elite archive;
+//!   quality-diversity models on a grid or CVT archive, optionally followed
+//!   by CMA-ME or CMA-MAE emitters, each returning a re-evaluated elite
+//!   archive;
 //! - `fcmaes.evaluate/1`: evaluates given points on any of these models
 //!   without optimizing.
 //!
-//! Every optimizing task is one seeded run with its own optimizer state.
+//! Models come from a [`Registry`]: the built-in benchmarks and whatever an
+//! application registers (`registry` module docs, `examples/custom_worker.rs`).
+//! Every optimizing task is one seeded run with its own optimizer state; a
+//! population-based run evaluates its populations on `inner_threads`
+//! threads of its own and gives the same result with any number of them.
 //! Every outcome carries evidence (result schema 0.2). The legacy
 //! `fcmaes-native-worker` and its `fcmaes.job/0.1` contract are unchanged.
 #![forbid(unsafe_code)]
@@ -17,10 +24,14 @@ pub mod evaluate;
 pub mod map_elites;
 pub mod mode;
 pub mod problems;
+pub mod registry;
 pub mod retry;
+pub mod threads;
+
+pub use registry::Registry;
 
 use optimization_job_api::{
-    JobSpec, Result, legacy,
+    JobSpec, Result,
     worker::{self, Prepared, Worker},
 };
 use serde_json::{Value, json};
@@ -36,6 +47,9 @@ pub const PROFILES: [&str; 4] = [
     map_elites::PROFILE,
     evaluate::PROFILE,
 ];
+
+/// Largest `inner_threads`: the envelope's `cpu_slots` limit.
+pub const MAX_INNER_THREADS: usize = 1024;
 
 /// Cooperative stop for generation-based runs. The SDK calls
 /// [`Prepared::cancel`] both for a cancel request and at the wall deadline,
@@ -57,40 +71,43 @@ impl Control {
     }
 }
 
-pub struct Adapter;
+/// The fcmaes worker: the four profiles on the models of a [`Registry`].
+/// An application worker registers its own models and runs
+/// `optimization_job_api::worker::run(Adapter::new(registry))`.
+pub struct Adapter {
+    registry: Registry,
+}
+impl Adapter {
+    pub fn new(registry: Registry) -> Self {
+        Self { registry }
+    }
+    pub fn registry(&self) -> &Registry {
+        &self.registry
+    }
+}
+/// The worker with the built-in benchmark models.
+impl Default for Adapter {
+    fn default() -> Self {
+        Self::new(Registry::benchmarks())
+    }
+}
 impl Worker for Adapter {
     fn describe(&self) -> Value {
-        let legacy = legacy::discovery();
-        let (multi_objective, quality_diversity) = problems::discovery();
-        let mut problems = Vec::new();
-        for (profile, list) in [
-            (retry::PROFILE, &legacy["problems"]),
-            (mode::PROFILE, &multi_objective),
-            (map_elites::PROFILE, &quality_diversity),
-        ] {
-            for entry in list.as_array().into_iter().flatten() {
-                let mut entry = entry.clone();
-                entry["profile"] = json!(profile);
-                problems.push(entry);
-            }
-        }
         let mut d = worker::description(
             "fcmaes",
             // The worker inherits the workspace version, which fcmaes-core shares.
             env!("CARGO_PKG_VERSION"),
             json!(PROFILES),
-            json!(problems),
-            1,
+            self.registry.discovery(),
+            MAX_INNER_THREADS,
         );
-        let mut optimizers = legacy["optimizers"].clone();
-        for kind in ["biteopt", "de"] {
-            optimizers[kind]["profile"] = json!(retry::PROFILE);
-        }
-        optimizers["cmaes"] = json!({"profile":retry::PROFILE,"limit":"soft",
-            "maximum_overshoot_per_retry":"population-1",
-            "defaults":{"population":retry::CMAES_POPULATION,"sigma":retry::CMAES_SIGMA},
-            "sigma":"initial step size in the normalized [-1,1] box, (0,2]",
-            "start":"uniform random point in the bounds from the retry seed"});
+        d["resources"]["inner_threads"] = json!(
+            "population evaluation threads per task for cmaes, crfmnes, pgpe, mode, map_elites, and biteopt and de with optimizer.parameters.batch (results do not depend on their number); 1 for serial biteopt and de and for fcmaes.evaluate/1"
+        );
+        d["inputs"] = json!(
+            "files a registered model reads, by name, checked against their SHA-256; a job may name only inputs its model reads"
+        );
+        let mut optimizers = retry::describe();
         optimizers["mode"] = mode::describe();
         optimizers["map_elites"] = map_elites::describe();
         d["optimizers"] = optimizers;
@@ -110,7 +127,7 @@ impl Worker for Adapter {
         });
         d
     }
-    fn prepare(&self, s: &mut JobSpec, _: &Path) -> Result<Box<dyn Prepared>> {
+    fn prepare(&self, s: &mut JobSpec, base: &Path) -> Result<Box<dyn Prepared>> {
         if !PROFILES.contains(&s.payload_schema.as_str()) {
             return Err(format!(
                 "unsupported payload schema; this worker accepts {}",
@@ -118,18 +135,12 @@ impl Worker for Adapter {
             )
             .into());
         }
-        if s.resources.inner_threads != 1 || !s.inputs.is_empty() {
-            return Err(format!(
-                "{} requires inner_threads=1 and no inputs",
-                s.payload_schema
-            )
-            .into());
-        }
+        let registry = &self.registry;
         match s.payload_schema.as_str() {
-            retry::PROFILE => retry::prepare(s),
-            mode::PROFILE => mode::prepare(s),
-            map_elites::PROFILE => map_elites::prepare(s),
-            _ => evaluate::prepare(s),
+            retry::PROFILE => retry::prepare(registry, s, base),
+            mode::PROFILE => mode::prepare(registry, s, base),
+            map_elites::PROFILE => map_elites::prepare(registry, s, base),
+            _ => evaluate::prepare(registry, s, base),
         }
     }
 }

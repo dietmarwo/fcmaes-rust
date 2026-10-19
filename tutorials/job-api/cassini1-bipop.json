@@ -1,0 +1,55 @@
+{
+  "schema_version": "optimization.job/0.1",
+  "request_key": "tutorial.fcmaes.cassini1-bipop.v1",
+  "worker": "fcmaes",
+  "payload_schema": "fcmaes.retry/1",
+  "resources": {
+    "cpu_slots": 8,
+    "outer_workers": 2,
+    "inner_threads": 4
+  },
+  "limits": {
+    "wall_time_seconds": 60.0,
+    "grace_seconds": 1.0
+  },
+  "inputs": [],
+  "payload": {
+    "problem": {
+      "id": "gtop.cassini1",
+      "version": "1",
+      "config": {
+        "dimension": 6
+      },
+      "bounds": {
+        "lower": [
+          -1000.0,
+          30.0,
+          100.0,
+          30.0,
+          400.0,
+          1000.0
+        ],
+        "upper": [
+          0.0,
+          400.0,
+          470.0,
+          400.0,
+          2000.0,
+          6000.0
+        ],
+        "broadcast": false
+      }
+    },
+    "optimizer": {
+      "kind": "cmaes",
+      "parameters": {
+        "population": 16,
+        "restarts": "bipop"
+      }
+    },
+    "seed": 42,
+    "retries": 8,
+    "evaluations_per_retry": 50000,
+    "evaluation_limit_mode": "soft"
+  }
+}
