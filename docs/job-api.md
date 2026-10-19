@@ -9,8 +9,9 @@ Python extension is needed.
 Start with the [runnable tutorial](../tutorials/job-api/README.md). The
 [implementation plan](job-api/PLAN.md) and [validation report](job-api/VALIDATION.md)
 record the implementation and its acceptance gates. The job envelope and the
-result manifest are published as JSON Schemas in
-[`job-api/schemas/`](job-api/schemas/).
+result manifest are published as JSON Schemas:
+[`optimization.job-0.1.schema.json`](job-api/schemas/optimization.job-0.1.schema.json)
+and [`optimization.result-0.2.schema.json`](job-api/schemas/optimization.result-0.2.schema.json).
 
 ## Architecture and compatibility
 

@@ -45,7 +45,8 @@ None of these claims is a global optimum or Pareto-optimality certificate.
 Cassini1 uses the native GTOP model with its canonical bounds; nothing invokes
 Python during optimization. If the `jsonschema` package is installed, the
 script also validates every job and result against the published
-[schemas](../../docs/job-api/schemas/).
+[job](../../docs/job-api/schemas/optimization.job-0.1.schema.json) and
+[result](../../docs/job-api/schemas/optimization.result-0.2.schema.json) schemas.
 
 ## Run one job manually
 
