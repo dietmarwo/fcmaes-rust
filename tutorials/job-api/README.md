@@ -121,8 +121,9 @@ entire batch after admission.
   (Auger and Hansen 2005) doubles the population after every stop. BIPOP
   (Hansen 2009) alternates doubled populations with small populations and
   smaller step sizes, choosing the regime that has used fewer evaluations.
-  Populations stop growing at `max_population` (default 512 × `population`),
-  which bounds the overshoot to `max_population-1`. `details.restarts` and
+  Populations stop growing at `max_population` (default 512 × `population`,
+  at most 10⁶ and 10⁷ / dimension), which bounds the overshoot to
+  `max_population-1`. `details.restarts` and
   `details.largest_population` report what happened.
 - **CR-FM-NES** (`kind: crfmnes`, Nomura and Ono 2022) is a natural evolution
   strategy with a restricted covariance whose cost is linear in the dimension,
@@ -136,9 +137,12 @@ entire batch after admission.
 Settings of another optimizer are rejected, never ignored: `sigma` for
 BiteOpt, `restarts` for CR-FM-NES, `center_learning_rate` for CMA-ES. CMA-ES,
 CR-FM-NES and PGPE use a soft limit (`evaluation_limit_mode: soft`) and may
-spend `population-1` extra evaluations. CR-FM-NES and PGPE rank penalized
-values internally; the worker reports the best point they evaluated, taken
-from the evaluated populations.
+spend `population-1` extra evaluations. CR-FM-NES adds a bound penalty to the
+values it ranks and keeps unclamped points, so for CR-FM-NES and PGPE the
+worker takes the best point from the evaluated, clamped populations.
+CMA-ES holds dimension × dimension matrices and accepts at most 3,162
+variables; CR-FM-NES and PGPE scale further. `population × dimension` (with
+restarts `max_population × dimension`) is at most 10⁷.
 
 BiteOpt and DE jobs resolve through the same definitions as legacy
 `fcmaes.job/0.1` jobs, so both give identical retries.
@@ -198,7 +202,8 @@ The archive is a regular grid (`archive.kind: grid`, the default for
 two-dimensional descriptors) or a CVT archive (`kind: cvt`, the default for
 any other descriptor dimension; Vassiliades et al. 2016): `capacity` niches
 from k-means over `samples_per_niche` (default 20) uniform samples per niche,
-with `capacity² × samples_per_niche ≤ 10⁹`. The tessellation comes from
+with `capacity × samples_per_niche ≤ 10⁶` and `capacity² × samples_per_niche
+× descriptor dimension ≤ 10⁹`. Descriptors have 1–100 dimensions. The tessellation comes from
 `archive.seed` (default: the job seed), so every run of a job, and every job
 with the same archive settings, shares its niches.
 
@@ -206,12 +211,14 @@ A run has two phases with exact budgets. First `generations` of the
 `chunk_size` (even, default 20) emitter: `variation: sbx`, the default, with
 `dis_c`/`dis_m`, or `iso_dd`, with `iso_sigma`/`line_sigma` in raw variable
 units. Then, with `cma_generations > 0`, `emitters` CMA-ES instances (default
-4) each evaluate `population` candidates (default 16, initial `sigma` 0.1 in
-the normalized box) per generation, ranked by archive improvement:
+4; `emitters × dimension² ≤ 10⁷`) each evaluate `population` candidates
+(default 16, initial `sigma` 0.1 in the normalized box) per generation, ranked
+by archive improvement:
 
-- `emitter: cma_me` (default): CMA-ME's improvement ranking, `fitness - elite`
-  for an occupied niche and `fitness - threshold_init` (default 0) for an
-  empty one.
+- `emitter: cma_me` (default): CMA-ME's improvement ranking (Fontaine et al.
+  2020). Candidates that fill an empty niche come first, by fitness; then
+  candidates that beat their niche's elite, by `fitness - elite`; then the
+  rest.
 - `emitter: cma_mae`: CMA-MAE (Fontaine and Nikolaidis 2023) ranks by
   `fitness - threshold` of the niche; a fitness below the threshold moves the
   threshold towards it by `archive_learning_rate` (default 0.01).

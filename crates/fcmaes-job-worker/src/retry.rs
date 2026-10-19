@@ -42,6 +42,10 @@ pub const PGPE_SIGMA: f64 = 0.1;
 pub const MAX_POPULATION_FACTOR: usize = 512;
 /// Largest population of any run.
 const POPULATION_LIMIT: usize = 1_000_000;
+/// Largest population (`max_population` with restarts) times dimension of a
+/// run, and largest dimension squared of a CMA-ES run, which holds
+/// dimension-by-dimension matrices.
+const MAX_CELLS: usize = 10_000_000;
 
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -154,23 +158,24 @@ pub fn describe() -> Value {
         "cmaes":{"profile":PROFILE,"limit":"soft",
             "maximum_overshoot_per_retry":"population-1; max_population-1 with restarts",
             "defaults":{"population":CMAES_POPULATION,"sigma":CMAES_SIGMA,"restarts":"none",
-                "max_population":format!("{MAX_POPULATION_FACTOR} * population (with restarts)")},
+                "max_population":format!("with restarts: {MAX_POPULATION_FACTOR} * population, at most 1e6 and 1e7 / dimension")},
             "sigma":"initial step size in the normalized [-1,1] box, (0,2]",
+            "limits":"dimension <= 3162 (dimension^2 <= 1e7); population * dimension <= 1e7 (max_population with restarts)",
             "restarts":"none | ipop (double the population after every stop) | bipop (alternate doubled populations with small populations and step sizes); runs restart until the retry's budget is spent, each from a new uniform random point",
             "start":"uniform random point in the bounds from the retry seed",
             "inner_threads":"evaluates each population on inner_threads threads"},
         "crfmnes":{"profile":PROFILE,"limit":"soft","maximum_overshoot_per_retry":"population-1",
             "defaults":{"population":CRFMNES_POPULATION,"sigma":CRFMNES_SIGMA},
-            "ranges":{"population":"even, 4..1000000","sigma":"(0,2]"},
+            "ranges":{"population":"even, 4..1000000; population * dimension <= 1e7","sigma":"(0,2]"},
             "start":"uniform random point in the bounds from the retry seed",
             "inner_threads":"evaluates each population on inner_threads threads"},
         "pgpe":{"profile":PROFILE,"limit":"soft","maximum_overshoot_per_retry":"population-1",
             "defaults":{"population":PGPE_POPULATION,"sigma":PGPE_SIGMA,
                 "center_learning_rate":pgpe.center_learning_rate,"stdev_learning_rate":pgpe.stdev_learning_rate},
-            "ranges":{"population":"even, 4..1000000","sigma":"(0,2]","center_learning_rate":"(0,1]","stdev_learning_rate":"(0,1]"},
+            "ranges":{"population":"even, 4..1000000; population * dimension <= 1e7","sigma":"(0,2]","center_learning_rate":"(0,1]","stdev_learning_rate":"(0,1]"},
             "start":"uniform random point in the bounds from the retry seed",
             "inner_threads":"evaluates each population on inner_threads threads"},
-        "best":"every optimizer reports the best point it evaluated; CR-FM-NES and PGPE results are tracked from the evaluated populations"
+        "best":"every optimizer reports the best point it evaluated; for CR-FM-NES and PGPE it is tracked from the evaluated populations"
     })
 }
 
@@ -372,14 +377,30 @@ fn es_settings(p: &mut Payload) -> Result<EsSettings> {
         }
         population
     } else {
-        let max = q
-            .max_population
-            .unwrap_or((population * MAX_POPULATION_FACTOR).min(POPULATION_LIMIT));
+        let max = q.max_population.unwrap_or(
+            (population * MAX_POPULATION_FACTOR)
+                .min(POPULATION_LIMIT)
+                .min((MAX_CELLS / p.problem.config.dimension).max(population)),
+        );
         if !(population..=POPULATION_LIMIT).contains(&max) {
             return Err("max_population must lie in population..1000000".into());
         }
         max
     };
+    let n = p.problem.config.dimension;
+    if max_population.saturating_mul(n) > MAX_CELLS {
+        return Err(format!(
+            "{} needs population * dimension <= 1e7 (max_population with restarts)",
+            p.optimizer.kind
+        )
+        .into());
+    }
+    if kind == EsKind::Cmaes && n.saturating_mul(n) > MAX_CELLS {
+        return Err(
+            "cmaes holds dimension x dimension matrices and needs dimension <= 3162; crfmnes and pgpe scale to higher dimensions"
+                .into(),
+        );
+    }
     let d = PgpeParams::default();
     let settings = EsSettings {
         kind,
@@ -480,9 +501,10 @@ pub fn es_retry(
         } else if s.restarts == Restarts::Ipop {
             (doubled(run as u32), s.sigma, remaining, true)
         } else if small_used < large_used {
-            // BIPOP small regime: population between the default and half
-            // the next large one, a smaller step size, and at most half the
-            // evaluations the large regime used so far.
+            // BIPOP small regime: population between the default and the
+            // last large one, a smaller step size, and a budget of half the
+            // evaluations the large regime used so far, but one generation
+            // at least.
             let u = start.uniform01();
             let factor = 2f64.powf(f64::from(large_runs) * u * u);
             let population = ((s.population as f64 * factor) as usize).min(s.max_population);
@@ -569,8 +591,9 @@ fn es_run(
             r.stop,
         );
     }
-    // CR-FM-NES and PGPE rank penalized values and keep unclamped points, so
-    // the best point is taken from the evaluated populations instead.
+    // CR-FM-NES adds a bound penalty to the values it ranks and keeps
+    // unclamped points; PGPE's points can lie an ulp outside the box. The
+    // best point is therefore taken from the evaluated (clamped) populations.
     let mut best_x = guess.to_vec();
     let mut best_y = f64::INFINITY;
     let mut evaluate = |rows: &[Vec<f64>]| -> Vec<f64> {
@@ -712,6 +735,15 @@ impl Prepared for Run {
     }
     fn cancel(&self) {} // fcmaes core has no in-retry stop token.
     fn solve(&self, task: usize, _: f64) -> Result<TaskResult> {
+        // The whole task runs on its own threads, so no Rayon work of the
+        // task (or of the model) reaches the global pool.
+        let threads = Threads::new(self.threads)?;
+        threads.install(|| self.task(task, &threads))
+    }
+}
+
+impl Run {
+    fn task(&self, task: usize, threads: &Threads) -> Result<TaskResult> {
         let seed = retry_run_seed(self.payload.seed, task);
         let objective = &*self.objective;
         let mut details = json!({"run_seed":seed,"evaluation_limit_mode":self.payload.evaluation_limit_mode,
@@ -719,14 +751,13 @@ impl Prepared for Run {
         let r = match &self.engine {
             Engine::Legacy(spec) => solve(spec, &self.bounds, seed, &|x: &[f64]| objective(x)),
             Engine::Es(settings) => {
-                let threads = Threads::new(self.threads)?;
                 let run = es_retry(
                     settings,
                     &self.bounds,
                     seed,
                     self.payload.evaluations_per_retry,
                     objective,
-                    &threads,
+                    threads,
                 );
                 details["stop_code"] = json!(run.stop);
                 if settings.restarts != Restarts::None {

@@ -1,7 +1,10 @@
 //! `fcmaes.evaluate/1`: evaluates given points on a registered model without
 //! optimizing, so a caller (an agent, a person or another solver) can have
 //! its own candidates checked. One task per point.
-use crate::registry::{Model, Problem, Registry};
+use crate::{
+    registry::{Model, Problem, Registry},
+    threads::Threads,
+};
 use optimization_job_api::{
     JobSpec, Result,
     result::{Evidence, Outcome},
@@ -80,6 +83,15 @@ impl Prepared for Run {
     }
     fn cancel(&self) {} // One evaluation per task; tasks stop between points.
     fn solve(&self, task: usize, _: f64) -> Result<TaskResult> {
+        // The whole task runs on its own threads, so no Rayon work of the
+        // task (or of the model) reaches the global pool.
+        let threads = Threads::new(1)?;
+        threads.install(|| self.task(task, &threads))
+    }
+}
+
+impl Run {
+    fn task(&self, task: usize, _: &Threads) -> Result<TaskResult> {
         let x = self.payload.points[task].clone();
         let id = &self.payload.problem.id;
         // A value at or above 1e99 is the fcmaes penalty: no usable value.

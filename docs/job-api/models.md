@@ -62,14 +62,17 @@ worker that fits a curve to a data file; the
 `fcmaes.evaluate/1` evaluates given points on a model of any kind. A
 multi-objective model may define the hypervolume reference point with
 `.reference_point(...)`; otherwise jobs must give `reference_point`. A model
-with more than two descriptor dimensions gets a CVT archive. `.domain(lower,
+whose descriptor does not have two dimensions (1–100 are allowed) gets a CVT
+archive. `.domain(lower,
 upper)` restricts job bounds to a box, for a model that is undefined outside
 it (Cassini1 is one).
 
 `about` is a JSON object added to the model's `describe` entry, next to the
 `id`, `version`, `kind` and `profile` the registry fills in. Describe there
 what an agent needs to write a job: dimensions, parameters, inputs, the
-meaning of the variables.
+meaning of the variables. Keep it short: `workers add` reads at most 64 KiB
+of `describe` output, about 200 models with descriptions of this tutorial's
+size.
 
 ## What a factory receives
 
@@ -130,7 +133,9 @@ the wrong length, fails the task.
 - **Thread-safe and stateless.** Closures are `Send + Sync`. With
   `inner_threads > 1` they run concurrently on a task's population; the
   results do not depend on the number of threads only if evaluations do not
-  depend on each other.
+  depend on each other. A model may use Rayon itself: every task runs inside
+  its own pool of `inner_threads` threads, so the model's parallel work stays
+  within the job's slots.
 - **Quick factories.** A factory runs at validation, which has a 30-second
   limit, and again at execution. Load and parse data there. Precomputation
   that may take longer belongs in a value the closure initializes once

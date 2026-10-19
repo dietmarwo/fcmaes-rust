@@ -170,6 +170,55 @@ x86_64:
 MSRV 1.88 is checked by CI; the toolchain could not be installed on the
 review host.
 
+## Application models, parallel populations and more algorithms (19 October 2026)
+
+The fcmaes worker gains a model registry for application workers,
+`inner_threads > 1` for its population-based optimizers, CR-FM-NES and PGPE
+retries, IPOP/BIPOP restarts, CVT archives and CMA-ME/CMA-MAE emitter phases
+([plan](PLAN.md#7-application-models-parallel-populations-and-more-algorithms-october-2026),
+[application models](models.md)). Checked with Rust 1.97 on Linux x86_64:
+
+| Check | Observed result |
+| --- | --- |
+| `cargo fmt --check`, Clippy `-D warnings`, mdBook link check | Passed |
+| Workspace tests (`cargo test --workspace`) | 313 passed, including 24 fcmaes worker tests: 9 profile, 6 algorithm and 5 registry integration tests, 3 unit tests and a doctest |
+| Legacy runner suite | 14 passed |
+| Shared harness | 14 passed, 2 skipped without LP/SQP workers; 14 passed, none skipped, on a mixed node under each repository's runner build |
+| Shared review and schema tests (`JOB_API_REQUIRE_SCHEMA=1`) | 15 passed |
+| Tutorial | 12 examples completed, including an application worker reading a hashed data file; results and jobs validated against the schemas |
+| The 8 tutorial jobs of `main` on `main`'s and this worker | Identical resolved payloads; identical results apart from the new `details.archive_kind` of MAP-Elites |
+| `sha256sum -c docs/job-api/SHARED-SOURCES.sha256` | 23 files OK |
+
+The tests run every population-based profile with one and with several
+inner threads and require identical results; compare CR-FM-NES, PGPE and
+CMA-ES restart retries, and grid and CVT archives, with direct library runs
+from the same seeds; check that emitter phases spend exact budgets and only
+add or improve elites; and exercise the registry's rejections (unknown or
+mistyped parameters, missing, unused or altered inputs, versions, kinds,
+domains, a model returning the wrong number of values).
+
+An independent review before the merge found four defects, all fixed and
+tested: building a CVT archive with `inner_threads=1` ran on Rayon's global
+pool (every task now runs inside its own pool, also for one thread); a CVT
+archive and the emitter phase had no memory bound, so a job that passed
+validation could abort at execution (sample, descriptor and
+`emitters × dimension²` limits, and `dimension ≤ 3162` and `population ×
+dimension ≤ 10⁷` for the evolution strategies); and the default CMA-ME
+emitter did not rank candidates that fill an empty niche first, as Fontaine
+et al. do. With the paper's ranking, CMA-ME on the 20-dimensional sphere
+projection (400 niches, 4 × 16 × 400 emitter evaluations) reaches 82–98%
+coverage instead of 38–48%.
+
+At equal budgets of 20,000 evaluations per run (four runs, 20 dimensions,
+400 grid niches), coverage was:
+
+| Emitter | Sphere projection | Rastrigin projection |
+| --- | --- | --- |
+| SBX MAP-Elites | 36% | 45% |
+| Iso+LineDD MAP-Elites | 50% | 57% |
+| 100 SBX generations, then CMA-ME | 66% | 58% |
+| 100 SBX generations, then CMA-MAE (`threshold_init` 300 or 600) | 66% | 78% |
+
 ## Reproduce with sibling workers
 
 To run the mixed acceptance, build each repository's worker and pass the

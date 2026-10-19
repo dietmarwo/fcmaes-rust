@@ -414,8 +414,9 @@ units); the settings of the other variation are rejected. Its archive has
 (`archive.kind: grid`, the default there) or a CVT archive (`kind: cvt`, the
 default for other descriptor dimensions, with `samples_per_niche` and a
 `seed` shared by all runs). With `cma_generations > 0`, a second phase runs
-`emitters` CMA-ES emitters of `population` each: `emitter: cma_me` (default)
-or `cma_mae` with `archive_learning_rate` and a required `threshold_init`.
+`emitters` CMA-ES emitters of `population` each: `emitter: cma_me` (default,
+CMA-ME's improvement ranking with new niches first) or `cma_mae` with
+`archive_learning_rate` and a required `threshold_init`.
 Bounds of these models must lie inside their canonical boxes.
 
 A request key is an idempotency key, not a label for unlimited reruns. The same
@@ -481,7 +482,8 @@ retry starts at a uniform random point drawn from its seed. With
 `restarts: ipop` or `bipop`, CMA-ES restarts from new random points with
 doubled (IPOP) or alternating large and small (BIPOP) populations until the
 budget is spent; the overshoot is then at most `max_population-1` (default
-`max_population`: 512 × `population`). CR-FM-NES (`kind: crfmnes`, for high
+`max_population`: 512 × `population`, at most 10⁶ and 10⁷ / dimension).
+CMA-ES accepts at most 3,162 variables; CR-FM-NES and PGPE scale further. CR-FM-NES (`kind: crfmnes`, for high
 dimensions) and PGPE (`kind: pgpe`) also need `soft` and an even
 `population` (default 32), with `sigma` defaults 0.3 and 0.1; PGPE also takes
 `center_learning_rate` and `stdev_learning_rate`. BiteOpt and DE payloads are

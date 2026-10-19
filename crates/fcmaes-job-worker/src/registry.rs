@@ -2,7 +2,7 @@
 //!
 //! A job names a registered model; it never carries code. An application
 //! registers its own models as Rust closures and runs the worker with its
-//! registry (`examples/custom_worker.rs`, `docs/job-api-models.md`):
+//! registry (`examples/custom_worker.rs`, `docs/job-api/models.md`):
 //!
 //! ```
 //! use fcmaes_job_worker::registry::{Registry, Scalar};

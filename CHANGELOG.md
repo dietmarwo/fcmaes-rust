@@ -97,6 +97,11 @@ phase, with breaking changes called out explicitly.
 - `fcmaes-core`: the CVT construction of `Archive` no longer depends on the
   number of Rayon threads (Lloyd steps sum fixed chunks in order), and
   `Archive` implements `Clone` and `Debug`.
+- The fcmaes job worker bounds the memory of population-based runs at
+  validation: `fcmaes.retry/1` CMA-ES jobs accept at most 3,162 variables
+  (CR-FM-NES and PGPE scale further), and `population × dimension` is at most
+  10⁷ for CMA-ES, CR-FM-NES and PGPE. Every task runs inside its own thread
+  pool, so no Rayon work reaches the global pool.
 
 ## [0.1.5] - 2026-08-13
 

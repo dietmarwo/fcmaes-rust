@@ -273,9 +273,17 @@ impl Prepared for Run {
         self.control.cancel();
     }
     fn solve(&self, task: usize, _: f64) -> Result<TaskResult> {
+        // The whole task runs on its own threads, so no Rayon work of the
+        // task (or of the model) reaches the global pool.
+        let threads = Threads::new(self.threads)?;
+        threads.install(|| self.task(task, &threads))
+    }
+}
+
+impl Run {
+    fn task(&self, task: usize, threads: &Threads) -> Result<TaskResult> {
         let seed = retry_run_seed(self.payload.seed, task);
         let problem = &self.payload.problem;
-        let threads = Threads::new(self.threads)?;
         let run = run_mode(
             problem,
             &self.model,
@@ -283,7 +291,7 @@ impl Prepared for Run {
             seed,
             self.payload.generations,
             || self.control.stop(),
-            &threads,
+            threads,
         )?;
         let population = self.params.popsize as u64;
         let (nobj, ncon) = (self.model.objectives, self.model.constraints);

@@ -47,8 +47,16 @@ pub const ARCHIVE_LEARNING_RATE: f64 = 0.01;
 /// Largest archive capacity, candidate batch or emitter batch times
 /// dimension one run may hold.
 const MAX_CELLS: usize = 10_000_000;
-/// Largest `capacity^2 * samples_per_niche`, the cost of one k-means step.
+/// Largest `capacity^2 * samples_per_niche * descriptor dimension`, the
+/// cost of one k-means step.
 const MAX_CVT_WORK: usize = 1_000_000_000;
+/// Most uniform samples of a CVT tessellation.
+const MAX_CVT_SAMPLES: usize = 1_000_000;
+/// Largest descriptor dimension.
+const MAX_DESCRIPTORS: usize = 100;
+/// Largest `emitters * dimension^2`: each CMA-ES emitter holds
+/// dimension-by-dimension matrices.
+const MAX_EMITTER_MATRIX: usize = 10_000_000;
 
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -115,8 +123,7 @@ pub struct Parameters {
     /// `cma_mae`: the threshold learning rate alpha.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub archive_learning_rate: Option<f64>,
-    /// Threshold of an empty niche: required for `cma_mae`; `cma_me` ranks
-    /// a candidate for an empty niche by `fitness - threshold_init`.
+    /// `cma_mae`: the threshold of an empty niche, required.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub threshold_init: Option<f64>,
 }
@@ -124,10 +131,11 @@ pub struct Parameters {
 /// How a CMA-ES emitter ranks candidates; lower is better.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Ranking {
-    /// CMA-ME improvement ranking: `fitness - elite` for an occupied niche,
-    /// `fitness - threshold_init` for an empty one; a candidate improves
-    /// the archive if its niche was empty or it beats the elite.
-    Elite { threshold_init: f64 },
+    /// CMA-ME's improvement ranking (Fontaine et al. 2020): candidates that
+    /// fill an empty niche first, by fitness; then candidates that beat their
+    /// niche's elite, by `fitness - elite`; then the rest, by `fitness -
+    /// elite`. The first two improve the archive.
+    Improvement,
     /// CMA-MAE: `fitness - threshold` of the niche; a candidate improves
     /// the archive if it lies below the threshold, which then moves
     /// towards its fitness by `learning_rate`.
@@ -151,16 +159,17 @@ pub fn describe() -> Value {
     json!({"profile":PROFILE,
         "limit":"exact: generations * chunk_size + cma_generations * emitters * population per run",
         "archive":{"capacity":"1..10000 niches","kind":"grid (two-dimensional descriptors, the default for them) or cvt (any descriptor dimension, the default otherwise)",
-            "samples_per_niche":format!("cvt: uniform samples per niche of the k-means tessellation, default {SAMPLES_PER_NICHE}; capacity^2 * samples_per_niche <= 1e9"),
+            "samples_per_niche":format!("cvt: uniform samples per niche of the k-means tessellation, default {SAMPLES_PER_NICHE}; capacity * samples_per_niche <= 1e6 and capacity^2 * samples_per_niche * descriptor dimension <= 1e9"),
+            "descriptors":"1..100 dimensions",
             "seed":"cvt: seed of the tessellation, default the job seed; every run of a job shares its niches"},
         "defaults":{"chunk_size":CHUNK_SIZE,"variation":"sbx","dis_c":d.dis_c,"dis_m":d.dis_m,
             "iso_sigma":d.iso_sigma,"line_sigma":d.line_sigma,"cma_generations":0,
             "emitter":"cma_me","emitters":EMITTERS,"population":EMITTER_POPULATION,"sigma":EMITTER_SIGMA,
-            "archive_learning_rate":ARCHIVE_LEARNING_RATE,"threshold_init":"cma_me: 0; cma_mae: required"},
+            "archive_learning_rate":ARCHIVE_LEARNING_RATE,"threshold_init":"cma_mae: required"},
         "ranges":{"chunk_size":"even, 2..10000","dis_c":"> 0","dis_m":"> 0",
-            "iso_sigma":">= 0, raw units","line_sigma":">= 0","emitters":"1..1000","population":"4..10000",
+            "iso_sigma":">= 0, raw units","line_sigma":">= 0","emitters":"1..1000; emitters * dimension^2 <= 1e7","population":"4..10000",
             "sigma":"(0,2], normalized box units","archive_learning_rate":"[0,1]","threshold_init":"finite"},
-        "emitter":{"cma_me":"CMA-ME improvement ranking (Fontaine et al. 2020): fitness - elite, or fitness - threshold_init for an empty niche",
+        "emitter":{"cma_me":"CMA-ME improvement ranking (Fontaine et al. 2020): candidates filling an empty niche first (by fitness), then those beating their elite (by fitness - elite), then the rest",
             "cma_mae":"CMA-MAE (Fontaine and Nikolaidis 2023): fitness - niche threshold; a lower fitness moves the threshold by archive_learning_rate",
             "restart":"from a random elite when CMA-ES stops or a generation improves nothing"},
         "generations":"SBX or Iso+LineDD generations first, then cma_generations; one of them positive",
@@ -194,7 +203,15 @@ pub fn prepare(registry: &Registry, s: &mut JobSpec, base: &Path) -> Result<Box<
     if !(1..=10_000).contains(&capacity) || capacity.saturating_mul(n) > MAX_CELLS {
         return Err("archive capacity must be 1..10000 with capacity * dimension <= 1e7".into());
     }
-    p.archive = archive_config(&p.archive, model.descriptor_lower.len(), p.seed)?;
+    let descriptors = model.descriptor_lower.len();
+    if descriptors > MAX_DESCRIPTORS {
+        return Err(format!(
+            "{} has {descriptors} descriptor dimensions; at most 100",
+            problem.id
+        )
+        .into());
+    }
+    p.archive = archive_config(&p.archive, descriptors, p.seed)?;
     let d = MapElitesParams::default();
     let q = p.optimizer.parameters.clone();
     let chunk_size = q.chunk_size.unwrap_or(CHUNK_SIZE);
@@ -287,10 +304,7 @@ pub fn prepare(registry: &Registry, s: &mut JobSpec, base: &Path) -> Result<Box<
         resolved.population = Some(c.population);
         resolved.sigma = Some(c.sigma);
         match c.ranking {
-            Ranking::Elite { threshold_init } => {
-                resolved.emitter = Some("cma_me".into());
-                resolved.threshold_init = Some(threshold_init);
-            }
+            Ranking::Improvement => resolved.emitter = Some("cma_me".into()),
             Ranking::Threshold {
                 threshold_init,
                 learning_rate,
@@ -343,12 +357,16 @@ fn archive_config(a: &ArchiveConfig, descriptors: usize, seed: u64) -> Result<Ar
     let samples = a.samples_per_niche.unwrap_or(SAMPLES_PER_NICHE);
     if samples == 0
         || a.capacity
+            .checked_mul(samples)
+            .is_none_or(|n| n > MAX_CVT_SAMPLES)
+        || a.capacity
             .checked_mul(a.capacity)
             .and_then(|c| c.checked_mul(samples))
+            .and_then(|c| c.checked_mul(descriptors))
             .is_none_or(|w| w > MAX_CVT_WORK)
     {
         return Err(
-            "cvt archives need samples_per_niche >= 1 and capacity^2 * samples_per_niche <= 1e9"
+            "cvt archives need samples_per_niche >= 1, capacity * samples_per_niche <= 1e6 and capacity^2 * samples_per_niche * descriptor dimension <= 1e9"
                 .into(),
         );
     }
@@ -383,9 +401,10 @@ fn cma_phase(q: &Parameters, n: usize) -> Result<Option<CmaPhase>> {
     if !(1..=1000).contains(&emitters)
         || !(4..=10_000).contains(&population)
         || (emitters * population).saturating_mul(n) > MAX_CELLS
+        || emitters.saturating_mul(n).saturating_mul(n) > MAX_EMITTER_MATRIX
     {
         return Err(
-            "emitters must be 1..1000 and population 4..10000 with emitters * population * dimension <= 1e7"
+            "emitters must be 1..1000 and population 4..10000 with emitters * population * dimension <= 1e7 and emitters * dimension^2 <= 1e7"
                 .into(),
         );
     }
@@ -393,21 +412,14 @@ fn cma_phase(q: &Parameters, n: usize) -> Result<Option<CmaPhase>> {
     if !sigma.is_finite() || sigma <= 0.0 || sigma > 2.0 {
         return Err("sigma must lie in (0, 2] (normalized box units)".into());
     }
-    let finite = |v: f64| -> Result<f64> {
-        if v.is_finite() {
-            Ok(v)
-        } else {
-            Err("threshold_init must be finite".into())
-        }
-    };
     let ranking = match q.emitter.as_deref().unwrap_or("cma_me") {
         "cma_me" => {
-            if q.archive_learning_rate.is_some() {
-                return Err("archive_learning_rate applies only to emitter cma_mae".into());
+            if q.archive_learning_rate.is_some() || q.threshold_init.is_some() {
+                return Err(
+                    "archive_learning_rate and threshold_init apply only to emitter cma_mae".into(),
+                );
             }
-            Ranking::Elite {
-                threshold_init: finite(q.threshold_init.unwrap_or(0.0))?,
-            }
+            Ranking::Improvement
         }
         "cma_mae" => {
             let threshold_init = q.threshold_init.ok_or(
@@ -417,8 +429,11 @@ fn cma_phase(q: &Parameters, n: usize) -> Result<Option<CmaPhase>> {
             if !(0.0..=1.0).contains(&learning_rate) {
                 return Err("archive_learning_rate must lie in [0, 1]".into());
             }
+            if !threshold_init.is_finite() {
+                return Err("threshold_init must be finite".into());
+            }
             Ranking::Threshold {
-                threshold_init: finite(threshold_init)?,
+                threshold_init,
                 learning_rate,
             }
         }
@@ -553,6 +568,56 @@ fn emitter(archive: &Archive, problem: &Problem, c: &CmaPhase, sigma: f64, rng: 
     )
 }
 
+/// Ranking groups of an emitter's candidates, best first.
+const NEW_NICHE: u8 = 0;
+const IMPROVED: u8 = 1;
+const UNCHANGED: u8 = 2;
+/// A non-finite fitness or descriptor: ranked last, never stored.
+const INVALID: u8 = 3;
+
+/// The values CMA-ES ranks an emitter's candidates by. CMA-MAE ranks by
+/// `fitness - threshold` alone. CMA-ME ranks by group, then by value within
+/// the group: the groups are shifted apart by a multiple of the largest
+/// magnitude in the batch, so the order is exact while CMA-ES's step-size
+/// and stop rules still see values of the problem's scale.
+fn ranking_values(ranked: &[(u8, f64)], ranking: Ranking) -> Vec<f64> {
+    if let Ranking::Threshold { .. } = ranking {
+        return ranked
+            .iter()
+            .map(|&(g, v)| if g == INVALID { f64::MAX } else { v })
+            .collect();
+    }
+    let largest = ranked
+        .iter()
+        .filter(|(g, _)| *g != INVALID)
+        .fold(0.0_f64, |m, (_, v)| m.max(v.abs()));
+    // With 4L + 1, every group lies at least 2L + 1 below the next one.
+    let shift = 4.0 * largest + 1.0;
+    if !(2.0 * shift).is_finite() {
+        // Values near f64::MAX: rank positions keep the order.
+        let mut order: Vec<usize> = (0..ranked.len()).collect();
+        order.sort_by(|&a, &b| {
+            let (ga, va) = ranked[a];
+            let (gb, vb) = ranked[b];
+            ga.cmp(&gb).then(va.total_cmp(&vb))
+        });
+        let mut values = vec![0.0; ranked.len()];
+        for (rank, i) in order.into_iter().enumerate() {
+            values[i] = rank as f64;
+        }
+        return values;
+    }
+    ranked
+        .iter()
+        .map(|&(g, v)| match g {
+            NEW_NICHE => v - 2.0 * shift,
+            IMPROVED => v - shift,
+            UNCHANGED => v,
+            _ => f64::MAX,
+        })
+        .collect()
+}
+
 /// The CMA-ES emitter phase: every generation asks each emitter for a
 /// population, evaluates all of them together, then updates the archive
 /// emitter by emitter in candidate order and tells each emitter its
@@ -570,7 +635,7 @@ fn cma_emitters(
     let archive = &mut run.archive;
     let mut thresholds = match c.ranking {
         Ranking::Threshold { threshold_init, .. } => vec![threshold_init; archive.capacity()],
-        Ranking::Elite { .. } => Vec::new(),
+        Ranking::Improvement => Vec::new(),
     };
     let mut emitters: Vec<Cmaes> = (0..c.emitters)
         .map(|_| emitter(archive, problem, c, c.sigma, rng))
@@ -596,38 +661,35 @@ fn cma_emitters(
         let mut restart = vec![false; c.emitters];
         for (k, e) in emitters.iter_mut().enumerate() {
             let range = k * c.population..(k + 1) * c.population;
-            let mut ranking = Vec::with_capacity(c.population);
-            let mut improved = false;
+            // (group, value): ranked by group, then by value.
+            let mut ranked = Vec::with_capacity(c.population);
             for (x, (fitness, descriptor)) in xs[range.clone()].iter().zip(&values[range]) {
                 if !fitness.is_finite() || descriptor.iter().any(|v| !v.is_finite()) {
-                    ranking.push(f64::MAX);
+                    ranked.push((INVALID, 0.0));
                     continue;
                 }
                 let niche = archive.index_of_niche(descriptor);
                 let elite = archive.ys()[niche];
-                let value = match c.ranking {
-                    Ranking::Elite { threshold_init } => {
-                        improved |= elite.is_infinite() || *fitness < elite;
-                        if elite.is_finite() {
-                            fitness - elite
-                        } else {
-                            fitness - threshold_init
-                        }
-                    }
+                ranked.push(match c.ranking {
+                    Ranking::Improvement if elite.is_infinite() => (NEW_NICHE, *fitness),
+                    Ranking::Improvement if *fitness < elite => (IMPROVED, fitness - elite),
+                    Ranking::Improvement => (UNCHANGED, fitness - elite),
                     Ranking::Threshold { learning_rate, .. } => {
                         let threshold = thresholds[niche];
-                        if *fitness < threshold {
-                            improved = true;
+                        let group = if *fitness < threshold {
                             thresholds[niche] =
                                 (1.0 - learning_rate) * threshold + learning_rate * fitness;
-                        }
-                        fitness - threshold
+                            IMPROVED
+                        } else {
+                            UNCHANGED
+                        };
+                        (group, fitness - threshold)
                     }
-                };
+                });
                 archive.set(niche, *fitness, descriptor, x);
-                ranking.push(value);
             }
-            restart[k] = e.tell(&ranking) != 0 || !improved;
+            let improved = ranked.iter().any(|(g, _)| *g < UNCHANGED);
+            restart[k] = e.tell(&ranking_values(&ranked, c.ranking)) != 0 || !improved;
         }
         archive.argsort();
         for (k, again) in restart.into_iter().enumerate() {
@@ -661,18 +723,26 @@ impl Prepared for Run {
         self.control.cancel();
     }
     fn solve(&self, task: usize, _: f64) -> Result<TaskResult> {
+        // The whole task runs on its own threads, so no Rayon work of the
+        // task (or of the model) reaches the global pool.
+        let threads = Threads::new(self.threads)?;
+        threads.install(|| self.task(task, &threads))
+    }
+}
+
+impl Run {
+    fn task(&self, task: usize, threads: &Threads) -> Result<TaskResult> {
         let seed = retry_run_seed(self.payload.seed, task);
         let problem = &self.payload.problem;
-        let threads = Threads::new(self.threads)?;
         let run = run_map_elites(
             problem,
             &self.model,
-            self.template(&threads)?,
+            self.template(threads)?,
             &self.params,
             self.cma.as_ref(),
             seed,
             || self.control.stop(),
-            &threads,
+            threads,
         )?;
         let a = &run.archive;
         let occupied_niches: Vec<usize> = (0..a.capacity())
@@ -745,5 +815,46 @@ impl Prepared for Run {
             ]
             .into(),
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn order(values: &[f64]) -> Vec<usize> {
+        let mut order: Vec<usize> = (0..values.len()).collect();
+        order.sort_by(|&a, &b| values[a].total_cmp(&values[b]));
+        order
+    }
+
+    #[test]
+    fn cma_me_ranks_new_niches_first_then_improvements_then_the_rest() {
+        let ranked = [
+            (UNCHANGED, 1.0),  // fitness 6 against elite 5
+            (NEW_NICHE, 10.0), // fills an empty niche
+            (IMPROVED, -0.5),
+            (INVALID, 0.0),
+            (NEW_NICHE, 3.0),
+            (IMPROVED, -2.0),
+            (UNCHANGED, 0.0),
+        ];
+        let values = ranking_values(&ranked, Ranking::Improvement);
+        assert_eq!(order(&values), [4, 1, 5, 2, 6, 0, 3]);
+        // Extreme magnitudes keep the order through rank positions.
+        let huge = [(UNCHANGED, -1e308), (NEW_NICHE, 1e308), (IMPROVED, -1e308)];
+        assert_eq!(
+            order(&ranking_values(&huge, Ranking::Improvement)),
+            [1, 2, 0]
+        );
+        // CMA-MAE ranks by fitness - threshold alone.
+        let mae = Ranking::Threshold {
+            threshold_init: 0.0,
+            learning_rate: 0.01,
+        };
+        assert_eq!(
+            ranking_values(&[(UNCHANGED, 1.0), (IMPROVED, -1.0), (INVALID, 0.0)], mae),
+            [1.0, -1.0, f64::MAX]
+        );
     }
 }

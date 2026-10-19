@@ -333,6 +333,10 @@ fn cvt_archives_share_their_niches_and_match_core_map_elites() {
             json!({"capacity": 10_000, "kind": "cvt", "samples_per_niche": 20}),
             "1e9",
         ),
+        (
+            json!({"capacity": 1, "kind": "cvt", "samples_per_niche": 1_000_000_000u64}),
+            "capacity * samples_per_niche <= 1e6",
+        ),
     ] {
         let err = validate(dir.path(), &qd(archive, json!({}), 5, 1)).unwrap_err();
         assert!(err.contains(message), "{message}: {err}");
@@ -345,7 +349,7 @@ fn cma_emitters_spend_exact_budgets_and_only_improve_the_archive() {
     let grid = json!({"capacity": 100});
     let plain = execute(&qd(grid.clone(), json!({"chunk_size": 20}), 10, 1));
     for (emitter, extra, resolved_extra) in [
-        ("cma_me", json!({}), json!({"threshold_init": 0.0})),
+        ("cma_me", json!({}), json!({})),
         (
             "cma_mae",
             json!({"threshold_init": 300.0, "archive_learning_rate": 0.1}),
@@ -405,6 +409,10 @@ fn cma_emitters_spend_exact_budgets_and_only_improve_the_archive() {
         ),
         (json!({"cma_generations": 5, "sigma": 0.0}), "sigma"),
         (
+            json!({"cma_generations": 5, "threshold_init": 1.0}),
+            "only to emitter cma_mae",
+        ),
+        (
             json!({"cma_generations": 5, "emitter": "cma_mae", "threshold_init": 1.0,
                 "archive_learning_rate": 1.5}),
             "[0, 1]",
@@ -415,4 +423,48 @@ fn cma_emitters_spend_exact_budgets_and_only_improve_the_archive() {
     }
     let err = validate(dir.path(), &qd(grid, json!({}), 0, 1)).unwrap_err();
     assert!(err.contains("cma_generations"), "{err}");
+    // Each emitter is a CMA-ES with dimension x dimension matrices.
+    let mut wide = qd(
+        json!({"capacity": 10}),
+        json!({"cma_generations": 1, "emitters": 1000, "population": 10}),
+        0,
+        1,
+    );
+    wide["payload"]["problem"] = problem("benchmark.sphere-projection", 1000, -5.12, 5.12);
+    let err = validate(dir.path(), &wide).unwrap_err();
+    assert!(err.contains("emitters * dimension^2"), "{err}");
+}
+
+#[test]
+fn population_runs_respect_memory_limits() {
+    let dir = tempfile::tempdir().unwrap();
+    let err = validate(dir.path(), &retry("cmaes", json!({}), 4000, 100, 1)).unwrap_err();
+    assert!(err.contains("dimension <= 3162"), "{err}");
+    let resolved = validate(dir.path(), &retry("crfmnes", json!({}), 4000, 100, 1)).unwrap();
+    assert_eq!(
+        resolved["payload"]["optimizer"]["parameters"]["population"],
+        32
+    );
+    let err = validate(
+        dir.path(),
+        &retry("pgpe", json!({"population": 4000}), 4000, 100, 1),
+    )
+    .unwrap_err();
+    assert!(err.contains("population * dimension <= 1e7"), "{err}");
+    // The default largest restart population respects the same limit.
+    let resolved = validate(
+        dir.path(),
+        &retry(
+            "cmaes",
+            json!({"population": 100, "restarts": "ipop"}),
+            2000,
+            100,
+            1,
+        ),
+    )
+    .unwrap();
+    assert_eq!(
+        resolved["payload"]["optimizer"]["parameters"]["max_population"],
+        5000
+    );
 }
