@@ -134,7 +134,9 @@ Descriptors must be jointly reachable and individually reproducible. See the
 for the batch APIs, the [result schema](RESULT_SCHEMA.md), and the
 [descriptor-pilot](DESCRIPTOR_PILOT.md) and
 [robustness](ROBUSTNESS.md) protocols. The
-[Python plotting package](python/) creates reproducible figures.
+[Python plotting package](python/) creates reproducible figures. To run
+fcmaes optimizations as durable, budgeted jobs rather than in-process calls,
+see the [native job API tutorial](job-api/README.md).
 
 The recorded timings are reproducibility checks from one machine, not
 cross-library performance claims. Every detailed tutorial explains its model,

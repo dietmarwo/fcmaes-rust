@@ -165,3 +165,11 @@ models, optimizer formulations, recorded evidence, and plotting workflow.
   evaluation limit, so reported evaluations can slightly exceed the request.
 - A low `value_limit` filters retained retry results; it is not a target that
   stops the run. `stop_fitness` is the early-stop control.
+
+## Shared agent job API
+
+For durable native jobs with an explicit CPU budget, use the
+[shared protocol and runner](job-api.md) and the
+[solver-specific tutorial](../tutorials/job-api/README.md).
+The job profile is a deliberately smaller, versioned surface than the full
+in-process solver API. Unknown profile options are rejected.

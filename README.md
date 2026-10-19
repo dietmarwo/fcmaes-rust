@@ -310,6 +310,8 @@ python examples/python/test_cma.py
 - [Architecture and implementation boundaries](docs/architecture.md)
 - [Optimizer guide](docs/optimizers.md)
 - [Retry and multi-objective retry](docs/retry.md)
+- [Native experiment runner (`fcmaes-run`)](docs/experiment-runner.md)
+- [Shared optimization job API (`optimization-run`)](docs/job-api.md)
 - [Native examples and benchmarks](docs/examples.md)
 - [Combinatorial encoding cookbook](docs/combinatorial-encodings.md)
 - [Buckingham–Pi dimensional-analysis example](docs/buckingham-pi.md)

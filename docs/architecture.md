@@ -9,7 +9,7 @@ they do not identify a runtime or build dependency.
 
 ![Workspace dependency flow: Rust applications and standalone tutorials depend directly on fcmaes-core; native examples use fcmaes-examples, and the Python package uses fcmaes-py, with both adapters depending on fcmaes-core and the internal fcmaes-gtop objective library.](images/workspace-architecture.svg)
 
-The workspace has four crates:
+The workspace has four core crates, plus source-only job-layer crates:
 
 | Crate | Responsibility |
 |---|---|
@@ -17,9 +17,16 @@ The workspace has four crates:
 | `crates/fcmaes-gtop` | Internal dependency-free GTOP objective library shared by examples and Python |
 | `crates/fcmaes-py` | Optional PyO3 module packaged as `fcmaes_rust._fcmaes_ext` |
 | `examples` (`fcmaes-examples`) | Native GTOP and application objectives, data adapters, optimizer runners, and binaries |
-| `crates/fcmaes-job-api` | Source-only job contract, durable journal/snapshot helpers and process utilities for the [experiment runner](experiment-runner.md) |
-| `crates/fcmaes-native-worker` | Source-only native worker running Sphere, Rosenbrock and Cassini1 jobs with BiteOpt or DE |
-| `crates/fcmaes-runner` | Source-only `fcmaes-run` CLI: validation, idempotent jobs, CPU-slot admission, cancellation, recovery and comparison |
+| `crates/optimization-job-api` | Shared [job API](job-api.md): versioned envelope, worker SDK, checked journals, input hashing and process utilities; also hosts the legacy `fcmaes.job/0.1` contract |
+| `crates/optimization-runner` | Shared `optimization-run` CLI: worker registry, validation, idempotent jobs, CPU-slot admission, cancellation, recovery and comparison |
+| `crates/fcmaes-job-api` | Facade re-exporting the legacy contract for the [experiment runner](experiment-runner.md) |
+| `crates/fcmaes-runner` | `fcmaes-run`: the shared runner under its legacy name and default root |
+| `crates/fcmaes-native-worker` | Native objective registry and solver dispatch (library), and the `fcmaes.job/0.1` worker running Sphere, Rosenbrock and Cassini1 with BiteOpt or DE |
+| `crates/fcmaes-job-worker` | `fcmaes.retry/1` worker for the common envelope, using the native worker's library |
+
+`optimization-job-api` and `optimization-runner` are kept byte-identical with
+the LP-IP-craft and SQP-craft repositories; `docs/job-api/SHARED-SOURCES.sha256`
+records their content, and CI checks it.
 
 `fcmaes-core` does not depend on Python, GTOP, or the examples crate. The
 bindings depend only on the core and focused GTOP crates; application

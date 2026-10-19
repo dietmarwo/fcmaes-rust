@@ -5,6 +5,10 @@ edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 publish = false
+
+[lib]
+name = "fcmaes_native_worker"
+
 [dependencies]
 fcmaes-core = { path = "../fcmaes-core" }
 fcmaes-gtop = { path = "../fcmaes-gtop" }

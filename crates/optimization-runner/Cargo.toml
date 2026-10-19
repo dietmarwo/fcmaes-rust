@@ -1,0 +1,21 @@
+[package]
+name = "optimization-runner"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.88"
+license = "MIT"
+publish = false
+[[bin]]
+name = "optimization-run"
+path = "src/main.rs"
+[dependencies]
+optimization-job-api = { path = "../optimization-job-api" }
+tempfile = "3"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+clap = { version = "4", features = ["derive", "env"] }
+libc = "0.2"
+fs2 = "0.4"
+
+[dev-dependencies]
+tempfile = "3"

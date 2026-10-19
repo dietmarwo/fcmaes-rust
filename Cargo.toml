@@ -1,6 +1,9 @@
 [workspace]
 resolver = "2"
 members = [
+    "crates/optimization-job-api",
+    "crates/optimization-runner",
+    "crates/fcmaes-job-worker",
     "crates/fcmaes-core",
     "crates/fcmaes-gtop",
     "crates/fcmaes-py",
@@ -25,3 +28,9 @@ repository = "https://github.com/dietmarwo/fcmaes-rust"
 [workspace.dependencies]
 fcmaes-core = { path = "crates/fcmaes-core" }
 fcmaes-gtop = { path = "crates/fcmaes-gtop" }
+
+# The runner and its workers hash their staged executables (tens of MB in
+# debug builds) on every job start; unoptimized SHA-256 made debug start-up
+# take seconds. Optimize just the hashing crate in dev and test builds.
+[profile.dev.package.sha2]
+opt-level = 3

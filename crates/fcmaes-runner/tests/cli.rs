@@ -1,8 +1,9 @@
 //! End-to-end checks of the foreground runner: idempotency, comparison, slot
-//! admission, cancellation modes, the wall-time grace and launcher recovery.
+//! admission, cancellation modes, the wall-time grace and launcher recovery,
+//! for the legacy `fcmaes.job/0.1` and the common `optimization.job/0.1` profile.
 //!
-//! Needs the worker binary next to `fcmaes-run`; `cargo test --workspace`
-//! builds it because the worker crate has integration tests of its own.
+//! Needs the worker binaries next to `fcmaes-run`; `cargo test --workspace`
+//! builds them because both worker crates have integration tests of their own.
 #![cfg(target_os = "linux")]
 use serde_json::{Value, json};
 use std::{
@@ -22,13 +23,37 @@ const ENDLESS_RETRY: u64 = 50_000_000;
 const TIMEOUT: Duration = Duration::from_secs(120);
 
 fn worker_binary() -> PathBuf {
-    let path = Path::new(RUN).with_file_name("fcmaes-native-worker");
+    sibling_binary("fcmaes-native-worker")
+}
+
+fn sibling_binary(name: &str) -> PathBuf {
+    let path = Path::new(RUN).with_file_name(name);
     assert!(
         path.exists(),
-        "{} missing: run `cargo test --workspace` or build fcmaes-native-worker first",
+        "{} missing: run `cargo test --workspace` or build {name} first",
         path.display()
     );
     path
+}
+
+/// A common-envelope (`optimization.job/0.1`) job for the `fcmaes` worker with
+/// the same problem, optimizer, seed and budget as `base(key)`.
+fn common(key: &str, retries: u64, evaluations: u64, workers: u64) -> Value {
+    let legacy = base(key);
+    json!({
+        "schema_version": "optimization.job/0.1",
+        "request_key": key,
+        "worker": "fcmaes",
+        "payload_schema": "fcmaes.retry/1",
+        "payload": {
+            "problem": legacy["problem"], "optimizer": legacy["optimizer"],
+            "seed": legacy["execution"]["seed"], "retries": retries,
+            "evaluations_per_retry": evaluations, "evaluation_limit_mode": "hard"
+        },
+        "resources": {"cpu_slots": workers, "outer_workers": workers, "inner_threads": 1},
+        "limits": {"wall_time_seconds": 120.0, "grace_seconds": 1.0},
+        "inputs": []
+    })
 }
 
 fn read(path: &Path) -> Value {
@@ -138,6 +163,17 @@ impl Node {
     }
     fn ledger(&self) -> Value {
         read(&self.root().join("slots.json"))
+    }
+    fn register_common_worker(&self) {
+        let worker = sibling_binary("fcmaes-job-worker");
+        self.ok(&[
+            "workers",
+            "add",
+            "--id",
+            "fcmaes",
+            "--executable",
+            worker.to_str().unwrap(),
+        ]);
     }
 }
 
@@ -404,5 +440,95 @@ fn sighup_stops_a_foreground_job_gracefully() {
         completed > 0 && completed < 6,
         "completed {completed} retries"
     );
+    assert_eq!(node.ledger(), json!({}));
+}
+
+#[test]
+fn common_and_legacy_profiles_share_capacity_and_retry_seeds() {
+    let node = Node::new(2);
+    node.register_common_worker();
+
+    // Same problem, optimizer, seed and budget through both profiles, with
+    // different worker counts: every retry must agree exactly.
+    let legacy = node.ok(&["run", "--spec", &node.spec("legacy-seeds", |_| {})]);
+    let legacy_dir = PathBuf::from(legacy["directory"].as_str().unwrap());
+    let common_spec = node.spec("common-seeds", |s| *s = common("common-seeds", 4, 2000, 1));
+    let common_job = node.ok(&["run", "--spec", &common_spec]);
+    assert_eq!(common_job["state"], "completed");
+    let common_run = read(&Path::new(common_job["directory"].as_str().unwrap()).join("run.json"));
+    for line in fs::read_to_string(legacy_dir.join("retries.jsonl"))
+        .unwrap()
+        .lines()
+    {
+        let envelope: Value = serde_json::from_str(line).unwrap();
+        let retry: Value =
+            serde_json::from_str(envelope["payload_json"].as_str().unwrap()).unwrap();
+        let task = &common_run["results"][retry["retry_id"].as_u64().unwrap() as usize];
+        assert_eq!(task["outcome"]["x"], retry["x"]);
+        assert_eq!(task["outcome"]["objective"], retry["y"]);
+        assert_eq!(task["work"]["evaluations"], retry["actual_evaluations"]);
+    }
+
+    // A common job holding both slots makes a legacy job wait for them.
+    let endless = node.spec("common-endless", |s| {
+        *s = common("common-endless", 4, ENDLESS_RETRY, 2)
+    });
+    let waiting = node.spec("legacy-waits", |_| {});
+    let mut endless_child = node.spawn_run(&endless);
+    node.wait_state(&job_id("common-endless"), "running");
+    let mut waiting_child = node.spawn_run(&waiting);
+    node.wait_state(&job_id("legacy-waits"), "waiting");
+    thread::sleep(Duration::from_millis(500));
+    assert_eq!(node.get(&job_id("legacy-waits"))["state"], "waiting");
+
+    node.ok(&["jobs", "cancel", &job_id("common-endless"), "--now"]);
+    wait_child(&mut endless_child);
+    let endless_dir = PathBuf::from(
+        node.get(&job_id("common-endless"))["directory"]
+            .as_str()
+            .unwrap(),
+    );
+    let endless_run = read(&endless_dir.join("run.json"));
+    assert_eq!(endless_run["status"], "cancelled");
+    assert_eq!(endless_run["work"], Value::Null);
+    assert_eq!(endless_run["runner"]["accounting_complete"], false);
+
+    wait_child(&mut waiting_child);
+    assert_eq!(node.get(&job_id("legacy-waits"))["state"], "completed");
+    assert_eq!(node.ledger(), json!({}));
+}
+
+#[test]
+fn graceful_cancel_of_a_common_job_keeps_active_tasks() {
+    let node = Node::new(2);
+    node.register_common_worker();
+    let spec = node.spec("common-graceful", |s| {
+        *s = common("common-graceful", 6, LONG_RETRY, 2)
+    });
+    let id = job_id("common-graceful");
+    let mut child = node.spawn_run(&spec);
+    let dir = PathBuf::from(
+        node.wait_state(&id, "running")["directory"]
+            .as_str()
+            .unwrap(),
+    );
+    // The SDK creates results.jsonl right before its tasks start.
+    let start = Instant::now();
+    while !dir.join("results.jsonl").exists() {
+        assert!(start.elapsed() < TIMEOUT, "worker never started");
+        thread::sleep(Duration::from_millis(20));
+    }
+    thread::sleep(Duration::from_millis(200));
+    node.ok(&["jobs", "cancel", &id]);
+    wait_child(&mut child);
+    let run = read(&dir.join("run.json"));
+    assert_eq!(run["status"], "cancelled");
+    assert_eq!(run["runner"]["accounting_complete"], true);
+    let completed = run["completed_tasks"].as_u64().unwrap();
+    assert!(
+        completed > 0 && completed < 6,
+        "completed {completed} tasks"
+    );
+    assert_eq!(run["work"]["evaluations"], completed * LONG_RETRY);
     assert_eq!(node.ledger(), json!({}));
 }

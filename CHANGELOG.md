@@ -8,6 +8,18 @@ phase, with breaking changes called out explicitly.
 
 ### Added
 
+- Added the shared optimization job API: `optimization-job-api` (versioned
+  `optimization.job/0.1` envelope, worker SDK, checked journals, input
+  hashing) and `optimization-runner` (`optimization-run`), shared with the
+  LP-IP-craft and SQP-craft repositories. The runner admits jobs against one
+  explicit CPU budget (`outer_workers * inner_threads <= cpu_slots`), stages
+  hashed inputs and the worker binary, and recovers conservatively from lost
+  processes. `fcmaes-job-worker` runs the fcmaes problems through the
+  `fcmaes.retry/1` profile with the same retry seeds as the native worker.
+  `fcmaes-job-api` and `fcmaes-run` keep their interfaces as thin facades.
+  JSON numbers now round-trip exactly, which a repeated parse of tiny values
+  previously broke. See `docs/job-api.md` and `tutorials/job-api/`.
+
 - Added a native experiment runner: `fcmaes-run` (crate `fcmaes-runner`), the
   `fcmaes-native-worker` binary and the shared `fcmaes-job-api` contract, all
   source-only. Jobs declare a problem, optimizer, retry budget and wall time;

@@ -137,11 +137,7 @@ dependencies = [
 name = "fcmaes-job-api"
 version = "0.1.0"
 dependencies = [
- "fs2",
- "libc",
- "serde",
- "serde_json",
- "sha2",
+ "optimization-job-api",
 ]
 
 [[package]]
@@ -312,6 +308,17 @@ checksum = "91df4bbde75afed763b708b7eee1e8e7651e02d97f6d5dd763e89367e957b23b"
 dependencies = [
  "hermit-abi",
  "libc",
+]
+
+[[package]]
+name = "optimization-job-api"
+version = "0.1.0"
+dependencies = [
+ "fs2",
+ "libc",
+ "serde",
+ "serde_json",
+ "sha2",
 ]
 
 [[package]]
