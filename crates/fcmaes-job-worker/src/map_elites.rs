@@ -9,7 +9,7 @@ use fcmaes_core::{
 };
 use optimization_job_api::{
     JobSpec, Result, legacy,
-    result::Outcome,
+    result::{Evidence, Outcome},
     worker::{Prepared, TaskResult},
 };
 use serde::{Deserialize, Serialize};
@@ -302,6 +302,12 @@ impl Prepared for Run {
                     "grid":grid,"descriptor_lower":self.model.descriptor_lower,
                     "descriptor_upper":self.model.descriptor_upper,"elites":elites,
                     "global_optimum_certified":false}),
+                evidence: Some(if best.is_some() {
+                    Evidence::rechecked(&["objective", "bounds", "niche"])
+                } else {
+                    Evidence::claimed(&[])
+                }),
+                ..Outcome::default()
             },
             work: [
                 (

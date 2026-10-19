@@ -6,7 +6,7 @@ use fcmaes_native_worker::{objective_by_id, objective_for, solve};
 use optimization_job_api::{
     JobSpec, Result,
     legacy::{self, JobSpec as LegacySpec},
-    result::Outcome,
+    result::{Evidence, Outcome},
     worker::{Prepared, TaskResult},
 };
 use serde::{Deserialize, Serialize};
@@ -229,6 +229,79 @@ pub fn cmaes_retry(
     )
 }
 
+/// Judges one retry's answer: the best point it evaluated and its value.
+/// The point is re-evaluated with `objective`; a value at or above `1e99`
+/// (the fcmaes penalty) or non-finite is no answer. A point outside the box
+/// refutes `best_found` (`infeasible_point`); a value that differs from the
+/// re-evaluation refutes it too (`objective_mismatch`), leaving a feasible
+/// point with the recomputed value. Returns the outcome without termination
+/// and details (apart from `reported_objective`), and the number of
+/// validation evaluations.
+pub fn judge(
+    r: RetryRunResult,
+    bounds: &RetryBounds,
+    objective: fn(&[f64]) -> f64,
+) -> Result<(Outcome, u64)> {
+    let usable = |v: f64| v.is_finite() && v < 1e99;
+    if !usable(r.y) {
+        let outcome = Outcome {
+            claim: "none".into(),
+            feasible: Some(false),
+            evidence: Some(Evidence::claimed(&[])),
+            ..Outcome::default()
+        };
+        return Ok((outcome, 0));
+    }
+    if r.x.len() != bounds.dim() || r.x.iter().any(|v| !v.is_finite()) {
+        return Err("native candidate has the wrong dimension or a non-finite entry".into());
+    }
+    let checks = Evidence::rechecked(&["objective", "bounds"]);
+    let outside =
+        r.x.iter()
+            .zip(bounds.lower().iter().zip(bounds.upper()))
+            .position(|(v, (l, u))| v < l || v > u);
+    let value = objective(&r.x);
+    let outcome = if let Some(i) = outside {
+        let message = format!(
+            "x[{i}] = {} lies outside [{}, {}]",
+            r.x[i],
+            bounds.lower()[i],
+            bounds.upper()[i]
+        );
+        Outcome {
+            claim: "none".into(),
+            feasible: Some(false),
+            objective: value.is_finite().then_some(value),
+            x: Some(r.x),
+            evidence: Some(checks.refuting("best_found", "infeasible_point", message)),
+            ..Outcome::default()
+        }
+    } else if value != r.y {
+        let message = format!("reported {} but the point evaluates to {value}", r.y);
+        let refuted = checks.refuting("best_found", "objective_mismatch", message);
+        let feasible = usable(value);
+        Outcome {
+            claim: if feasible { "feasible" } else { "none" }.into(),
+            feasible: Some(feasible),
+            objective: value.is_finite().then_some(value),
+            x: Some(r.x),
+            details: json!({"reported_objective":r.y}),
+            evidence: Some(refuted),
+            ..Outcome::default()
+        }
+    } else {
+        Outcome {
+            claim: "best_found".into(),
+            feasible: Some(true),
+            objective: Some(value),
+            x: Some(r.x),
+            evidence: Some(checks),
+            ..Outcome::default()
+        }
+    };
+    Ok((outcome, 1))
+}
+
 impl Prepared for Run {
     fn tasks(&self) -> usize {
         self.payload.retries
@@ -258,19 +331,8 @@ impl Prepared for Run {
                 (r, objective, stop)
             }
         };
-        let valid = r.y.is_finite() && r.y < 1e99;
         if r.evaluations == 0 || r.evaluations > self.per_retry_limit {
             return Err("native evaluation budget mismatch".into());
-        }
-        if valid
-            && (r.x.len() != self.bounds.dim()
-                || r.x
-                    .iter()
-                    .zip(self.bounds.lower().iter().zip(self.bounds.upper()))
-                    .any(|(x, (l, u))| !x.is_finite() || x < l || x > u)
-                || objective(&r.x) != r.y)
-        {
-            return Err("native candidate failed independent objective/bounds check".into());
         }
         // BiteOpt and DE always spend their budget; CMA-ES can stop earlier
         // on its own convergence tests.
@@ -279,22 +341,24 @@ impl Prepared for Run {
         } else {
             "optimizer_stop"
         };
+        let evaluations = r.evaluations;
+        let (outcome, validations) = judge(r, &self.bounds, objective)?;
         let mut details = json!({"run_seed":seed,"evaluation_limit_mode":self.payload.evaluation_limit_mode,"requested_evaluations":self.payload.evaluations_per_retry,"global_optimum_certified":false});
         if matches!(self.engine, Engine::Cmaes { .. }) {
             details["stop_code"] = json!(stop);
         }
+        if let Some(reported) = outcome.details.get("reported_objective") {
+            details["reported_objective"] = reported.clone();
+        }
         Ok(TaskResult {
             outcome: Outcome {
                 termination: termination.into(),
-                claim: if valid { "best_found" } else { "none" }.into(),
-                feasible: Some(valid),
-                objective: valid.then_some(r.y),
-                x: valid.then_some(r.x),
                 details,
+                ..outcome
             },
             work: [
-                ("evaluations".into(), r.evaluations),
-                ("validation_evaluations".into(), u64::from(valid)),
+                ("evaluations".into(), evaluations),
+                ("validation_evaluations".into(), validations),
             ]
             .into(),
         })

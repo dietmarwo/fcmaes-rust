@@ -110,7 +110,7 @@ execution path has no shared per-evaluation counter.
 
 Registering a worker is a trusted local administrative action. A worker
 registered as `native` must report exactly this page's capability profile;
-any other ID must speak the common worker protocol (`optimization.worker/0.1`).
+any other ID must speak the common worker protocol (`optimization.worker/0.1` or `/0.2`).
 Jobs cannot name executables, shell snippets or environment variables. Every attempt stages a copy of the
 registered binary, checks its SHA-256 and runs that copy. Rebuilding the
 registered path requires registering it again.

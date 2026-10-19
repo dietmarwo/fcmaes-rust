@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 """Protocol fixture for scripts/job-api/test_review.py: a worker whose
-behaviour is chosen by payload["mode"]. It is not a solver."""
+behaviour is chosen by payload["mode"]. It is not a solver. It speaks worker
+protocol 0.1, so it also checks that the runner still accepts 0.1 workers."""
 import fcntl
+import hashlib
 import json
 import signal
 import sys
@@ -32,4 +34,21 @@ elif mode == "garbage_journal":
     sys.exit(3)
 elif mode == "crash":
     signal.raise_signal(signal.SIGSEGV)
+elif mode == "complete":
+    # One 0.1 result record (no evidence), committed like the Rust SDK does,
+    # then the worker manifest the runner cross-checks against the journal.
+    spec = json.loads((directory / "resolved.json").read_text())
+    spec.pop("request_key")
+    digest = hashlib.sha256(json.dumps(spec, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+    record = {"task_id": 0, "spec_digest": digest, "elapsed_seconds": 0.0, "work": {"evaluations": 1},
+              "outcome": {"termination": "evaluation_limit", "claim": "best_found", "feasible": True,
+                          "objective": 1.0, "x": [1.0], "details": {}}}
+    payload = json.dumps(record)
+    envelope = {"schema_version": 1, "checksum": hashlib.sha256(payload.encode()).hexdigest(),
+                "payload_json": payload}
+    (directory / "results.jsonl").write_text(json.dumps(envelope) + "\n")
+    (directory / "run.json").write_text(json.dumps({
+        "schema_version": "optimization.result/0.1", "status": "completed", "elapsed_seconds": 0.0,
+        "results": [record], "work": {"evaluations": 1},
+        "runner": {"spec_digest": digest, "accounting_complete": True}}))
 sys.exit(0)

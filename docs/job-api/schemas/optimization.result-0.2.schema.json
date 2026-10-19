@@ -1,0 +1,1067 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:optimization-job-api:schema:optimization.result-0.2",
+  "title": "optimization.result/0.2 manifest (run.json)",
+  "description": "The result of one job attempt, as printed by `optimization-run result`. Each task outcome carries a termination (why it stopped), a claim (what is asserted) and evidence (how much of it was verified). Every 0.1 manifest is valid; it has no evidence, objective bounds or 0.2 claims.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "status",
+    "worker",
+    "payload_schema",
+    "elapsed_seconds",
+    "completed_tasks",
+    "requested_tasks",
+    "work",
+    "known_work_lower_bound",
+    "results",
+    "artifacts",
+    "runner"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "enum": [
+        "optimization.result/0.1",
+        "optimization.result/0.2"
+      ]
+    },
+    "status": {
+      "enum": [
+        "completed",
+        "cancelled",
+        "timed_out",
+        "failed",
+        "interrupted"
+      ]
+    },
+    "worker": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._-]{1,80}$",
+      "not": {
+        "enum": [
+          ".",
+          ".."
+        ]
+      }
+    },
+    "payload_schema": {
+      "type": "string",
+      "minLength": 1
+    },
+    "elapsed_seconds": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "minimum": 0
+    },
+    "completed_tasks": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0
+    },
+    "requested_tasks": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 1
+    },
+    "work": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/counters"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "Total work; null unless accounting is complete."
+    },
+    "known_work_lower_bound": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/counters"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "results": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/record"
+      }
+    },
+    "artifacts": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "runner": {
+      "type": "object",
+      "required": [
+        "profile",
+        "spec_digest",
+        "worker_digest",
+        "accounting_complete",
+        "resources",
+        "recovery"
+      ],
+      "properties": {
+        "profile": {
+          "const": "optimization.runner/0.1"
+        },
+        "spec_digest": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "worker_digest": {
+          "type": "string"
+        },
+        "accounting_complete": {
+          "type": "boolean"
+        },
+        "resources": {
+          "type": "object"
+        },
+        "recovery": {
+          "const": "journal_only_no_resume"
+        },
+        "journal_error": {
+          "type": "string"
+        },
+        "attempt_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "build": {}
+      }
+    }
+  },
+  "$defs": {
+    "counters": {
+      "type": "object",
+      "propertyNames": {
+        "pattern": "^[A-Za-z0-9._-]{1,80}$"
+      },
+      "additionalProperties": {
+        "type": "integer",
+        "minimum": 0
+      }
+    },
+    "claim": {
+      "enum": [
+        "none",
+        "feasible",
+        "best_found",
+        "numerical_optimum",
+        "first_order",
+        "certified_optimum",
+        "non_dominated_set",
+        "elite_archive",
+        "infeasible",
+        "unbounded",
+        "infeasible_or_unbounded",
+        "locally_infeasible"
+      ]
+    },
+    "check": {
+      "enum": [
+        "objective",
+        "bounds",
+        "constraints",
+        "integrality",
+        "kkt",
+        "non_dominance",
+        "niche"
+      ]
+    },
+    "verdict": {
+      "enum": [
+        "infeasible_point",
+        "objective_mismatch",
+        "false_optimality",
+        "false_infeasibility",
+        "invalid_certificate"
+      ]
+    },
+    "record": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "task_id",
+        "spec_digest",
+        "elapsed_seconds",
+        "work",
+        "outcome"
+      ],
+      "properties": {
+        "task_id": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "spec_digest": {
+          "type": "string"
+        },
+        "elapsed_seconds": {
+          "type": "number",
+          "minimum": 0
+        },
+        "work": {
+          "$ref": "#/$defs/counters"
+        },
+        "outcome": {
+          "$ref": "#/$defs/outcome"
+        }
+      }
+    },
+    "outcome": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "termination",
+        "claim",
+        "feasible",
+        "objective",
+        "x",
+        "details"
+      ],
+      "properties": {
+        "termination": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Why the task stopped, in the solver's words; never a claim."
+        },
+        "claim": {
+          "$ref": "#/$defs/claim"
+        },
+        "feasible": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "objective": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "x": {
+          "oneOf": [
+            {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "number"
+              }
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "details": {
+          "description": "Profile-specific diagnostics."
+        },
+        "evidence": {
+          "$ref": "#/$defs/evidence"
+        },
+        "objective_bounds": {
+          "$ref": "#/$defs/objective_bounds"
+        },
+        "imprecise": {
+          "type": "boolean"
+        }
+      },
+      "allOf": [
+        {
+          "$comment": "An objective belongs to a point.",
+          "if": {
+            "properties": {
+              "objective": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "objective"
+            ]
+          },
+          "then": {
+            "properties": {
+              "x": {
+                "type": "array"
+              }
+            }
+          }
+        },
+        {
+          "$comment": "A feasible outcome names its point, except a set claim.",
+          "if": {
+            "properties": {
+              "feasible": {
+                "const": true
+              },
+              "claim": {
+                "not": {
+                  "const": "non_dominated_set"
+                }
+              }
+            },
+            "required": [
+              "feasible",
+              "claim"
+            ]
+          },
+          "then": {
+            "properties": {
+              "x": {
+                "type": "array"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "claim": {
+                "enum": [
+                  "feasible",
+                  "best_found",
+                  "numerical_optimum",
+                  "first_order",
+                  "certified_optimum",
+                  "elite_archive"
+                ]
+              }
+            },
+            "required": [
+              "claim"
+            ]
+          },
+          "then": {
+            "properties": {
+              "feasible": {
+                "const": true
+              },
+              "x": {
+                "type": "array"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "claim": {
+                "enum": [
+                  "best_found",
+                  "numerical_optimum",
+                  "first_order",
+                  "certified_optimum",
+                  "elite_archive"
+                ]
+              }
+            },
+            "required": [
+              "claim"
+            ]
+          },
+          "then": {
+            "properties": {
+              "objective": {
+                "type": "number"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "claim": {
+                "enum": [
+                  "non_dominated_set"
+                ]
+              }
+            },
+            "required": [
+              "claim"
+            ]
+          },
+          "then": {
+            "properties": {
+              "feasible": {
+                "const": true
+              },
+              "x": {
+                "type": "null"
+              },
+              "objective": {
+                "type": "null"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "claim": {
+                "enum": [
+                  "infeasible",
+                  "locally_infeasible"
+                ]
+              }
+            },
+            "required": [
+              "claim"
+            ]
+          },
+          "then": {
+            "properties": {
+              "feasible": {
+                "not": {
+                  "const": true
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "claim": {
+                "enum": [
+                  "certified_optimum"
+                ]
+              }
+            },
+            "required": [
+              "claim"
+            ]
+          },
+          "then": {
+            "required": [
+              "evidence"
+            ],
+            "properties": {
+              "evidence": {
+                "properties": {
+                  "level": {
+                    "const": "certified"
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "claim": {
+                "enum": [
+                  "infeasible",
+                  "unbounded",
+                  "infeasible_or_unbounded"
+                ]
+              }
+            },
+            "required": [
+              "claim"
+            ]
+          },
+          "then": {
+            "properties": {
+              "evidence": {
+                "properties": {
+                  "level": {
+                    "not": {
+                      "const": "rechecked"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "imprecise": {
+                "const": true
+              }
+            },
+            "required": [
+              "imprecise"
+            ]
+          },
+          "then": {
+            "properties": {
+              "claim": {
+                "not": {
+                  "const": "none"
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "claim": {
+                "const": "feasible"
+              }
+            },
+            "required": [
+              "claim"
+            ]
+          },
+          "then": {
+            "properties": {
+              "evidence": {
+                "properties": {
+                  "refuted": {
+                    "properties": {
+                      "claim": {
+                        "not": {
+                          "const": "feasible"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "claim": {
+                "const": "best_found"
+              }
+            },
+            "required": [
+              "claim"
+            ]
+          },
+          "then": {
+            "properties": {
+              "evidence": {
+                "properties": {
+                  "refuted": {
+                    "properties": {
+                      "claim": {
+                        "not": {
+                          "const": "best_found"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "claim": {
+                "const": "numerical_optimum"
+              }
+            },
+            "required": [
+              "claim"
+            ]
+          },
+          "then": {
+            "properties": {
+              "evidence": {
+                "properties": {
+                  "refuted": {
+                    "properties": {
+                      "claim": {
+                        "not": {
+                          "const": "numerical_optimum"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "claim": {
+                "const": "first_order"
+              }
+            },
+            "required": [
+              "claim"
+            ]
+          },
+          "then": {
+            "properties": {
+              "evidence": {
+                "properties": {
+                  "refuted": {
+                    "properties": {
+                      "claim": {
+                        "not": {
+                          "const": "first_order"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "claim": {
+                "const": "certified_optimum"
+              }
+            },
+            "required": [
+              "claim"
+            ]
+          },
+          "then": {
+            "properties": {
+              "evidence": {
+                "properties": {
+                  "refuted": {
+                    "properties": {
+                      "claim": {
+                        "not": {
+                          "const": "certified_optimum"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "claim": {
+                "const": "non_dominated_set"
+              }
+            },
+            "required": [
+              "claim"
+            ]
+          },
+          "then": {
+            "properties": {
+              "evidence": {
+                "properties": {
+                  "refuted": {
+                    "properties": {
+                      "claim": {
+                        "not": {
+                          "const": "non_dominated_set"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "claim": {
+                "const": "elite_archive"
+              }
+            },
+            "required": [
+              "claim"
+            ]
+          },
+          "then": {
+            "properties": {
+              "evidence": {
+                "properties": {
+                  "refuted": {
+                    "properties": {
+                      "claim": {
+                        "not": {
+                          "const": "elite_archive"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "claim": {
+                "const": "infeasible"
+              }
+            },
+            "required": [
+              "claim"
+            ]
+          },
+          "then": {
+            "properties": {
+              "evidence": {
+                "properties": {
+                  "refuted": {
+                    "properties": {
+                      "claim": {
+                        "not": {
+                          "const": "infeasible"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "claim": {
+                "const": "unbounded"
+              }
+            },
+            "required": [
+              "claim"
+            ]
+          },
+          "then": {
+            "properties": {
+              "evidence": {
+                "properties": {
+                  "refuted": {
+                    "properties": {
+                      "claim": {
+                        "not": {
+                          "const": "unbounded"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "claim": {
+                "const": "infeasible_or_unbounded"
+              }
+            },
+            "required": [
+              "claim"
+            ]
+          },
+          "then": {
+            "properties": {
+              "evidence": {
+                "properties": {
+                  "refuted": {
+                    "properties": {
+                      "claim": {
+                        "not": {
+                          "const": "infeasible_or_unbounded"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "claim": {
+                "const": "locally_infeasible"
+              }
+            },
+            "required": [
+              "claim"
+            ]
+          },
+          "then": {
+            "properties": {
+              "evidence": {
+                "properties": {
+                  "refuted": {
+                    "properties": {
+                      "claim": {
+                        "not": {
+                          "const": "locally_infeasible"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "level"
+      ],
+      "properties": {
+        "level": {
+          "enum": [
+            "claimed",
+            "rechecked",
+            "certified"
+          ],
+          "description": "claimed: the solver's report alone. rechecked: returned points recomputed from the registered model, as checks lists. certified: a proof verified by an independent checker."
+        },
+        "checks": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/check"
+          }
+        },
+        "refuted": {
+          "$ref": "#/$defs/refutation"
+        },
+        "certificate": {
+          "$ref": "#/$defs/certificate"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "level": {
+                "const": "rechecked"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "checks"
+            ],
+            "properties": {
+              "checks": {
+                "minItems": 1
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "level": {
+                "const": "certified"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "certificate"
+            ],
+            "properties": {
+              "certificate": {
+                "properties": {
+                  "verdict": {
+                    "const": "verified"
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "refuted"
+            ],
+            "properties": {
+              "refuted": {
+                "properties": {
+                  "verdict": {
+                    "const": "invalid_certificate"
+                  }
+                }
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "certificate"
+            ],
+            "properties": {
+              "certificate": {
+                "properties": {
+                  "verdict": {
+                    "const": "rejected"
+                  }
+                }
+              }
+            }
+          },
+          "else": {
+            "if": {
+              "required": [
+                "refuted"
+              ]
+            },
+            "then": {
+              "properties": {
+                "level": {
+                  "const": "rechecked"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "refutation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "claim",
+        "verdict",
+        "message"
+      ],
+      "description": "The solver's claim that an independent check rejected; the outcome's claim states what survived.",
+      "properties": {
+        "claim": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/claim"
+            },
+            {
+              "not": {
+                "const": "none"
+              }
+            }
+          ]
+        },
+        "verdict": {
+          "$ref": "#/$defs/verdict"
+        },
+        "message": {
+          "type": "string"
+        }
+      }
+    },
+    "certificate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "format",
+        "sha256",
+        "checker",
+        "verdict"
+      ],
+      "properties": {
+        "format": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9._-]{1,80}$",
+          "not": {
+            "enum": [
+              ".",
+              ".."
+            ]
+          }
+        },
+        "artifact": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9._-]{1,80}$",
+          "not": {
+            "enum": [
+              ".",
+              ".."
+            ]
+          }
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "checker": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9._-]{1,80}$",
+          "not": {
+            "enum": [
+              ".",
+              ".."
+            ]
+          }
+        },
+        "verdict": {
+          "enum": [
+            "verified",
+            "rejected"
+          ]
+        }
+      }
+    },
+    "objective_bounds": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sense"
+      ],
+      "description": "primal: objective of the best feasible point; dual: a proven bound on the optimum (lower when minimizing, upper when maximizing).",
+      "properties": {
+        "sense": {
+          "enum": [
+            "minimize",
+            "maximize"
+          ]
+        },
+        "primal": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "dual": {
+          "type": [
+            "number",
+            "null"
+          ]
+        }
+      }
+    }
+  }
+}
