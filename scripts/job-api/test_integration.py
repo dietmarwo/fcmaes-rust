@@ -225,6 +225,25 @@ else:
         _,_,j,_,r=self.run_spec(mo);self.assertEqual(j['state'],'timed_out');self.assertTrue(r['runner']['accounting_complete'])
         for rec in r['results']:self.assertEqual(rec['outcome']['termination'],'cancelled');self.assertEqual(rec['outcome']['claim'],'non_dominated_set')
 
+    def test_fcmaes_inner_threads_and_population_algorithms(self):
+        if 'fcmaes' not in WORKERS:self.skipTest('fcmaes worker not supplied')
+        def results(r):return sorted([(x['task_id'],x['outcome'],x['work']) for x in r['results']],key=lambda t:t[0])
+        jobs=[]
+        for kind,parameters in [('cmaes',{'population':8,'restarts':'bipop'}),('crfmnes',{}),('pgpe',{})]:
+            s=self.fixture('fcmaes');s['payload']['optimizer']={'kind':kind,'parameters':parameters};s['payload']['evaluation_limit_mode']='soft';s['payload']['retries']=4
+            jobs.append(s)
+        qd=envelope('fcmaes',{'problem':{'id':'benchmark.sphere-projection','version':'1','config':{'dimension':4},'bounds':{'lower':[-5.12],'upper':[5.12],'broadcast':True}},'archive':{'capacity':25,'kind':'cvt'},'optimizer':{'kind':'map_elites','parameters':{'chunk_size':8,'cma_generations':10,'emitter':'cma_mae','threshold_init':20.,'emitters':2,'population':8}},'seed':5,'runs':4,'generations':10})
+        qd['payload_schema']='fcmaes.map-elites/1';jobs.append(qd)
+        for s in jobs:
+            s['resources']={'cpu_slots':8,'outer_workers':8,'inner_threads':1};_,_,j,_,serial=self.run_spec(s);self.assertEqual(j['state'],'completed')
+            s['resources']={'cpu_slots':8,'outer_workers':2,'inner_threads':4};_,_,j,_,inner=self.run_spec(s);self.assertEqual(j['state'],'completed')
+            self.assertEqual(results(serial),results(inner),s['payload']['optimizer'])
+            for rec in serial['results']:
+                o=rec['outcome']
+                if s is qd:self.assertEqual(o['claim'],'elite_archive');self.assertEqual(rec['work']['evaluations'],10*8+10*2*8);self.assertEqual(o['details']['archive_kind'],'cvt')
+                else:self.assertEqual(o['claim'],'best_found',o);self.assertAlmostEqual(o['objective'],sum(x*x for x in o['x']))
+        s=self.fixture('fcmaes');s['resources']={'cpu_slots':8,'outer_workers':2,'inner_threads':4};p,_=self.write(s);self.call('validate','--spec',p,ok=False)
+
     def test_evaluate_profiles_check_given_points(self):
         sphere={'id':'benchmark.sphere','version':'1','config':{'dimension':2},'bounds':{'lower':[-5.],'upper':[5.],'broadcast':True}}
         cases={'fcmaes':('fcmaes.evaluate/1',{'problem':sphere,'points':[[1.,2.],[0.,0.]]},[(True,5.),(True,0.)]),

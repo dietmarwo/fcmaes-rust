@@ -110,3 +110,32 @@ without a check), that repair returned a retryable code where waiting could
 never help, and several documentation errors. All were fixed; a differential
 fuzz of 1.2 million generated outcomes then found no disagreement between
 the schema and `Outcome::check`.
+
+## 7. Application models, parallel populations and more algorithms (October 2026)
+
+Plan: close three gaps of the fcmaes worker that limited the job API to its
+benchmarks. Let an application register its own models, with parameters and
+hashed data inputs, instead of editing the worker. Use `inner_threads` for the
+population-based optimizers, without making results depend on it. Put the
+remaining fcmaes-core algorithms behind the profiles. Do not add an ask/tell
+or callback profile: the objective must stay in the worker, where answers are
+re-checked and runs reproduced (see the fcmaes guide to application models).
+
+Implemented in fcmaes-rust: a model registry (`Registry`, `Instance`) in the
+fcmaes worker, with the built-in benchmarks registered through it and an
+example application worker; per-task evaluation pools for CMA-ES, CR-FM-NES,
+PGPE, MODE and MAP-Elites; CR-FM-NES and PGPE retries; IPOP and BIPOP restarts
+for CMA-ES; CVT archives and CMA-ME and CMA-MAE emitter phases with exact
+budgets for MAP-Elites; a deterministic CVT construction in fcmaes-core. Jobs
+on the built-in models resolve to the same payloads and give the same results
+as before. The shared crates are unchanged; this guide, this plan and the
+shared harness describe and test the new fcmaes behavior.
+
+Gate: every population-based run identical with one and several inner threads;
+CR-FM-NES, PGPE and CMA-ES restarts identical to direct library runs, with
+re-checked best points; CVT and grid archives identical to `fcmaes-core`
+MAP-Elites; emitter phases that only add or improve elites and spend exact
+budgets; registry checks of unknown parameters, unused or altered inputs,
+versions, kinds and domains; resolved jobs and results on the built-in models
+compared with the previous worker; the tutorial with an application worker
+and a hashed data input.

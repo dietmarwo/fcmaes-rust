@@ -1,0 +1,44 @@
+{
+  "schema_version": "optimization.job/0.1",
+  "request_key": "tutorial.fcmaes.rosenbrock-crfmnes.v1",
+  "worker": "fcmaes",
+  "payload_schema": "fcmaes.retry/1",
+  "resources": {
+    "cpu_slots": 8,
+    "outer_workers": 4,
+    "inner_threads": 2
+  },
+  "limits": {
+    "wall_time_seconds": 60.0,
+    "grace_seconds": 1.0
+  },
+  "inputs": [],
+  "payload": {
+    "problem": {
+      "id": "benchmark.rosenbrock",
+      "version": "1",
+      "config": {
+        "dimension": 50
+      },
+      "bounds": {
+        "lower": [
+          -5.0
+        ],
+        "upper": [
+          5.0
+        ],
+        "broadcast": true
+      }
+    },
+    "optimizer": {
+      "kind": "crfmnes",
+      "parameters": {
+        "population": 32
+      }
+    },
+    "seed": 42,
+    "retries": 8,
+    "evaluations_per_retry": 100000,
+    "evaluation_limit_mode": "soft"
+  }
+}

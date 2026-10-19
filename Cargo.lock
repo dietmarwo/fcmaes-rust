@@ -476,6 +476,7 @@ dependencies = [
  "fcmaes-job-api",
  "fcmaes-native-worker",
  "optimization-job-api",
+ "rayon",
  "serde",
  "serde_json",
  "tempfile",

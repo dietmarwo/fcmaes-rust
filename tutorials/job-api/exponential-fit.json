@@ -1,0 +1,52 @@
+{
+  "schema_version": "optimization.job/0.1",
+  "request_key": "tutorial.fcmaes.exponential-fit.v1",
+  "worker": "curve-fit",
+  "payload_schema": "fcmaes.retry/1",
+  "resources": {
+    "cpu_slots": 4,
+    "outer_workers": 4,
+    "inner_threads": 1
+  },
+  "limits": {
+    "wall_time_seconds": 60.0,
+    "grace_seconds": 1.0
+  },
+  "inputs": [
+    {
+      "name": "data",
+      "file": "decay.csv",
+      "sha256": "d864222f21d1150191c170603e0137243ce0b169fef78c941621c8f9f587e548"
+    }
+  ],
+  "payload": {
+    "problem": {
+      "id": "app.exponential-fit",
+      "version": "1",
+      "config": {
+        "dimension": 3
+      },
+      "bounds": {
+        "lower": [
+          0.0,
+          0.0,
+          -10.0
+        ],
+        "upper": [
+          10.0,
+          5.0,
+          10.0
+        ],
+        "broadcast": false
+      }
+    },
+    "optimizer": {
+      "kind": "cmaes",
+      "parameters": {}
+    },
+    "seed": 42,
+    "retries": 4,
+    "evaluations_per_retry": 5000,
+    "evaluation_limit_mode": "soft"
+  }
+}

@@ -8,6 +8,27 @@ phase, with breaking changes called out explicitly.
 
 ### Added
 
+- Application models for the fcmaes job worker. A `Registry` holds the
+  models a worker solves; an application worker registers its own as Rust
+  closures (scalar, multi-objective or quality-diversity) built by a factory
+  from the problem's dimension, its `problem.parameters` and SHA-256-checked
+  job `inputs`, and runs `Adapter::new(registry)`. The worker records every
+  parameter value used in the resolved job and rejects parameters and inputs
+  the model does not read. The built-in benchmarks are registered the same
+  way; their jobs resolve and run exactly as before.
+  `examples/custom_worker.rs` and `docs/job-api/models.md` show how; the
+  tutorial runs the example worker on a data file.
+- Parallel population evaluation in the fcmaes job worker: CMA-ES,
+  CR-FM-NES, PGPE, MODE and MAP-Elites accept `inner_threads > 1` and
+  evaluate each population on threads of the task's own, with results that
+  do not depend on the number of threads. BiteOpt, DE and `fcmaes.evaluate/1`
+  still require `inner_threads=1`.
+- More algorithms behind the fcmaes job profiles: CR-FM-NES and PGPE retries
+  in `fcmaes.retry/1`; IPOP and BIPOP restarts for CMA-ES within a retry's
+  budget; CVT archives (any descriptor dimension, one tessellation per job)
+  and CMA-ME or CMA-MAE emitter phases with exact budgets in
+  `fcmaes.map-elites/1`.
+
 - Synchronized the shared job crates with LP-IP-craft and SQP-craft as
   version 0.1.1. The three copies had drifted after the 0.1.0 delivery; they
   are byte-identical again and every repository's CI checks the manifest.
@@ -70,6 +91,12 @@ phase, with breaking changes called out explicitly.
   runner's `run.json` profile. `scripts/runner` adds a real-binary
   integration suite (run in CI), a systemd host acceptance gate and a
   telemetry benchmark matrix.
+
+### Changed
+
+- `fcmaes-core`: the CVT construction of `Archive` no longer depends on the
+  number of Rayon threads (Lloyd steps sum fixed chunks in order), and
+  `Archive` implements `Clone` and `Debug`.
 
 ## [0.1.5] - 2026-08-13
 

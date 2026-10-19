@@ -19,7 +19,7 @@ and [`optimization.result-0.2.schema.json`](job-api/schemas/optimization.result-
 | --- | --- |
 | `optimization-job-api` | Strict versioned envelope, resources, input hashes, checked journals, result contract and worker SDK |
 | `optimization-runner` / `optimization-run` | Worker discovery, staging, idempotency, admission, process supervision, cancellation, deadlines, journal recovery and coded errors |
-| `fcmaes-job-worker` | `fcmaes.retry/1` (BiteOpt, DE or CMA-ES retries on registered scalar objectives), `fcmaes.mode/1` (MODE Pareto fronts), `fcmaes.map-elites/1` (MAP-Elites archives) and `fcmaes.evaluate/1` (given points): deterministic task seeds and exact or declared evaluation budgets |
+| `fcmaes-job-worker` | `fcmaes.retry/1` (BiteOpt, DE, CMA-ES with optional IPOP/BIPOP restarts, CR-FM-NES or PGPE retries on registered scalar models), `fcmaes.mode/1` (MODE Pareto fronts), `fcmaes.map-elites/1` (MAP-Elites grid or CVT archives, optional CMA-ME/CMA-MAE emitters) and `fcmaes.evaluate/1` (given points): deterministic task seeds, exact or declared evaluation budgets, parallel population evaluation; application workers register their own models with parameters and hashed inputs |
 | `lp-ip-job-worker` | `lp-ip.solve/1`: sparse LP/MIP artifacts, candidate starts, node/pivot budgets and numerical checks; `lp-ip.evaluate/1`: given points |
 | `sqp-job-worker` | `sqp.solve/1`: registered smooth Rust models, initial points, active-set/Clarabel backends and independent KKT checks; `sqp.evaluate/1`: given points |
 
@@ -85,7 +85,7 @@ and `job-api/schemas/optimization.job-0.1.schema.json` for the schema:
 | `payload` | Strict solver-specific model/algorithm/budget options |
 | `resources` | Positive `cpu_slots`, `outer_workers`, `inner_threads` |
 | `limits` | Positive `wall_time_seconds`, nonnegative `grace_seconds` |
-| `inputs` | Named relative files with mandatory SHA-256 hashes; empty for registered models |
+| `inputs` | Named relative files with mandatory SHA-256 hashes: an LP model, or data a registered model reads; empty otherwise |
 | `task_count` | Normally omitted; the worker fills it during validation |
 
 Unknown envelope and payload fields, unsupported profiles and unsupported thread
@@ -130,9 +130,11 @@ outer_workers * inner_threads <= cpu_slots <= 1024
 
 For eight independent solves or fcmaes runs, use `8 / 8 / 1`. For one LP or
 SQP solve with up to eight numerical workers, use `8 / 1 / 8`. `8 / 2 / 4` is
-also valid. `8 / 8 / 8` is rejected. fcmaes requires `inner_threads=1` in all
-its profiles, as do the evaluation profiles. LP-IP and SQP solves support 1–8
-inner workers.
+also valid. `8 / 8 / 8` is rejected. fcmaes evaluates the populations of
+CMA-ES, CR-FM-NES, PGPE, MODE and MAP-Elites on `inner_threads` threads per
+task, with results that do not depend on the thread count; BiteOpt, DE and the
+evaluation profiles require `inner_threads=1`. LP-IP and SQP solves support
+1–8 inner workers.
 
 Admission reserves `cpu_slots` for the whole attempt, not just the currently
 busy tasks. A job asking for more slots than the node has is rejected
@@ -437,8 +439,10 @@ user manager are tested; detached execution has not yet been accepted on a real
 service host. There is no simulated background-success fallback.
 
 This release has no HTTP/MCP server, remote simulator plugins, arbitrary Python
-callbacks, distributed scheduler, solver checkpoint/resume or cross-solver
-pipeline engine. No worker emits certificates, sets `imprecise`, or records a
+callbacks, ask/tell sessions, distributed scheduler, solver checkpoint/resume or
+cross-solver pipeline engine. New models are native code registered in a
+worker (fcmaes application workers, SQP's extension seam), never callbacks a
+job supplies. No worker emits certificates, sets `imprecise`, or records a
 best-so-far trace for benchmark tools such as IOHanalyzer, and the LP model
 artifact has no MathOptFormat conversion. SQP starts with three native
 registered models and a documented extension seam. LP accepts the documented

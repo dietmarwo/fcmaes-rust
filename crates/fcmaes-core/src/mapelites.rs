@@ -137,8 +137,16 @@ fn grid_index_2d(k: usize, descriptor: &[f64]) -> usize {
     row * base_columns + row.min(extra_columns) + column
 }
 
+/// Fewest samples per partial sum of a Lloyd step.
+const LLOYD_CHUNK: usize = 1024;
+/// Most partial sums of a Lloyd step; bounds their memory to this many
+/// copies of the centers.
+const LLOYD_PARTIALS: usize = 64;
+
 /// Compute `k` niche centers in `[0,1]^dim` via k-means++ over
-/// `k * samples_per_niche` uniform samples (Lloyd iterations).
+/// `k * samples_per_niche` uniform samples (Lloyd iterations). The centers
+/// depend only on the arguments and the random stream, not on the Rayon
+/// pool the function runs in.
 fn cvt_centers(k: usize, dim: usize, samples_per_niche: usize, rng: &mut Rng) -> Vec<Vec<f64>> {
     let n = (k * samples_per_niche).max(k);
     let samples: Vec<Vec<f64>> = (0..n)
@@ -171,13 +179,17 @@ fn cvt_centers(k: usize, dim: usize, samples_per_niche: usize, rng: &mut Rng) ->
     }
 
     // A few Lloyd iterations. Assignment is the dominant O(samples * k)
-    // kernel, so use thread-local accumulators and merge them in parallel.
+    // kernel. Fixed-size chunks are summed in parallel and their partial
+    // sums are added in chunk order, so the centers do not depend on the
+    // number of threads or on work stealing.
+    let chunk_size = LLOYD_CHUNK.max(n.div_ceil(LLOYD_PARTIALS));
     for _ in 0..10 {
-        let (sums, counts) = samples
-            .par_iter()
-            .fold(
-                || (vec![0.0; k * dim], vec![0usize; k]),
-                |(mut sums, mut counts), s| {
+        let partials: Vec<(Vec<f64>, Vec<usize>)> = samples
+            .par_chunks(chunk_size)
+            .map(|chunk| {
+                let mut sums = vec![0.0; k * dim];
+                let mut counts = vec![0usize; k];
+                for s in chunk {
                     let mut best = 0;
                     let mut best_distance = f64::MAX;
                     for (index, center) in centers.iter().enumerate() {
@@ -191,21 +203,20 @@ fn cvt_centers(k: usize, dim: usize, samples_per_niche: usize, rng: &mut Rng) ->
                     for j in 0..dim {
                         sums[best * dim + j] += s[j];
                     }
-                    (sums, counts)
-                },
-            )
-            .reduce(
-                || (vec![0.0; k * dim], vec![0usize; k]),
-                |(mut left_sums, mut left_counts), (right_sums, right_counts)| {
-                    for index in 0..k {
-                        left_counts[index] += right_counts[index];
-                    }
-                    for index in 0..k * dim {
-                        left_sums[index] += right_sums[index];
-                    }
-                    (left_sums, left_counts)
-                },
-            );
+                }
+                (sums, counts)
+            })
+            .collect();
+        let mut sums = vec![0.0; k * dim];
+        let mut counts = vec![0usize; k];
+        for (partial_sums, partial_counts) in &partials {
+            for index in 0..k {
+                counts[index] += partial_counts[index];
+            }
+            for index in 0..k * dim {
+                sums[index] += partial_sums[index];
+            }
+        }
         let mut max_shift = 0.0_f64;
         for ci in 0..k {
             if counts[ci] > 0 {
@@ -260,7 +271,9 @@ impl GridLayout {
 }
 
 /// CVT quality-diversity archive: `capacity` niches, each holding the best
-/// solution found for it.
+/// solution found for it. Cloning copies the niches with their elites, so an
+/// expensive CVT tessellation can be computed once and reused by several runs.
+#[derive(Clone, Debug)]
 pub struct Archive {
     dim: usize,
     qd_dim: usize,
@@ -1052,6 +1065,27 @@ mod tests {
                 assert!((0.0..=1.0).contains(&v));
             }
         }
+    }
+
+    #[test]
+    fn cvt_centers_do_not_depend_on_the_thread_count() {
+        // 300 * 40 samples give twelve partial sums of 1024 samples.
+        let centers = |threads: usize| {
+            rayon::ThreadPoolBuilder::new()
+                .num_threads(threads)
+                .build()
+                .unwrap()
+                .install(|| cvt_centers(300, 3, 40, &mut Rng::new(7)))
+        };
+        let serial = centers(1);
+        for threads in [2, 3, 8] {
+            assert_eq!(centers(threads), serial, "{threads} threads");
+        }
+        let mut rng = Rng::new(7);
+        let archive = Archive::new(2, &[0.0; 3], &[1.0; 3], 300, 40, &mut rng);
+        let copy = archive.clone();
+        assert_eq!(copy.centers, serial);
+        assert_eq!(copy.capacity(), 300);
     }
 
     #[test]
