@@ -274,6 +274,14 @@ runner build for all jobs that share a node root, and do not assume identical
 recovery behaviour across repositories. A cross-project change must update
 all three copies and their manifests.
 
+SQP-craft's [job API review](https://github.com/dietmarwo/SQP-craft/blob/main/docs/job-api/REVIEW.md)
+lists defects of the delivered shared code that this copy still has. The ones
+an operator meets: `validate` and `run` stage the worker under `TMPDIR`, so a
+`noexec` `/tmp` makes them fail with "Permission denied" (point `TMPDIR` at an
+executable directory); an invalid record in a worker's `results.jsonl` leaves
+the job `running` and makes `jobs list` fail for the whole node; and after a
+reboot, finished jobs are also reported `interrupted_after_reboot`.
+
 The new runner defaults to `.optimization-jobs`; `fcmaes-run` retains
 `.fcmaes-jobs`. Root precedence is `--root`, `OPTIMIZATION_RUN_ROOT`, then
 `FCMAES_RUN_ROOT`, then the entry point's default. Separate roots have separate
