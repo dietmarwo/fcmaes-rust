@@ -1,0 +1,336 @@
+//! `fcmaes.mode/1`: independent MODE runs on registered multi-objective
+//! models. Each task is one seeded run of `generations` asked populations;
+//! its outcome is the feasible non-dominated part of the final population,
+//! re-evaluated outside the optimizer, with its hypervolume.
+use crate::{Control, problems};
+use fcmaes_core::{
+    Fitness, Mode, ModeParams, OutsidePolicy, ReferencePoint, hypervolume_with,
+    indicators::HypervolumeEstimate, pareto_indices, retry_run_seed,
+};
+use optimization_job_api::{
+    JobSpec, Result, legacy,
+    result::Outcome,
+    worker::{Prepared, TaskResult},
+};
+use serde::{Deserialize, Serialize};
+use serde_json::{Value, json};
+
+pub const PROFILE: &str = "fcmaes.mode/1";
+/// MODE replaces non-finite values by this sentinel before ranking.
+const BIG: f64 = f64::MAX;
+/// Largest population times dimension one run may hold.
+const MAX_CELLS: usize = 10_000_000;
+
+#[derive(Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Payload {
+    pub problem: legacy::Problem,
+    pub optimizer: Optimizer,
+    pub seed: u64,
+    pub runs: usize,
+    pub generations: u64,
+    #[serde(default)]
+    pub reference_point: Option<Vec<f64>>,
+}
+#[derive(Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Optimizer {
+    pub kind: String,
+    #[serde(default)]
+    pub parameters: Parameters,
+}
+/// `ModeParams` without seeds and integer settings; validation fills in the
+/// `fcmaes-core` defaults.
+#[derive(Clone, Default, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Parameters {
+    pub population: Option<usize>,
+    pub nsga_update: Option<bool>,
+    pub pareto_update: Option<f64>,
+    pub f: Option<f64>,
+    pub cr: Option<f64>,
+    pub pro_c: Option<f64>,
+    pub dis_c: Option<f64>,
+    pub pro_m: Option<f64>,
+    pub dis_m: Option<f64>,
+}
+
+pub fn describe() -> Value {
+    let d = ModeParams::default();
+    json!({"profile":PROFILE,"limit":"exact: generations * population per run",
+        "defaults":{"population":d.popsize,"nsga_update":d.nsga_update,"pareto_update":d.pareto_update,
+            "f":d.f,"cr":d.cr,"pro_c":d.pro_c,"dis_c":d.dis_c,"pro_m":d.pro_m,"dis_m":d.dis_m},
+        "ranges":{"population":"4..10000; 4..1000 with three objectives","f":"(0,2]","cr":"(0,1]","pro_c":"[0,1]","pro_m":"[0,1]",
+            "dis_c":"> 0","dis_m":"> 0","pareto_update":"[0,1]"},
+        "result":"feasible non-dominated final population members, re-evaluated, with exact hypervolume"})
+}
+
+pub struct Run {
+    payload: Payload,
+    model: problems::MultiObjective,
+    params: ModeParams,
+    reference: ReferencePoint,
+    control: Control,
+}
+
+fn finite(name: &str, value: f64, valid: bool) -> Result<f64> {
+    if value.is_finite() && valid {
+        Ok(value)
+    } else {
+        Err(format!("mode parameter {name} = {value} is out of range").into())
+    }
+}
+
+pub fn prepare(s: &mut JobSpec) -> Result<Box<dyn Prepared>> {
+    let mut p: Payload = serde_json::from_value(s.payload.clone())?;
+    let (problem, model) = problems::multi_objective(p.problem.clone())?;
+    if p.optimizer.kind != "mode" {
+        return Err("fcmaes.mode/1 requires optimizer.kind mode".into());
+    }
+    if p.runs == 0 || p.generations == 0 {
+        return Err("positive runs and generations required".into());
+    }
+    let d = ModeParams::default();
+    let q = &p.optimizer.parameters;
+    let population = q.population.unwrap_or(d.popsize as usize);
+    let n = problem.config.dimension;
+    // The exact hypervolume of a front of F points costs O(F^2) for two
+    // objectives and O(F^3) for three; it runs after the last cancel check.
+    let max_population = if model.nobj >= 3 { 1_000 } else { 10_000 };
+    if !(4..=max_population).contains(&population) || population.saturating_mul(n) > MAX_CELLS {
+        return Err(format!(
+            "mode population must be 4..{max_population} for {} with population * dimension <= 1e7",
+            model.id
+        )
+        .into());
+    }
+    let f = q.f.unwrap_or(d.f);
+    let cr = q.cr.unwrap_or(d.cr);
+    let pro_c = q.pro_c.unwrap_or(d.pro_c);
+    let pro_m = q.pro_m.unwrap_or(d.pro_m);
+    let dis_c = q.dis_c.unwrap_or(d.dis_c);
+    let dis_m = q.dis_m.unwrap_or(d.dis_m);
+    let pareto_update = q.pareto_update.unwrap_or(d.pareto_update);
+    let params = ModeParams {
+        popsize: population as i32,
+        f: finite("f", f, f > 0.0 && f <= 2.0)?,
+        cr: finite("cr", cr, cr > 0.0 && cr <= 1.0)?,
+        pro_c: finite("pro_c", pro_c, (0.0..=1.0).contains(&pro_c))?,
+        dis_c: finite("dis_c", dis_c, dis_c > 0.0)?,
+        pro_m: finite("pro_m", pro_m, (0.0..=1.0).contains(&pro_m))?,
+        dis_m: finite("dis_m", dis_m, dis_m > 0.0)?,
+        nsga_update: q.nsga_update.unwrap_or(d.nsga_update),
+        pareto_update: finite(
+            "pareto_update",
+            pareto_update,
+            (0.0..=1.0).contains(&pareto_update),
+        )?,
+        ..d
+    };
+    p.generations
+        .checked_mul(population as u64)
+        .and_then(|e| e.checked_mul(p.runs as u64))
+        .ok_or("evaluation budget overflow")?;
+    let reference = p
+        .reference_point
+        .clone()
+        .unwrap_or_else(|| model.reference_point.clone());
+    if reference.len() != model.nobj {
+        return Err(format!("reference_point needs {} coordinates", model.nobj).into());
+    }
+    let reference =
+        ReferencePoint::new(reference).map_err(|e| format!("reference_point: {e:?}"))?;
+    // MODE validates its own configuration; construct one to check it now
+    // rather than in every task.
+    Mode::try_new(
+        fitness(&problem, &model),
+        model.nobj,
+        model.ncon,
+        None,
+        &params,
+    )?;
+    p.problem = problem;
+    p.reference_point = Some(reference.as_slice().to_vec());
+    p.optimizer.parameters = Parameters {
+        population: Some(population),
+        nsga_update: Some(params.nsga_update),
+        pareto_update: Some(params.pareto_update),
+        f: Some(params.f),
+        cr: Some(params.cr),
+        pro_c: Some(params.pro_c),
+        dis_c: Some(params.dis_c),
+        pro_m: Some(params.pro_m),
+        dis_m: Some(params.dis_m),
+    };
+    s.payload = serde_json::to_value(&p)?;
+    Ok(Box::new(Run {
+        payload: p,
+        model,
+        params,
+        reference,
+        control: Control::default(),
+    }))
+}
+
+fn fitness(problem: &legacy::Problem, model: &problems::MultiObjective) -> Fitness {
+    Fitness::bounded(
+        problem.config.dimension,
+        model.nobj + model.ncon,
+        &problem.bounds.lower,
+        &problem.bounds.upper,
+    )
+}
+
+/// The values MODE stores for an evaluation: non-finite entries become `BIG`.
+pub fn sanitized(values: Vec<f64>) -> Vec<f64> {
+    values
+        .into_iter()
+        .map(|v| if v.is_finite() { v } else { BIG })
+        .collect()
+}
+
+/// Final population of one MODE run, with the number of completed
+/// generations and the reason it ended.
+pub struct ModeRun {
+    pub x: Vec<Vec<f64>>,
+    pub y: Vec<Vec<f64>>,
+    pub generations: u64,
+    pub termination: &'static str,
+}
+
+/// Runs MODE from `seed` for at most `generations`, evaluating each asked
+/// population in order. `stop` is checked before every generation.
+pub fn run_mode(
+    problem: &legacy::Problem,
+    model: &problems::MultiObjective,
+    params: &ModeParams,
+    seed: u64,
+    generations: u64,
+    stop: impl Fn() -> Option<&'static str>,
+) -> Result<ModeRun> {
+    let mut mode = Mode::try_new(
+        fitness(problem, model),
+        model.nobj,
+        model.ncon,
+        None,
+        &ModeParams {
+            seed,
+            runid: 0,
+            ..params.clone()
+        },
+    )?;
+    let mut done = 0;
+    let mut termination = "evaluation_limit";
+    while done < generations {
+        if let Some(reason) = stop() {
+            termination = reason;
+            break;
+        }
+        let xs = mode.try_ask()?;
+        let ys: Vec<Vec<f64>> = xs.iter().map(|x| (model.evaluate)(x)).collect();
+        mode.try_tell(&ys)?;
+        done += 1;
+    }
+    let r = mode.result();
+    Ok(ModeRun {
+        x: r.x,
+        y: r.y,
+        generations: done,
+        termination,
+    })
+}
+
+impl Prepared for Run {
+    fn tasks(&self) -> usize {
+        self.payload.runs
+    }
+    fn cancel(&self) {
+        self.control.cancel();
+    }
+    fn solve(&self, task: usize, _: f64) -> Result<TaskResult> {
+        let seed = retry_run_seed(self.payload.seed, task);
+        let problem = &self.payload.problem;
+        let run = run_mode(
+            problem,
+            &self.model,
+            &self.params,
+            seed,
+            self.payload.generations,
+            || self.control.stop(),
+        )?;
+        let population = self.params.popsize as u64;
+        let (nobj, ncon) = (self.model.nobj, self.model.ncon);
+        let mut validation = 0;
+        let mut unevaluated = 0;
+        let mut feasible = Vec::new();
+        if run.generations > 0 {
+            for (x, stored) in run.x.iter().zip(&run.y) {
+                // Survivors that were never evaluated still carry the sentinel.
+                if stored.iter().all(|v| *v == BIG) {
+                    unevaluated += 1;
+                    continue;
+                }
+                let values = sanitized((self.model.evaluate)(x));
+                validation += 1;
+                if x.len() != problem.config.dimension
+                    || x.iter()
+                        .zip(problem.bounds.lower.iter().zip(&problem.bounds.upper))
+                        .any(|(v, (l, u))| !v.is_finite() || v < l || v > u)
+                    || &values != stored
+                {
+                    return Err("MODE member failed independent re-evaluation".into());
+                }
+                if values[..nobj].iter().all(|v| *v < BIG)
+                    && values[nobj..].iter().all(|c| *c <= 0.0)
+                    && !feasible
+                        .iter()
+                        .any(|(other, _): &(&Vec<f64>, Vec<f64>)| *other == x)
+                {
+                    feasible.push((x, values));
+                }
+            }
+        }
+        let objectives: Vec<Vec<f64>> = feasible.iter().map(|(_, v)| v[..nobj].to_vec()).collect();
+        let front = pareto_indices(&objectives, nobj).unwrap_or_default();
+        let points: Vec<Value> = front
+            .iter()
+            .map(|&i| {
+                let (x, v) = &feasible[i];
+                json!({"x":x,"objectives":&v[..nobj],"constraints":&v[nobj..nobj + ncon]})
+            })
+            .collect();
+        let front_objectives: Vec<Vec<f64>> =
+            front.iter().map(|&i| objectives[i].clone()).collect();
+        let hypervolume = if front_objectives.is_empty() {
+            Value::Null
+        } else {
+            let h = hypervolume_with(&front_objectives, &self.reference, OutsidePolicy::Exclude)
+                .map_err(|e| format!("hypervolume: {e:?}"))?;
+            json!({"value":h.estimate.value(),
+                "exact":matches!(h.estimate, HypervolumeEstimate::Exact(_)),
+                "reference_point":self.reference.as_slice(),
+                "retained_points":h.retained_points,"outside_reference":h.outside_reference})
+        };
+        let claimed = !points.is_empty();
+        Ok(TaskResult {
+            outcome: Outcome {
+                termination: run.termination.into(),
+                claim: if claimed { "non_dominated_set" } else { "none" }.into(),
+                feasible: (run.generations > 0).then_some(claimed),
+                objective: None,
+                x: None,
+                details: json!({"run_seed":seed,"generations":run.generations,
+                    "requested_generations":self.payload.generations,"population":population,
+                    "objectives":nobj,"constraints":ncon,
+                    "front_size":points.len(),"feasible_members":feasible.len(),
+                    "unevaluated_members":unevaluated,"front":points,"hypervolume":hypervolume,
+                    "pareto_optimality_certified":false}),
+            },
+            work: [
+                ("evaluations".into(), run.generations * population),
+                ("validation_evaluations".into(), validation),
+            ]
+            .into(),
+        })
+    }
+}

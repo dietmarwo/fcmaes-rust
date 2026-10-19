@@ -15,11 +15,17 @@ CI runs these on every push and pull request (`.github/workflows/ci.yml`):
 | Shared-source identity | `sha256sum -c docs/job-api/SHARED-SOURCES.sha256` |
 | Route-search tutorial (uses the shared crate by path) | tutorial matrix job: fmt, clippy, tests |
 
-The Rust tests include two cross-profile checks. Every retry of a common
-`fcmaes.retry/1` job equals a direct call of the shared native solver from
-the same `retry_run_seed`. A legacy `fcmaes.job/0.1` job and a common job with
-the same problem, optimizer, seed and budget agree retry by retry, at
-different worker counts.
+The Rust tests include these cross-profile checks. Every BiteOpt or DE retry
+of a common `fcmaes.retry/1` job equals a direct call of the shared native
+solver from the same `retry_run_seed`, and every CMA-ES retry equals the
+library's CMA-ES retry. A legacy `fcmaes.job/0.1` job and a common job with the
+same problem, optimizer, seed and budget agree retry by retry, at different
+worker counts. Every `fcmaes.mode/1` front equals the feasible non-dominated
+part of a `fcmaes_core::Mode` run driven directly from the same seed, with the
+same hypervolume; every `fcmaes.map-elites/1` archive equals the archive of
+`fcmaes_core::map_elites_batch` from the same seed, for both variations.
+Generation runs stop cooperatively at the deadline, on `cancel.request` and
+through `jobs cancel`, with complete accounting.
 
 The detached systemd backend is not exercised in CI: hosted runners have no
 user manager. Run `python3 scripts/runner/test_systemd.py` on the target host.
@@ -74,6 +80,36 @@ Fixes found during acceptance:
 - `fcmaes-job-worker` duplicated the native worker's solver dispatch and
   objective registry; both workers now use one library. Its reported engine
   version follows the workspace version instead of a hard-coded string.
+
+## CMA-ES, MODE and MAP-Elites profiles (19 October 2026)
+
+The common worker gained CMA-ES in `fcmaes.retry/1` and the new
+`fcmaes.mode/1` and `fcmaes.map-elites/1` profiles. Checked locally with Rust
+1.97 on Linux x86_64, in addition to the CI set above:
+
+| Check | Observed result |
+| --- | --- |
+| Worker tests (`cargo test -p fcmaes-job-worker`) | 7 passed: discovery, validation and defaults of every path, equality with direct `fcmaes-core` runs, budgets, deadline and cancel stops |
+| Shared contract tests | 7 passed, including the rules of the two new claims |
+| CLI lifecycle (`fcmaes-runner`) | 9 passed, including a graceful `jobs cancel` of a MODE job |
+| Shared harness | 10 passed, 2 skipped (LP/SQP workers not supplied), including the new black-box test of all three paths |
+| Tutorial | 7 examples completed; Python rechecks of every front point, elite and candidate passed |
+
+Observed on the tutorial examples: CMA-ES reached Rosenbrock-10 values
+below 1e-14 in all 16 retries and stopped on its own after about 7,400
+evaluations on average; MODE's ZDT1 fronts reached a hypervolume of about
+0.866 (the true front has 0.8767 for reference point 1.1, 1.1); MAP-Elites
+covered 60–80% of 400 niches of the 10-D Rastrigin projection benchmark.
+These are checks of the adapters, not performance benchmarks.
+
+An independent review of the change found three defects, now fixed and
+tested. CMA-ES stores the unclamped decode of its best sample, which can lie
+an ulp outside a bound, so a box-edge optimum failed the worker's bounds
+check and the whole job; the worker now reports the clamped point, which is
+exactly the evaluated one. The exact three-objective hypervolume costs
+O(F³) after the last cancellation check, so MODE populations for three
+objectives are limited to 1,000. A CMA-ES budget sum could overflow in
+debug builds before its checked rejection.
 
 ## Reproduce with sibling workers
 

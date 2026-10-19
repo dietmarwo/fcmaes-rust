@@ -1,7 +1,7 @@
 //! Native objective registry and solver dispatch, shared by
 //! `fcmaes-native-worker` (`fcmaes.job/0.1`) and `fcmaes-job-worker`
 //! (`fcmaes.retry/1`), so both job profiles evaluate the same objectives with
-//! the same solver settings and retry seeds.
+//! the same BiteOpt and DE settings and retry seeds.
 #![forbid(unsafe_code)]
 use fcmaes_core::{BiteOpt, BiteParams, De, DeParams, Fitness, RetryBounds, RetryRunResult};
 use fcmaes_job_api::JobSpec;
@@ -73,10 +73,18 @@ pub fn rosenbrock(x: &[f64]) -> f64 {
 /// Resolve the objective once, so the evaluation loop does not dispatch on
 /// the problem name for every candidate.
 pub fn objective_for(spec: &JobSpec) -> fn(&[f64]) -> f64 {
-    match spec.problem.id.as_str() {
+    objective_by_id(&spec.problem.id)
+}
+/// The registered scalar objective with this identifier.
+///
+/// # Panics
+///
+/// Panics for an identifier that `Problem::resolve` would reject.
+pub fn objective_by_id(id: &str) -> fn(&[f64]) -> f64 {
+    match id {
         "benchmark.sphere" => sphere,
         "benchmark.rosenbrock" => rosenbrock,
         "gtop.cassini1" => fcmaes_gtop::cassini1,
-        _ => unreachable!("problem id is validated by JobSpec::resolve"),
+        _ => unreachable!("problem id is validated by Problem::resolve"),
     }
 }

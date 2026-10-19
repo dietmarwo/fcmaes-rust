@@ -186,3 +186,56 @@ fn numerical_json_round_trips_preserve_manifest_and_digest() {
         "completed"
     );
 }
+
+#[test]
+fn set_and_archive_claims_follow_their_rules() {
+    let s = job();
+    let record = |claim: &str, feasible: Option<bool>, x: Option<Vec<f64>>, objective| Record {
+        task_id: 0,
+        spec_digest: s.digest().unwrap(),
+        elapsed_seconds: 0.1,
+        work: [("evaluations".into(), 10)].into(),
+        outcome: Outcome {
+            termination: "evaluation_limit".into(),
+            claim: claim.into(),
+            feasible,
+            objective,
+            x,
+            details: json!({"front": [{"x": [0.5], "objectives": [1.0, 2.0]}]}),
+        },
+    };
+    let replay = |r: Record| {
+        let d = tempfile::tempdir().unwrap();
+        storage::append_checked(&d.path().join("results.jsonl"), 1, &r).unwrap();
+        result::replay(d.path(), &s).map(|records| records.len())
+    };
+    // A non-dominated set lives in details: no single point or objective.
+    assert_eq!(
+        replay(record("non_dominated_set", Some(true), None, None)).unwrap(),
+        1
+    );
+    assert!(replay(record("non_dominated_set", Some(false), None, None)).is_err());
+    assert!(
+        replay(record(
+            "non_dominated_set",
+            Some(true),
+            Some(vec![0.5]),
+            Some(1.0)
+        ))
+        .is_err()
+    );
+    // An elite archive names its best elite, like every other point claim.
+    assert_eq!(
+        replay(record(
+            "elite_archive",
+            Some(true),
+            Some(vec![0.5]),
+            Some(1.0)
+        ))
+        .unwrap(),
+        1
+    );
+    assert!(replay(record("elite_archive", Some(true), None, None)).is_err());
+    assert!(replay(record("best_found", Some(true), None, None)).is_err());
+    assert!(replay(record("pareto_optimal", Some(true), None, None)).is_err());
+}

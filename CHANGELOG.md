@@ -8,6 +8,22 @@ phase, with breaking changes called out explicitly.
 
 ### Added
 
+- The common fcmaes job worker covers CMA-ES, MODE and MAP-Elites.
+  `fcmaes.retry/1` accepts `optimizer.kind: "cmaes"` (soft limit of at most
+  `population-1` extra evaluations, normalized `sigma`, a seeded random
+  start); BiteOpt and DE payloads and digests are unchanged. The new
+  `fcmaes.mode/1` profile runs seeded MODE runs on registered ZDT1, DTLZ2
+  and Binh–Korn models and reports each run's re-evaluated, feasible,
+  non-dominated front with its exact hypervolume. The new
+  `fcmaes.map-elites/1` profile runs seeded MAP-Elites runs on the sphere and
+  Rastrigin linear-projection benchmarks and reports the re-evaluated elite
+  archive with coverage and QD score. Both stop cooperatively between
+  generations, have exact evaluation budgets, and give the same results as
+  direct `fcmaes-core` runs from the same seeds. The shared result contract
+  gains the `non_dominated_set` and `elite_archive` claims; runners built
+  before them reject such journals. `fcmaes-job-worker` is now a library plus
+  a thin binary. See `tutorials/job-api/README.md`.
+
 - Added the shared optimization job API: `optimization-job-api` (versioned
   `optimization.job/0.1` envelope, worker SDK, checked journals, input
   hashing) and `optimization-runner` (`optimization-run`), shared with the

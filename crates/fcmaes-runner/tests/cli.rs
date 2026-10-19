@@ -532,3 +532,58 @@ fn graceful_cancel_of_a_common_job_keeps_active_tasks() {
     assert_eq!(run["work"]["evaluations"], completed * LONG_RETRY);
     assert_eq!(node.ledger(), json!({}));
 }
+
+#[test]
+fn graceful_cancel_stops_generation_runs_with_their_partial_results() {
+    let node = Node::new(2);
+    node.register_common_worker();
+    let spec = node.spec("mode-graceful", |s| {
+        *s = json!({
+            "schema_version": "optimization.job/0.1",
+            "request_key": "mode-graceful",
+            "worker": "fcmaes",
+            "payload_schema": "fcmaes.mode/1",
+            "payload": {
+                "problem": {"id": "benchmark.zdt1", "version": "1", "config": {"dimension": 8},
+                            "bounds": {"lower": [0.0], "upper": [1.0], "broadcast": true}},
+                "optimizer": {"kind": "mode", "parameters": {"population": 32}},
+                "seed": 7, "runs": 4, "generations": 1_000_000_000u64
+            },
+            "resources": {"cpu_slots": 2, "outer_workers": 2, "inner_threads": 1},
+            "limits": {"wall_time_seconds": 120.0, "grace_seconds": 1.0},
+            "inputs": []
+        })
+    });
+    let id = job_id("mode-graceful");
+    let mut child = node.spawn_run(&spec);
+    let dir = PathBuf::from(
+        node.wait_state(&id, "running")["directory"]
+            .as_str()
+            .unwrap(),
+    );
+    let start = Instant::now();
+    while !dir.join("results.jsonl").exists() {
+        assert!(start.elapsed() < TIMEOUT, "worker never started");
+        thread::sleep(Duration::from_millis(20));
+    }
+    thread::sleep(Duration::from_millis(300));
+    node.ok(&["jobs", "cancel", &id]);
+    wait_child(&mut child);
+    let run = read(&dir.join("run.json"));
+    assert_eq!(run["status"], "cancelled");
+    assert_eq!(run["runner"]["accounting_complete"], true);
+    // Unlike retries, generation runs stop between generations: the two
+    // active runs return their fronts, and the queued ones never start.
+    let results = run["results"].as_array().unwrap();
+    assert_eq!(results.len(), 2);
+    let mut evaluations = 0;
+    for r in results {
+        assert_eq!(r["outcome"]["termination"], "cancelled");
+        assert_eq!(r["outcome"]["claim"], "non_dominated_set");
+        let generations = r["outcome"]["details"]["generations"].as_u64().unwrap();
+        assert!(generations > 0);
+        evaluations += generations * 32;
+    }
+    assert_eq!(run["work"]["evaluations"], evaluations);
+    assert_eq!(node.ledger(), json!({}));
+}

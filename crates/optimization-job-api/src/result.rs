@@ -10,7 +10,9 @@ use std::{
 #[serde(deny_unknown_fields)]
 pub struct Outcome {
     pub termination: String,
-    /// none, feasible, best_found, numerical_optimum, or first_order.
+    /// none, feasible, best_found, numerical_optimum, first_order,
+    /// non_dominated_set or elite_archive. A non_dominated_set describes a
+    /// set of points in `details` and has no single `x` or `objective`.
     pub claim: String,
     pub feasible: Option<bool>,
     pub objective: Option<f64>,
@@ -36,6 +38,7 @@ pub fn replay(dir: &Path, spec: &JobSpec) -> Result<Vec<Record>> {
     let mut ids = BTreeSet::new();
     for r in &records {
         let o = &r.outcome;
+        let set = o.claim == "non_dominated_set";
         if r.task_id >= spec.task_count.ok_or("unresolved task_count")?
             || !ids.insert(r.task_id)
             || r.spec_digest != digest
@@ -44,15 +47,23 @@ pub fn replay(dir: &Path, spec: &JobSpec) -> Result<Vec<Record>> {
             || o.termination.is_empty()
             || !matches!(
                 o.claim.as_str(),
-                "none" | "feasible" | "best_found" | "numerical_optimum" | "first_order"
+                "none"
+                    | "feasible"
+                    | "best_found"
+                    | "numerical_optimum"
+                    | "first_order"
+                    | "non_dominated_set"
+                    | "elite_archive"
             )
             || o.objective.is_some_and(|v| !v.is_finite())
             || o.x
                 .as_ref()
                 .is_some_and(|v| v.is_empty() || v.iter().any(|x| !x.is_finite()))
             || o.objective.is_some() != o.x.is_some()
-            || (o.claim != "none" && (o.feasible != Some(true) || o.x.is_none()))
-            || (o.feasible == Some(true) && o.x.is_none())
+            || (o.claim != "none" && o.feasible != Some(true))
+            // A set claim lives in details; every other claim names one point.
+            || (set && o.x.is_some())
+            || (!set && o.feasible == Some(true) && o.x.is_none())
             || r.work.keys().any(|k| !crate::safe_name(k))
         {
             return Err("invalid, mismatched or duplicate result record".into());
