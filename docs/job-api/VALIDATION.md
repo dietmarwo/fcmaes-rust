@@ -11,6 +11,7 @@ CI runs these on every push and pull request (`.github/workflows/ci.yml`):
 | Rust tests | `cargo test --workspace` (shared contracts and durability, worker SDK adapter, legacy and common CLI lifecycle) |
 | Legacy runner integration | `python3 scripts/runner/test_integration.py` |
 | Common job API integration | `python3 scripts/job-api/test_integration.py` |
+| Shared runner regressions | `python3 scripts/job-api/test_review.py` |
 | Runnable tutorial | `python3 tutorials/job-api/run.py` |
 | Shared-source identity | `sha256sum -c docs/job-api/SHARED-SOURCES.sha256` |
 | Route-search tutorial (uses the shared crate by path) | tutorial matrix job: fmt, clippy, tests |
@@ -110,6 +111,26 @@ exactly the evaluated one. The exact three-objective hypervolume costs
 O(F³) after the last cancellation check, so MODE populations for three
 objectives are limited to 1,000. A CMA-ES budget sum could overflow in
 debug builds before its checked rejection.
+
+## Synchronization of the shared crates as 0.1.1 (19 October 2026)
+
+After the 0.1.0 delivery, each repository's review changed the shared files
+independently: this repository fixed the queued-launcher repair, SQP-craft
+fixed it differently and made several further runner and journal fixes, and
+LP-IP-craft kept the delivered code. Version 0.1.1 unifies them. It takes
+SQP-craft's API and runner changes, keeps this repository's zero-work repair of
+a queued attempt with SQP-craft's rule that detached attempts with a unit stay
+unknown, and adds the fcmaes set and archive claims. The same 20 files are
+now in all three repositories, recorded by `SHARED-SOURCES.sha256`.
+
+Checked here with Rust 1.97 on Linux x86_64: the workspace tests (290 passed),
+the shared harness (10 passed, 2 skipped without LP/SQP workers), the review regressions
+(7 passed, the reboot case with the fcmaes worker), the legacy runner suite
+(14 passed), the tutorial and the route-search tutorial (53 tests). The
+other two repositories ran their own suites; see their validation reports. The
+shared harness with all three workers on one node passed (12 tests, none
+skipped) under each repository's runner build, and every worker reports
+`build.job_api_version: "0.1.1"`.
 
 ## Reproduce with sibling workers
 

@@ -125,6 +125,15 @@ static SIGNALS: AtomicUsize = AtomicUsize::new(0);
 extern "C" fn stop_handler(_: i32) {
     SIGNALS.fetch_add(1, Ordering::Relaxed);
 }
+/// SIGHUP matters for foreground runs: a closed terminal or agent shell must
+/// stop the job instead of orphaning the worker.
+fn install_stop_handlers() {
+    for signal in [libc::SIGINT, libc::SIGTERM, libc::SIGHUP] {
+        unsafe {
+            libc::signal(signal, stop_handler as *const () as libc::sighandler_t);
+        }
+    }
+}
 /// Kill delay after an immediate stop request.
 const IMMEDIATE_GRACE: Duration = Duration::from_secs(1);
 #[derive(Clone, Copy, Debug, PartialEq, PartialOrd)]
@@ -178,6 +187,12 @@ fn state_write(path: &Path, state: &Value) -> Result<()> {
     write_atomic_json(path, state)?;
     Ok(())
 }
+fn terminal(state: &Value) -> bool {
+    matches!(
+        state.as_str(),
+        Some("completed" | "failed" | "cancelled" | "timed_out" | "interrupted")
+    )
+}
 fn now() -> f64 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -204,7 +219,11 @@ fn staged(root: &Path, input: &Path) -> Result<(Request, Value, Vec<u8>, tempfil
     if w["digest"] != digest(&bytes) {
         return Err("worker changed since registration; register again explicitly".into());
     }
-    let tmp = tempfile::tempdir()?;
+    // The node root must allow execution anyway (attempts run their staged
+    // worker there); TMPDIR may be mounted noexec.
+    let tmp = tempfile::Builder::new()
+        .prefix(".staging-")
+        .tempdir_in(root)?;
     let executable = tmp.path().join("worker");
     fs::write(&executable, &bytes)?;
     {
@@ -228,7 +247,10 @@ fn staged(root: &Path, input: &Path) -> Result<(Request, Value, Vec<u8>, tempfil
             tmp.path(),
         )?;
         write_atomic_json(&tmp.path().join("request.json"), job)?;
-        let (status, out, err) = bounded_command(
+        // A signal during validation stops the validator too: it runs in its
+        // own process group, which a terminal's SIGINT does not reach.
+        install_stop_handlers();
+        let (status, out, err) = bounded_command_until(
             &[
                 executable.to_string_lossy().into_owned(),
                 "validate".into(),
@@ -240,6 +262,7 @@ fn staged(root: &Path, input: &Path) -> Result<(Request, Value, Vec<u8>, tempfil
             vec![],
             Duration::from_secs(30),
             4 * 1024 * 1024,
+            &|| SIGNALS.load(Ordering::Relaxed) > 0,
         )?;
         if !status.success() {
             return Err(format!(
@@ -276,23 +299,25 @@ fn attempt_processes_gone(dir: &Path) -> bool {
             .and_then(|n| u32::try_from(n).ok())
             .is_some_and(|pid| group_stopped(pid).unwrap_or(false));
     }
-    read(&dir.join("job.json")).is_ok_and(|s| {
-        matches!(
-            s["state"].as_str(),
-            Some("completed" | "failed" | "cancelled" | "timed_out" | "interrupted")
-        )
-    })
+    read(&dir.join("job.json")).is_ok_and(|s| terminal(&s["state"]) || never_started(&s))
 }
-/// True when an attempt's launcher died before admission. A worker is only
-/// spawned after the launcher has recorded a slot reservation, so free locks,
-/// no process record, a pre-running state and no reservation prove that no
-/// worker ever ran: the attempt can be sealed with zero work.
+/// Without a recorded process group, a worker can exist only if the attempt
+/// reached `running`, which is recorded before the worker is spawned. A
+/// queued attempt (or a foreground one not yet launched) whose launcher is
+/// gone therefore has no worker. Detached `submitted`/`starting` attempts may
+/// still be started by their unit, so they do not count.
+fn never_started(job: &Value) -> bool {
+    job["state"] == "waiting"
+        || (matches!(job["state"].as_str(), Some("submitted" | "starting"))
+            && job["unit"].is_null())
+}
+/// True when an attempt's launcher died before admission: it never started a
+/// worker, holds no lock, has no process record and no slot reservation. Such
+/// an attempt did provably zero work and can be sealed with complete
+/// (empty) accounting.
 fn never_admitted(root: &Path, id: &str, dir: &Path) -> Result<bool> {
     if dir.join("worker-process.json").exists()
-        || !matches!(
-            read(&dir.join("job.json"))?["state"].as_str(),
-            Some("submitted" | "starting" | "waiting")
-        )
+        || !never_started(&read(&dir.join("job.json"))?)
         || !matches!(lock_is_free(&dir.join("job.lock")), Ok(true))
         || !matches!(lock_is_free(&dir.join("worker.lock")), Ok(true))
     {
@@ -383,8 +408,11 @@ fn prepare(
     if dir.exists() {
         return Err("output already exists; refusing overwrite".into());
     }
-    fs::create_dir_all(dir.parent().ok_or("output has no parent")?)?;
+    let parent = dir.parent().ok_or("output has no parent")?;
+    fs::create_dir_all(parent)?;
     fs::create_dir(&dir)?;
+    // requests.json will point here; make the directory entry durable first.
+    fs::File::open(parent)?.sync_all()?;
     let dir = fs::canonicalize(dir)?;
     if let Request::Job(ref mut job) = resolved {
         stage_inputs(job, tmp.path(), &dir)?;
@@ -399,7 +427,10 @@ fn prepare(
     }
     fs::File::open(dir.join("worker"))?.sync_all()?;
     let unit = if detached {
-        Some(format!("fcmaes-{id}.service"))
+        Some(match resolved {
+            Request::Legacy(_) => format!("fcmaes-{id}.service"),
+            Request::Job(_) => format!("optimization-job-{id}.service"),
+        })
     } else {
         None
     };
@@ -537,14 +568,18 @@ fn release(root: &Path, id: &str) -> Result<()> {
 }
 fn finish(dir: &Path, spec: &Request, status: &str, exact: bool, elapsed: f64) -> Result<()> {
     let p = read(&dir.join("provenance.json"))?;
-    let mut run = result::manifest(
-        dir,
-        spec,
-        status,
-        exact,
-        elapsed,
-        p["worker_digest"].as_str().ok_or("missing worker digest")?,
-    )?;
+    let worker_digest = p["worker_digest"].as_str().ok_or("missing worker digest")?;
+    // A journal that cannot be replayed (for example a worker that wrote an
+    // invalid record) still ends the attempt: `failed`, with no trusted
+    // results or work totals, instead of a job left `running` forever.
+    let (status, mut run) = match result::manifest(dir, spec, status, exact, elapsed, worker_digest)
+    {
+        Ok(run) => (status, run),
+        Err(e) => (
+            "failed",
+            result::unreadable_manifest(spec, elapsed, worker_digest, &e.to_string()),
+        ),
+    };
     run["runner"]["attempt_id"] = p["attempt_id"].clone();
     run["runner"]["build"] = p["build"].clone();
     write_atomic_json(&dir.join("run.json"), &run)?;
@@ -562,13 +597,7 @@ fn launch(root: &Path, id: &str) -> Result<()> {
         return Err("attempt already started; no implicit restart".into());
     }
     let s = spec(&dir.join("resolved.json"))?;
-    // SIGHUP matters for foreground runs: a closed terminal or agent shell
-    // must stop the job instead of orphaning the worker.
-    for signal in [libc::SIGINT, libc::SIGTERM, libc::SIGHUP] {
-        unsafe {
-            libc::signal(signal, stop_handler as *const () as libc::sighandler_t);
-        }
-    }
+    install_stop_handlers();
     state["state"] = json!("waiting");
     state_write(&dir.join("job.json"), &state)?;
     let queue = Instant::now();
@@ -737,13 +766,14 @@ fn get(root: &Path, id: &str) -> Result<Value> {
     let mut v = read(&dir.join("job.json"))?;
     v["directory"] = json!(dir);
     let s = spec(&dir.join("resolved.json"))?;
+    // A corrupt journal is an error here; `jobs list` reports it per job.
     for (k, value) in result::progress(&dir, &s)?
         .as_object()
         .ok_or("bad progress")?
     {
         v[k] = value.clone();
     }
-    if v["boot_id"].as_str() != Some(&boot()?) {
+    if !terminal(&v["state"]) && v["boot_id"].as_str() != Some(&boot()?) {
         v["observed_state"] = json!("interrupted_after_reboot");
     }
     // A launcher holds job.lock for its whole lifetime, so a free lock in an
@@ -939,7 +969,9 @@ fn main_result() -> Result<()> {
                 let requests = optional(&root.join("requests.json"))?;
                 let mut jobs = vec![];
                 for id in requests.as_object().ok_or("bad requests")?.keys() {
-                    jobs.push(get(&root, id)?);
+                    jobs.push(
+                        get(&root, id).unwrap_or_else(|e| json!({"id":id,"error":e.to_string()})),
+                    );
                 }
                 output(json!(jobs))
             }
@@ -983,8 +1015,9 @@ fn main_result() -> Result<()> {
             }
             Jobs::Repair { id } => {
                 let dir = directory(&root, &id)?;
+                // Decided before the reservation is touched below.
                 let unadmitted = never_admitted(&root, &id, &dir)?;
-                if !unadmitted && !attempt_processes_gone(&dir) {
+                if !attempt_processes_gone(&dir) {
                     if matches!(lock_is_free(&dir.join("worker.lock")), Ok(false)) {
                         return Err("worker still owns this attempt".into());
                     }
@@ -1031,13 +1064,19 @@ fn main_result() -> Result<()> {
                     write_atomic_json(&root.join("slots.json"), &ledger)?;
                 }
                 let s = spec(&dir.join("resolved.json"))?;
-                result::repair(&dir, &s)?;
+                // A journal corrupt before its final line is not repaired; no
+                // record of it is trusted and `finish` seals the attempt failed.
+                let replayable = result::repair(&dir, &s).is_ok();
                 // An orphaned worker may have finished on its own after the
                 // launcher died; keep its exact result.
                 if unadmitted {
                     // No worker ever ran: the attempt did provably zero work.
                     finish(&dir, &s, "interrupted", true, 0.0)?;
-                } else if let Some((status, elapsed)) = worker_outcome(&dir, &s)? {
+                } else if let Some((status, elapsed)) = replayable
+                    .then(|| worker_outcome(&dir, &s))
+                    .transpose()?
+                    .flatten()
+                {
                     finish(&dir, &s, &status, true, elapsed)?;
                 } else {
                     finish(&dir, &s, "interrupted", false, 0.0)?;

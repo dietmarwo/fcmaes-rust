@@ -74,6 +74,7 @@ pub fn execute(worker: &dyn Worker, dir: &Path) -> Result<()> {
         .create_new(true)
         .open(dir.join("results.jsonl"))?;
     journal.sync_all()?;
+    fs::File::open(dir)?.sync_all()?;
     let next = AtomicUsize::new(0);
     let stop = AtomicBool::new(false);
     let done = AtomicBool::new(false);

@@ -2,7 +2,7 @@
 
 Last reviewed 2026-10-19 against `main` at `09bb847`, which includes the
 shared agent job API 0.1 (#5), plus the CMA-ES, MODE and MAP-Elites job
-profiles. In another checkout, check `Cargo.toml`, the available worker's
+profiles and the 0.1.1 synchronization of the shared crates. In another checkout, check `Cargo.toml`, the available worker's
 discovery output, and the linked guides before using a command or claiming a
 capability.
 
@@ -266,25 +266,23 @@ repositories and register their executables with one runner using one absolute
 node root. The fcmaes checkout builds independently and does not link either
 other solver.
 
-The copies are meant to stay byte-identical; each repository records them in
-`docs/job-api/SHARED-SOURCES.sha256`, and CI here checks
-[this repository's manifest](docs/job-api/SHARED-SOURCES.sha256). At this
-review they differ in recovery details: fcmaes-rust and SQP-craft fixed the
-repair of a job whose launcher died while queued in different ways, SQP-craft
-has further runner robustness fixes, and LP-IP-craft has the original 0.1
-delivery. The job envelope, worker protocol and result schema are the same in
-all three, so any runner copy can drive any of the three workers. Use one
-runner build for all jobs that share a node root, and do not assume identical
-recovery behaviour across repositories. A cross-project change must update
-all three copies and their manifests.
-
-SQP-craft's [job API review](https://github.com/dietmarwo/SQP-craft/blob/main/docs/job-api/REVIEW.md)
-lists defects of the delivered shared code that this copy still has. The ones
-an operator meets: `validate` and `run` stage the worker under `TMPDIR`, so a
-`noexec` `/tmp` makes them fail with "Permission denied" (point `TMPDIR` at an
-executable directory); an invalid record in a worker's `results.jsonl` leaves
-the job `running` and makes `jobs list` fail for the whole node; and after a
-reboot, finished jobs are also reported `interrupted_after_reboot`.
+The copies are byte-identical: each repository records them in
+`docs/job-api/SHARED-SOURCES.sha256`, and every repository's CI checks its
+manifest ([this repository's](docs/job-api/SHARED-SOURCES.sha256)). Version
+0.1.1 of the shared crates synchronized the three copies, which had drifted
+after the 0.1.0 delivery. It carries every review fix: the zero-work repair of
+a job whose launcher died while queued, staging under the node root instead of
+`TMPDIR`, sealing an attempt with an unreadable journal `failed` instead of
+leaving it `running`, appends that end a torn journal tail first, validators
+stopped by a signal, `./`-relative input paths, `optimization-job-ID.service`
+unit names, and no reboot flag on finished jobs. It also carries the fcmaes
+`non_dominated_set` and `elite_archive` claims. `scripts/job-api/test_review.py`
+covers the runner fixes in all three repositories. The job envelope, worker
+protocol and result schema identifiers are unchanged, so any runner copy can
+drive any of the three workers, and the workers report the shared version as
+`build.job_api_version`. Use one runner build for all jobs that share a node
+root. A cross-project change must update all three copies and their
+manifests.
 
 The new runner defaults to `.optimization-jobs`; `fcmaes-run` retains
 `.fcmaes-jobs`. Root precedence is `--root`, `OPTIMIZATION_RUN_ROOT`, then
@@ -485,9 +483,12 @@ but the work spent in an unfinished retry is unknown.
 
 Use `jobs reconcile` to reconcile reservations and `jobs repair JOB_ID` to
 recover a stopped attempt from checked journals. Repair refuses live workers
-or unknown liveness. It can tolerate a torn final journal fragment, but not
-earlier corruption or duplicate task IDs. It preserves a consistent final
-worker manifest when available; otherwise it seals the attempt as interrupted.
+or unknown liveness. It can tolerate a torn final journal fragment. A journal
+with earlier corruption or duplicate task IDs is never trusted: the attempt is
+sealed `failed` with no results, `work` null and `runner.journal_error`, and
+`jobs list` reports the error for that job only. Repair preserves a consistent
+final worker manifest when available; otherwise it seals the attempt as
+interrupted.
 A job whose launcher died while it was still queued never started a worker:
 repair seals it as interrupted with zero work, without a liveness proof.
 Neither repair nor rerunning a request key resumes solver state. Start a fresh
@@ -1141,6 +1142,7 @@ cargo build --release --locked -p fcmaes-runner -p fcmaes-native-worker \
   -p optimization-runner -p fcmaes-job-worker
 python3 scripts/runner/test_integration.py
 python3 scripts/job-api/test_integration.py
+python3 scripts/job-api/test_review.py
 python3 tutorials/job-api/run.py
 sha256sum -c docs/job-api/SHARED-SOURCES.sha256
 ```
@@ -1196,6 +1198,8 @@ reach a global optimum are not security defects.
   `crates/optimization-job-api/src/result.rs`: authoritative common input and
   result contracts.
 - `scripts/job-api/test_integration.py`: local or mixed-worker acceptance.
+- `scripts/job-api/test_review.py` and `fake_worker.py`: shared runner
+  regression tests against a protocol fixture.
 - `scripts/runner/test_integration.py`: original runner compatibility checks.
 - `tutorials/RESULT_SCHEMA.md`: established tutorial and legacy result formats;
   use the explicitly versioned common result contract for common jobs.

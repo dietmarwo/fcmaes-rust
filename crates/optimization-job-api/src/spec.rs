@@ -102,7 +102,10 @@ impl JobSpec {
                 || i.file.is_empty()
                 || Path::new(&i.file)
                     .components()
-                    .any(|c| !matches!(c, Component::Normal(_)))
+                    .any(|c| !matches!(c, Component::Normal(_) | Component::CurDir))
+                || !Path::new(&i.file)
+                    .components()
+                    .any(|c| matches!(c, Component::Normal(_)))
             {
                 return Err("input requires unique safe name, relative contained path and lowercase SHA-256".into());
             }
