@@ -470,13 +470,15 @@ dependencies = [
 
 [[package]]
 name = "fcmaes-job-worker"
-version = "0.1.0"
+version = "0.1.5"
 dependencies = [
  "fcmaes-core",
- "fcmaes-gtop",
+ "fcmaes-job-api",
+ "fcmaes-native-worker",
  "optimization-job-api",
  "serde",
  "serde_json",
+ "tempfile",
 ]
 
 [[package]]

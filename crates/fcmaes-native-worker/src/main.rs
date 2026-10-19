@@ -1,81 +1,8 @@
 //! Native worker: runs one fcmaes experiment job in its job directory.
 #![forbid(unsafe_code)]
-fn solve(
-    spec: &JobSpec,
-    bounds: &RetryBounds,
-    seed: u64,
-    obj: &(impl Fn(&[f64]) -> f64 + Sync),
-) -> RetryRunResult {
-    if spec.optimizer.kind == "biteopt" {
-        let mut solver = BiteOpt::new(
-            bounds.lower(),
-            bounds.upper(),
-            None,
-            &BiteParams {
-                seed,
-                runid: 0,
-                popsize: spec.optimizer.parameters.population.unwrap() as i32,
-                max_evaluations: spec.budget.evaluations_per_retry,
-                ..Default::default()
-            },
-        );
-        let r = solver.optimize(obj);
-        RetryRunResult {
-            x: r.x,
-            y: r.y,
-            evaluations: r.evaluations,
-        }
-    } else {
-        let fit = Fitness::new(
-            bounds.dim(),
-            1,
-            bounds.lower().to_vec(),
-            bounds.upper().to_vec(),
-        );
-        let mut solver = De::new(
-            fit,
-            &[],
-            &[],
-            None,
-            &DeParams {
-                seed,
-                runid: 0,
-                popsize: spec.optimizer.parameters.population.unwrap() as i32,
-                max_evaluations: spec.budget.evaluations_per_retry,
-                ..Default::default()
-            },
-        );
-        let r = solver.optimize(obj);
-        RetryRunResult {
-            x: r.x,
-            y: r.y,
-            evaluations: r.evaluations,
-        }
-    }
-}
-fn sphere(x: &[f64]) -> f64 {
-    x.iter().map(|v| v * v).sum()
-}
-fn rosenbrock(x: &[f64]) -> f64 {
-    x.windows(2)
-        .map(|w| 100.0 * (w[1] - w[0] * w[0]).powi(2) + (1.0 - w[0]).powi(2))
-        .sum()
-}
-/// Resolve the objective once, so the evaluation loop does not dispatch on
-/// the problem name for every candidate.
-fn objective_for(spec: &JobSpec) -> fn(&[f64]) -> f64 {
-    match spec.problem.id.as_str() {
-        "benchmark.sphere" => sphere,
-        "benchmark.rosenbrock" => rosenbrock,
-        "gtop.cassini1" => fcmaes_gtop::cassini1,
-        _ => unreachable!("problem id is validated by JobSpec::resolve"),
-    }
-}
-use fcmaes_core::{
-    BiteOpt, BiteParams, De, DeParams, Fitness, RetryBounds, RetryConfig, RetryRunResult, retry,
-    retry_run_seed,
-};
+use fcmaes_core::{RetryBounds, RetryConfig, retry, retry_run_seed};
 use fcmaes_job_api::{result::*, storage::*, *};
+use fcmaes_native_worker::{objective_for, solve};
 use std::{fs, path::Path, sync::Mutex, time::Instant};
 fn execute(dir: &Path) -> Result<()> {
     let _owner = lock(&dir.join("worker.lock"))?;

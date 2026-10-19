@@ -1,8 +1,7 @@
 //! Common job-protocol adapter. The original fcmaes-native-worker is preserved.
 #![forbid(unsafe_code)]
-use fcmaes_core::{
-    BiteOpt, BiteParams, De, DeParams, Fitness, RetryBounds, RetryRunResult, retry_run_seed,
-};
+use fcmaes_core::{RetryBounds, retry_run_seed};
+use fcmaes_native_worker::{objective_for, solve};
 use optimization_job_api::{
     Result,
     legacy::{self, JobSpec},
@@ -31,7 +30,8 @@ impl Worker for Adapter {
     fn describe(&self) -> Value {
         let mut d = worker::description(
             "fcmaes",
-            "0.1.5",
+            // The worker inherits the workspace version, which fcmaes-core shares.
+            env!("CARGO_PKG_VERSION"),
             json!(["fcmaes.retry/1"]),
             legacy::discovery()["problems"].clone(),
             1,
@@ -136,75 +136,4 @@ impl Prepared for Run {
 }
 fn main() {
     worker::run(Adapter);
-}
-fn solve(
-    spec: &JobSpec,
-    bounds: &RetryBounds,
-    seed: u64,
-    obj: &(impl Fn(&[f64]) -> f64 + Sync),
-) -> RetryRunResult {
-    if spec.optimizer.kind == "biteopt" {
-        let mut solver = BiteOpt::new(
-            bounds.lower(),
-            bounds.upper(),
-            None,
-            &BiteParams {
-                seed,
-                runid: 0,
-                popsize: spec.optimizer.parameters.population.unwrap() as i32,
-                max_evaluations: spec.budget.evaluations_per_retry,
-                ..Default::default()
-            },
-        );
-        let r = solver.optimize(obj);
-        RetryRunResult {
-            x: r.x,
-            y: r.y,
-            evaluations: r.evaluations,
-        }
-    } else {
-        let fit = Fitness::new(
-            bounds.dim(),
-            1,
-            bounds.lower().to_vec(),
-            bounds.upper().to_vec(),
-        );
-        let mut solver = De::new(
-            fit,
-            &[],
-            &[],
-            None,
-            &DeParams {
-                seed,
-                runid: 0,
-                popsize: spec.optimizer.parameters.population.unwrap() as i32,
-                max_evaluations: spec.budget.evaluations_per_retry,
-                ..Default::default()
-            },
-        );
-        let r = solver.optimize(obj);
-        RetryRunResult {
-            x: r.x,
-            y: r.y,
-            evaluations: r.evaluations,
-        }
-    }
-}
-fn sphere(x: &[f64]) -> f64 {
-    x.iter().map(|v| v * v).sum()
-}
-fn rosenbrock(x: &[f64]) -> f64 {
-    x.windows(2)
-        .map(|w| 100.0 * (w[1] - w[0] * w[0]).powi(2) + (1.0 - w[0]).powi(2))
-        .sum()
-}
-/// Resolve the objective once, so the evaluation loop does not dispatch on
-/// the problem name for every candidate.
-fn objective_for(spec: &JobSpec) -> fn(&[f64]) -> f64 {
-    match spec.problem.id.as_str() {
-        "benchmark.sphere" => sphere,
-        "benchmark.rosenbrock" => rosenbrock,
-        "gtop.cassini1" => fcmaes_gtop::cassini1,
-        _ => unreachable!("problem id is validated by JobSpec::resolve"),
-    }
 }

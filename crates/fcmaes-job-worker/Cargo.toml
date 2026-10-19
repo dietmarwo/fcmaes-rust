@@ -1,13 +1,17 @@
 [package]
 name = "fcmaes-job-worker"
-version = "0.1.0"
-edition = "2024"
-rust-version = "1.88"
-license = "MIT"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
 publish = false
 [dependencies]
 optimization-job-api = { path = "../optimization-job-api" }
 fcmaes-core = { path = "../fcmaes-core" }
-fcmaes-gtop = { path = "../fcmaes-gtop" }
+fcmaes-native-worker = { path = "../fcmaes-native-worker" }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+
+[dev-dependencies]
+fcmaes-job-api = { path = "../fcmaes-job-api" }
+tempfile = "3"
