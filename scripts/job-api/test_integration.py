@@ -154,6 +154,17 @@ else:
             if repaired.returncode==0:break
             time.sleep(.02)
         self.assertEqual(repaired.returncode,0,repaired.stderr);r=json.loads((d/'run.json').read_text());self.assertEqual(r['status'],'interrupted');self.assertIsNone(r['work']);self.assertIsNone(r['elapsed_seconds']);self.assertEqual(self.call('jobs','reconcile'),{})
+    def test_launcher_lost_while_queued_is_sealed_with_zero_work(self):
+        # A holder fills the node; the queued job's launcher dies before admission.
+        hold=self.fake();_,_,hold_dir=self.start(hold);self.state(hold_dir,{'running'})
+        p,ident,d=self.start(self.fake());self.state(d,{'waiting'})
+        p.kill();p.communicate(timeout=5)
+        self.assertEqual(self.call('jobs','get',ident)['observed_state'],'launcher_lost')
+        # No worker ever ran, so repair needs no liveness proof and no reservation exists.
+        self.assertEqual(self.call('jobs','repair',ident)['state'],'interrupted')
+        r=json.loads((d/'run.json').read_text());self.assertEqual(r['work'],{});self.assertTrue(r['runner']['accounting_complete'])
+        self.assertFalse((d/'worker-process.json').exists());self.assertNotIn(ident,self.call('jobs','reconcile'))
+        self.assertEqual(self.call('jobs','get',ident)['state'],'interrupted')
     def test_artifact_corruption_and_escape(self):
         name=next(iter(WORKERS));_,_,j,d,r=self.run_spec(self.fixture(name));path=d/'results.jsonl';data=path.read_bytes();path.write_bytes(data+data.splitlines(keepends=True)[0]);self.call('jobs','get',j['id'],ok=False);path.write_bytes(data)
         r['artifacts']['bad']='../outside';(d.parent/'outside').write_text('outside');(d/'run.json').write_text(json.dumps(r));self.call('jobs','artifact',j['id'],'bad',ok=False)

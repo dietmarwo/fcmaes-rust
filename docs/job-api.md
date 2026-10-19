@@ -3,7 +3,7 @@
 The three projects share `crates/optimization-job-api` and
 `crates/optimization-runner`. Each project builds its own native worker. One
 runner can register all three executables and schedule them against one CPU
-budget. Each source archive also builds independently; no sibling checkout or
+budget. Each repository also builds independently; no sibling checkout or
 Python extension is needed.
 
 Start with the [runnable tutorial](../tutorials/job-api/README.md). The
@@ -205,7 +205,9 @@ consistent final worker manifest if available, and otherwise seals the attempt
 as interrupted. After launcher loss, elapsed time may be unknown. Repair never
 resumes solver state. Use a new request key for a fresh solve. If the launcher
 dies between process creation and durable process-group recording, reservations
-are conservatively retained; reboot reconciliation can clear the old boot.
+are conservatively retained; reboot reconciliation can clear the old boot. A
+launcher that dies while its job is still queued never started a worker: repair
+then seals the attempt as interrupted with zero work, without a liveness proof.
 
 `compare` supports the legacy fcmaes behavior. Common results require identical
 resolved experiment digests and payload profiles and never select a winner
@@ -216,8 +218,8 @@ changing algorithms or resource widths.
 
 `submit` uses a real Linux systemd user manager with `KillMode=control-group`
 and `Restart=no`; run `node doctor` first. Logout survival requires host-specific
-user-manager lingering. This delivery tests foreground execution and refusal
-when systemd is unavailable; it does not certify detached execution on a real
+user-manager lingering. Foreground execution and the refusal without a systemd
+user manager are tested; detached execution has not yet been accepted on a real
 service host. There is no simulated background-success fallback.
 
 This release has no HTTP/MCP server, remote simulator plugins, arbitrary Python
@@ -246,5 +248,6 @@ python3 scripts/job-api/test_integration.py \
 ```
 
 The harness auto-detects the local worker and skips unavailable solver-specific
-cases. The mixed acceptance run supplied all three. Raw logs and the tested
-source identities are in `validation/job-api/`.
+cases. The 0.1 acceptance run supplied all three workers; see the
+[validation report](job-api/VALIDATION.md). `job-api/SHARED-SOURCES.sha256`
+records the content of the files shared by the three repositories.

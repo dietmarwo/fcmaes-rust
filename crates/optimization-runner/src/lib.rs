@@ -283,6 +283,24 @@ fn attempt_processes_gone(dir: &Path) -> bool {
         )
     })
 }
+/// True when an attempt's launcher died before admission. A worker is only
+/// spawned after the launcher has recorded a slot reservation, so free locks,
+/// no process record, a pre-running state and no reservation prove that no
+/// worker ever ran: the attempt can be sealed with zero work.
+fn never_admitted(root: &Path, id: &str, dir: &Path) -> Result<bool> {
+    if dir.join("worker-process.json").exists()
+        || !matches!(
+            read(&dir.join("job.json"))?["state"].as_str(),
+            Some("submitted" | "starting" | "waiting")
+        )
+        || !matches!(lock_is_free(&dir.join("job.lock")), Ok(true))
+        || !matches!(lock_is_free(&dir.join("worker.lock")), Ok(true))
+    {
+        return Ok(false);
+    }
+    let _g = lock(&root.join("slots.lock"))?;
+    Ok(optional(&root.join("slots.json"))?[id].is_null())
+}
 fn capacity(root: &Path) -> Result<u64> {
     read(&root.join("node.json"))?["capacity"]
         .as_u64()
@@ -965,7 +983,8 @@ fn main_result() -> Result<()> {
             }
             Jobs::Repair { id } => {
                 let dir = directory(&root, &id)?;
-                if !attempt_processes_gone(&dir) {
+                let unadmitted = never_admitted(&root, &id, &dir)?;
+                if !unadmitted && !attempt_processes_gone(&dir) {
                     if matches!(lock_is_free(&dir.join("worker.lock")), Ok(false)) {
                         return Err("worker still owns this attempt".into());
                     }
@@ -1015,7 +1034,10 @@ fn main_result() -> Result<()> {
                 result::repair(&dir, &s)?;
                 // An orphaned worker may have finished on its own after the
                 // launcher died; keep its exact result.
-                if let Some((status, elapsed)) = worker_outcome(&dir, &s)? {
+                if unadmitted {
+                    // No worker ever ran: the attempt did provably zero work.
+                    finish(&dir, &s, "interrupted", true, 0.0)?;
+                } else if let Some((status, elapsed)) = worker_outcome(&dir, &s)? {
                     finish(&dir, &s, &status, true, elapsed)?;
                 } else {
                     finish(&dir, &s, "interrupted", false, 0.0)?;
