@@ -4,7 +4,7 @@
 Run from any repository after cargo build --release. Pass other workers to
 exercise mixed-solver admission on a single node.
 """
-import argparse, copy, hashlib, json, os, signal, subprocess, tempfile, time, unittest
+import argparse, copy, hashlib, json, math, os, signal, subprocess, tempfile, time, unittest
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[2]
@@ -193,5 +193,35 @@ else:
         _,_,_,_,r=self.run_spec(s)
         for rec in r['results']:self.assertLessEqual(rec['work']['evaluations'],7+2*12-1)
         s['resources']={'cpu_slots':8,'outer_workers':1,'inner_threads':8};p,_=self.write(s);self.call('validate','--spec',p,ok=False)
+
+    def test_fcmaes_cmaes_mode_and_map_elites_profiles(self):
+        if 'fcmaes' not in WORKERS:self.skipTest('fcmaes worker not supplied')
+        s=self.fixture('fcmaes');s['payload']['optimizer']={'kind':'cmaes','parameters':{'population':8}};s['payload']['evaluation_limit_mode']='soft'
+        _,_,j,_,r=self.run_spec(s);self.assertEqual(j['state'],'completed')
+        for rec in r['results']:
+            o=rec['outcome'];self.assertEqual(o['claim'],'best_found');self.assertLessEqual(rec['work']['evaluations'],1000+7);self.assertAlmostEqual(o['objective'],sum(x*x for x in o['x']))
+        mo=envelope('fcmaes',{'problem':{'id':'benchmark.zdt1','version':'1','config':{'dimension':4},'bounds':{'lower':[0.],'upper':[1.],'broadcast':True}},'optimizer':{'kind':'mode','parameters':{'population':16}},'seed':3,'runs':4,'generations':40})
+        mo['payload_schema']='fcmaes.mode/1'
+        _,_,j,_,r=self.run_spec(mo);self.assertEqual(j['state'],'completed');self.assertEqual(r['work']['evaluations'],4*40*16)
+        for rec in r['results']:
+            o=rec['outcome'];self.assertEqual(o['claim'],'non_dominated_set');self.assertIsNone(o['x']);front=o['details']['front'];self.assertTrue(front)
+            for point in front:
+                x=point['x'];g=1+9*sum(x[1:])/(len(x)-1)
+                for got,want in zip(point['objectives'],[x[0],g*(1-math.sqrt(x[0]/g))]):self.assertAlmostEqual(got,want,places=12)
+            for a in front:
+                self.assertFalse(any(all(u<=v for u,v in zip(b['objectives'],a['objectives'])) and b['objectives']!=a['objectives'] for b in front))
+            self.assertGreater(o['details']['hypervolume']['value'],0.)
+        qd=envelope('fcmaes',{'problem':{'id':'benchmark.sphere-projection','version':'1','config':{'dimension':4},'bounds':{'lower':[-5.12],'upper':[5.12],'broadcast':True}},'archive':{'capacity':25},'optimizer':{'kind':'map_elites','parameters':{'chunk_size':8}},'seed':5,'runs':4,'generations':30})
+        qd['payload_schema']='fcmaes.map-elites/1'
+        _,_,j,_,r=self.run_spec(qd);self.assertEqual(j['state'],'completed');self.assertEqual(r['work']['evaluations'],4*30*8)
+        for rec in r['results']:
+            o=rec['outcome'];self.assertEqual(o['claim'],'elite_archive');elites=o['details']['elites'];self.assertEqual(len(elites),o['details']['occupied'])
+            for e in elites:
+                x=e['x'];self.assertAlmostEqual(e['fitness'],sum((v-.4*5.12)**2 for v in x),places=10)
+                self.assertAlmostEqual(e['descriptor'][0],sum(x[:2]),places=12);self.assertAlmostEqual(e['descriptor'][1],sum(x[2:]),places=12)
+            self.assertEqual(o['objective'],min(e['fitness'] for e in elites))
+        mo['payload']['generations']=10**9;mo['limits']={'wall_time_seconds':.3,'grace_seconds':.5}
+        _,_,j,_,r=self.run_spec(mo);self.assertEqual(j['state'],'timed_out');self.assertTrue(r['runner']['accounting_complete'])
+        for rec in r['results']:self.assertEqual(rec['outcome']['termination'],'cancelled');self.assertEqual(rec['outcome']['claim'],'non_dominated_set')
 
 if __name__=='__main__':unittest.main(argv=[__file__,*REST],verbosity=2)

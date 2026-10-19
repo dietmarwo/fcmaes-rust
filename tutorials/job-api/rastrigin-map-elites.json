@@ -1,0 +1,47 @@
+{
+  "schema_version": "optimization.job/0.1",
+  "request_key": "tutorial.fcmaes.rastrigin-map-elites.v1",
+  "worker": "fcmaes",
+  "payload_schema": "fcmaes.map-elites/1",
+  "resources": {
+    "cpu_slots": 8,
+    "outer_workers": 8,
+    "inner_threads": 1
+  },
+  "limits": {
+    "wall_time_seconds": 30.0,
+    "grace_seconds": 1.0
+  },
+  "inputs": [],
+  "payload": {
+    "problem": {
+      "id": "benchmark.rastrigin-projection",
+      "version": "1",
+      "config": {
+        "dimension": 10
+      },
+      "bounds": {
+        "lower": [
+          -5.12
+        ],
+        "upper": [
+          5.12
+        ],
+        "broadcast": true
+      }
+    },
+    "archive": {
+      "capacity": 400
+    },
+    "optimizer": {
+      "kind": "map_elites",
+      "parameters": {
+        "chunk_size": 20,
+        "variation": "sbx"
+      }
+    },
+    "seed": 42,
+    "runs": 8,
+    "generations": 1000
+  }
+}

@@ -1,0 +1,43 @@
+{
+  "schema_version": "optimization.job/0.1",
+  "request_key": "tutorial.fcmaes.zdt1-mode.v1",
+  "worker": "fcmaes",
+  "payload_schema": "fcmaes.mode/1",
+  "resources": {
+    "cpu_slots": 8,
+    "outer_workers": 8,
+    "inner_threads": 1
+  },
+  "limits": {
+    "wall_time_seconds": 30.0,
+    "grace_seconds": 1.0
+  },
+  "inputs": [],
+  "payload": {
+    "problem": {
+      "id": "benchmark.zdt1",
+      "version": "1",
+      "config": {
+        "dimension": 10
+      },
+      "bounds": {
+        "lower": [
+          0.0
+        ],
+        "upper": [
+          1.0
+        ],
+        "broadcast": true
+      }
+    },
+    "optimizer": {
+      "kind": "mode",
+      "parameters": {
+        "population": 64
+      }
+    },
+    "seed": 42,
+    "runs": 8,
+    "generations": 250
+  }
+}

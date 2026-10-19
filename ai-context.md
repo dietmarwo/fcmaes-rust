@@ -1,9 +1,10 @@
 # AI context for solving user optimization problems with fcmaes-rust
 
-Last reviewed 2026-10-19 against `main` at `bf68a16`, which includes the
-shared agent job API 0.1 (#5). In another checkout, check `Cargo.toml`, the
-available worker's discovery output, and the linked guides before using a
-command or claiming a capability.
+Last reviewed 2026-10-19 against `main` at `09bb847`, which includes the
+shared agent job API 0.1 (#5), plus the CMA-ES, MODE and MAP-Elites job
+profiles. In another checkout, check `Cargo.toml`, the available worker's
+discovery output, and the linked guides before using a command or claiming a
+capability.
 
 This file is operational context for an AI that must design and implement an
 optimization solution with this repository. It is not a claim that one
@@ -193,15 +194,18 @@ an optimizer dependency to core merely because one application needs it.
 | Need | Entry point | Scope |
 |---|---|---|
 | Custom Rust objective, full optimizer selection, ask/tell, MODE or QD | `fcmaes-core` | Direct in-process numerical API; the recipes below apply here. |
-| Durable agent-controlled experiments with the supported registered objectives | `optimization-run` and `fcmaes-job-worker` | Common jobs, CPU admission, journals, cancellation and result manifests. |
+| Durable agent-controlled experiments with the supported registered models | `optimization-run` and `fcmaes-job-worker` | Common jobs, CPU admission, journals, cancellation and result manifests. |
 | Existing `fcmaes.job/0.1` jobs | `fcmaes-run` and `fcmaes-native-worker` | Preserved legacy contract; keep its input and result schemas. |
 | Python code calling Rust optimizers | `fcmaes_rust` | Optional PyO3 API, with the callback/GIL constraints below. |
 
 Use the common job API for agent-driven experiments when its worker supports
-the problem and algorithm. Its current fcmaes profile exposes independent
-BiteOpt/DE retries on registered native objectives. It does not expose every
-`fcmaes-core` optimizer. For other algorithms or application objectives, use
-the direct API or explicitly extend and test a worker.
+the problem and algorithm. Its fcmaes profiles expose independent BiteOpt, DE
+and CMA-ES retries, independent MODE runs and independent MAP-Elites runs, each
+on registered native models. They do not expose every `fcmaes-core` optimizer
+or option (CR-FM-NES, PGPE, Dual Annealing, advanced retry, `moretry`, the
+Diversifier and CVT archives remain direct-API features). For other algorithms
+or application objectives, use the direct API or explicitly extend and test a
+worker.
 
 Prefer a native Rust objective when evaluation throughput matters. Put
 read-only model data behind shared references or `Arc`, give each evaluation
@@ -248,7 +252,7 @@ is no agent, Python, or network round trip for each objective evaluation.
 |---|---|
 | `crates/optimization-job-api` | Strict envelopes, result contracts, hashes, durable journals and worker SDK. |
 | `crates/optimization-runner` / `optimization-run` | Worker registration, staging, idempotency, CPU admission, process supervision and recovery. |
-| `crates/fcmaes-job-worker` | Native `fcmaes.retry/1` adapter for independent BiteOpt and DE retries. |
+| `crates/fcmaes-job-worker` | Native adapter for `fcmaes.retry/1` (BiteOpt, DE, CMA-ES retries), `fcmaes.mode/1` (MODE) and `fcmaes.map-elites/1` (MAP-Elites); a library plus a thin binary. |
 | `crates/fcmaes-job-api` | Compatibility facade re-exporting the original API from the shared crate's `legacy` module. |
 | `crates/fcmaes-runner` / `fcmaes-run` | Compatibility CLI entry point into the common runner. |
 | `crates/fcmaes-native-worker` | Original worker for `fcmaes.job/0.1` specifications. |
@@ -296,9 +300,11 @@ cargo build --release --locked -p optimization-runner -p fcmaes-job-worker
 python3 tutorials/job-api/run.py --root /tmp/fcmaes-job-tutorial
 ```
 
-The tutorial runs Sphere, Rosenbrock and Cassini1, checks their results, and
-writes `tutorial-report.json` under the node root. For manual control, initialize
-a fresh node once and register its worker:
+The tutorial runs BiteOpt on Sphere, Rosenbrock and Cassini1, CMA-ES on
+Rosenbrock, MODE on ZDT1 and the constrained Binh–Korn problem, and MAP-Elites
+on the Rastrigin projection benchmark. It checks every result independently
+in Python and writes `tutorial-report.json` under the node root. For manual
+control, initialize a fresh node once and register its worker:
 
 ```sh
 JOB_NODE="$PWD/.optimization-node"
@@ -315,8 +321,14 @@ JOB_NODE="$PWD/.optimization-node"
 
 `problems describe fcmaes` describes the registered worker ID. Use discovery to
 check supported profiles, models, optimizer parameters and resource limits;
-do not infer job options from the broader core API. The present registry has
-`benchmark.sphere`, `benchmark.rosenbrock`, and `gtop.cassini1`.
+do not infer job options from the broader core API. Each problem entry names
+its profile:
+
+| Profile | Registered models |
+|---|---|
+| `fcmaes.retry/1` | `benchmark.sphere`, `benchmark.rosenbrock`, `gtop.cassini1` |
+| `fcmaes.mode/1` | `benchmark.zdt1` (2 objectives), `benchmark.dtlz2` (3 objectives), `benchmark.binh-korn` (2 objectives, 2 constraints) |
+| `fcmaes.map-elites/1` | `benchmark.sphere-projection`, `benchmark.rastrigin-projection` (2-D linear-projection descriptors) |
 
 ### Job specifications and repeatability
 
@@ -349,8 +361,37 @@ the shipped Sphere tutorial, with its own request key:
 ```
 
 Unknown fields and unsupported profile/options are errors. Leave `task_count`
-unset; the worker resolves it from `retries`. `validate` resolves defaults but
-does not optimize or reserve slots. `run` and `submit` also check node capacity.
+unset; the worker resolves it from `retries` (or `runs`). `validate` resolves
+defaults but does not optimize or reserve slots. `run` and `submit` also check
+node capacity.
+
+The other profiles share the envelope and the `problem` shape and differ in the
+payload. The tutorial files `zdt1-mode.json`, `binh-korn-mode.json` and
+`rastrigin-map-elites.json` are complete examples:
+
+```json
+{"problem": {"id": "benchmark.zdt1", "version": "1", "config": {"dimension": 10},
+             "bounds": {"lower": [0.0], "upper": [1.0], "broadcast": true}},
+ "optimizer": {"kind": "mode", "parameters": {"population": 64}},
+ "seed": 42, "runs": 8, "generations": 250, "reference_point": [1.1, 1.1]}
+```
+
+```json
+{"problem": {"id": "benchmark.rastrigin-projection", "version": "1", "config": {"dimension": 10},
+             "bounds": {"lower": [-5.12], "upper": [5.12], "broadcast": true}},
+ "archive": {"capacity": 400},
+ "optimizer": {"kind": "map_elites", "parameters": {"chunk_size": 20, "variation": "sbx"}},
+ "seed": 42, "runs": 8, "generations": 1000}
+```
+
+MODE takes `population` (4–10,000, default 64), `nsga_update`,
+`pareto_update`, `f`, `cr`, `pro_c`, `dis_c`, `pro_m` and `dis_m`, defaulting to
+`ModeParams`; `reference_point` defaults to the problem's discovery entry.
+MAP-Elites takes `chunk_size` (even, default 20) and `variation` (`sbx` with
+`dis_c`/`dis_m`, or `iso_dd` with `iso_sigma`/`line_sigma` in raw variable
+units); its archive is the regular two-dimensional grid with `capacity`
+niches (1–10,000). The settings of the other variation are rejected. Bounds of
+these models must lie inside their canonical boxes.
 
 A request key is an idempotency key, not a label for unlimited reruns. The same
 key with the same resolved specification and staged worker binary returns the
@@ -372,7 +413,7 @@ additionally requires `inner_threads=1`. Its standard eight-slot layout is:
 
 | Mode | `cpu_slots` | `outer_workers` | `inner_threads` |
 |---|---:|---:|---:|
-| Eight concurrent fcmaes retries | 8 | 8 | 1 |
+| Eight concurrent fcmaes retries or runs | 8 | 8 | 1 |
 | Serial fcmaes comparison | 1 | 1 | 1 |
 
 The generic `8 / 1 / 8` or `8 / 2 / 4` layouts are available only to workers
@@ -386,9 +427,9 @@ are not CPU affinity, cgroup enforcement or the exact OS thread count. The
 supervisor and I/O may use additional threads. Do not claim a speedup from slot
 allocation alone. Compare actual wall time, completed work and solution quality.
 
-Each retry uses `retry_run_seed(root_seed, task_id)`. For deterministic registered
-models, the same completed task has the same result regardless of worker count
-or scheduling. Deadlines/cancellation can change which tasks complete. Record
+Each task (retry or run) uses `retry_run_seed(root_seed, task_id)`. For
+deterministic registered models, the same completed task has the same result
+regardless of worker count or scheduling. Deadlines/cancellation can change which tasks complete. Record
 task IDs and seeds when comparing serial and parallel runs. The common and
 legacy workers share one solver and objective registry and the same seed
 derivation, so the same problem, optimizer, seed and budget give identical
@@ -398,6 +439,18 @@ per-retry results in both profiles; the CLI tests check this.
 evaluation limits. DE requires `soft`: with population P, the declared allowance
 is at most `2P-1` extra evaluations per retry. Switching from BiteOpt to DE means
 changing both `optimizer.kind` to `de` and `evaluation_limit_mode` to `soft`.
+CMA-ES (`kind: cmaes`) also requires `soft`: it evaluates whole generations, so
+it may spend at most `population-1` extra evaluations, and it can stop earlier
+on its own convergence tests (`termination: "optimizer_stop"`,
+`details.stop_code`). Its parameters are `population` (default 31) and `sigma`
+(default 0.3, the initial step size in the box normalized to `[-1, 1]`); each
+retry starts at a uniform random point drawn from its seed. BiteOpt and DE
+payloads are unchanged by this addition, so their job digests are too.
+
+MODE and MAP-Elites budgets are exact: `generations × population` and
+`generations × chunk_size` evaluations per run. Validation then re-evaluates
+every evaluated member of MODE's final population, or every MAP-Elites elite,
+once.
 Read actual `work.evaluations`; independent candidate checks are counted
 separately as `validation_evaluations`. The wall limit covers the whole attempt
 after CPU admission, not each retry, and excludes time waiting for admission.
@@ -420,8 +473,11 @@ and paths, and keep using the same `JOB_NODE`:
 ./target/release/optimization-run --root "$JOB_NODE" jobs cancel JOB_ID
 ```
 
-fcmaes cancellation is checked between retries; an active retry can continue to
-its evaluation budget. `jobs cancel JOB_ID --now` permits at most one further
+fcmaes retries check cancellation between retries; an active retry can continue
+to its evaluation budget. MODE and MAP-Elites runs check it between generations
+and return their current front or archive with `termination: "cancelled"`; at
+the wall deadline the SDK uses the same signal, so the job state says whether
+it was `cancelled` or `timed_out`. `jobs cancel JOB_ID --now` permits at most one further
 second before process-group termination. The runner also enforces the wall
 deadline and grace period. Forced termination retains committed task records,
 but the work spent in an unfinished retry is unknown.
@@ -450,8 +506,21 @@ starting path.
 Common `run.json` uses `optimization.result/0.1`; its `status` and the job's
 `state` describe execution, while each `results` entry contains `task_id`,
 `outcome` and `work`. Inspect all three layers. A completed job is not a proof
-of optimality. For fcmaes, accepted candidates have `outcome.claim="best_found"`
-after independent bounds/objective checks; they have no global certificate.
+of optimality. The fcmaes claims are:
+
+- `best_found` (retries): candidate inside the bounds and re-evaluated; no
+  global certificate.
+- `non_dominated_set` (MODE): `details.front` lists the feasible, mutually
+  non-dominated final-population members, each re-evaluated, with `x`,
+  `objectives` and `constraints`; `details.hypervolume` is the exact
+  hypervolume for the declared reference point, counting points outside it
+  instead of clipping them. The outcome has no single `x` or `objective`. No
+  Pareto-optimality certificate.
+- `elite_archive` (MAP-Elites): `details.elites` lists every occupied niche,
+  re-evaluated and mapped back to its niche; `x` and `objective` are the best
+  elite. Report `coverage`, `qd_score`, `mean_fitness` and representative
+  elites, not only the best one.
+
 Other workers have different claims (`numerical_optimum` for LP/MIP,
 `first_order` for SQP). Do not equate those meanings across solvers.
 
@@ -482,12 +551,15 @@ and follow [the legacy runner guide](docs/experiment-runner.md). Register the
 new adapter as `fcmaes` for the examples above. Legacy comparison and benchmark
 tools remain separate from common-profile comparison rules.
 
-To add an objective, change three places: its validation and discovery entry
-in `crates/optimization-job-api/src/legacy/spec.rs` (a shared file, so update
-the manifest and the sibling copies), its function in `objective_for` in
-`crates/fcmaes-native-worker/src/lib.rs` (used by both fcmaes workers), and
+To add a scalar objective, change three places: its validation and discovery
+entry in `crates/optimization-job-api/src/legacy/spec.rs` (a shared file, so
+update the manifest and the sibling copies), its function in `objective_by_id`
+in `crates/fcmaes-native-worker/src/lib.rs` (used by both fcmaes workers), and
 deterministic tests for bounds, objective values, budget accounting and
-per-task seeds. To add a new
+per-task seeds. Multi-objective and quality-diversity models live in
+`crates/fcmaes-job-worker/src/problems.rs`, used only by the common worker;
+add the model, its canonical box and discovery entry, and tests that compare a
+job run with a direct `fcmaes-core` run from the same seed. To add a new
 solver profile, implement `worker::Worker::prepare` and `Prepared`, return task
 outcomes/work counters, and let the SDK own concurrency and journal commits.
 Version profiles when mathematical input or output semantics change.
@@ -896,9 +968,10 @@ There are two distinct levels:
    `parallel_batch`, `map_elites_batch`, or `diversify_batch` evaluates one
    population concurrently.
 
-These are core-library capabilities. The current `fcmaes.retry/1` job adapter
-implements only outer independent retries with `inner_threads=1`; its resource
-contract and examples are in [Shared agent job API](#shared-agent-job-api).
+These are core-library capabilities. The fcmaes job adapter implements only
+outer parallelism, independent retries or runs with `inner_threads=1`; its
+resource contract and examples are in
+[Shared agent job API](#shared-agent-job-api).
 
 Worker semantics for inner batches are `1 = serial`, positive values = exactly
 that many cached Rayon threads, and non-positive values = the global Rayon
@@ -949,8 +1022,9 @@ Use a staged budget:
 
 Some population algorithms check limits at generation boundaries, so reported
 evaluations can exceed the configured limit. Use the reported count for
-comparisons. In `fcmaes.retry/1`, BiteOpt has a hard cap and DE has the explicit
-soft allowance described above; do not apply a generic overshoot rule to both.
+comparisons. In `fcmaes.retry/1`, BiteOpt has a hard cap while DE and CMA-ES
+have the explicit soft allowances described above; do not apply a generic
+overshoot rule to all three.
 
 ## Minimal implementation patterns
 
@@ -1103,14 +1177,16 @@ reach a global optimum are not security defects.
 
 - [docs/job-api.md](docs/job-api.md): common envelope, worker profiles, node
   admission, lifecycle, result claims, recovery and current limitations.
-- [tutorials/job-api/README.md](tutorials/job-api/README.md): runnable Sphere,
-  Rosenbrock and Cassini1 jobs, eight-slot setup and legacy compatibility.
+- [tutorials/job-api/README.md](tutorials/job-api/README.md): runnable BiteOpt,
+  CMA-ES, MODE and MAP-Elites jobs, eight-slot setup and legacy compatibility.
 - [docs/experiment-runner.md](docs/experiment-runner.md): original
   `fcmaes.job/0.1` CLI, manifests, comparison and benchmark contract.
 - [docs/job-api/PLAN.md](docs/job-api/PLAN.md) and
   [docs/job-api/VALIDATION.md](docs/job-api/VALIDATION.md): implementation scope,
   acceptance evidence and unverified host behavior.
-- `crates/fcmaes-job-worker/src/main.rs`: current native common-profile adapter.
+- `crates/fcmaes-job-worker/src/`: the common-profile adapter (`retry.rs`,
+  `mode.rs`, `map_elites.rs`) and its multi-objective and quality-diversity
+  models (`problems.rs`).
 - `crates/fcmaes-native-worker/src/lib.rs`: objective registry and solver
   dispatch shared by both fcmaes workers.
 - [docs/job-api/SHARED-SOURCES.sha256](docs/job-api/SHARED-SOURCES.sha256):

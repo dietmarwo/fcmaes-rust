@@ -16,7 +16,7 @@ record the implementation and its acceptance gates.
 | --- | --- |
 | `optimization-job-api` | Strict versioned envelope, resources, input hashes, checked journals, result contract and worker SDK |
 | `optimization-runner` / `optimization-run` | Worker discovery, staging, idempotency, admission, process supervision, cancellation, deadlines and journal recovery |
-| `fcmaes-job-worker` | `fcmaes.retry/1`: registered objectives, BiteOpt/DE, deterministic retry seeds and evaluation budgets |
+| `fcmaes-job-worker` | `fcmaes.retry/1` (BiteOpt, DE or CMA-ES retries on registered scalar objectives), `fcmaes.mode/1` (MODE Pareto fronts) and `fcmaes.map-elites/1` (MAP-Elites archives): deterministic task seeds and exact or declared evaluation budgets |
 | `lp-ip-job-worker` | `lp-ip.solve/1`: sparse LP/MIP artifacts, candidate starts, node/pivot budgets and numerical checks |
 | `sqp-job-worker` | `sqp.solve/1`: registered smooth Rust models, initial points, active-set/Clarabel backends and independent KKT checks |
 
@@ -107,10 +107,11 @@ The runner requires:
 outer_workers * inner_threads <= cpu_slots <= 1024
 ```
 
-For eight independent solves or fcmaes retries, use `8 / 8 / 1`. For one LP or
+For eight independent solves or fcmaes runs, use `8 / 8 / 1`. For one LP or
 SQP solve with up to eight numerical workers, use `8 / 1 / 8`. `8 / 2 / 4` is
 also valid. `8 / 8 / 8` is rejected. fcmaes currently requires
-`inner_threads=1`. LP-IP and SQP support 1–8 inner workers.
+`inner_threads=1` in all three profiles. LP-IP and SQP support 1–8 inner
+workers.
 
 Admission reserves `cpu_slots` for the whole attempt, not just the currently
 busy tasks. Concurrent jobs on the same root cannot reserve more than the node
@@ -150,7 +151,10 @@ Lifecycle states are `submitted`, `starting` (detached only), `waiting`,
 `running`, then `completed`, `cancelled`, `timed_out`, `failed` or `interrupted`.
 The wall clock starts after CPU admission; queue time is separate. LP and SQP
 also receive the remaining cooperative time limit. A graceful stop sets a
-shared cancellation token in LP/SQP; fcmaes finishes active retries. `--now`
+shared cancellation token in LP/SQP; fcmaes finishes active retries, while its
+MODE and MAP-Elites runs stop after the current generation and return their
+front or archive. Workers stopped at the wall deadline may report
+`termination: "cancelled"`; the job state says `timed_out`. `--now`
 allows at most one further second before process-group termination. The wall
 limit plus its declared grace always bounds process supervision.
 
@@ -179,14 +183,21 @@ added as if they measured the same work.
 | `none` | No accepted candidate claim; inspect termination/details |
 | `feasible` | Independently checked candidate within declared tolerances |
 | `best_found` | fcmaes candidate checked for objective/bounds; no global certificate |
+| `non_dominated_set` | fcmaes MODE: `details.front` is re-evaluated, feasible and mutually non-dominated; no single `x` or `objective`; no Pareto-optimality certificate |
+| `elite_archive` | fcmaes MAP-Elites: every elite in `details.elites` is re-evaluated and maps to its niche; `x`/`objective` are the best elite; no per-niche optimality certificate |
 | `numerical_optimum` | LP/MIP native optimal status with independent candidate checks; numerical, not an exact certificate |
 | `first_order` | SQP convergence plus independently recomputed original-unit KKT residuals; no global/second-order certificate |
 
 LP details preserve objective sense, incumbent, best bound, gaps, warm-start
 status and available LP residuals. Infinite gap values are explicit strings
 `+infinity` / `-infinity`, not silently converted to JSON null. SQP details keep
-KKT acceptance tolerances, QP backend and raw status. Native validation work is
-counted separately from solver evaluations/iterations.
+KKT acceptance tolerances, QP backend and raw status. fcmaes MODE details carry
+the front and its exact hypervolume for a declared reference point; MAP-Elites
+details carry the elites, coverage and QD score. Native validation work is
+counted separately from solver evaluations/iterations. A non-dominated set is
+the only claim without a single point: its outcome has `feasible: true` and no
+`x` or `objective`. Runners built before these two claims existed reject them
+when replaying a journal; use one runner build per node.
 
 If a worker is killed, active work is unknown. `work` is null,
 `runner.accounting_complete` is false, and `known_work_lower_bound` covers only

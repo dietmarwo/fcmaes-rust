@@ -22,7 +22,7 @@ The workspace has four core crates, plus source-only job-layer crates:
 | `crates/fcmaes-job-api` | Facade re-exporting the legacy contract for the [experiment runner](experiment-runner.md) |
 | `crates/fcmaes-runner` | `fcmaes-run`: the shared runner under its legacy name and default root |
 | `crates/fcmaes-native-worker` | Native objective registry and solver dispatch (library), and the `fcmaes.job/0.1` worker running Sphere, Rosenbrock and Cassini1 with BiteOpt or DE |
-| `crates/fcmaes-job-worker` | `fcmaes.retry/1` worker for the common envelope, using the native worker's library |
+| `crates/fcmaes-job-worker` | Worker for the common envelope: `fcmaes.retry/1` (BiteOpt and DE through the native worker's library, and CMA-ES), `fcmaes.mode/1` and `fcmaes.map-elites/1`, with their multi-objective and quality-diversity models |
 
 `optimization-job-api` and `optimization-runner` are kept byte-identical with
 the LP-IP-craft and SQP-craft repositories; `docs/job-api/SHARED-SOURCES.sha256`

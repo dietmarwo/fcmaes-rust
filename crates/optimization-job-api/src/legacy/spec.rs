@@ -56,6 +56,63 @@ fn default_grace_seconds() -> f64 {
     1.0
 }
 contract!(Outputs { progress: String });
+impl Bounds {
+    /// Expands broadcast bounds to `n` coordinates and checks that every
+    /// bound is finite with `lower < upper` and a finite span.
+    pub fn resolve(mut self, n: usize) -> Result<Self> {
+        if self.broadcast {
+            if self.lower.len() != 1 || self.upper.len() != 1 {
+                return Err("broadcast requires scalar bounds".into());
+            }
+            self.lower = vec![self.lower[0]; n];
+            self.upper = vec![self.upper[0]; n];
+            self.broadcast = false;
+        }
+        if self.lower.len() != n
+            || self.upper.len() != n
+            || self
+                .lower
+                .iter()
+                .zip(&self.upper)
+                .any(|(l, u)| !l.is_finite() || !u.is_finite() || l >= u || !(u - l).is_finite())
+        {
+            return Err("invalid bounds".into());
+        }
+        Ok(self)
+    }
+    /// Whether every coordinate lies inside the box `[lower, upper]`.
+    pub fn within(&self, lower: &[f64], upper: &[f64]) -> bool {
+        self.lower.len() == lower.len()
+            && self.upper.len() == upper.len()
+            && self.lower.iter().zip(lower).all(|(l, c)| l >= c)
+            && self.upper.iter().zip(upper).all(|(u, c)| u <= c)
+    }
+}
+impl Problem {
+    /// Validates a registered scalar problem (version, dimension, identifier
+    /// and bounds) and expands broadcast bounds. Used by `fcmaes.job/0.1` and
+    /// by the scalar retry profile of the common fcmaes worker.
+    pub fn resolve(mut self) -> Result<Self> {
+        if self.version != "1" {
+            return Err("unsupported schema/problem version".into());
+        }
+        let n = self.config.dimension;
+        if !(1..=10000).contains(&n) {
+            return Err("dimension must be 1..10000".into());
+        }
+        match self.id.as_str() {
+            "benchmark.sphere" => (),
+            "benchmark.rosenbrock" if n >= 2 => (),
+            "gtop.cassini1" if n == 6 => (),
+            _ => return Err("unknown problem or invalid dimension".into()),
+        }
+        self.bounds = self.bounds.resolve(n)?;
+        if self.id == "gtop.cassini1" && !self.bounds.within(&CASSINI1_LOWER, &CASSINI1_UPPER) {
+            return Err("gtop.cassini1 bounds must lie inside the canonical Cassini1 box".into());
+        }
+        Ok(self)
+    }
+}
 /// Canonical Cassini1 box; job bounds must lie inside it.
 pub const CASSINI1_LOWER: [f64; 6] = [-1000.0, 30.0, 100.0, 30.0, 400.0, 1000.0];
 /// Canonical Cassini1 box; job bounds must lie inside it.
@@ -68,40 +125,8 @@ impl JobSpec {
         if self.request_key.is_empty() || self.request_key.len() > 200 {
             return Err("request_key must be 1..200 bytes".into());
         }
+        self.problem = self.problem.resolve()?;
         let n = self.problem.config.dimension;
-        if !(1..=10000).contains(&n) {
-            return Err("dimension must be 1..10000".into());
-        }
-        match self.problem.id.as_str() {
-            "benchmark.sphere" => (),
-            "benchmark.rosenbrock" if n >= 2 => (),
-            "gtop.cassini1" if n == 6 => (),
-            _ => return Err("unknown problem or invalid dimension".into()),
-        }
-        let b = &mut self.problem.bounds;
-        if b.broadcast {
-            if b.lower.len() != 1 || b.upper.len() != 1 {
-                return Err("broadcast requires scalar bounds".into());
-            }
-            b.lower = vec![b.lower[0]; n];
-            b.upper = vec![b.upper[0]; n];
-            b.broadcast = false;
-        }
-        if b.lower.len() != n
-            || b.upper.len() != n
-            || b.lower
-                .iter()
-                .zip(&b.upper)
-                .any(|(l, u)| !l.is_finite() || !u.is_finite() || l >= u || !(u - l).is_finite())
-        {
-            return Err("invalid bounds".into());
-        }
-        if self.problem.id == "gtop.cassini1"
-            && (b.lower.iter().zip(CASSINI1_LOWER).any(|(l, c)| *l < c)
-                || b.upper.iter().zip(CASSINI1_UPPER).any(|(u, c)| *u > c))
-        {
-            return Err("gtop.cassini1 bounds must lie inside the canonical Cassini1 box".into());
-        }
         let e = &self.execution;
         let k = &self.budget;
         if e.strategy != "independent_retry"
