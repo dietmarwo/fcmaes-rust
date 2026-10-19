@@ -160,8 +160,9 @@ fn cmaes(mut p: Payload) -> Result<(Engine, Payload)> {
     if !sigma.is_finite() || sigma <= 0.0 || sigma > 2.0 {
         return Err("cmaes sigma must lie in (0, 2] (normalized box units)".into());
     }
-    (p.retries as u64)
-        .checked_mul(p.evaluations_per_retry + population as u64 - 1)
+    p.evaluations_per_retry
+        .checked_add(population as u64 - 1)
+        .and_then(|e| e.checked_mul(p.retries as u64))
         .ok_or("evaluation budget overflow")?;
     p.problem = problem.clone();
     p.optimizer.parameters = Parameters {
@@ -210,9 +211,17 @@ pub fn cmaes_retry(
         },
     );
     let r = cma.optimize(&objective, 1);
+    // CMA-ES evaluates the clamped decode of its sample but stores the
+    // unclamped one, which can lie an ulp outside the box on a bound. Clamping
+    // gives exactly the point that was evaluated.
+    let x =
+        r.x.iter()
+            .zip(bounds.lower().iter().zip(bounds.upper()))
+            .map(|(v, (l, u))| v.clamp(*l, *u))
+            .collect();
     (
         RetryRunResult {
-            x: r.x,
+            x,
             y: r.y,
             evaluations: r.evaluations,
         },

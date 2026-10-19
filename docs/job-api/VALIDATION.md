@@ -102,6 +102,15 @@ evaluations on average; MODE's ZDT1 fronts reached a hypervolume of about
 covered 60–80% of 400 niches of the 10-D Rastrigin projection benchmark.
 These are checks of the adapters, not performance benchmarks.
 
+An independent review of the change found three defects, now fixed and
+tested. CMA-ES stores the unclamped decode of its best sample, which can lie
+an ulp outside a bound, so a box-edge optimum failed the worker's bounds
+check and the whole job; the worker now reports the clamped point, which is
+exactly the evaluated one. The exact three-objective hypervolume costs
+O(F³) after the last cancellation check, so MODE populations for three
+objectives are limited to 1,000. A CMA-ES budget sum could overflow in
+debug builds before its checked rejection.
+
 ## Reproduce with sibling workers
 
 To run the mixed acceptance, build each repository's worker and pass the

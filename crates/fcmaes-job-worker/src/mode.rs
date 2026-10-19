@@ -60,7 +60,7 @@ pub fn describe() -> Value {
     json!({"profile":PROFILE,"limit":"exact: generations * population per run",
         "defaults":{"population":d.popsize,"nsga_update":d.nsga_update,"pareto_update":d.pareto_update,
             "f":d.f,"cr":d.cr,"pro_c":d.pro_c,"dis_c":d.dis_c,"pro_m":d.pro_m,"dis_m":d.dis_m},
-        "ranges":{"population":"4..10000","f":"(0,2]","cr":"(0,1]","pro_c":"[0,1]","pro_m":"[0,1]",
+        "ranges":{"population":"4..10000; 4..1000 with three objectives","f":"(0,2]","cr":"(0,1]","pro_c":"[0,1]","pro_m":"[0,1]",
             "dis_c":"> 0","dis_m":"> 0","pareto_update":"[0,1]"},
         "result":"feasible non-dominated final population members, re-evaluated, with exact hypervolume"})
 }
@@ -94,8 +94,15 @@ pub fn prepare(s: &mut JobSpec) -> Result<Box<dyn Prepared>> {
     let q = &p.optimizer.parameters;
     let population = q.population.unwrap_or(d.popsize as usize);
     let n = problem.config.dimension;
-    if !(4..=10_000).contains(&population) || population.saturating_mul(n) > MAX_CELLS {
-        return Err("mode population must be 4..10000 with population * dimension <= 1e7".into());
+    // The exact hypervolume of a front of F points costs O(F^2) for two
+    // objectives and O(F^3) for three; it runs after the last cancel check.
+    let max_population = if model.nobj >= 3 { 1_000 } else { 10_000 };
+    if !(4..=max_population).contains(&population) || population.saturating_mul(n) > MAX_CELLS {
+        return Err(format!(
+            "mode population must be 4..{max_population} for {} with population * dimension <= 1e7",
+            model.id
+        )
+        .into());
     }
     let f = q.f.unwrap_or(d.f);
     let cr = q.cr.unwrap_or(d.cr);

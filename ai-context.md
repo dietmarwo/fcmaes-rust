@@ -384,7 +384,8 @@ payload. The tutorial files `zdt1-mode.json`, `binh-korn-mode.json` and
  "seed": 42, "runs": 8, "generations": 1000}
 ```
 
-MODE takes `population` (4–10,000, default 64), `nsga_update`,
+MODE takes `population` (4–10,000, or 4–1,000 with three objectives, where the
+exact hypervolume grows cubically; default 64), `nsga_update`,
 `pareto_update`, `f`, `cr`, `pro_c`, `dis_c`, `pro_m` and `dis_m`, defaulting to
 `ModeParams`; `reference_point` defaults to the problem's discovery entry.
 MAP-Elites takes `chunk_size` (even, default 20) and `variation` (`sbx` with

@@ -100,7 +100,8 @@ below zero.
 | `benchmark.dtlz2` | 3 / 0; front on the unit sphere | 3–10,000, inside `[0,1]` |
 | `benchmark.binh-korn` | 2 / 2 | 2, inside `[0,5] × [0,3]` |
 
-`optimizer.parameters` takes `population` (4–10,000, default 64),
+`optimizer.parameters` takes `population` (4–10,000, or 4–1,000 with three
+objectives because the exact hypervolume grows cubically; default 64),
 `nsga_update` (default true), `pareto_update`, `f`, `cr`, `pro_c`, `dis_c`,
 `pro_m` and `dis_m`, all defaulting to `fcmaes-core`'s `ModeParams`.
 `reference_point` is optional and defaults to the problem's point in

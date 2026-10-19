@@ -261,6 +261,25 @@ fn cmaes_retries_match_the_library_run_and_keep_soft_budgets() {
         let err = validate(dir.path(), &cmaes_job(edit.clone())).unwrap_err();
         assert!(err.contains(message), "{edit}: {err}");
     }
+    // An optimum on a bound: the reported point must be exactly the evaluated
+    // one, inside the box (CMA-ES stores an unclamped decode).
+    let mut edge = cmaes_job(json!({}));
+    edge["payload"]["problem"] = problem("benchmark.sphere", 2, json!([0.1]), json!([0.5]));
+    edge["payload"]["retries"] = json!(3);
+    let run = execute(&edge);
+    assert_eq!(run["status"], "completed");
+    for r in run["results"].as_array().unwrap() {
+        let x: Vec<f64> = serde_json::from_value(r["outcome"]["x"].clone()).unwrap();
+        assert!(x.iter().all(|v| (0.1..=0.5).contains(v)), "{x:?}");
+        assert_eq!(x, vec![0.1, 0.1]);
+    }
+    let mut overflow = cmaes_job(json!({}));
+    overflow["payload"]["evaluations_per_retry"] = json!(u64::MAX);
+    assert!(
+        validate(dir.path(), &overflow)
+            .unwrap_err()
+            .contains("overflow")
+    );
     let mut hard = cmaes_job(json!({}));
     hard["payload"]["evaluation_limit_mode"] = json!("hard");
     assert!(validate(dir.path(), &hard).unwrap_err().contains("soft"));
@@ -409,6 +428,16 @@ fn mode_fronts_match_core_mode_and_are_feasible_and_non_dominated() {
             "canonical box",
         ),
         (binh_korn_job(json!({"population": 3})), "population"),
+        (
+            mode_job(
+                "benchmark.dtlz2",
+                4,
+                json!([0.0]),
+                json!([1.0]),
+                json!({"population": 1001}),
+            ),
+            "4..1000",
+        ),
         (binh_korn_job(json!({"f": 0.0})), "f = 0"),
         (binh_korn_job(json!({"pro_c": 1.5})), "pro_c"),
         (binh_korn_job(json!({"seed": 1})), "unknown field"),
