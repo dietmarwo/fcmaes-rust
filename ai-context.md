@@ -1,5 +1,10 @@
 # AI context for solving user optimization problems with fcmaes-rust
 
+Last reviewed 2026-10-19 against `main` at `bf68a16`, which includes the
+shared agent job API 0.1 (#5). In another checkout, check `Cargo.toml`, the
+available worker's discovery output, and the linked guides before using a
+command or claiming a capability.
+
 This file is operational context for an AI that must design and implement an
 optimization solution with this repository. It is not a claim that one
 optimizer is universally best. Use the problem structure, evaluation cost, and
@@ -18,7 +23,7 @@ The public registry surfaces are deliberately smaller than the GitHub
 repository:
 
 - Rust users depend on the published `fcmaes-core` crate. Rust 1.88 is the
-  tested minimum supported toolchain.
+  minimum supported toolchain; CI checks the whole workspace with it.
 - Python users install the `fcmaes-rust` distribution and import
   `fcmaes_rust`. Published wheels support CPython 3.11 through 3.13.
 - `examples`, `tutorials`, and the internal native `fcmaes-gtop` source are
@@ -36,15 +41,25 @@ C/C++ compiler. Building the Python package from its source distribution does
 require Rust. Do not tell a Python user to install the historical `fcmaes`
 package when they asked specifically for this Rust implementation.
 
-The current synchronized registry release is 0.1.4. It adds audited
-multi-objective quality indicators, schedule-independent retry seeds, exact
-ragged MAP-Elites grid layouts, public non-dominated-sort/crowding utilities,
-the optimizer-boundary evidence, and the standalone Foundations and
-Lennard-Jones studies. The repository contains twenty-two application
-tutorials in addition to Foundations; do not add Foundations to that tutorial
-count.
+The workspace version is 0.1.5, which is also the current published release
+of `fcmaes-core` (crates.io) and `fcmaes-rust` (PyPI) at this review. The
+job-layer crates (`optimization-job-api`, `optimization-runner`,
+`fcmaes-job-worker`, `fcmaes-job-api`, `fcmaes-runner`,
+`fcmaes-native-worker`) are source-only (`publish = false`) and are part of
+neither package. Schema versions such as `optimization.job/0.1` and
+`fcmaes.retry/1` are protocol identifiers, independent of crate versions.
+Use `CHANGELOG.md`, package manifests, and the actual registry metadata when
+discussing releases; a workspace version alone does not establish publication.
 
-Current `main` adds two implementation diagnostics that affect algorithm
+The existing optimizer guidance includes the 0.1.4 additions: audited
+multi-objective quality indicators, schedule-independent retry seeds, exact
+ragged MAP-Elites grid layouts, non-dominated-sort/crowding utilities, the
+optimizer-boundary evidence, and the Foundations and Lennard-Jones studies.
+The twenty-two application tutorials, Foundations, and the new operational
+[job API tutorial](tutorials/job-api/README.md) serve different purposes; do not
+count the job tutorial as another application benchmark.
+
+The 0.1.5 changelog records two implementation diagnostics that affect algorithm
 advice. The equal-wall GTOP campaign wraps the external serial `cmaes` crate
 with generic parallel retry: at the same four-second wait, retry improves mean
 quality on all seven problems and wins 86–96 of 100 paired seeds, while using
@@ -175,6 +190,19 @@ an optimizer dependency to core merely because one application needs it.
 
 ## Choose the integration surface
 
+| Need | Entry point | Scope |
+|---|---|---|
+| Custom Rust objective, full optimizer selection, ask/tell, MODE or QD | `fcmaes-core` | Direct in-process numerical API; the recipes below apply here. |
+| Durable agent-controlled experiments with the supported registered objectives | `optimization-run` and `fcmaes-job-worker` | Common jobs, CPU admission, journals, cancellation and result manifests. |
+| Existing `fcmaes.job/0.1` jobs | `fcmaes-run` and `fcmaes-native-worker` | Preserved legacy contract; keep its input and result schemas. |
+| Python code calling Rust optimizers | `fcmaes_rust` | Optional PyO3 API, with the callback/GIL constraints below. |
+
+Use the common job API for agent-driven experiments when its worker supports
+the problem and algorithm. Its current fcmaes profile exposes independent
+BiteOpt/DE retries on registered native objectives. It does not expose every
+`fcmaes-core` optimizer. For other algorithms or application objectives, use
+the direct API or explicitly extend and test a worker.
+
 Prefer a native Rust objective when evaluation throughput matters. Put
 read-only model data behind shared references or `Arc`, give each evaluation
 isolated mutable state, and let fcmaes distribute candidates. This avoids
@@ -205,6 +233,261 @@ across threads. Python callbacks dominated by NumPy, another native extension,
 or external work may scale only if that work releases the GIL. When the
 objective itself can be implemented efficiently in Rust, prefer the direct
 `fcmaes-core` path.
+
+## Shared agent job API
+
+Start with [the common API guide](docs/job-api.md) and
+[the fcmaes tutorial](tutorials/job-api/README.md). The agent selects a supported
+model, writes a typed job, validates it, runs it, and inspects numerical results.
+The objective and optimizer stay together in the native worker process; there
+is no agent, Python, or network round trip for each objective evaluation.
+
+### Architecture, discovery and compatibility
+
+| Component | Responsibility |
+|---|---|
+| `crates/optimization-job-api` | Strict envelopes, result contracts, hashes, durable journals and worker SDK. |
+| `crates/optimization-runner` / `optimization-run` | Worker registration, staging, idempotency, CPU admission, process supervision and recovery. |
+| `crates/fcmaes-job-worker` | Native `fcmaes.retry/1` adapter for independent BiteOpt and DE retries. |
+| `crates/fcmaes-job-api` | Compatibility facade re-exporting the original API from the shared crate's `legacy` module. |
+| `crates/fcmaes-runner` / `fcmaes-run` | Compatibility CLI entry point into the common runner. |
+| `crates/fcmaes-native-worker` | Original worker for `fcmaes.job/0.1` specifications. |
+
+[LP-IP-craft](https://github.com/dietmarwo/LP-IP-craft) and
+[SQP-craft](https://github.com/dietmarwo/SQP-craft) carry their own copies of
+the shared crates and their own workers: `lp-ip-job-worker` with
+`lp-ip.solve/1`, and `sqp-job-worker` with `sqp.solve/1`. Each has its own
+`ai-context.md` for its solver. Build those workers in their respective
+repositories and register their executables with one runner using one absolute
+node root. The fcmaes checkout builds independently and does not link either
+other solver.
+
+The copies are meant to stay byte-identical; each repository records them in
+`docs/job-api/SHARED-SOURCES.sha256`, and CI here checks
+[this repository's manifest](docs/job-api/SHARED-SOURCES.sha256). At this
+review they differ in recovery details: fcmaes-rust and SQP-craft fixed the
+repair of a job whose launcher died while queued in different ways, SQP-craft
+has further runner robustness fixes, and LP-IP-craft has the original 0.1
+delivery. The job envelope, worker protocol and result schema are the same in
+all three, so any runner copy can drive any of the three workers. Use one
+runner build for all jobs that share a node root, and do not assume identical
+recovery behaviour across repositories. A cross-project change must update
+all three copies and their manifests.
+
+The new runner defaults to `.optimization-jobs`; `fcmaes-run` retains
+`.fcmaes-jobs`. Root precedence is `--root`, `OPTIMIZATION_RUN_ROOT`, then
+`FCMAES_RUN_ROOT`, then the entry point's default. Separate roots have separate
+CPU ledgers. Use the same explicit absolute root for all jobs sharing a budget.
+
+Linux is required for the job layer. CI checks the whole workspace, including
+the job layer, with Rust 1.88 and tests it with current stable. Python 3 is
+only needed for tutorial/test drivers. Use the lockfile:
+
+```sh
+cargo build --release --locked -p optimization-runner -p fcmaes-job-worker
+python3 tutorials/job-api/run.py --root /tmp/fcmaes-job-tutorial
+```
+
+The tutorial runs Sphere, Rosenbrock and Cassini1, checks their results, and
+writes `tutorial-report.json` under the node root. For manual control, initialize
+a fresh node once and register its worker:
+
+```sh
+JOB_NODE="$PWD/.optimization-node"
+./target/release/optimization-run --root "$JOB_NODE" node init --capacity 8
+./target/release/optimization-run --root "$JOB_NODE" workers add \
+  --id fcmaes --executable ./target/release/fcmaes-job-worker
+./target/release/optimization-run --root "$JOB_NODE" workers list
+./target/release/optimization-run --root "$JOB_NODE" problems describe fcmaes
+./target/release/optimization-run --root "$JOB_NODE" validate \
+  --spec tutorials/job-api/sphere.json
+./target/release/optimization-run --root "$JOB_NODE" run \
+  --spec tutorials/job-api/sphere.json
+```
+
+`problems describe fcmaes` describes the registered worker ID. Use discovery to
+check supported profiles, models, optimizer parameters and resource limits;
+do not infer job options from the broader core API. The present registry has
+`benchmark.sphere`, `benchmark.rosenbrock`, and `gtop.cassini1`.
+
+### Job specifications and repeatability
+
+This complete specification has the same model, budget and resource layout as
+the shipped Sphere tutorial, with its own request key:
+
+```json
+{
+  "schema_version": "optimization.job/0.1",
+  "request_key": "context.fcmaes.sphere.v1",
+  "worker": "fcmaes",
+  "payload_schema": "fcmaes.retry/1",
+  "resources": {"cpu_slots": 8, "outer_workers": 8, "inner_threads": 1},
+  "limits": {"wall_time_seconds": 30.0, "grace_seconds": 1.0},
+  "inputs": [],
+  "payload": {
+    "problem": {
+      "id": "benchmark.sphere",
+      "version": "1",
+      "config": {"dimension": 10},
+      "bounds": {"lower": [-5.0], "upper": [5.0], "broadcast": true}
+    },
+    "optimizer": {"kind": "biteopt", "parameters": {"population": null}},
+    "seed": 42,
+    "retries": 16,
+    "evaluations_per_retry": 1000,
+    "evaluation_limit_mode": "hard"
+  }
+}
+```
+
+Unknown fields and unsupported profile/options are errors. Leave `task_count`
+unset; the worker resolves it from `retries`. `validate` resolves defaults but
+does not optimize or reserve slots. `run` and `submit` also check node capacity.
+
+A request key is an idempotency key, not a label for unlimited reruns. The same
+key with the same resolved specification and staged worker binary returns the
+existing attempt. Changed content or binary identity under that key is a
+conflict. Use a new key for a new attempt, including a fresh run after failure.
+Keep resolved specifications and worker hashes with every reported result.
+
+The current fcmaes worker requires `inputs: []`: objectives are compiled Rust
+models. JSON cannot carry an executable path, function body or Python callback.
+Other profiles may accept named files with relative contained paths and required
+SHA-256 hashes. Those inputs are checked and staged; use the relevant worker's
+documented model format rather than assuming any file is supported.
+
+### Eight-slot execution, seeds and evaluation budgets
+
+The common envelope requires positive integers and
+`outer_workers * inner_threads <= cpu_slots <= 1024`. The fcmaes adapter
+additionally requires `inner_threads=1`. Its standard eight-slot layout is:
+
+| Mode | `cpu_slots` | `outer_workers` | `inner_threads` |
+|---|---:|---:|---:|
+| Eight concurrent fcmaes retries | 8 | 8 | 1 |
+| Serial fcmaes comparison | 1 | 1 | 1 |
+
+The generic `8 / 1 / 8` or `8 / 2 / 4` layouts are available only to workers
+that implement those inner widths; the current LP-IP/SQP adapters support up
+to eight inner workers. They are rejected by the fcmaes adapter. Core ask/tell
+and population batching remain available through the direct Rust/Python APIs.
+
+The node reserves all `cpu_slots` for an admitted attempt, even while fewer
+tasks are active. Slots account for cooperative numerical concurrency; they
+are not CPU affinity, cgroup enforcement or the exact OS thread count. The
+supervisor and I/O may use additional threads. Do not claim a speedup from slot
+allocation alone. Compare actual wall time, completed work and solution quality.
+
+Each retry uses `retry_run_seed(root_seed, task_id)`. For deterministic registered
+models, the same completed task has the same result regardless of worker count
+or scheduling. Deadlines/cancellation can change which tasks complete. Record
+task IDs and seeds when comparing serial and parallel runs. The common and
+legacy workers share one solver and objective registry and the same seed
+derivation, so the same problem, optimizer, seed and budget give identical
+per-retry results in both profiles; the CLI tests check this.
+
+`retries` and `evaluations_per_retry` must be positive. BiteOpt requires `hard`
+evaluation limits. DE requires `soft`: with population P, the declared allowance
+is at most `2P-1` extra evaluations per retry. Switching from BiteOpt to DE means
+changing both `optimizer.kind` to `de` and `evaluation_limit_mode` to `soft`.
+Read actual `work.evaluations`; independent candidate checks are counted
+separately as `validation_evaluations`. The wall limit covers the whole attempt
+after CPU admission, not each retry, and excludes time waiting for admission.
+
+### Inspect, cancel and recover
+
+`run` is foreground execution. Read its final JSON object, including `id`,
+`directory` and lifecycle `state`. A successful CLI exit alone does not establish
+successful optimization: cancellations, timeouts and solver failures can still
+produce a normal job response. Replace the placeholders below with returned IDs
+and paths, and keep using the same `JOB_NODE`:
+
+```sh
+./target/release/optimization-run --root "$JOB_NODE" jobs list
+./target/release/optimization-run --root "$JOB_NODE" jobs get JOB_ID
+./target/release/optimization-run --root "$JOB_NODE" jobs events JOB_ID
+./target/release/optimization-run --root "$JOB_NODE" jobs wait JOB_ID --timeout 60
+./target/release/optimization-run --root "$JOB_NODE" result JOB_DIRECTORY
+./target/release/optimization-run --root "$JOB_NODE" jobs artifact JOB_ID results
+./target/release/optimization-run --root "$JOB_NODE" jobs cancel JOB_ID
+```
+
+fcmaes cancellation is checked between retries; an active retry can continue to
+its evaluation budget. `jobs cancel JOB_ID --now` permits at most one further
+second before process-group termination. The runner also enforces the wall
+deadline and grace period. Forced termination retains committed task records,
+but the work spent in an unfinished retry is unknown.
+
+Use `jobs reconcile` to reconcile reservations and `jobs repair JOB_ID` to
+recover a stopped attempt from checked journals. Repair refuses live workers
+or unknown liveness. It can tolerate a torn final journal fragment, but not
+earlier corruption or duplicate task IDs. It preserves a consistent final
+worker manifest when available; otherwise it seals the attempt as interrupted.
+A job whose launcher died while it was still queued never started a worker:
+repair seals it as interrupted with zero work, without a liveness proof.
+Neither repair nor rerunning a request key resumes solver state. Start a fresh
+attempt under a new key when that is required.
+
+Detached `submit --spec JOB.json` requires a real Linux systemd user manager;
+run `node doctor` first. Logout survival depends on host configuration, including
+lingering. Detached execution has not yet been accepted on a real service host;
+CI runners have no systemd user manager. Do not claim that an offline or
+overnight job will survive disconnects until the actual host passes
+`scripts/runner/test_systemd.py` (a legacy-profile job through the same runner)
+and its logout behavior has been checked. Foreground `run` is the validated
+starting path.
+
+### Interpret results and compare experiments
+
+Common `run.json` uses `optimization.result/0.1`; its `status` and the job's
+`state` describe execution, while each `results` entry contains `task_id`,
+`outcome` and `work`. Inspect all three layers. A completed job is not a proof
+of optimality. For fcmaes, accepted candidates have `outcome.claim="best_found"`
+after independent bounds/objective checks; they have no global certificate.
+Other workers have different claims (`numerical_optimum` for LP/MIP,
+`first_order` for SQP). Do not equate those meanings across solvers.
+
+`results.jsonl` commits checksummed task records; `events.jsonl` records lifecycle
+transitions. `resolved.json` and `provenance.json` preserve execution inputs and
+worker identity. Final results are ordered by `task_id`, not completion time.
+Preserve the provided journals and manifests rather than inventing another
+result schema or replacing missing work with zero.
+
+If work was forcibly interrupted, `work` is null,
+`runner.accounting_complete` is false, and `known_work_lower_bound` counts only
+committed tasks. Cooperative stops can account for the tasks that returned.
+Report these limits explicitly, including when computing throughput.
+
+The common `compare` command requires matching resolved experiment digests and
+payload profiles and does not select a winner. Changing algorithms, budgets or
+resource widths changes that digest. For such comparisons, use an explicit
+benchmark harness with matched models, seeds and the chosen call/wall-resource
+protocol; inspect worker hashes, completed tasks, quality and accounting
+completeness. Counters from different solver profiles are not interchangeable.
+
+### Preserve legacy jobs and extend the worker
+
+Existing `fcmaes.job/0.1` specs, legacy manifests and `retries.jsonl` keep their
+meaning; they are not silently converted to the common envelope. Build
+`fcmaes-runner` and `fcmaes-native-worker`, register that executable as `native`,
+and follow [the legacy runner guide](docs/experiment-runner.md). Register the
+new adapter as `fcmaes` for the examples above. Legacy comparison and benchmark
+tools remain separate from common-profile comparison rules.
+
+To add an objective, change three places: its validation and discovery entry
+in `crates/optimization-job-api/src/legacy/spec.rs` (a shared file, so update
+the manifest and the sibling copies), its function in `objective_for` in
+`crates/fcmaes-native-worker/src/lib.rs` (used by both fcmaes workers), and
+deterministic tests for bounds, objective values, budget accounting and
+per-task seeds. To add a new
+solver profile, implement `worker::Worker::prepare` and `Prepared`, return task
+outcomes/work counters, and let the SDK own concurrency and journal commits.
+Version profiles when mathematical input or output semantics change.
+
+Current scope: local single-user trusted executables; no HTTP/MCP service,
+distributed scheduler, arbitrary Python callback transport, solver checkpoint
+resume or automatic cross-solver pipeline. Direct integration can compose
+algorithms, but that is not a capability of this job protocol yet.
 
 ## Algorithm comparison
 
@@ -605,6 +888,10 @@ There are two distinct levels:
    `parallel_batch`, `map_elites_batch`, or `diversify_batch` evaluates one
    population concurrently.
 
+These are core-library capabilities. The current `fcmaes.retry/1` job adapter
+implements only outer independent retries with `inner_threads=1`; its resource
+contract and examples are in [Shared agent job API](#shared-agent-job-api).
+
 Worker semantics for inner batches are `1 = serial`, positive values = exactly
 that many cached Rayon threads, and non-positive values = the global Rayon
 pool. Retry uses `workers = 0` for available parallelism and caps active
@@ -652,9 +939,10 @@ Use a staged budget:
 - Production: allocate the measured wall-time/evaluation budget to the best
   robust configuration, retaining independent validation seeds.
 
-Population algorithms check limits at generation boundaries, so reported
-evaluations can exceed the configured limit by part of a population. Use the
-reported evaluation count for comparisons.
+Some population algorithms check limits at generation boundaries, so reported
+evaluations can exceed the configured limit. Use the reported count for
+comparisons. In `fcmaes.retry/1`, BiteOpt has a hard cap and DE has the explicit
+soft allowance described above; do not apply a generic overshoot rule to both.
 
 ## Minimal implementation patterns
 
@@ -758,6 +1046,31 @@ Before declaring success, the AI should:
   bitwise reproducible.
 - Preserve a small deterministic smoke configuration in tests.
 
+For job-layer changes, also test schema/default resolution, request-key
+idempotency/conflicts, shared CPU admission, serial/eight-worker task seeds,
+independent candidate checks, cancellation, forced timeout accounting and
+journal recovery. These are the commands CI runs; build the release binaries
+before the Python harnesses:
+
+```sh
+cargo test --workspace --locked
+cargo build --release --locked -p fcmaes-runner -p fcmaes-native-worker \
+  -p optimization-runner -p fcmaes-job-worker
+python3 scripts/runner/test_integration.py
+python3 scripts/job-api/test_integration.py
+python3 tutorials/job-api/run.py
+sha256sum -c docs/job-api/SHARED-SOURCES.sha256
+```
+
+Use the workspace test run rather than a package subset: the runner's CLI
+tests drive both worker binaries, which only a workspace build guarantees.
+For a shared protocol change, run the mixed harness with independently built
+LP-IP and SQP workers as documented in `docs/job-api.md`. Report missing-worker
+and systemd skips explicitly. [The validation report](docs/job-api/VALIDATION.md)
+records the 0.1 delivery's acceptance gates and later review fixes; it is
+evidence for those sources, not a test result for subsequent edits.
+Resource/correctness tests are not performance benchmarks.
+
 Treat silent candidate/result misassociation, out-of-bounds returned points,
 reversed feasibility semantics, or materially false deterministic
 seed/budget accounting as potential numerical-integrity security issues.
@@ -780,6 +1093,27 @@ reach a global optimum are not security defects.
 
 ## Repository references
 
+- [docs/job-api.md](docs/job-api.md): common envelope, worker profiles, node
+  admission, lifecycle, result claims, recovery and current limitations.
+- [tutorials/job-api/README.md](tutorials/job-api/README.md): runnable Sphere,
+  Rosenbrock and Cassini1 jobs, eight-slot setup and legacy compatibility.
+- [docs/experiment-runner.md](docs/experiment-runner.md): original
+  `fcmaes.job/0.1` CLI, manifests, comparison and benchmark contract.
+- [docs/job-api/PLAN.md](docs/job-api/PLAN.md) and
+  [docs/job-api/VALIDATION.md](docs/job-api/VALIDATION.md): implementation scope,
+  acceptance evidence and unverified host behavior.
+- `crates/fcmaes-job-worker/src/main.rs`: current native common-profile adapter.
+- `crates/fcmaes-native-worker/src/lib.rs`: objective registry and solver
+  dispatch shared by both fcmaes workers.
+- [docs/job-api/SHARED-SOURCES.sha256](docs/job-api/SHARED-SOURCES.sha256):
+  the files shared with LP-IP-craft and SQP-craft and their content hashes.
+- `crates/optimization-job-api/src/spec.rs` and
+  `crates/optimization-job-api/src/result.rs`: authoritative common input and
+  result contracts.
+- `scripts/job-api/test_integration.py`: local or mixed-worker acceptance.
+- `scripts/runner/test_integration.py`: original runner compatibility checks.
+- `tutorials/RESULT_SCHEMA.md`: established tutorial and legacy result formats;
+  use the explicitly versioned common result contract for common jobs.
 - `docs/getting-started.md`: building and basic Rust use.
 - `docs/choosing-an-optimizer.md`: deciding whether fcmaes-rust or a
   structured, gradient-based, surrogate-based, real-time, or
