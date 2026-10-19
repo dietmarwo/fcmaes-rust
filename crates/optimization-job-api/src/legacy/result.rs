@@ -1,4 +1,4 @@
-use crate::{JobSpec, Result, storage};
+use crate::{Result, legacy::JobSpec, storage};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use std::{collections::BTreeSet, path::Path};

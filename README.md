@@ -1,3 +1,8 @@
+> **Shared agent job API 0.1:** this source tree includes the common Rust job
+> protocol/runner and a native solver worker. See the [API guide](docs/job-api.md),
+> [runnable tutorial](tutorials/job-api/README.md) and
+> [validation report](docs/job-api/VALIDATION.md). Existing solver APIs remain available.
+
 <p align="center">
   <img src="docs/images/fcmaes-rust.png" alt="fcmaes-rust logo">
 </p>

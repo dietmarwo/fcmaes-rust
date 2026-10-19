@@ -92,3 +92,5 @@ cargo run --release -p fcmaes-examples --bin gtop-advexamples -- \
   --workers 16 --seed 1 --value-limit 12 \
   --max-eval-fac 50 --check-interval 100 --progress-interval 10
 ```
+
+- [Shared agent job API](job-api.md) — common lifecycle, eight-slot resources, checked results and recovery.

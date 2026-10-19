@@ -1032,3 +1032,5 @@ parameter estimation with one best fit is still a gradient-based problem, even
 when the simulator happens to be written in Rust.
 
 ![Diffsol optimizer selection based on sensitivity validity and the result the user needs](images/diffsol-selection.svg)
+
+- [Native job API tutorial](job-api/README.md) — common lifecycle, eight-slot resources, checked results and recovery.

@@ -1,3 +1,13 @@
+## Unreleased — shared agent job API 0.1
+
+- Extracted the common job contracts, journals and process utilities into
+  `optimization-job-api`; generalized the CLI in `optimization-runner`.
+- Preserved the legacy `fcmaes-job-api`, `fcmaes-run` and native worker surface;
+  added `fcmaes-job-worker` for `optimization.job/0.1`.
+- Added explicit total CPU admission, typed worker profiles, hashed inputs,
+  conservative liveness recovery, exact JSON float round trips and a runnable
+  job tutorial. Numerical cores are unchanged.
+
 # Changelog
 
 All notable changes to this project are documented here. The project follows

@@ -140,3 +140,11 @@ The following are deliberately outside this Rust workspace:
 - General MAP-Elites persistence and shared-memory statistics. The GitHub
   tutorials include application-specific CSV persistence and offline plotting.
 - Python package facades and integrations with SciPy, pygmo, or plotting tools.
+
+## Shared agent job API
+
+For durable native jobs with an explicit CPU budget, use the
+[shared protocol and runner](job-api.md) and the
+[solver-specific tutorial](../tutorials/job-api/README.md).
+The job profile is a deliberately smaller, versioned surface than the full
+in-process solver API. Unknown profile options are rejected.

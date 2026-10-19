@@ -1,3 +1,10 @@
+> **Common-runner update:** `fcmaes-run` now delegates to the shared runner,
+> while the legacy schema and native worker described here remain supported.
+> For new `optimization.job/0.1` jobs, use the
+> [common API guide](job-api.md) and [fcmaes tutorial](../tutorials/job-api/README.md).
+> Liveness reconciliation also checks the recorded worker process group and
+> conservatively retains slots when process creation was not durably recorded.
+
 # Native experiment runner (source release 0.1)
 
 `fcmaes-run` runs native optimization experiments as numbered, reproducible

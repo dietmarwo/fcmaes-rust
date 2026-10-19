@@ -1,6 +1,9 @@
 [workspace]
 resolver = "2"
 members = [
+    "crates/optimization-job-api",
+    "crates/optimization-runner",
+    "crates/fcmaes-job-worker",
     "crates/fcmaes-core",
     "crates/fcmaes-gtop",
     "crates/fcmaes-py",
