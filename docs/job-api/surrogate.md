@@ -54,9 +54,11 @@ Resources must satisfy `concurrent * evaluation_threads <= inner_threads <= 8` a
 | refit_interval | 3 | 1–64 proposal rounds |
 | lcb_beta | 2 | finite 0–20 |
 | minimum_distance | 1e-6 | unit-coordinate separation, 1e-12–0.01 |
+| nugget | 1e-10 | 1e-14–1e-2; kernel diagonal in standardized output units. Raise it (e.g. 1e-6) for rough or numerically noisy simulations; inferred noise is not implemented. |
+| trust_region | true | Two of every three proposals maximize the acquisition inside a TuRBO-1-style trust region around the incumbent (side 0.8 at start, ×2 after three successes up to 1.6, ÷2 after `ceil(max(4, d)/concurrent)` failures, reset below 2^-7, shaped by the lengthscales); every third searches the whole box. `false` searches the whole box always. |
 | failure_threshold | 1e99 | positive finite; defaults to 1e10 for gtop.* models |
 
-Auto output transformation uses bilog when nonzero observed absolute values span over six decades; it is not an algorithm selector. Configuration for noise, async, TuRBO, handoff, rank transforms, Sobol and Thompson sampling is unsupported and rejected.
+Auto output transformation uses bilog when nonzero observed absolute values span over six decades; it is not an algorithm selector. Configuration for noise, async, multiple trust regions, handoff, rank transforms, Sobol and Thompson sampling is unsupported and rejected.
 
 ## Register a cancellable Rust model
 

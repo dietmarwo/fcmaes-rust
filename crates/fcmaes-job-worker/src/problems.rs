@@ -84,7 +84,7 @@ pub fn register(registry: &mut Registry) {
             m.require_dimension(2..=2)?;
             Ok(Scalar::new(fcmaes_surrogate::problems::branin).domain(vec![-5.0,0.0],vec![10.0,15.0]))
         })
-        .scalar("benchmark.hartmann3", "1", json!({"dimensions":3,"minimum":-3.86278214782076}), |m| {
+        .scalar("benchmark.hartmann3", "1", json!({"dimensions":3,"minimum":-3.8627797873326624}), |m| {
             m.require_dimension(3..=3)?;
             Ok(Scalar::new(fcmaes_surrogate::problems::hartmann3).domain(vec![0.0;3],vec![1.0;3]))
         })

@@ -18,12 +18,19 @@ section.
 
 Use `fcmaes.surrogate/1` only for deterministic scalar continuous box problems
 with 1–32 variables and at most 256 new plus warm observations. It uses exact
-GPs and synchronous Kriging-believer batches, not TuRBO. The resource rule is
+GPs, a single TuRBO-style trust region (two of three proposals; `trust_region`,
+default true) and synchronous Kriging-believer batches. The resource rule is
 `concurrent * evaluation_threads <= inner_threads <= 8`, within the common
 outer-worker reservation. Prefer existing retry algorithms for larger-budget
 conventional scalar problems until scalable local BO/handoff has passed its
-campaign. Do not emit unimplemented `auto`, `turbo`, async, noise or governor
-settings. Source-only means it is absent from the published core/Python API.
+campaign. In the equal-budget comparison with BoTorch, egobox,
+scikit-optimize and Optuna (`benchmarks/surrogate-comparison`) it reached the
+lowest final regret on Hartmann-3/6, the RK4 oscillator and Styblinski–Tang-10
+among the GP methods, at 1–3 orders of magnitude less proposal time; BiteOpt
+retry was still better on the separable, many-modal Styblinski–Tang-10, so
+prefer retry for such problems at d >= 10. Raise `nugget` (default 1e-10)
+for rough or solver-noisy simulations. Do not emit unimplemented `auto`,
+`turbo`, async, noise or governor settings. Source-only means it is absent from the published core/Python API.
 
 `Scalar::simulation` receives a fallible `SimContext` callback with checkpoint,
 remaining seconds, point-derived seed and thread allowance. In this milestone

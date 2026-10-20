@@ -53,7 +53,7 @@ and a cancellable Rust simulation API. Current limits are 32 coordinates,
 256 new plus warm observations, and eight inner threads per task. See the
 [API guide](docs/job-api/surrogate.md) (it links the executable tutorial),
 [measured results](docs/surrogate/validation/REPORT.md) and
-[reviewed roadmap](docs/surrogate/PLAN.md). TuRBO, asynchronous scheduling and
+[reviewed roadmap](docs/surrogate/PLAN.md). Thompson-sampling TuRBO, asynchronous scheduling and
 large-budget handoff are future milestones.
 
 ## Core design principle: improve results for the same wait

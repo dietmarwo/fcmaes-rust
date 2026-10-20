@@ -118,9 +118,9 @@ struct Run {
 
 pub fn describe() -> Value {
     json!({"profile":PROFILE,"release":"0.1.0",
-        "method":"exact GP: matern52 or rbf, ARD MAP by bounded L-BFGS with analytic gradients; analytic LogEI or minimization LCB refined by bounded L-BFGS; synchronous Kriging believer",
+        "method":"exact GP: matern52 or rbf, ARD MAP by bounded L-BFGS with analytic gradients; analytic LogEI or minimization LCB with coordinate refinement; TuRBO-style trust region for two of three proposals (trust_region, default true); synchronous Kriging believer",
         "scope":"deterministic scalar box models, 1..32 variables, new plus reused observations <=256, concurrent 1..8",
-        "design":"centre plus seeded maximin Latin hypercube; no Sobol, asynchronous, noisy or TuRBO support in this release",
+        "design":"centre plus seeded maximin Latin hypercube; one trust region without Thompson sampling or local-data restarts; no Sobol, asynchronous or noisy support in this release",
         "resources":"concurrent * evaluation_threads <= inner_threads <=8; outer_workers * inner_threads <=cpu_slots",
         "simulation":"Scalar::simulation receives SimContext: checkpoint, remaining_seconds, threads and stable point seed; currently supported by this profile only",
         "logs":"checksummed surrogate-TASK.jsonl and atomic surrogate-observations-TASK.json in the attempt directory; local files, not shared MCP artifact entries",

@@ -12,9 +12,19 @@ The delivered M0 was committed unchanged (`4dd693b`, without the two delivery-on
 - **Hygiene.** `Scalar::simulation`'s placeholder plain objective panics instead of silently returning `+inf`; the simulation worker example and `analyze.py` were rewritten for readability; the ai-context header was restored with the surrogate section added below it.
 - **Measured and not adopted:** a gradient (L-BFGS) acquisition refinement and an incumbent update inside Kriging-believer batches; both lost on Styblinski–Tang-10 (details in [decisions.md](decisions.md)).
 
-Results ([validation/REPORT.md](validation/REPORT.md)): a fresh fit plus one proposal at d=32, n=248 went from 4.6 s to 0.49 s on one thread (9.4x), at d=10 from 0.90 s to 0.19 s (4.8x); eight-point batch proposals with carried hyperparameters are about 1.3–1.5x faster at n=248. Quality shows no systematic change on Branin, Hartmann-3/6, Styblinski–Tang-10 and the tutorial's RK4 oscillator (20 seeds for the last three; per-seed outcomes split about evenly between the builds), and histories are identical on 1, 2 and 8 threads.
+First-pass results: a fresh fit plus one proposal at d=32, n=248 went from 4.6 s to 0.49 s on one thread (9.4x), at d=10 from 0.90 s to 0.19 s (4.8x); eight-point batch proposals with carried hyperparameters became about 1.3–1.5x faster at n=248. The faster fit alone did not change quality systematically (per-seed outcomes split about evenly). [validation/REPORT.md](validation/REPORT.md) now compares M0 with the build after the second pass below: same speedups, and better final regret on 4–5 of 5 Branin/Hartmann-3 seeds, 20 of 20 Hartmann-6 seeds, 15 of 20 Styblinski–Tang-10 seeds and 13 of 20 oscillator seeds; histories are identical on 1, 2 and 8 threads.
 
 Gates rerun for the revision: `cargo fmt --all -- --check`, clippy with `-D warnings` on both crates, release tests of both crates, the MSRV 1.88 check, `scripts/surrogate/test_job_api.py`, the tutorial, and the shared runner integration harness (see the pull request for the exact outputs).
+
+## Second review pass: comparison with established libraries (2026-10-20)
+
+[benchmarks/surrogate-comparison](../../benchmarks/surrogate-comparison/README.md) runs BoTorch (default and noiseless), egobox, scikit-optimize, Optuna's GP and TPE samplers and fcmaes-surrogate on Branin, Hartmann-3/6, Styblinski–Tang-10, Rosenbrock-8 and the tutorial's RK4 oscillator at equal call budgets, ten seeds, q=1 and q=4. The comparison exposed three weaknesses, all addressed:
+
+- **Precision near the optimum.** The fixed nugget of 1e-8 limited final precision (Branin 1.9e-5 against egobox's 6.6e-8). The nugget is now configurable (`nugget`, default 1e-10); the GP fixtures were regenerated for the new diagonal.
+- **Global-only search at d = 6–10.** A TuRBO-1-style trust region now drives two of every three proposals (`trust_region`, default true); the third searches the whole box, which keeps runs out of local traps. Hartmann-6 and Styblinski–Tang-10 improved on every seed.
+- **A wrong Hartmann-3 reference.** The quoted minimum -3.86278214782076 is not attainable with the standard constants; the true minimum is -3.8627797873326624. The benchmark, worker metadata and reports use the corrected value.
+
+With these changes fcmaes-surrogate has the lowest median final regret among the GP methods on every problem except Branin (egobox), at 0.02–1 s of proposal time per run against 1–200 s for the other GP libraries. BiteOpt remains better on Styblinski–Tang-10. Tests: 53 Rust tests in the surrogate crate and worker plus the existing suites; determinism on 1/2/3/8 threads holds with the trust region.
 
 ## Source provenance and deliverables
 

@@ -107,6 +107,8 @@
       - [Equal-wall protocol smoke](benchmarks/gtop-cmaes-retry/results/equal-wall-smoke-v2/comparison.md)
       - [Five-pair scaling pilot](benchmarks/gtop-cmaes-retry/results/scaling-pilot-v1/comparison.md)
       - [Harness smoke report](benchmarks/gtop-cmaes-retry/results/harness-smoke/comparison.md)
+  - [Surrogate optimizers versus BoTorch, egobox, scikit-optimize and Optuna](benchmarks/surrogate-comparison/README.md)
+    - [Surrogate comparison tables](benchmarks/surrogate-comparison/comparison.md)
   - [Optimizer-comparison protocol](benchmarks/optimizer-comparison/README.md)
     - [Optimizer-comparison results](benchmarks/optimizer-comparison/comparison.md)
   - [Controlled active CMA-ES implementation diagnostic](benchmarks/cmaes-implementation/README.md)

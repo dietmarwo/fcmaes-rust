@@ -14,7 +14,11 @@ use fcmaes_core::Rng;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 
-const NUGGET: f64 = 1e-8;
+/// Default diagonal nugget in standardized output units (variance). Small
+/// values interpolate smooth deterministic objectives precisely; rough or
+/// numerically noisy simulations may need a larger one.
+pub const DEFAULT_NUGGET: f64 = 1e-10;
+pub const NUGGET_RANGE: std::ops::RangeInclusive<f64> = 1e-14..=1e-2;
 const LOG_2PI: f64 = 1.8378770664093453;
 /// Below this size the gradient rows are processed serially.
 const PARALLEL_ROWS: usize = 96;
@@ -130,7 +134,13 @@ struct Factor {
 }
 
 impl Factor {
-    fn new(xs: &[Vec<f64>], ys: &[f64], kernel: Kernel, lengthscales: Vec<f64>) -> Result<Self> {
+    fn new(
+        xs: &[Vec<f64>],
+        ys: &[f64],
+        kernel: Kernel,
+        lengthscales: Vec<f64>,
+        nugget: f64,
+    ) -> Result<Self> {
         let n = xs.len();
         let d = lengthscales.len();
         let inverse: Vec<f64> = lengthscales.iter().map(|l| 1.0 / l).collect();
@@ -155,7 +165,7 @@ impl Factor {
         });
         let mut jitter = 1e-10;
         for _ in 0..8 {
-            if let Some(cholesky) = Cholesky::factor(&matrix, n, NUGGET + jitter) {
+            if let Some(cholesky) = Cholesky::factor(&matrix, n, nugget + jitter) {
                 let alpha = cholesky.solve(ys);
                 if alpha.iter().all(|v| v.is_finite()) {
                     let value = 0.5
@@ -232,12 +242,27 @@ pub struct ExactGp {
     alpha: Vec<f64>,
     pub hyper: Hyper,
     pub kernel: Kernel,
+    pub nugget: f64,
     pub jitter: f64,
     pub negative_log_posterior: f64,
 }
 
 impl ExactGp {
+    /// A GP with the default nugget.
     pub fn with_hyper(xs: &[Vec<f64>], ys: &[f64], kernel: Kernel, hyper: Hyper) -> Result<Self> {
+        Self::with_nugget(xs, ys, kernel, hyper, DEFAULT_NUGGET)
+    }
+
+    pub fn with_nugget(
+        xs: &[Vec<f64>],
+        ys: &[f64],
+        kernel: Kernel,
+        hyper: Hyper,
+        nugget: f64,
+    ) -> Result<Self> {
+        if !NUGGET_RANGE.contains(&nugget) {
+            return Err(Error::Invalid("GP nugget outside 1e-14..=1e-2".into()));
+        }
         let d = hyper.lengthscales.len();
         check_inputs(xs, ys, d)?;
         let (low, high) = lengthscale_bounds(d);
@@ -251,14 +276,15 @@ impl ExactGp {
             ));
         }
         Ok(Self::from_factor(
-            Factor::new(xs, ys, kernel, hyper.lengthscales)?,
+            Factor::new(xs, ys, kernel, hyper.lengthscales, nugget)?,
             xs,
             ys,
             kernel,
+            nugget,
         ))
     }
 
-    fn from_factor(f: Factor, xs: &[Vec<f64>], ys: &[f64], kernel: Kernel) -> Self {
+    fn from_factor(f: Factor, xs: &[Vec<f64>], ys: &[f64], kernel: Kernel, nugget: f64) -> Self {
         Self {
             xs: xs.to_vec(),
             inverse_lengthscales: f.lengthscales.iter().map(|l| 1.0 / l).collect(),
@@ -270,6 +296,7 @@ impl ExactGp {
                 lengthscales: f.lengthscales,
             },
             kernel,
+            nugget,
             jitter: f.jitter,
             negative_log_posterior: f.negative_log_posterior,
         }
@@ -322,11 +349,11 @@ impl ExactGp {
         }
         let mut ys = self.ys.clone();
         ys.push(value);
-        let diagonal = 1.0 + NUGGET + self.jitter - dot(&v, &v);
+        let diagonal = 1.0 + self.nugget + self.jitter - dot(&v, &v);
         let mut xs = self.xs.clone();
         xs.push(x);
         if diagonal <= 0.0 || !diagonal.is_finite() {
-            return Self::with_hyper(&xs, &ys, self.kernel, self.hyper.clone());
+            return Self::with_nugget(&xs, &ys, self.kernel, self.hyper.clone(), self.nugget);
         }
         let mut cholesky = self.cholesky.clone();
         cholesky.append(&v, libm::sqrt(diagonal));
@@ -348,6 +375,7 @@ impl ExactGp {
             alpha,
             hyper: self.hyper.clone(),
             kernel: self.kernel,
+            nugget: self.nugget,
             jitter: self.jitter,
             negative_log_posterior,
         })
@@ -363,6 +391,7 @@ pub struct Fit<'a> {
     pub restarts: usize,
     /// L-BFGS iterations per restart.
     pub iterations: usize,
+    pub nugget: f64,
 }
 
 pub const MAX_FIT_ITERATIONS: usize = 200;
@@ -372,6 +401,7 @@ struct Posterior<'a> {
     ys: &'a [f64],
     kernel: Kernel,
     bounds: (f64, f64),
+    nugget: f64,
 }
 
 impl Objective for Posterior<'_> {
@@ -381,7 +411,7 @@ impl Objective for Posterior<'_> {
             .iter()
             .map(|&u| libm::exp(u).clamp(self.bounds.0, self.bounds.1))
             .collect();
-        let factor = Factor::new(self.xs, self.ys, self.kernel, lengthscales).ok()?;
+        let factor = Factor::new(self.xs, self.ys, self.kernel, lengthscales, self.nugget).ok()?;
         Some((factor.negative_log_posterior, factor))
     }
     fn gradient(&self, _: &[f64], factor: &Factor) -> Vec<f64> {
@@ -404,6 +434,7 @@ pub fn fit(input: Fit<'_>, stop: &(dyn Fn() -> bool + Sync)) -> Result<(ExactGp,
         || input.restarts > 4
         || input.iterations == 0
         || input.iterations > MAX_FIT_ITERATIONS
+        || !NUGGET_RANGE.contains(&input.nugget)
     {
         return Err(Error::Invalid(
             "GP fit dimension/restart/iteration limit".into(),
@@ -419,6 +450,7 @@ pub fn fit(input: Fit<'_>, stop: &(dyn Fn() -> bool + Sync)) -> Result<(ExactGp,
         ys: input.ys,
         kernel: input.kernel,
         bounds,
+        nugget: input.nugget,
     };
     let settings = optim::Settings {
         lower: &lower,
@@ -475,7 +507,7 @@ pub fn fit(input: Fit<'_>, stop: &(dyn Fn() -> bool + Sync)) -> Result<(ExactGp,
     }
     let best = best.ok_or_else(|| failure.unwrap_or(Error::Numerical("no GP fit".into())))?;
     Ok((
-        ExactGp::from_factor(best, input.xs, input.ys, input.kernel),
+        ExactGp::from_factor(best, input.xs, input.ys, input.kernel, input.nugget),
         evaluations,
     ))
 }
@@ -505,8 +537,16 @@ mod tests {
                 let (xs, ys) = data(n, d);
                 let u: Vec<f64> = (0..d).map(|j| -1.0 + 0.3 * j as f64).collect();
                 let at = |u: &[f64]| {
-                    Factor::new(&xs, &ys, kernel, u.iter().map(|u| libm::exp(*u)).collect())
-                        .unwrap()
+                    Factor::new(
+                        &xs,
+                        &ys,
+                        kernel,
+                        u.iter().map(|u| libm::exp(*u)).collect(),
+                        // Central differences need a well-conditioned
+                        // matrix; the formula does not involve the nugget.
+                        1e-6,
+                    )
+                    .unwrap()
                 };
                 let factor = at(&u);
                 assert_eq!(factor.jitter, 1e-10);

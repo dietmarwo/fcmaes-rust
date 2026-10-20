@@ -33,7 +33,7 @@ for name in ['rbf', 'matern52']:
             return mp.exp(-r2/2)
         r = mp.sqrt(5*r2)
         return (1+r+5*r2/3)*mp.exp(-r)
-    matrix = mp.matrix([[kernel(a,b)+(mp.mpf('1.01e-8') if i==j else 0)
+    matrix = mp.matrix([[kernel(a,b)+(mp.mpf('2e-10') if i==j else 0)
                          for j,b in enumerate(xs)] for i,a in enumerate(xs)])
     alpha = mp.lu_solve(matrix,ys)
     prior_mu = mp.sqrt(2)+mp.log(2)/2

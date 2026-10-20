@@ -6,7 +6,9 @@ pub fn branin(x: &[f64]) -> f64 {
         - 6.0;
     a * a + 10.0 * (1.0 - 1.0 / (8.0 * std::f64::consts::PI)) * libm::cos(x[0]) + 10.0
 }
-/// Hartmann-3 on the unit cube; minimum -3.86278214782076.
+/// Hartmann-3 on the unit cube; minimum -3.8627797873326624 near
+/// (0.114589, 0.555649, 0.852547). The often quoted -3.86278214782076 is
+/// slightly below the true minimum of these constants.
 pub fn hartmann3(x: &[f64]) -> f64 {
     let a = [
         [3.0, 10.0, 30.0],
@@ -65,4 +67,10 @@ pub fn styblinski_tang(x: &[f64]) -> f64 {
         .iter()
         .map(|v| v.powi(4) - 16.0 * v * v + 5.0 * v)
         .sum::<f64>()
+}
+/// Rosenbrock in any dimension, usually on `[-2.048, 2.048]^d`; minimum 0 at 1.
+pub fn rosenbrock(x: &[f64]) -> f64 {
+    x.windows(2)
+        .map(|w| 100.0 * (w[1] - w[0] * w[0]).powi(2) + (1.0 - w[0]).powi(2))
+        .sum()
 }

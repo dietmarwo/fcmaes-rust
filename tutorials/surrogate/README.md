@@ -14,7 +14,7 @@ python3 tutorials/surrogate/run.py --root /tmp/surrogate-example
 
 Use a fresh directory for an independent rerun. Request keys are intentionally stable, so an existing node may return earlier idempotent jobs. With a custom target directory, use `--bin-dir /absolute/target/release` (or export `CARGO_TARGET_DIR`). The script creates node capacity eight, registers the standard and example workers, validates/runs all jobs, independently checks Branin in Python, checks evidence/accounting, hashes the compact snapshot, and writes `tutorial-report.json` under the node root. `branin.json` and `oscillator.json` are complete editable jobs.
 
-In the tested build the Branin result was about 0.3979181 (known optimum about 0.39788736), the warm job used exactly eight new optimization calls from 48 retained observations, and oscillator loss was about 1.45e-5 (the minimum is zero up to integration error; over 20 library-benchmark seeds the median is about 3e-6). These are deterministic smoke results on this source, not a general performance guarantee. The optional final validation call is additional and separately counted.
+In the tested build the Branin result was about 0.3978880 (known optimum about 0.39788736), the warm job used exactly eight new optimization calls from 48 retained observations, and oscillator loss was about 1.3e-6 (the minimum is zero up to integration error; over 20 library-benchmark seeds with batches of four the median is about 6e-7). These are deterministic smoke results on this source, not a general performance guarantee. The optional final validation call is additional and separately counted.
 
 ## Inspect a job manually
 
@@ -35,7 +35,7 @@ Read [simulation_worker.rs](../../crates/fcmaes-job-worker/examples/simulation_w
 
 Replace the integration body with your Rust model. Return `Err` for evaluation failures, use checkpoints in long loops, obey `ctx.threads()`, and derive reproducible simulation randomness from `ctx.seed()`. Do not start a new native pool on every evaluation. Bump the model version when its objective changes. Register factories on a deterministic registry; jobs carry model parameters and data hashes, not source code.
 
-The first API accepts simulation models only in this profile. Global GP is limited to 32 coordinates and 256 new+retained observations. TuRBO, async queues, the overhead governor, handoff and noisy optimization remain roadmap work. The seeded simulation callback is repeatable; it is not an expected-value estimator.
+The first API accepts simulation models only in this profile. Global GP is limited to 32 coordinates and 256 new+retained observations. Multiple trust regions with Thompson sampling, async queues, the overhead governor, handoff and noisy optimization remain roadmap work. The seeded simulation callback is repeatable; it is not an expected-value estimator.
 
 ## Run the actual runner/MCP tests
 

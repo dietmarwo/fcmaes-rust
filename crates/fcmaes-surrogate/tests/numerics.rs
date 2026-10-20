@@ -179,6 +179,7 @@ fn map_fit_improves_on_its_start_is_reproducible_and_stays_in_bounds() {
                         seed: 5,
                         restarts,
                         iterations: 50,
+                        nugget: gp::DEFAULT_NUGGET,
                     },
                     &|| false,
                 )
@@ -220,6 +221,7 @@ fn map_fit_improves_on_its_start_is_reproducible_and_stays_in_bounds() {
                 seed: 1,
                 restarts: 1,
                 iterations: 5,
+                nugget: gp::DEFAULT_NUGGET,
             },
             &|| true,
         ),

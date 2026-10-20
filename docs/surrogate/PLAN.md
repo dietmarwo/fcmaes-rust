@@ -13,7 +13,7 @@ The intended production product serves box-bounded simulation optimization. It m
 - Deterministic scalar minimization, 1–32 continuous coordinates, optional log-scaled positive bounds.
 - At most 256 total new plus retained observations; at most eight concurrent evaluations and eight inner threads per task.
 - Exact ARD Matérn-5/2 or RBF GP, fixed unit signal variance, deterministic nugget, bounded L-BFGS MAP fit with analytic gradients, LogEI or minimization LCB.
-- Centre/maximin Latin hypercube design, seeded candidate generation, local coordinate refinement, synchronous Kriging-believer batches.
+- Centre/maximin Latin hypercube design, seeded candidate generation, local coordinate refinement, a TuRBO-1-style trust region for two of every three proposals, synchronous Kriging-believer batches.
 - Ordered decisions independent of installed Rayon thread count; pending-point fantasies at the library proposal interface.
 - Fallible completion logging, checksummed durable worker traces, atomic compact warm snapshots, semantic decision replay, independent best-point re-evaluation.
 - `Scalar::simulation` with cancellation checkpoints, remaining time, point-derived seed, and per-evaluation thread allowance. **Only the surrogate profile accepts these callbacks in M0.**
@@ -50,14 +50,14 @@ The profile rejects unimplemented options. `auto`, `turbo`, asynchronous schedul
 | --- | --- | --- |
 | F1 Space | Implemented | Mixed/discrete domains remain outside this profile. |
 | F2 Transforms | Partial | Standardize, bilog, auto implemented; rank/ties and transformed noisy semantics deferred. |
-| F3 GP | Partial | Exact kernels, ARD and deterministic nugget implemented; inferred noise deferred. |
+| F3 GP | Partial | Exact kernels, ARD and a configurable deterministic nugget implemented; inferred noise deferred. |
 | F4 Priors/fitting | Partial | MAP lognormal lengthscale prior, deterministic restarts, bounded L-BFGS with analytic gradients (checked against finite differences); MLE option and signal-variance/noise hyperparameters not implemented. |
-| F5 Factorization | Implemented with explicit constants | Nugget 1e-8, initial jitter 1e-10, eight attempts with tenfold jitter; O(n²) fantasy append, fresh fit/rebuild per round. Verify larger caps before raising limits. |
+| F5 Factorization | Implemented with explicit constants | Configurable nugget (default 1e-10, was 1e-8 in M0), initial jitter 1e-10, eight attempts with tenfold jitter; O(n²) fantasy append, fresh fit/rebuild per round. Verify larger caps before raising limits. |
 | F6 Acquisition | Partial | LogEI and LCB implemented; candidate/pathwise Thompson sampling in M2. |
 | F7 Acquisition search | Partial | LHS/global and sparse local candidates, four local starts; Sobol/Boltzmann/L-BFGS-B/CMA option deferred. |
 | F8 Batches | Partial | Synchronous Kriging believer only; no constant-liar or TS batch option. |
 | F9 Async | Deferred, P1 | M3, with a reproducible event-driven simulator before real workers. |
-| F10 TuRBO | Deferred, P1 | M2: trust-region state, restart rules, local-data selection, TS, then multiple regions. |
+| F10 TuRBO | Partial | One TuRBO-1-style region (state in StrategyState, published length constants, in-place restart) used for two of three proposals with LogEI; Thompson sampling, local-data selection and multiple regions remain M2. |
 | F11 Designs | Partial | Seeded centre/maximin LHS; no Sobol; configurable initial_points default eight. |
 | F12 Failures | Partial | Error/panic/threshold classification, durable records, no GP imputation or three-failure neighbourhood rule. |
 | F13 Stopping | Partial | New-evaluation budget, target, wall/cancel checks implemented; no TuRBO restart budget. |
@@ -122,7 +122,7 @@ Gate: runner/MCP cancellation returns consistent counts and claims for both prof
 ### M2 — scalable local BO and handoff
 
 1. Implement pathwise posterior sampling using an RFF prior plus exact conditioning. Check empirical means, variances and correlations against a small exact GP, fixed-seed paths and kernel convergence across feature counts. Benchmark total proposal cost including feature construction/refits.
-2. Implement TuRBO-1 with explicit counters, length bounds, restart behavior and deterministic local-data selection. Add TuRBO-m only after one-region behavior is correct. Check published constants against the primary implementation and document deliberate deviations.
+2. TuRBO-1 counters, length bounds and an in-place restart exist (published constants: initial 0.8, range 2^-7–1.6, three successes, `ceil(max(4, d)/q)` failures; deliberate deviations: LogEI instead of Thompson sampling, one global proposal in three, global GP on all data, restart re-centres at the incumbent instead of a fresh design). Still to do: Thompson sampling, deterministic local-data selection for large n, and TuRBO-m once one-region behavior is validated on simulations.
 3. Add in-task CMA-ES and BiteOpt handoff from a feasible incumbent, preserving original coordinates, shared budget, failure policy, callback context and trace. Use valid population sizes, deterministic seeds and real calls for partial final generations.
 4. Compare local cap/feature count/handoff fraction on development sets, then freeze settings for held-out tests. Do not make `auto` choose an unavailable algorithm.
 

@@ -33,6 +33,14 @@ pub struct Config {
     pub lcb_beta: f64,
     pub minimum_distance: f64,
     pub failure_threshold: f64,
+    /// Diagonal nugget (variance, standardized outputs) added to the kernel
+    /// matrix. Raise it for rough or numerically noisy simulations.
+    pub nugget: f64,
+    /// Search a TuRBO-style trust region around the incumbent (shaped by the
+    /// lengthscales, resized by the success and failure counts of previous
+    /// batches) for two of every three proposals and the whole box for the
+    /// third. `false` searches the whole box for every proposal.
+    pub trust_region: bool,
 }
 impl Default for Config {
     fn default() -> Self {
@@ -48,6 +56,8 @@ impl Default for Config {
             lcb_beta: 2.0,
             minimum_distance: 1e-6,
             failure_threshold: 1e99,
+            nugget: gp::DEFAULT_NUGGET,
+            trust_region: true,
         }
     }
 }
@@ -64,6 +74,7 @@ impl Config {
             || !(1e-12..=0.01).contains(&self.minimum_distance)
             || !self.failure_threshold.is_finite()
             || self.failure_threshold <= 0.0
+            || !gp::NUGGET_RANGE.contains(&self.nugget)
         {
             return Err(Error::Invalid(
                 "invalid surrogate configuration or resource cap".into(),
@@ -78,6 +89,72 @@ impl Config {
 pub struct StrategyState {
     pub round: u64,
     pub hyper: Option<Hyper>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub trust: Option<TrustRegion>,
+}
+
+/// TuRBO-1 trust-region state (Eriksson et al., 2019): side length in unit
+/// coordinates before lengthscale shaping, consecutive successes/failures and
+/// the incumbent value that defines the next success.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct TrustRegion {
+    pub length: f64,
+    pub successes: u32,
+    pub failures: u32,
+    pub best: f64,
+}
+
+const TR_INITIAL: f64 = 0.8;
+const TR_MIN: f64 = 0.0078125;
+const TR_MAX: f64 = 1.6;
+const TR_SUCCESSES: u32 = 3;
+/// With a trust region, every third proposal maximizes the acquisition over
+/// the whole box instead.
+const GLOBAL_EVERY: u64 = 3;
+
+impl TrustRegion {
+    /// Updates the region with the incumbent after the previous batch.
+    fn update(&mut self, best: f64, batch: usize, d: usize) {
+        if best < self.best - 1e-3 * self.best.abs() {
+            self.successes += 1;
+            self.failures = 0;
+        } else {
+            self.successes = 0;
+            self.failures += 1;
+        }
+        let failures = (4.0 / batch as f64).max(d as f64 / batch as f64).ceil() as u32;
+        if self.successes >= TR_SUCCESSES {
+            self.length = (2.0 * self.length).min(TR_MAX);
+            self.successes = 0;
+        } else if self.failures >= failures {
+            self.length *= 0.5;
+            self.failures = 0;
+        }
+        if self.length < TR_MIN {
+            self.length = TR_INITIAL;
+        }
+        self.best = self.best.min(best);
+    }
+
+    /// Box around `centre`, side `length * w_i` with `w = l / geomean(l)`.
+    fn bounds(&self, centre: &[f64], hyper: &Hyper) -> (Vec<f64>, Vec<f64>) {
+        let d = centre.len() as f64;
+        let mean_log = hyper
+            .lengthscales
+            .iter()
+            .map(|l| libm::log(*l))
+            .sum::<f64>()
+            / d;
+        let mut lower = Vec::with_capacity(centre.len());
+        let mut upper = Vec::with_capacity(centre.len());
+        for (c, l) in centre.iter().zip(&hyper.lengthscales) {
+            let half = 0.5 * self.length * libm::exp(libm::log(*l) - mean_log);
+            lower.push((c - half).max(0.0));
+            upper.push((c + half).min(1.0));
+        }
+        (lower, upper)
+    }
 }
 
 pub struct Round<'a> {
@@ -116,12 +193,15 @@ fn score(gp: &ExactGp, x: &[f64], best: f64, config: &Config) -> Result<f64> {
     })
 }
 
+#[allow(clippy::too_many_arguments)]
 fn optimize(
     gp: &ExactGp,
     candidates: &[Vec<f64>],
     occupied: &[Vec<f64>],
     best: f64,
     config: &Config,
+    lower: &[f64],
+    upper: &[f64],
     stop: &(dyn Fn() -> bool + Sync),
 ) -> Result<Vec<f64>> {
     let scores: Vec<Result<f64>> = candidates
@@ -168,7 +248,7 @@ fn optimize(
                         if stop() {
                             return Err(Error::Stopped);
                         }
-                        trial[j] = (base + direction * step).clamp(0.0, 1.0);
+                        trial[j] = (base + direction * step).clamp(lower[j], upper[j]);
                         if !distinct(&trial, occupied, config.minimum_distance) {
                             trial[j] = x[j];
                             continue;
@@ -272,6 +352,7 @@ pub fn propose(round: &Round<'_>, stop: &(dyn Fn() -> bool + Sync)) -> Result<Pr
                     seed,
                     restarts: round.config.fit_restarts,
                     iterations: round.config.fit_iterations,
+                    nugget: round.config.nugget,
                 },
                 stop,
             )
@@ -280,11 +361,12 @@ pub fn propose(round: &Round<'_>, stop: &(dyn Fn() -> bool + Sync)) -> Result<Pr
                 gp
             })
         } else {
-            ExactGp::with_hyper(
+            ExactGp::with_nugget(
                 &xs,
                 &transformed,
                 round.config.kernel,
                 round.state.hyper.clone().expect("checked hyper"),
+                round.config.nugget,
             )
         };
         match fitted {
@@ -307,10 +389,64 @@ pub fn propose(round: &Round<'_>, stop: &(dyn Fn() -> bool + Sync)) -> Result<Pr
     let mut ordered: Vec<usize> = (0..ys.len()).collect();
     ordered.sort_by(|&a, &b| ys[a].total_cmp(&ys[b]).then(a.cmp(&b)));
     let centres: Vec<Vec<f64>> = ordered.iter().take(3).map(|&i| xs[i].clone()).collect();
-    let mut candidates = design::candidates(round.config.candidates, d, seed, &centres);
-    for x in &mut candidates {
-        *x = canonical(round.space, x)?;
+    let mut lower = vec![0.0; d];
+    let mut upper = vec![1.0; d];
+    if round.config.trust_region
+        && let Some(gp) = &model
+    {
+        let incumbent = ys[ordered[0]];
+        let region = match &round.state.trust {
+            Some(previous) => {
+                let mut region = previous.clone();
+                region.update(incumbent, round.count, d);
+                region
+            }
+            None => TrustRegion {
+                length: TR_INITIAL,
+                successes: 0,
+                failures: 0,
+                best: incumbent,
+            },
+        };
+        (lower, upper) = region.bounds(&xs[ordered[0]], &gp.hyper);
+        state.trust = Some(region);
     }
+    // Candidates are generated in the unit cube of the search box.
+    let boxed = |lower: &[f64], upper: &[f64]| -> Result<Vec<Vec<f64>>> {
+        let inside: Vec<Vec<f64>> = centres
+            .iter()
+            .filter(|c| {
+                c.iter()
+                    .zip(lower)
+                    .zip(upper)
+                    .all(|((c, l), u)| (l..=u).contains(&c))
+            })
+            .map(|c| {
+                c.iter()
+                    .zip(lower)
+                    .zip(upper)
+                    .map(|((c, l), u)| ((c - l) / (u - l)).clamp(0.0, 1.0))
+                    .collect()
+            })
+            .collect();
+        let mut candidates = design::candidates(round.config.candidates, d, seed, &inside);
+        for x in &mut candidates {
+            for ((v, l), u) in x.iter_mut().zip(lower).zip(upper) {
+                *v = (l + *v * (u - l)).clamp(*l, *u);
+            }
+            *x = canonical(round.space, x)?;
+        }
+        Ok(candidates)
+    };
+    let candidates = boxed(&lower, &upper)?;
+    let global_lower = vec![0.0; d];
+    let global_upper = vec![1.0; d];
+    let global = if state.trust.is_some() && round.config.trust_region {
+        boxed(&global_lower, &global_upper)?
+    } else {
+        Vec::new()
+    };
+
     let initial = design::initial_design(round.config.initial_points, d, round.seed);
     let mut points = Vec::new();
     for i in 0..round.count {
@@ -328,9 +464,18 @@ pub fn propose(round: &Round<'_>, stop: &(dyn Fn() -> bool + Sync)) -> Result<Pr
         if unit.is_none()
             && let Some(gp) = &model
         {
+            // Every GLOBAL_EVERY-th proposal searches the whole box, so a
+            // region around a local minimum cannot hold the run forever.
+            let slot = round.state.round * round.count as u64 + i as u64;
+            let use_global = !global.is_empty() && slot % GLOBAL_EVERY == GLOBAL_EVERY - 1;
+            let (cands, lo, hi) = if use_global {
+                (&global, &global_lower, &global_upper)
+            } else {
+                (&candidates, &lower, &upper)
+            };
             let candidate = canonical(
                 round.space,
-                &optimize(gp, &candidates, &occupied, best, round.config, stop)?,
+                &optimize(gp, cands, &occupied, best, round.config, lo, hi, stop)?,
             )?;
             if distinct(&candidate, &occupied, round.config.minimum_distance) {
                 unit = Some(candidate);
@@ -369,4 +514,145 @@ pub fn propose(round: &Round<'_>, stop: &(dyn Fn() -> bool + Sync)) -> Result<Pr
         fit_evaluations,
         fallback,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn trust_region_expands_shrinks_and_restarts() {
+        let mut region = TrustRegion {
+            length: TR_INITIAL,
+            successes: 0,
+            failures: 0,
+            best: 10.0,
+        };
+        for k in 1..=3 {
+            region.update(10.0 - k as f64, 1, 2);
+        }
+        assert_eq!(
+            (region.length, region.successes, region.best),
+            (1.6, 0, 7.0)
+        );
+        region.update(6.0, 1, 2);
+        region.update(5.0, 1, 2);
+        region.update(4.0, 1, 2);
+        assert_eq!(region.length, TR_MAX, "expansion is capped");
+        // Sequential, d=2: four failures halve the region.
+        for _ in 0..3 {
+            region.update(4.0, 1, 2);
+        }
+        assert_eq!((region.length, region.failures), (TR_MAX, 3));
+        region.update(4.0 - 1e-6, 1, 2);
+        assert_eq!((region.length, region.failures), (0.8, 0));
+        // Batches of four in d=10 halve after ceil(10/4) = 3 failures.
+        for _ in 0..3 {
+            region.update(4.0, 4, 10);
+        }
+        assert_eq!(region.length, 0.4);
+        region.length = TR_MIN;
+        for _ in 0..3 {
+            region.update(4.0, 4, 10);
+        }
+        assert_eq!(region.length, TR_INITIAL, "a collapsed region restarts");
+    }
+
+    #[test]
+    fn trust_region_box_follows_lengthscales_and_stays_in_the_cube() {
+        let region = TrustRegion {
+            length: 0.8,
+            successes: 0,
+            failures: 0,
+            best: 0.0,
+        };
+        let (lower, upper) = region.bounds(
+            &[0.5, 0.05],
+            &Hyper {
+                lengthscales: vec![0.1, 0.4],
+            },
+        );
+        for (a, b) in lower
+            .iter()
+            .zip([0.3, 0.0])
+            .chain(upper.iter().zip([0.7, 0.85]))
+        {
+            assert!((a - b).abs() < 1e-12, "{lower:?} {upper:?}");
+        }
+    }
+
+    #[test]
+    fn two_of_three_proposals_lie_in_the_trust_region() {
+        let space = Space::new(vec![-1.0; 3], vec![2.0; 3], vec![false; 3]).unwrap();
+        let history: Vec<Observation> = design::latin_hypercube(12, 3, 9)
+            .into_iter()
+            .enumerate()
+            .map(|(i, u)| {
+                let x = space.from_unit(&u).unwrap();
+                let y = x.iter().map(|v| (v - 0.3) * (v - 0.3)).sum::<f64>();
+                Observation {
+                    id: i as u64,
+                    x,
+                    value: Value::Finite(y),
+                }
+            })
+            .collect();
+        let config = Config {
+            candidates: 64,
+            ..Config::default()
+        };
+        let state = StrategyState::default();
+        let proposal = propose(
+            &Round {
+                space: &space,
+                history: &history,
+                pending: &[],
+                state: &state,
+                config: &config,
+                seed: 3,
+                count: 3,
+            },
+            &|| false,
+        )
+        .unwrap();
+        let region = proposal.state.trust.clone().expect("region");
+        let best = history
+            .iter()
+            .min_by(|a, b| match (&a.value, &b.value) {
+                (Value::Finite(a), Value::Finite(b)) => a.total_cmp(b),
+                _ => std::cmp::Ordering::Equal,
+            })
+            .unwrap();
+        let (lower, upper) = region.bounds(
+            &space.to_unit(&best.x).unwrap(),
+            proposal.state.hyper.as_ref().unwrap(),
+        );
+        for point in &proposal.points[..2] {
+            let u = space.to_unit(point).unwrap();
+            for ((v, l), h) in u.iter().zip(&lower).zip(&upper) {
+                assert!(
+                    *v >= l - 1e-12 && *v <= h + 1e-12,
+                    "{u:?} {lower:?} {upper:?}"
+                );
+            }
+        }
+        let off = Config {
+            trust_region: false,
+            ..config
+        };
+        let global = propose(
+            &Round {
+                space: &space,
+                history: &history,
+                pending: &[],
+                state: &state,
+                config: &off,
+                seed: 3,
+                count: 3,
+            },
+            &|| false,
+        )
+        .unwrap();
+        assert!(global.state.trust.is_none());
+    }
 }

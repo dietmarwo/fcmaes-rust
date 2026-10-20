@@ -188,6 +188,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut selected = vec!["branin".to_string(), "hartmann3".to_string()];
     let mut sleep_ms = 0;
     let mut seeds = vec![7, 11, 19, 23, 41];
+    let mut config = Config::default();
+    let mut methods: Vec<String> = ["gp", "random", "cmaes", "biteopt"]
+        .map(String::from)
+        .to_vec();
     let mut args = std::env::args().skip(1);
     while let Some(arg) = args.next() {
         let value = args.next().ok_or("expected option value")?;
@@ -199,6 +203,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             "--problems" => selected = value.split(',').map(str::to_string).collect(),
             "--sleep-ms" => sleep_ms = value.parse()?,
             "--seeds" => seeds = value.split(',').map(str::parse).collect::<Result<_, _>>()?,
+            "--parameters" => config = serde_json::from_str(&value)?,
+            "--methods" => methods = value.split(',').map(str::to_string).collect(),
             _ => return Err(format!("unknown argument {arg}").into()),
         }
     }
@@ -223,7 +229,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             name: "hartmann3",
             space: Space::new(vec![0.0; 3], vec![1.0; 3], vec![false; 3])?,
             objective: problems::hartmann3,
-            optimum: -3.86278214782076,
+            optimum: -3.8627797873326624,
             evaluations: 48,
         },
         Problem {
@@ -238,6 +244,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             space: Space::new(vec![-5.0; 10], vec![5.0; 10], vec![false; 10])?,
             objective: problems::styblinski_tang,
             optimum: -391.6616570377142,
+            evaluations: 128,
+        },
+        Problem {
+            name: "rosenbrock8",
+            space: Space::new(vec![-2.048; 8], vec![2.048; 8], vec![false; 8])?,
+            objective: problems::rosenbrock,
+            optimum: 0.0,
             evaluations: 128,
         },
         Problem {
@@ -256,12 +269,18 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .ok_or_else(|| format!("unknown problem {name}"))?;
         problems.push(problem);
     }
-    let config = Config::default();
+    config.validate()?;
+    if let Some(m) = methods
+        .iter()
+        .find(|m| !["gp", "random", "cmaes", "biteopt"].contains(&m.as_str()))
+    {
+        return Err(format!("unknown method {m}").into());
+    }
     let mut runs = Vec::new();
     for &problem in &problems {
         let budget = budget.unwrap_or(problem.evaluations);
         for &seed in &seeds {
-            for method in ["gp", "random", "cmaes", "biteopt"] {
+            for method in methods.iter().map(String::as_str) {
                 let objective = |x: &[f64]| {
                     if sleep_ms > 0 {
                         std::thread::sleep(Duration::from_millis(sleep_ms));
