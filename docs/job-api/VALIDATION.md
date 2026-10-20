@@ -278,6 +278,38 @@ Nothing in this repository's code changed. On Linux x86_64 with Rust 1.97:
 | Tutorial | 12 examples completed; jobs and results validated against the schemas of the checkout |
 | GTOC1 route-search tutorial on the new revision | fmt clean, 56 tests passed, protocol smoke run passed |
 
+## Review fixes (20 October 2026)
+
+The review of 20 October 2026 reproduced, by validation alone, a
+one-evaluation DE job with dimension 10,000 and population 1,000,000 that
+passed and would have allocated 80 GB per population table (FC-01). BiteOpt
+and DE now share the evolution strategies' limit, `population × dimension ≤
+10⁷`, in `fcmaes.retry/1` and, through optimization-jobs, in legacy
+`fcmaes.job/0.1`; BiteOpt's default population exceeds it from dimension
+1,825 on. MODE results name their hypervolume method: exact through four
+objectives, a Monte Carlo estimate with `samples`, `seed` and
+`standard_error` above (FC-03). `tutorials/job-api/run.py` takes `--bin-dir`
+and honors `CARGO_TARGET_DIR` (FC-04). Cooperative stopping inside scalar
+retries (FC-02) is a capability upgrade and stays open.
+
+This repository moved to optimization-jobs revision
+[`eb1c9de`](https://github.com/dietmarwo/optimization-jobs/commit/eb1c9de66e677097a7ea22d9a4b2f6357c18751d)
+(cancellation that only escalates, objective-bound checks, MCP request limits,
+the shared SDK tested inside this worker before a repin). On Linux x86_64
+with Rust 1.97:
+
+| Check | Observed result |
+| --- | --- |
+| `cargo fmt --check`, Clippy `-D warnings` for the worker, local documentation links | Passed |
+| Workspace tests | 286 passed |
+| Legacy runner suite | 14 passed |
+| Shared harness from Cargo's checkout | 14 run: 12 passed, 2 skipped without LP/SQP workers |
+| Mixed node with this runner and the repinned LP-IP and SQP workers | 14 passed |
+| Shared review tests (`JOB_API_REQUIRE_SCHEMA=1`) | 17 passed |
+| `test_mcp.py` with this repository's binaries | 28 passed, including the real-worker test |
+| Tutorial | 12 examples completed, schemas validated; a missing binary under `CARGO_TARGET_DIR` is named |
+| GTOC1 route-search tutorial on the new revision | 56 tests passed, protocol smoke run passed |
+
 ## Reproduce with sibling workers
 
 To run the mixed acceptance, build each repository's worker and pass the
