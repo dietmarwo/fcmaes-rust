@@ -61,6 +61,7 @@ jobs:
           export JOB_API_TARGET="$PWD/target/release" JOB_API_TUTORIALS="$PWD/tutorials/job-api"
           python3 "$SHARED/scripts/job-api/test_integration.py"
           python3 "$SHARED/scripts/job-api/test_review.py"
+          JOB_API_REQUIRE_WORKER=1 python3 "$SHARED/scripts/job-api/test_mcp.py"
           python3 tutorials/job-api/run.py --root "$RUNNER_TEMP/job-api-tutorial"
       - name: Python binding tests
         run: |

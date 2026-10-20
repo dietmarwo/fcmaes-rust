@@ -8,13 +8,13 @@ CI runs these on every push and pull request (`.github/workflows/ci.yml`):
 | --- | --- |
 | Rust 1.88 minimum version | `cargo check --workspace --locked` |
 | Format, lint, docs | `cargo fmt --check`, `cargo clippy --workspace --all-targets -- -D warnings`, `cargo doc` |
-| Rust tests | `cargo test --workspace` (shared contracts and durability, worker SDK adapter, legacy and common CLI lifecycle) |
+| Rust tests | `cargo test --workspace` (worker adapter and models, legacy and common CLI lifecycle; the shared crates' own tests run in optimization-jobs) |
 | Legacy runner integration | `python3 scripts/runner/test_integration.py` |
-| Common job API integration | `python3 scripts/job-api/test_integration.py` |
-| Shared runner regressions, error codes and schema checks | `JOB_API_REQUIRE_SCHEMA=1 python3 scripts/job-api/test_review.py` |
+| Common job API integration | `python3 "$SHARED/scripts/job-api/test_integration.py"`, from Cargo's checkout of optimization-jobs (`SHARED=$(python3 scripts/job-api/shared_root.py)`) |
+| Shared runner regressions, error codes and schema checks | `JOB_API_REQUIRE_SCHEMA=1 python3 "$SHARED/scripts/job-api/test_review.py"` |
+| MCP server with this repository's worker | `python3 "$SHARED/scripts/job-api/test_mcp.py"` |
 | Runnable tutorial | `python3 tutorials/job-api/run.py` |
-| Shared-source identity | `sha256sum -c docs/job-api/SHARED-SOURCES.sha256` |
-| Route-search tutorial (uses the shared crate by path) | tutorial matrix job: fmt, clippy, tests |
+| Route-search tutorial (uses `optimization-job-api` through git) | tutorial matrix job: fmt, clippy, tests |
 
 The Rust tests include these cross-profile checks. Every BiteOpt or DE retry
 of a common `fcmaes.retry/1` job equals a direct call of the shared native
@@ -258,6 +258,25 @@ tests fewer. `fcmaes-job-worker` depends on the runner, so
 
 Earlier sections mention `scripts/job-api/` and the checksum manifest as they
 were at the time.
+
+## The MCP server (19 October 2026)
+
+This repository moved to optimization-jobs revision `0ee495f`, which adds
+`optimization-mcp`, the MCP server over one node
+([guide](https://github.com/dietmarwo/optimization-jobs/blob/main/docs/job-api.md#agents-and-mcp),
+[plan](https://github.com/dietmarwo/optimization-jobs/blob/main/docs/job-api/PLAN.md#9-mcp-server-october-2026)). `cargo build -p optimization-runner -p fcmaes-job-worker` builds it here.
+Nothing in this repository's code changed. On Linux x86_64 with Rust 1.97:
+
+| Check | Observed result |
+| --- | --- |
+| `cargo fmt --check`, Clippy `-D warnings`, `cargo doc`, mdBook, documentation consistency and local link checks | Passed |
+| Workspace tests | 284 passed |
+| Legacy runner suite | 14 passed |
+| Shared harness from Cargo's checkout | 14 run: 12 passed, 2 skipped without LP/SQP workers |
+| Shared review tests (`JOB_API_REQUIRE_SCHEMA=1`) | 15 passed |
+| `test_mcp.py` with this repository's binaries | 25 passed, including the real-worker test (`fcmaes.retry/1`, claims and evidence) |
+| Tutorial | 12 examples completed; jobs and results validated against the schemas of the checkout |
+| GTOC1 route-search tutorial on the new revision | fmt clean, 56 tests passed, protocol smoke run passed |
 
 ## Reproduce with sibling workers
 

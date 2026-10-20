@@ -32,7 +32,24 @@ pinned in the root `Cargo.toml`, and contributes the fcmaes workers.
 | Acceptance record of the fcmaes worker | [Validation](job-api/VALIDATION.md) |
 
 `cargo build --release --locked -p optimization-runner -p fcmaes-job-worker`
-builds the runner and the worker here; Cargo fetches the shared crates.
+builds the runner, the MCP server and the worker here; Cargo fetches the
+shared crates.
+
+## Agents: the MCP server
+
+The same build makes `optimization-mcp`, an MCP server over one node
+([Agents and MCP](https://github.com/dietmarwo/optimization-jobs/blob/main/docs/job-api.md#agents-and-mcp)). On a node with the
+fcmaes worker registered, connect an MCP client, for example Claude Code:
+
+```sh
+claude mcp add fcmaes-jobs -- "$PWD/target/release/optimization-mcp" --root /abs/node
+```
+
+Its tools describe the node and the worker, validate and submit jobs, wait for
+them, read their claims and evidence, and cancel or repair them; with the MCP
+Tasks extension, a submitted job is a task that completes with its result.
+The [tutorial](../tutorials/job-api/README.md#through-an-agent-mcp) connects
+it to the tutorial's node.
 
 ## Running the shared tests here
 
@@ -45,6 +62,7 @@ SHARED=$(python3 scripts/job-api/shared_root.py)
 export JOB_API_TARGET="$PWD/target/release" JOB_API_TUTORIALS="$PWD/tutorials/job-api"
 python3 "$SHARED/scripts/job-api/test_integration.py"
 python3 "$SHARED/scripts/job-api/test_review.py"
+python3 "$SHARED/scripts/job-api/test_mcp.py"
 ```
 
 A change to the shared crates lands in optimization-jobs first. Then change

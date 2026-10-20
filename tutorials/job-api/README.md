@@ -88,6 +88,23 @@ lower/upper pair; validation expands them and resolves every default into the
 payload. Set `outer_workers=1, cpu_slots=1` for a serial run with the same task
 seeds.
 
+## Through an agent (MCP)
+
+The runner's build also makes `optimization-mcp`, an MCP server over the same
+node. With the node of the previous section, connect an MCP client, for
+example Claude Code:
+
+```sh
+claude mcp add fcmaes-jobs -- "$PWD/target/release/optimization-mcp" --root /tmp/fcmaes-manual
+```
+
+The agent sees the worker with `describe_worker` (worker `fcmaes`), can pass
+any job of this directory to `submit_job` as `spec_path`, follows it with
+`wait_job` and reads the per-task claims and evidence with `get_result`;
+`cancel_job` stops a run gracefully, keeping completed retries. With the MCP
+Tasks extension, `submit_job` returns a task that completes with the job's
+result. See [Agents and MCP](https://github.com/dietmarwo/optimization-jobs/blob/main/docs/job-api.md#agents-and-mcp).
+
 ## Threads: `outer_workers` and `inner_threads`
 
 `outer_workers` runs tasks (retries, runs, points) concurrently.
