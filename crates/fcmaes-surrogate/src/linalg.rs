@@ -16,15 +16,15 @@ pub fn row(i: usize) -> usize {
 pub fn dot(a: &[f64], b: &[f64]) -> f64 {
     debug_assert_eq!(a.len(), b.len());
     let mut s = [0.0; 8];
-    let mut ac = a.chunks_exact(8);
-    let mut bc = b.chunks_exact(8);
-    for (x, y) in (&mut ac).zip(&mut bc) {
+    let (ac, ar) = a.as_chunks::<8>();
+    let (bc, br) = b.as_chunks::<8>();
+    for (x, y) in ac.iter().zip(bc) {
         for k in 0..8 {
             s[k] += x[k] * y[k];
         }
     }
     let mut tail = 0.0;
-    for (x, y) in ac.remainder().iter().zip(bc.remainder()) {
+    for (x, y) in ar.iter().zip(br) {
         tail += x * y;
     }
     ((s[0] + s[4]) + (s[1] + s[5])) + ((s[2] + s[6]) + (s[3] + s[7])) + tail

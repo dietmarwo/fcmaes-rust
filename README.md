@@ -51,7 +51,7 @@ The new source-only `fcmaes-surrogate` crate and `fcmaes.surrogate/1` job
 profile implement small-budget exact-GP optimization with synchronous batches
 and a cancellable Rust simulation API. Current limits are 32 coordinates,
 256 new plus warm observations, and eight inner threads per task. See the
-[tested tutorial](tutorials/surrogate/README.md), [API guide](docs/job-api/surrogate.md),
+[API guide](docs/job-api/surrogate.md) (it links the executable tutorial),
 [measured results](docs/surrogate/validation/REPORT.md) and
 [reviewed roadmap](docs/surrogate/PLAN.md). TuRBO, asynchronous scheduling and
 large-budget handoff are future milestones.
