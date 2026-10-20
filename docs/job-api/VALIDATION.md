@@ -333,6 +333,7 @@ harness. On Linux x86_64 with Rust 1.97:
 | `scripts/surrogate/test_job_api.py` | 2 passed: MCP pages through the trace; a running job's trace read as an artifact before a cooperative cancel |
 | `tutorials/surrogate/run.py` | Branin 0.3978880, warm job of 8 new calls from 48 observations taken through the artifact index, oscillator 1.3e-6 |
 | `tutorials/job-api/run.py` | Completed |
+| GTOC1 route-search tutorial on the new revision | 56 tests passed |
 
 ## Reproduce with sibling workers
 
