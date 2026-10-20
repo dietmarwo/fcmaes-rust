@@ -16,6 +16,12 @@ hypervolume methods and add the tutorial's `--bin-dir` (#13). In another
 checkout, check `Cargo.toml`, the available worker's discovery output, and the
 linked guides before using a command or claiming a capability.
 
+If the solver is not chosen yet, start with the
+[entry point](https://github.com/dietmarwo/optimization-jobs/blob/main/ai-context.md)
+in optimization-jobs. It routes between fast-cma-es, fcmaes-rust,
+LP-IP-craft and SQP-craft and covers installation, the job API and the MCP
+server.
+
 ## Experimental surrogate chooser rule
 
 `fcmaes.surrogate/1` is exact-GP Bayesian optimization inside the fcmaes job

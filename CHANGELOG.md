@@ -145,6 +145,8 @@ scalarization). The job worker, the experiment runner, the shared job API,
   artifact pages (one pass over the file, memory for the page alone).
 - The README describes installation from source, including the git
   dependency on optimization-jobs that Cargo fetches at the pinned revision.
+  `ai-context.md` points to the AI entry point of optimization-jobs, which
+  chooses between the four solver repositories.
 
 - The shared job API moved to
   [optimization-jobs](https://github.com/dietmarwo/optimization-jobs):
