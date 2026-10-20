@@ -37,6 +37,12 @@ Such solvers can exploit model structure, establish bounds, and, depending on
 the problem and backend, certify optimality or infeasibility. A black-box
 optimizer only reports the best candidate it found.
 
+The sibling projects [LP-IP-craft](https://github.com/dietmarwo/LP-IP-craft)
+(LP and MIP, `lp-ip.solve/1`) and [SQP-craft](https://github.com/dietmarwo/SQP-craft)
+(smooth constrained problems with analytic derivatives, `sqp.solve/1`) run as
+workers of the same [shared job API](job-api.md) as fcmaes, so one runner or
+MCP server can route a problem to any of the three.
+
 One nonlinear or simulated term does not necessarily invalidate the structured
 model. It may be better to isolate that term in an outer loop, use a
 linearization, or solve a structured subproblem for every outer candidate.
@@ -118,7 +124,14 @@ prevented parallel objective evaluation.
 [`egobox`](https://docs.rs/egobox-ego/latest/egobox_ego/) is a relevant Rust
 candidate in the scarce-evaluation regime. Its current EGO implementation
 supports constraints, basic mixed-variable spaces, failed evaluations as
-hidden constraints, restarts, and batched q-EI evaluation.
+hidden constraints, restarts, and batched q-EI evaluation. For deterministic
+continuous boxes with 1–32 variables and at most 256 evaluations, this
+repository's experimental [`fcmaes.surrogate/1`](job-api/surrogate.md) job
+profile is another candidate. In its
+[equal-budget comparison](../benchmarks/surrogate-comparison/README.md) it had
+the lowest median final regret of the tested GP libraries on four of five
+small problems (egobox led on Branin), while BiteOpt beat every GP method on
+the separable, many-modal Styblinski–Tang-10.
 
 There is no universal numerical cutoff. Dimension, smoothness, noise, the
 number of constraints, batch size, and surrogate choice can shift the

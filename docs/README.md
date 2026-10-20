@@ -26,6 +26,7 @@ API examples, and primary algorithm references are in the
 | [Experiment runner](experiment-runner.md) | `fcmaes-run`: reproducible native optimization jobs with budgets, CPU-slot admission, cancellation, recovery and comparison |
 | [Shared job API](job-api.md) | `optimization-run`: one versioned job envelope and runner for fcmaes, LP-IP-craft and SQP-craft workers, with a shared CPU budget, checked results and recovery, from optimization-jobs; `optimization-mcp` gives agents the same jobs over MCP |
 | [Application models](job-api/models.md) | Registering your own models, with parameters and hashed data inputs, in an fcmaes job worker |
+| [Surrogate profile](job-api/surrogate.md) | Experimental `fcmaes.surrogate/1`: exact-GP optimization of expensive deterministic simulations (1–32 variables, at most 256 evaluations); [comparison with other BO libraries](../benchmarks/surrogate-comparison/README.md) |
 | [Optional Python bindings](python-bindings.md) | Direct PyO3 extension surface and GIL considerations |
 | [Examples](examples.md) | Every native binary, data input, GTOP problem, monitor, and benchmark |
 | [Combinatorial encodings](combinatorial-encodings.md) | Turning fixed real vectors into integers, categories, subsets, permutations, partitions, and repaired schedules |
@@ -41,6 +42,8 @@ API examples, and primary algorithm references are in the
   BiteOpt, MODE, CVT-MAP-Elites, and the Diversifier.
 - Independent retry, coordinated advanced retry, and weighted
   multi-objective retry.
+- An exact two-objective Pareto archive with incremental hypervolume,
+  `ParetoArchive2D` ([guide](../crates/fcmaes-core/PARETO_ARCHIVE.md)).
 - Native GTOP and Mazda objectives plus application drivers for factory design,
   stock trading, material flow, flexible job-shop/harvesting, multi-UAV task
   assignment, Buckingham–Pi analysis, spherical t-design, transfer scheduling,

@@ -12,7 +12,7 @@ The practical boundary is:
 | Retry, coordinated retry, MODE, MAP-Elites, Diversifier | Implement in core |
 | Pareto indicators, non-dominated sorting, crowding distance | Implement in core |
 | Nelder–Mead and other local derivative-free refiners | Keep external unless broader evidence establishes a generally useful parallel role |
-| Bayesian and surrogate optimization | Delegate to a specialist crate such as `egobox` |
+| Bayesian and surrogate optimization | Delegate to a specialist crate such as `egobox`, or the experimental, separate [`fcmaes-surrogate`](job-api/surrogate.md) crate |
 | Gradient-based optimization | Delegate to `argmin` or a domain solver with the required derivative contract |
 | Gradient-aware quality diversity (CMA-MEGA and the DQD family) | Delegate; the precondition does not hold in this project's applications |
 | Linear, mixed-integer, convex, routing, and other structured optimization | Use the corresponding specialist solver |

@@ -9,7 +9,8 @@ they do not identify a runtime or build dependency.
 
 ![Workspace dependency flow: Rust applications and standalone tutorials depend directly on fcmaes-core; native examples use fcmaes-examples, and the Python package uses fcmaes-py, with both adapters depending on fcmaes-core and the internal fcmaes-gtop objective library.](images/workspace-architecture.svg)
 
-The workspace has four core crates, plus source-only job-layer crates:
+The workspace has four core crates, plus source-only job-layer and
+experimental crates:
 
 | Crate | Responsibility |
 |---|---|
@@ -19,7 +20,8 @@ The workspace has four core crates, plus source-only job-layer crates:
 | `examples` (`fcmaes-examples`) | Native GTOP and application objectives, data adapters, optimizer runners, and binaries |
 | `crates/fcmaes-runner` | `fcmaes-run`: the shared runner under its legacy name and default root |
 | `crates/fcmaes-native-worker` | Native objective registry and solver dispatch (library), and the `fcmaes.job/0.1` worker running Sphere, Rosenbrock and Cassini1 with BiteOpt or DE |
-| `crates/fcmaes-job-worker` | Worker for the common envelope: `fcmaes.retry/1` (BiteOpt and DE through the native worker's library, CMA-ES, CR-FM-NES, PGPE), `fcmaes.mode/1`, `fcmaes.map-elites/1` and `fcmaes.evaluate/1` on the models of a registry, with the built-in benchmarks and an example application worker |
+| `crates/fcmaes-job-worker` | Worker for the common envelope: `fcmaes.retry/1` (BiteOpt and DE through the native worker's library, CMA-ES, CR-FM-NES, PGPE), `fcmaes.mode/1`, `fcmaes.map-elites/1`, `fcmaes.evaluate/1` and the experimental `fcmaes.surrogate/1` on the models of a registry, with the built-in benchmarks and example application workers |
+| `crates/fcmaes-surrogate` | Experimental small-budget exact-GP optimization behind `fcmaes.surrogate/1` ([API](job-api/surrogate.md)); independent of the job API |
 
 The shared [job API](job-api.md) crates, `optimization-job-api` (versioned
 envelope, worker SDK, checked journals, input hashing, process utilities and
@@ -69,13 +71,16 @@ Three tutorials illustrate this isolation:
 | `mode` | constrained multi-objective DE/NSGA-II ask/tell optimizer |
 | `indicators` | hypervolume and distance/diversity indicators, non-dominated sorting, and crowding distance |
 | `mapelites` | CVT/regular archive, exact grid layout, MAP-Elites emitters, and Diversifier |
+| `pareto` | `ParetoArchive2D`: exact two-objective Pareto archive with incremental hypervolume ([guide](../crates/fcmaes-core/PARETO_ARCHIVE.md)) |
 
 The crate root re-exports the main types, so users normally import from
 `fcmaes_core` rather than individual modules.
 
 The algorithm boundary is intentional. Gradient methods, local simplex search,
 and Bayesian surrogate modelling use different problem and execution
-contracts; they remain external and can be driven through the retry closure.
+contracts; they remain outside `fcmaes-core` (the experimental
+`fcmaes-surrogate` crate is a separate workspace member) and can be driven
+through the retry closure.
 The [optimizer-boundary decision](optimizer-boundary.md) records the supporting
 experiment and the adapter contract.
 

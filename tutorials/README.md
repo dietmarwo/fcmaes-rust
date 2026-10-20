@@ -136,7 +136,9 @@ for the batch APIs, the [result schema](RESULT_SCHEMA.md), and the
 [robustness](ROBUSTNESS.md) protocols. The
 [Python plotting package](python/) creates reproducible figures. To run
 fcmaes optimizations as durable, budgeted jobs rather than in-process calls,
-see the [native job API tutorial](job-api/README.md).
+see the [native job API tutorial](job-api/README.md); for small-budget
+optimization of expensive deterministic simulations, see the experimental
+[surrogate tutorial](surrogate/README.md).
 
 The recorded timings are reproducibility checks from one machine, not
 cross-library performance claims. Every detailed tutorial explains its model,
