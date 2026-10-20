@@ -27,6 +27,7 @@ pinned in the root `Cargo.toml`, and contributes the fcmaes workers.
 | Part | Where |
 | --- | --- |
 | `fcmaes-job-worker`: `fcmaes.retry/1`, `fcmaes.mode/1`, `fcmaes.map-elites/1`, `fcmaes.evaluate/1` | [Tutorial](../tutorials/job-api/README.md) |
+| Experimental `fcmaes.surrogate/1`, small-budget exact GP and simulation context | [API guide](job-api/surrogate.md), [tutorial](../tutorials/surrogate/README.md) |
 | Your own models in an application worker | [Application models](job-api/models.md) |
 | `fcmaes-native-worker` and `fcmaes-run`, the legacy `fcmaes.job/0.1` jobs | [Experiment runner](experiment-runner.md) |
 | Acceptance record of the fcmaes worker | [Validation](job-api/VALIDATION.md) |

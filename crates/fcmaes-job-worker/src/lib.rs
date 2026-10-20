@@ -10,7 +10,9 @@
 //!   by CMA-ME or CMA-MAE emitters, each returning a re-evaluated elite
 //!   archive;
 //! - `fcmaes.evaluate/1`: evaluates given points on any of these models
-//!   without optimizing.
+//!   without optimizing;
+//! - `fcmaes.surrogate/1`: exact-GP synchronous batches for small-budget,
+//!   deterministic scalar models, including cancellable Rust simulations.
 //!
 //! Models come from a [`Registry`]: the built-in benchmarks and whatever an
 //! application registers (`registry` module docs, `examples/custom_worker.rs`).
@@ -26,6 +28,8 @@ pub mod mode;
 pub mod problems;
 pub mod registry;
 pub mod retry;
+pub mod simulation;
+pub mod surrogate;
 pub mod threads;
 
 pub use registry::Registry;
@@ -37,15 +41,19 @@ use optimization_job_api::{
 use serde_json::{Value, json};
 use std::{
     path::Path,
-    sync::atomic::{AtomicBool, Ordering},
+    sync::{
+        Arc,
+        atomic::{AtomicBool, Ordering},
+    },
 };
 
 /// All profiles accepted by this worker.
-pub const PROFILES: [&str; 4] = [
+pub const PROFILES: [&str; 5] = [
     retry::PROFILE,
     mode::PROFILE,
     map_elites::PROFILE,
     evaluate::PROFILE,
+    surrogate::PROFILE,
 ];
 
 /// Largest `inner_threads`: the envelope's `cpu_slots` limit.
@@ -57,9 +65,12 @@ pub const MAX_INNER_THREADS: usize = 1024;
 /// two apart (`cancelled` or `timed_out`).
 #[derive(Default)]
 pub struct Control {
-    cancelled: AtomicBool,
+    cancelled: Arc<AtomicBool>,
 }
 impl Control {
+    pub(crate) fn token(&self) -> Arc<AtomicBool> {
+        Arc::clone(&self.cancelled)
+    }
     pub fn cancel(&self) {
         self.cancelled.store(true, Ordering::Release);
     }
@@ -71,7 +82,7 @@ impl Control {
     }
 }
 
-/// The fcmaes worker: the four profiles on the models of a [`Registry`].
+/// The fcmaes worker: the five profiles on the models of a [`Registry`].
 /// An application worker registers its own models and runs
 /// `optimization_job_api::worker::run(Adapter::new(registry))`.
 pub struct Adapter {
@@ -112,6 +123,13 @@ impl Worker for Adapter {
         optimizers["map_elites"] = map_elites::describe();
         d["optimizers"] = optimizers;
         d["evaluation"] = evaluate::describe();
+        d["surrogate"] = surrogate::describe();
+        d["resources"]["surrogate"] = json!(
+            "synchronous batches: concurrent * evaluation_threads <= inner_threads <= 8; GP work and nested Rayon callbacks use the same task-owned pool between/within batches"
+        );
+        d["inputs"] = json!(
+            "model inputs are hash-checked and must be consumed; fcmaes.surrogate/1 may additionally consume its named warm-start input"
+        );
         d["claims"] = json!({
             "best_found":"fcmaes.retry/1: the best point the optimizer evaluated (not a model mean or recommendation), re-evaluated and inside the bounds; evidence rechecked [objective, bounds]; no global certificate",
             "non_dominated_set":"fcmaes.mode/1: details.front is the feasible non-dominated part of the final population, re-evaluated; evidence rechecked; no Pareto-optimality certificate",
@@ -125,6 +143,12 @@ impl Worker for Adapter {
             map_elites::PROFILE: "between generations; the run returns what it has",
             evaluate::PROFILE: "between points"
         });
+        d["cancellation"][surrogate::PROFILE] = json!(
+            "stop before proposals and evaluations; Scalar::simulation also stops at SimContext checkpoints; plain callbacks must finish or the runner enforces the process deadline"
+        );
+        d["claims"]["best_found"] = json!(
+            "fcmaes.retry/1 and fcmaes.surrogate/1: best evaluated point, no global certificate; surrogate evidence is rechecked only after exact independent deterministic re-evaluation, otherwise claimed; warm values remain historical inputs"
+        );
         d
     }
     fn prepare(&self, s: &mut JobSpec, base: &Path) -> Result<Box<dyn Prepared>> {
@@ -140,6 +164,7 @@ impl Worker for Adapter {
             retry::PROFILE => retry::prepare(registry, s, base),
             mode::PROFILE => mode::prepare(registry, s, base),
             map_elites::PROFILE => map_elites::prepare(registry, s, base),
+            surrogate::PROFILE => surrogate::prepare(registry, s, base),
             _ => evaluate::prepare(registry, s, base),
         }
     }

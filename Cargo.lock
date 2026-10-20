@@ -465,6 +465,7 @@ version = "0.1.5"
 dependencies = [
  "fcmaes-core",
  "fcmaes-native-worker",
+ "fcmaes-surrogate",
  "optimization-job-api",
  "optimization-runner",
  "rayon",
@@ -503,6 +504,18 @@ dependencies = [
  "optimization-runner",
  "serde_json",
  "tempfile",
+]
+
+[[package]]
+name = "fcmaes-surrogate"
+version = "0.1.0"
+dependencies = [
+ "fcmaes-core",
+ "libm",
+ "nalgebra",
+ "rayon",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]

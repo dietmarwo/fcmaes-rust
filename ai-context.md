@@ -1,14 +1,41 @@
 # AI context for solving user optimization problems with fcmaes-rust
 
-Last reviewed 2026-10-19 against `main` at `67bd698`, which includes the
-shared agent job API 0.1 (#5), the CMA-ES, MODE and MAP-Elites job profiles,
-the 0.1.1 synchronization of the shared crates and the result contract 0.2
-(evidence, refutations, evaluation profiles, error codes and JSON Schemas),
-plus application models, parallel population evaluation, CR-FM-NES, PGPE,
-CMA-ES restarts, CVT archives and CMA-ME/CMA-MAE emitters in the fcmaes
-worker. In another checkout, check `Cargo.toml`, the available worker's
-discovery output, and the linked guides before using a command or claiming a
-capability.
+Surrogate addendum reviewed 2026-10-20 against source base `92aaf03f9f03257a284126a322160d045422bc9a`
+plus the unmerged implementation in this project. The shared optimization-jobs
+pin is `eb1c9de66e677097a7ea22d9a4b2f6357c18751d`. Workspace/core version remains
+0.1.5; the new source-only `fcmaes-surrogate` crate is 0.1.0. This is not a
+published-package update. Check Cargo.toml and worker discovery in the actual
+checkout before relying on commands or capabilities.
+
+## Experimental surrogate chooser rule
+
+Use `fcmaes.surrogate/1` only for deterministic scalar continuous box problems
+with 1–32 variables and at most 256 new plus warm observations. It uses exact
+GPs and synchronous Kriging-believer batches, not TuRBO. The resource rule is
+`concurrent * evaluation_threads <= inner_threads <= 8`, within the common
+outer-worker reservation. Prefer existing retry algorithms for larger-budget
+conventional scalar problems until scalable local BO/handoff has passed its
+campaign. Do not emit unimplemented `auto`, `turbo`, async, noise or governor
+settings. Source-only means it is absent from the published core/Python API.
+
+`Scalar::simulation` receives a fallible `SimContext` callback with checkpoint,
+remaining seconds, point-derived seed and thread allowance. In this milestone
+only the surrogate profile accepts it; retry/evaluate explicitly reject it.
+Ordinary `Scalar::new` models retain behavior. Simulation metadata should
+include `simulation: true` for accurate discovery. Use constructors instead of
+external Scalar struct literals. A stable point seed is not noisy GP support.
+
+Only independently re-evaluated exact agreement yields `rechecked` evidence;
+otherwise the best historical point remains `claimed`. Final validation is an
+extra separately counted call. Cancellation is partial work, not an evaluation
+failure; a cancelled recheck does not refute the objective. Logs/snapshots are
+local attempt files, not MCP downloadable artifacts. Warm starts are new jobs
+from hashed observations, not exact checkpoint resumes.
+
+Read [the current API](docs/job-api/surrogate.md),
+[the executable tutorial](tutorials/surrogate/README.md), and
+[the reviewed plan/status ledger](docs/surrogate/PLAN.md) before using this
+profile. Older sections below retain their original non-surrogate scope.
 
 This file is operational context for an AI that must design and implement an
 optimization solution with this repository. It is not a claim that one

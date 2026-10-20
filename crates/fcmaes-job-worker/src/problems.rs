@@ -80,6 +80,14 @@ pub fn rastrigin_projection(x: &[f64]) -> (f64, Vec<f64>) {
 /// multi-objective and two quality-diversity models.
 pub fn register(registry: &mut Registry) {
     registry
+        .scalar("benchmark.branin", "1", json!({"dimensions":2,"lower":[-5.0,0.0],"upper":[10.0,15.0],"minimum":0.39788735772973816}), |m| {
+            m.require_dimension(2..=2)?;
+            Ok(Scalar::new(fcmaes_surrogate::problems::branin).domain(vec![-5.0,0.0],vec![10.0,15.0]))
+        })
+        .scalar("benchmark.hartmann3", "1", json!({"dimensions":3,"minimum":-3.86278214782076}), |m| {
+            m.require_dimension(3..=3)?;
+            Ok(Scalar::new(fcmaes_surrogate::problems::hartmann3).domain(vec![0.0;3],vec![1.0;3]))
+        })
         .scalar(
             "benchmark.sphere",
             "1",

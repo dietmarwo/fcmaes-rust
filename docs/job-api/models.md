@@ -170,3 +170,13 @@ In-process ask/tell remains available in `fcmaes-core` (`Cmaes::ask`,
 and service-style ask/tell tools (Optuna, Vizier, Ax) serve that interaction.
 For the job API, register the model; to check candidates from elsewhere, use
 `fcmaes.evaluate/1`.
+
+## Cancellable simulation callbacks (experimental)
+
+`Scalar::simulation` adds a fallible callback with `SimContext` cancellation
+checkpoints, remaining time, per-evaluation thread allowance and a stable
+run-and-point seed. This milestone accepts it only in `fcmaes.surrogate/1`;
+retry/evaluate reject it explicitly. Use `Scalar::new` for existing plain
+callbacks. Direct Scalar struct literals must migrate to constructors. See
+[the surrogate API](surrogate.md) and
+[the RK4 tutorial](../../tutorials/surrogate/README.md).
