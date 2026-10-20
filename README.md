@@ -286,16 +286,58 @@ A compatible prebuilt wheel requires neither a local Rust toolchain nor a
 C/C++ compiler. Published wheels support CPython 3.11 through 3.13. Building
 the Python package from its source distribution does require Rust.
 
-### Build and run the repository
+### Install from source
 
-Install Rust 1.88 or newer, then run from this directory. Rust 1.88 is the
-tested minimum for the edition-2024 source and current locked dependency set;
-the CI workflow checks it explicitly.
+Everything in this repository builds from source with Rust alone; Python is
+needed only for the Python package. Requirements:
+
+- git and Rust 1.88 or newer (`rustup` from https://rustup.rs). Rust 1.88 is
+  the tested minimum for the edition-2024 source and the locked dependency
+  set; CI checks it explicitly.
+- For the Python package: CPython 3.11 to 3.13, `pip`, and the build backend
+  `maturin` (installed automatically by `pip install .`).
+
+Our own dependencies are fetched by Cargo, so no second checkout is needed:
+the job worker, the experiment runner and the GTOC1 tutorial depend on the
+shared job API, [optimization-jobs](https://github.com/dietmarwo/optimization-jobs),
+as a git dependency at the revision pinned in `Cargo.toml` (needs network
+access to GitHub on the first build; `cargo fetch --locked` prepares an
+offline build). `fcmaes-core` and the Python package depend on crates.io
+crates only.
 
 ```bash
-cargo test --workspace
-cargo build --release --workspace
+git clone https://github.com/dietmarwo/fcmaes-rust
+cd fcmaes-rust
+cargo test --workspace --locked
+cargo build --release --workspace --locked
 ```
+
+Python package from the checkout, in a virtual environment:
+
+```bash
+python -m venv .venv && . .venv/bin/activate   # Windows: .venv\Scripts\activate
+python -m pip install .                          # builds the Rust extension
+python -c "import fcmaes_rust; print(fcmaes_rust.phase1_build_info())"
+```
+
+For development, `python -m pip install "maturin>=1.7,<2" numpy scipy pytest`
+and `maturin develop --release --locked` install an editable build;
+`python -m pytest` runs the binding tests. Without a matching wheel,
+`pip install fcmaes-rust` also builds from the source distribution and then
+needs the Rust toolchain.
+
+Unreleased `fcmaes-core` changes are available to other Rust projects as a
+git dependency:
+
+```toml
+[dependencies]
+fcmaes-core = { git = "https://github.com/dietmarwo/fcmaes-rust" }
+```
+
+The job worker and the runner build together
+(`cargo build --release --locked -p optimization-runner -p fcmaes-job-worker`);
+see the [job API guide](docs/job-api.md).
+[RELEASING.md](RELEASING.md) describes the registry releases.
 
 Run a small native optimization:
 

@@ -6,6 +6,13 @@ phase, with breaking changes called out explicitly.
 
 ## [Unreleased]
 
+What reaches the registries: the published crate `fcmaes-core` and the
+Python wheel `fcmaes-rust` change through the entries marked `fcmaes-core`
+(MODE fixes, `ParetoArchive2D`, `De::optimize_delayed`,
+`BiteOpt::optimize_batch`, deterministic CVT archives, the `moretry`
+scalarization). The job worker, the experiment runner, the shared job API,
+`fcmaes-surrogate` and the tutorials are source-only (`publish = false`).
+
 ### Added
 
 - `fcmaes-surrogate` (source-only, 0.1.0) and the experimental
@@ -134,6 +141,10 @@ phase, with breaking changes called out explicitly.
   before. A constraint value `c <= 0` used to add `(w*c)^p`, which penalized
   points deep inside the feasible region and made results depend on the
   constraint weights. Same change as fast-cma-es `moretry`.
+- The shared job API moved to optimization-jobs `423cd87`: streaming
+  artifact pages (one pass over the file, memory for the page alone).
+- The README describes installation from source, including the git
+  dependency on optimization-jobs that Cargo fetches at the pinned revision.
 
 - The shared job API moved to
   [optimization-jobs](https://github.com/dietmarwo/optimization-jobs):
@@ -170,6 +181,25 @@ phase, with breaking changes called out explicitly.
   checkout).
 
 ### Fixed
+
+- `fcmaes-core` MODE (#1): three variation and selection bugs made MODE
+  collapse to one extreme point or stall, and change its results:
+  - the SBX expanding branch used `(2r)^(-1/(eta+1))` for `r > 0.5`, so
+    children never left the parents' interval; it is `(2-2r)^(-1/(eta+1))`;
+  - polynomial mutation's upward branch used `(1-norm)^(eta+1)` instead of
+    `norm^(eta+1)`, so a variable that touched its lower bound never moved
+    again;
+  - `pareto_levels` counted sequential-elimination rounds instead of
+    non-dominated fronts; it is standard non-dominated sorting now.
+
+  With the defaults (population 64, 10 seeds, 300,000 evaluations) the NSGA
+  update solves ZDT2 in 10 of 10 runs instead of 3, ZDT4 reaches a
+  hypervolume of 1.000 instead of 0.125, and the DE update reaches 0.586
+  instead of 0.000 on ZDT4. Constraint handling is feasibility first: a
+  point counts as feasible only if it violates no constraint (the adaptive
+  tolerance `eps` let slightly infeasible points displace every feasible
+  one); the ranking of infeasible points is unchanged. fast-cma-es got the
+  same fixes (its #31).
 
 - `fcmaes.retry/1` and legacy `fcmaes.job/0.1` validation now also bound
   `population × dimension` (at most 10⁷) for BiteOpt and DE, which allocate

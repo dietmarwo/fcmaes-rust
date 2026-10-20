@@ -13,6 +13,20 @@ python -m pip install fcmaes-rust
 The initial release supports CPython 3.11 through 3.13 on the platforms for
 which wheels are listed on PyPI.
 
+To build from source, install Rust 1.88 or newer (https://rustup.rs), then
+either let pip build the source distribution
+(`python -m pip install --no-binary fcmaes-rust fcmaes-rust`) or build a
+checkout of the repository:
+
+```bash
+git clone https://github.com/dietmarwo/fcmaes-rust
+cd fcmaes-rust
+python -m pip install .
+```
+
+The Python package depends on NumPy and SciPy and, at build time, on
+crates.io crates only.
+
 ## Quick check
 
 ```python
