@@ -110,7 +110,9 @@ fn result_dict(py: Python<'_>, result: MoRetryResult) -> PyResult<Py<PyDict>> {
 /// Run parallel weighted-scalarization retries for a vector objective.
 ///
 /// ``fun(x)`` returns minimized objectives followed by ``ncon`` constraints;
-/// constraints are feasible at values less than or equal to zero.
+/// constraints are feasible at values less than or equal to zero. The scalar
+/// is the weighted ``value_exp``-norm of the objectives and the violations
+/// ``max(c, 0)``, plus the weight of each violated constraint.
 /// ``weight_lower`` and ``weight_upper`` define the sampled range for every
 /// returned column. ``optimize`` follows the callback protocol documented by
 /// :func:`minimize_retry`, but receives a callable scalarized objective.

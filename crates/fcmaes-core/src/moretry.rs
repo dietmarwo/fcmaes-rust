@@ -94,7 +94,11 @@ impl<O: MultiObjective> Objective for WeightedObjective<'_, O> {
 
 /// Apply p-norm scalarization and a positive-constraint penalty.
 ///
-/// Constraints are the final `ncon` values and are feasible at `<= 0`.
+/// Constraints are the final `ncon` values and are feasible at `<= 0`. The
+/// scalar is the weighted `value_exp`-norm of the objectives and of the
+/// constraint violations `max(c, 0)`, plus the weight of each violated
+/// constraint. A satisfied constraint adds nothing, however far inside the
+/// feasible region the point lies.
 pub fn scalarize(values: &[f64], weights: &[f64], ncon: usize, value_exp: f64) -> f64 {
     if values.len() != weights.len()
         || ncon >= values.len()
@@ -105,13 +109,18 @@ pub fn scalarize(values: &[f64], weights: &[f64], ncon: usize, value_exp: f64) -
     {
         return NAN_REPLACEMENT;
     }
+    let nobj = values.len() - ncon;
     let powered = values
         .iter()
         .zip(weights)
-        .map(|(&value, &weight)| (value * weight).powf(value_exp))
+        .enumerate()
+        .map(|(index, (&value, &weight))| {
+            // Only violations enter the norm.
+            let value = if index >= nobj { value.max(0.0) } else { value };
+            (value * weight).powf(value_exp)
+        })
         .sum::<f64>();
     let mut scalar = powered.powf(value_exp.recip());
-    let nobj = values.len() - ncon;
     for index in nobj..values.len() {
         if values[index] > 0.0 {
             scalar += weights[index];
@@ -486,6 +495,21 @@ mod tests {
         let penalized = scalarize(&[3.0, 4.0, 0.5], &[1.0, 1.0, 2.0], 1, 2.0);
         assert!((penalized - (26.0_f64.sqrt() + 2.0)).abs() < 1e-12);
         assert_eq!(scalarize(&[1.0], &[1.0, 2.0], 0, 2.0), NAN_REPLACEMENT);
+    }
+
+    #[test]
+    fn satisfied_constraints_do_not_enter_the_norm() {
+        let free = scalarize(&[3.0, 4.0], &[1.0, 1.0], 0, 2.0);
+        for slack in [0.0, -1e-3, -25.0, -1e6] {
+            assert_eq!(
+                scalarize(&[3.0, 4.0, slack, -1.0], &[1.0, 1.0, 10.0, 10.0], 2, 2.0),
+                free
+            );
+        }
+        // A larger violation is worse, so optimizers are led to feasibility.
+        let small = scalarize(&[3.0, 4.0, 0.1], &[1.0, 1.0, 10.0], 1, 2.0);
+        let large = scalarize(&[3.0, 4.0, 1.0], &[1.0, 1.0, 10.0], 1, 2.0);
+        assert!(small > free + 10.0 && large > small);
     }
 
     #[test]

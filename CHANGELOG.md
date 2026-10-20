@@ -128,6 +128,13 @@ phase, with breaking changes called out explicitly.
 
 ### Changed
 
+- `scalarize` (and so `moretry` and the Python `minimize_moretry`): a
+  satisfied constraint no longer enters the weighted p-norm; only its
+  violation `max(c, 0)` does, plus the weight of each violated constraint as
+  before. A constraint value `c <= 0` used to add `(w*c)^p`, which penalized
+  points deep inside the feasible region and made results depend on the
+  constraint weights. Same change as fast-cma-es `moretry`.
+
 - The shared job API moved to
   [optimization-jobs](https://github.com/dietmarwo/optimization-jobs):
   `optimization-job-api` and `optimization-runner` (0.2.0, unchanged), the

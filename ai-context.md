@@ -1040,8 +1040,10 @@ zero constraints, p-norm exponent 2, and no value limits. It samples a weight
 vector for every retry and retains the unscalarized row and weights.
 
 Use it when scalar runs are effective and independent weight vectors can run
-in parallel. Set `ncon` to the number of trailing constraints. A positive
-constraint adds its weight as a violation penalty. `value_limits`, when used,
+in parallel. Set `ncon` to the number of trailing constraints. Only a
+violation `max(c, 0)` enters the p-norm, and a violated constraint adds its
+weight as a penalty; a satisfied constraint adds nothing, so a large
+constraint weight enforces feasibility without distorting the trade-off. `value_limits`, when used,
 contains one strict upper limit for every objective and constraint.
 
 Normalize or shift objectives to comparable, preferably nonnegative scales
