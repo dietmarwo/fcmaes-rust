@@ -61,7 +61,7 @@ fn read(path: &Path) -> Value {
 }
 
 fn job_id(key: &str) -> String {
-    fcmaes_job_api::storage::digest(key.as_bytes())[..32].to_owned()
+    optimization_job_api::storage::digest(key.as_bytes())[..32].to_owned()
 }
 
 fn base(key: &str) -> Value {

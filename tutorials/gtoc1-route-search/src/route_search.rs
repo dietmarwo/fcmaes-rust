@@ -19,6 +19,7 @@ use std::io::Write;
 use std::path::Path;
 
 use fcmaes_core::RetryBounds;
+use optimization_job_api::storage;
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
@@ -1199,7 +1200,7 @@ impl Phase0Record {
 ///
 /// Returns an I/O or serialization error.
 pub fn append_jsonl<T: Serialize>(path: &Path, value: &T) -> Result<(), RouteSearchError> {
-    Ok(fcmaes_job_api::storage::append_jsonl(path, value)?)
+    Ok(storage::append_jsonl(path, value)?)
 }
 /// Reads JSONL while ignoring only an incomplete final record.
 ///
@@ -1210,7 +1211,7 @@ pub fn append_jsonl<T: Serialize>(path: &Path, value: &T) -> Result<(), RouteSea
 ///
 /// Returns an error for I/O or non-final JSON corruption.
 pub fn read_jsonl_resilient<T: DeserializeOwned>(path: &Path) -> Result<Vec<T>, RouteSearchError> {
-    Ok(fcmaes_job_api::storage::read_jsonl_resilient(path)?)
+    Ok(storage::read_jsonl_resilient(path)?)
 }
 /// Writes a JSON snapshot to a sibling temporary file and atomically renames
 /// it over the target.
@@ -1219,7 +1220,7 @@ pub fn read_jsonl_resilient<T: DeserializeOwned>(path: &Path) -> Result<Vec<T>, 
 ///
 /// Returns an I/O or serialization error.
 pub fn write_atomic_json<T: Serialize>(path: &Path, value: &T) -> Result<(), RouteSearchError> {
-    Ok(fcmaes_job_api::storage::write_atomic_json(path, value)?)
+    Ok(storage::write_atomic_json(path, value)?)
 }
 
 #[cfg(test)]

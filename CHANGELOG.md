@@ -79,12 +79,12 @@ phase, with breaking changes called out explicitly.
   hashed inputs and the worker binary, and recovers conservatively from lost
   processes. `fcmaes-job-worker` runs the fcmaes problems through the
   `fcmaes.retry/1` profile with the same retry seeds as the native worker.
-  `fcmaes-job-api` and `fcmaes-run` keep their interfaces as thin facades.
+  `fcmaes-run` keeps its interface as a thin facade.
   JSON numbers now round-trip exactly, which a repeated parse of tiny values
   previously broke. See `docs/job-api.md` and `tutorials/job-api/`.
 
 - Added a native experiment runner: `fcmaes-run` (crate `fcmaes-runner`), the
-  `fcmaes-native-worker` binary and the shared `fcmaes-job-api` contract, all
+  `fcmaes-native-worker` binary and the `fcmaes.job/0.1` contract, all
   source-only. Jobs declare a problem, optimizer, retry budget and wall time;
   BiteOpt honours a hard evaluation cap and DE a declared soft bound. Retries
   are seeded from their global ID, so results do not depend on worker count or
@@ -96,14 +96,23 @@ phase, with breaking changes called out explicitly.
   `docs/experiment-runner.md`.
 
 - The GTOC1 route-search tutorial now delegates its durable JSONL, snapshot,
-  checksummed-archive and subprocess helpers to `fcmaes-job-api` through a
-  repository path dependency, and `tutorials/RESULT_SCHEMA.md` documents the
+  checksummed-archive and subprocess helpers to `optimization-job-api`, and `tutorials/RESULT_SCHEMA.md` documents the
   runner's `run.json` profile. `scripts/runner` adds a real-binary
   integration suite (run in CI), a systemd host acceptance gate and a
   telemetry benchmark matrix.
 
 ### Changed
 
+- The shared job API moved to
+  [optimization-jobs](https://github.com/dietmarwo/optimization-jobs):
+  `optimization-job-api` and `optimization-runner` (0.2.0, unchanged), the
+  common guide, the plan, the JSON Schemas and the shared test scripts. This
+  repository depends on the crates at a pinned git revision instead of
+  carrying a byte-identical copy and its checksum manifest;
+  `cargo build -p optimization-runner` still builds `optimization-run`.
+  `docs/job-api.md` now points to the shared guide, and
+  `scripts/job-api/shared_root.py` locates Cargo's checkout so that CI and
+  the tutorial use its harness and schemas.
 - `fcmaes-core`: the CVT construction of `Archive` no longer depends on the
   number of Rayon threads (Lloyd steps sum fixed chunks in order), and
   `Archive` implements `Clone` and `Debug`.

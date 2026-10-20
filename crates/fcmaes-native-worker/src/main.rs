@@ -1,8 +1,12 @@
 //! Native worker: runs one fcmaes experiment job in its job directory.
 #![forbid(unsafe_code)]
 use fcmaes_core::{RetryBounds, RetryConfig, retry, retry_run_seed};
-use fcmaes_job_api::{result::*, storage::*, *};
 use fcmaes_native_worker::{objective_for, solve};
+use optimization_job_api::{
+    Result,
+    legacy::{result::*, *},
+    storage::*,
+};
 use std::{fs, path::Path, sync::Mutex, time::Instant};
 fn execute(dir: &Path) -> Result<()> {
     let _owner = lock(&dir.join("worker.lock"))?;

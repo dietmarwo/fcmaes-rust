@@ -17,16 +17,17 @@ The workspace has four core crates, plus source-only job-layer crates:
 | `crates/fcmaes-gtop` | Internal dependency-free GTOP objective library shared by examples and Python |
 | `crates/fcmaes-py` | Optional PyO3 module packaged as `fcmaes_rust._fcmaes_ext` |
 | `examples` (`fcmaes-examples`) | Native GTOP and application objectives, data adapters, optimizer runners, and binaries |
-| `crates/optimization-job-api` | Shared [job API](job-api.md): versioned envelope, worker SDK, checked journals, input hashing and process utilities; also hosts the legacy `fcmaes.job/0.1` contract |
-| `crates/optimization-runner` | Shared `optimization-run` CLI: worker registry, validation, idempotent jobs, CPU-slot admission, cancellation, recovery and comparison |
-| `crates/fcmaes-job-api` | Facade re-exporting the legacy contract for the [experiment runner](experiment-runner.md) |
 | `crates/fcmaes-runner` | `fcmaes-run`: the shared runner under its legacy name and default root |
 | `crates/fcmaes-native-worker` | Native objective registry and solver dispatch (library), and the `fcmaes.job/0.1` worker running Sphere, Rosenbrock and Cassini1 with BiteOpt or DE |
-| `crates/fcmaes-job-worker` | Worker for the common envelope: `fcmaes.retry/1` (BiteOpt and DE through the native worker's library, and CMA-ES), `fcmaes.mode/1` and `fcmaes.map-elites/1`, with their multi-objective and quality-diversity models |
+| `crates/fcmaes-job-worker` | Worker for the common envelope: `fcmaes.retry/1` (BiteOpt and DE through the native worker's library, CMA-ES, CR-FM-NES, PGPE), `fcmaes.mode/1`, `fcmaes.map-elites/1` and `fcmaes.evaluate/1` on the models of a registry, with the built-in benchmarks and an example application worker |
 
-`optimization-job-api` and `optimization-runner` are kept byte-identical with
-the LP-IP-craft and SQP-craft repositories; `docs/job-api/SHARED-SOURCES.sha256`
-records their content, and CI checks it.
+The shared [job API](job-api.md) crates, `optimization-job-api` (versioned
+envelope, worker SDK, checked journals, input hashing, process utilities and
+the legacy `fcmaes.job/0.1` contract) and `optimization-runner` (the
+`optimization-run` CLI), come from
+[optimization-jobs](https://github.com/dietmarwo/optimization-jobs) at the
+revision the root `Cargo.toml` pins; LP-IP-craft and SQP-craft use the same
+crates.
 
 `fcmaes-core` does not depend on Python, GTOP, or the examples crate. The
 bindings depend only on the core and focused GTOP crates; application

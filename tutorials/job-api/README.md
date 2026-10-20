@@ -20,7 +20,7 @@ ID, so results do not depend on scheduling. Every outcome reports `evidence`:
 `rechecked` for every claim, because the worker re-evaluates what it returns
 outside the optimizer, and `claimed` for `none` without a refutation (a
 penalty value, an empty front or archive); see
-[result contract 0.2](../../docs/job-api.md#termination-claim-and-evidence). The original `fcmaes.job/0.1` workflow
+[result contract 0.2](https://github.com/dietmarwo/optimization-jobs/blob/main/docs/job-api.md#termination-claim-and-evidence). The original `fcmaes.job/0.1` workflow
 remains available; see [legacy experiment runner](../../docs/experiment-runner.md).
 
 ## Build and run the checked examples
@@ -57,8 +57,9 @@ None of these claims is a global optimum or Pareto-optimality certificate.
 Cassini1 uses the native GTOP model with its canonical bounds; nothing invokes
 Python during optimization. If the `jsonschema` package is installed, the
 script also validates every job and result against the published
-[job](../../docs/job-api/schemas/optimization.job-0.1.schema.json) and
-[result](../../docs/job-api/schemas/optimization.result-0.2.schema.json) schemas.
+[job](https://github.com/dietmarwo/optimization-jobs/blob/main/docs/job-api/schemas/optimization.job-0.1.schema.json) and
+[result](https://github.com/dietmarwo/optimization-jobs/blob/main/docs/job-api/schemas/optimization.result-0.2.schema.json)
+schemas, from Cargo's checkout of optimization-jobs at the pinned revision.
 
 ## Run one job manually
 
@@ -328,7 +329,7 @@ with the same functions (`objective_by_id` in
 identical in both. Add a versioned profile if the mathematical meaning of a
 job changes.
 
-See the [shared API guide](../../docs/job-api.md) for mixed-worker nodes,
-lifecycle inspection, cancellation and recovery. Run `python3
-scripts/job-api/test_integration.py` for local adapter acceptance, and
-`python3 scripts/runner/test_integration.py` for legacy compatibility.
+See the [shared API guide](https://github.com/dietmarwo/optimization-jobs/blob/main/docs/job-api.md) for mixed-worker nodes, lifecycle
+inspection, cancellation and recovery, and [shared job API](../../docs/job-api.md)
+for running the shared acceptance harness against this repository's worker.
+Run `python3 scripts/runner/test_integration.py` for legacy compatibility.

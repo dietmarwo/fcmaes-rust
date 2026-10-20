@@ -48,9 +48,9 @@ package when they asked specifically for this Rust implementation.
 
 The workspace version is 0.1.5, which is also the current published release
 of `fcmaes-core` (crates.io) and `fcmaes-rust` (PyPI) at this review. The
-job-layer crates (`optimization-job-api`, `optimization-runner`,
-`fcmaes-job-worker`, `fcmaes-job-api`, `fcmaes-runner`,
-`fcmaes-native-worker`) are source-only (`publish = false`) and are part of
+job-layer crates (`fcmaes-job-worker`, `fcmaes-runner`,
+`fcmaes-native-worker`, and the shared `optimization-job-api` and
+`optimization-runner`) are source-only (`publish = false`) and are part of
 neither package. Schema versions such as `optimization.job/0.1` and
 `fcmaes.retry/1` are protocol identifiers, independent of crate versions.
 Use `CHANGELOG.md`, package manifests, and the actual registry metadata when
@@ -257,16 +257,20 @@ is no agent, Python, or network round trip for each objective evaluation.
 
 | Component | Responsibility |
 |---|---|
-| `crates/optimization-job-api` | Strict envelopes, result contracts, hashes, durable journals and worker SDK. |
-| `crates/optimization-runner` / `optimization-run` | Worker registration, staging, idempotency, CPU admission, process supervision and recovery. |
+| `optimization-job-api` (from optimization-jobs) | Strict envelopes, result contracts, hashes, durable journals and worker SDK. |
+| `optimization-runner` / `optimization-run` (from optimization-jobs) | Worker registration, staging, idempotency, CPU admission, process supervision and recovery. |
 | `crates/fcmaes-job-worker` | Native adapter for `fcmaes.retry/1` (BiteOpt, DE, CMA-ES with restarts, CR-FM-NES, PGPE retries), `fcmaes.mode/1` (MODE), `fcmaes.map-elites/1` (MAP-Elites, CVT, CMA-ME/CMA-MAE) and `fcmaes.evaluate/1` (given points), on the models of a `Registry`; a library, a thin binary with the benchmarks, and `examples/custom_worker.rs` for application models. |
-| `crates/fcmaes-job-api` | Compatibility facade re-exporting the original API from the shared crate's `legacy` module. |
 | `crates/fcmaes-runner` / `fcmaes-run` | Compatibility CLI entry point into the common runner. |
 | `crates/fcmaes-native-worker` | Original worker for `fcmaes.job/0.1` specifications. |
 
-[LP-IP-craft](https://github.com/dietmarwo/LP-IP-craft) and
-[SQP-craft](https://github.com/dietmarwo/SQP-craft) carry their own copies of
-the shared crates and their own workers: `lp-ip-job-worker` with
+The shared crates live in
+[optimization-jobs](https://github.com/dietmarwo/optimization-jobs), with the
+common guide, the plan, the JSON Schemas and the shared test scripts; this
+repository depends on them at the git revision its root `Cargo.toml` pins,
+and `cargo build -p optimization-runner` still builds `optimization-run`
+here. [LP-IP-craft](https://github.com/dietmarwo/LP-IP-craft) and
+[SQP-craft](https://github.com/dietmarwo/SQP-craft) depend on the same crates
+and build their own workers: `lp-ip-job-worker` with
 `lp-ip.solve/1` and `lp-ip.evaluate/1`, and `sqp-job-worker` with `sqp.solve/1`
 and `sqp.evaluate/1`. Each has its own
 `ai-context.md` for its solver. Build those workers in their respective
@@ -274,30 +278,30 @@ repositories and register their executables with one runner using one absolute
 node root. The fcmaes checkout builds independently and does not link either
 other solver.
 
-The copies are byte-identical: each repository records them in
-`docs/job-api/SHARED-SOURCES.sha256`, and every repository's CI checks its
-manifest ([this repository's](docs/job-api/SHARED-SOURCES.sha256)). Version
-0.1.1 of the shared crates synchronized the three copies, which had drifted
-after the 0.1.0 delivery. It carries every review fix: the zero-work repair of
+Until October 2026 the three repositories carried byte-identical copies of
+the shared crates, checked by a manifest in each. Version 0.1.1 synchronized
+the copies, which had drifted after the 0.1.0 delivery. It carries every review fix: the zero-work repair of
 a job whose launcher died while queued, staging under the node root instead of
 `TMPDIR`, sealing an attempt with an unreadable journal `failed` instead of
 leaving it `running`, appends that end a torn journal tail first, validators
 stopped by a signal, `./`-relative input paths, `optimization-job-ID.service`
 unit names, and no reboot flag on finished jobs. It also carries the fcmaes
-`non_dominated_set` and `elite_archive` claims. `scripts/job-api/test_review.py`
-covers the runner fixes in all three repositories.
+`non_dominated_set` and `elite_archive` claims. The shared
+`scripts/job-api/test_review.py` covers the runner fixes.
 
 Version 0.2.0 of the shared crates adds the result contract
 `optimization.result/0.2` and worker protocol `optimization.worker/0.2`: five
 new claims (`infeasible`, `unbounded`, `infeasible_or_unbounded`,
 `locally_infeasible`, `certified_optimum`), `evidence` with checks,
 refutations and a certificate slot, `objective_bounds`, an `imprecise` flag,
-coded runner errors and JSON Schemas in `docs/job-api/schemas/`. The job
+coded runner errors and JSON Schemas (`docs/job-api/schemas/` in
+optimization-jobs). The job
 envelope stays `optimization.job/0.1`. A 0.2 runner still accepts 0.1
 workers; a 0.1 runner rejects 0.2 workers at registration. The workers report
 the shared version as `build.job_api_version`. Use one runner build for all
-jobs that share a node root. A cross-project change must update all three
-copies and their manifests.
+jobs that share a node root. A cross-project change lands in
+optimization-jobs first; the worker repositories then move their pinned
+revision.
 
 The new runner defaults to `.optimization-jobs`; `fcmaes-run` retains
 `.fcmaes-jobs`. Root precedence is `--root`, `OPTIMIZATION_RUN_ROOT`, then
@@ -1219,17 +1223,20 @@ before the Python harnesses:
 cargo test --workspace --locked
 cargo build --release --locked -p fcmaes-runner -p fcmaes-native-worker \
   -p optimization-runner -p fcmaes-job-worker
+cargo build --release --locked -p fcmaes-job-worker --example custom_worker
 python3 scripts/runner/test_integration.py
-python3 scripts/job-api/test_integration.py
-python3 scripts/job-api/test_review.py
+SHARED=$(python3 scripts/job-api/shared_root.py)
+export JOB_API_TARGET="$PWD/target/release" JOB_API_TUTORIALS="$PWD/tutorials/job-api"
+python3 "$SHARED/scripts/job-api/test_integration.py"
+python3 "$SHARED/scripts/job-api/test_review.py"
 python3 tutorials/job-api/run.py
-sha256sum -c docs/job-api/SHARED-SOURCES.sha256
 ```
 
 Use the workspace test run rather than a package subset: the runner's CLI
 tests drive both worker binaries, which only a workspace build guarantees.
-For a shared protocol change, run the mixed harness with independently built
-LP-IP and SQP workers as documented in `docs/job-api.md`. Report missing-worker
+A shared protocol change belongs in optimization-jobs, whose CI runs the
+mixed harness with all three workers; locally, pass independently built LP-IP
+and SQP workers to the shared harness (`docs/job-api/VALIDATION.md`). Report missing-worker
 and systemd skips explicitly. [The validation report](docs/job-api/VALIDATION.md)
 records the 0.1 delivery's acceptance gates and later review fixes; it is
 evidence for those sources, not a test result for subsequent edits.
@@ -1257,28 +1264,28 @@ reach a global optimum are not security defects.
 
 ## Repository references
 
-- [docs/job-api.md](docs/job-api.md): common envelope, worker profiles, node
-  admission, lifecycle, result claims, recovery and current limitations.
+- [docs/job-api.md](docs/job-api.md): where the shared guide lives, with links
+  to its sections (envelope, node admission, lifecycle, result claims,
+  recovery and current limitations), and how to run the shared tests here.
 - [tutorials/job-api/README.md](tutorials/job-api/README.md): runnable BiteOpt,
   CMA-ES, MODE and MAP-Elites jobs, eight-slot setup and legacy compatibility.
 - [docs/experiment-runner.md](docs/experiment-runner.md): original
   `fcmaes.job/0.1` CLI, manifests, comparison and benchmark contract.
-- [docs/job-api/PLAN.md](docs/job-api/PLAN.md) and
-  [docs/job-api/VALIDATION.md](docs/job-api/VALIDATION.md): implementation scope,
-  acceptance evidence and unverified host behavior.
+- [docs/job-api/VALIDATION.md](docs/job-api/VALIDATION.md) and the
+  [plan](https://github.com/dietmarwo/optimization-jobs/blob/main/docs/job-api/PLAN.md)
+  in optimization-jobs: implementation scope, acceptance evidence and
+  unverified host behavior.
 - `crates/fcmaes-job-worker/src/`: the common-profile adapter (`retry.rs`,
   `mode.rs`, `map_elites.rs`) and its multi-objective and quality-diversity
   models (`problems.rs`).
 - `crates/fcmaes-native-worker/src/lib.rs`: objective registry and solver
   dispatch shared by both fcmaes workers.
-- [docs/job-api/SHARED-SOURCES.sha256](docs/job-api/SHARED-SOURCES.sha256):
-  the files shared with LP-IP-craft and SQP-craft and their content hashes.
-- `crates/optimization-job-api/src/spec.rs` and
-  `crates/optimization-job-api/src/result.rs`: authoritative common input and
-  result contracts.
-- `scripts/job-api/test_integration.py`: local or mixed-worker acceptance.
-- `scripts/job-api/test_review.py` and `fake_worker.py`: shared runner
-  regression tests against a protocol fixture.
+- In optimization-jobs: `crates/optimization-job-api/src/spec.rs` and
+  `crates/optimization-job-api/src/result.rs` (authoritative common input and
+  result contracts), `scripts/job-api/test_integration.py` (local or
+  mixed-worker acceptance), `scripts/job-api/test_review.py` and
+  `fake_worker.py` (runner regression tests against a protocol fixture).
+  `scripts/job-api/shared_root.py` prints the path of Cargo's checkout.
 - `scripts/runner/test_integration.py`: original runner compatibility checks.
 - `tutorials/RESULT_SCHEMA.md`: established tutorial and legacy result formats;
   use the explicitly versioned common result contract for common jobs.

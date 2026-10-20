@@ -4,7 +4,7 @@
 //! the same BiteOpt and DE settings and retry seeds.
 #![forbid(unsafe_code)]
 use fcmaes_core::{BiteOpt, BiteParams, De, DeParams, Fitness, RetryBounds, RetryRunResult};
-use fcmaes_job_api::JobSpec;
+use optimization_job_api::legacy::JobSpec;
 
 /// Runs one retry of the job's optimizer from `seed`.
 pub fn solve(

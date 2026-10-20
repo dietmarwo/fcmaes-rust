@@ -159,7 +159,7 @@ fn biteopt_and_de_batches_match_the_library_and_keep_their_budgets() {
             resolved["payload"]["optimizer"]["parameters"],
             json!({"population": population, "batch": 10})
         );
-        let legacy: fcmaes_job_api::JobSpec = serde_json::from_value(json!({
+        let legacy: optimization_job_api::legacy::JobSpec = serde_json::from_value(json!({
             "schema_version": "fcmaes.job/0.1", "request_key": "k",
             "problem": resolved["payload"]["problem"],
             "optimizer": {"kind": kind, "parameters": {"population": population}},

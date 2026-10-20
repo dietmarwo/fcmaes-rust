@@ -134,13 +134,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "fcmaes-job-api"
-version = "0.1.0"
-dependencies = [
- "optimization-job-api",
-]
-
-[[package]]
 name = "fs2"
 version = "0.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -176,8 +169,8 @@ name = "gtoc1-route-search"
 version = "0.1.0"
 dependencies = [
  "fcmaes-core",
- "fcmaes-job-api",
  "num_cpus",
+ "optimization-job-api",
  "pykep-core",
  "serde",
  "serde_json",
@@ -313,6 +306,7 @@ dependencies = [
 [[package]]
 name = "optimization-job-api"
 version = "0.2.0"
+source = "git+https://github.com/dietmarwo/optimization-jobs?rev=9feb72ee6ef0224beba32c1ee528aa41020fcdb8#9feb72ee6ef0224beba32c1ee528aa41020fcdb8"
 dependencies = [
  "fs2",
  "libc",

@@ -179,7 +179,7 @@ fn retries_match_the_shared_native_solver_and_honour_budgets() {
             // native worker uses, from the same retry seed.
             let dir = tempfile::tempdir().unwrap();
             let resolved = validate(dir.path(), &spec).unwrap();
-            let legacy: fcmaes_job_api::JobSpec = serde_json::from_value(json!({
+            let legacy: optimization_job_api::legacy::JobSpec = serde_json::from_value(json!({
                 "schema_version": "fcmaes.job/0.1", "request_key": "worker-test",
                 "problem": resolved["payload"]["problem"],
                 "optimizer": resolved["payload"]["optimizer"],

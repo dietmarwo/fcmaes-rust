@@ -32,11 +32,6 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - name: cargo fmt
         run: cargo fmt --all -- --check
-      - name: Shared job API files match their manifest
-        # optimization-job-api, optimization-runner and their guide are kept
-        # byte-identical with LP-IP-craft and SQP-craft. Update the manifest
-        # (and the sibling repositories) when changing one of these files.
-        run: sha256sum -c docs/job-api/SHARED-SOURCES.sha256
       - name: cargo clippy
         id: clippy
         # Lint failures still fail the job (last step), but no longer
@@ -60,8 +55,12 @@ jobs:
           # The tutorial also runs an application worker with a model of its own.
           cargo build --release --locked -p fcmaes-job-worker --example custom_worker
           python3 scripts/runner/test_integration.py
-          python3 scripts/job-api/test_integration.py
-          python3 scripts/job-api/test_review.py
+          # The shared harness comes from Cargo's checkout of optimization-jobs
+          # at the pinned revision; it tests this repository's binaries.
+          SHARED=$(python3 scripts/job-api/shared_root.py)
+          export JOB_API_TARGET="$PWD/target/release" JOB_API_TUTORIALS="$PWD/tutorials/job-api"
+          python3 "$SHARED/scripts/job-api/test_integration.py"
+          python3 "$SHARED/scripts/job-api/test_review.py"
           python3 tutorials/job-api/run.py --root "$RUNNER_TEMP/job-api-tutorial"
       - name: Python binding tests
         run: |
