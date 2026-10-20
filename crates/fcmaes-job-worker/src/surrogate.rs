@@ -8,7 +8,9 @@ use crate::{
 use fcmaes_core::retry_run_seed;
 use fcmaes_surrogate::{self as bo, Config, Event, Observation, RunSpec, Space, Value as Observed};
 use optimization_job_api::{
-    JobSpec, Result, checked_input,
+    JobSpec, Result,
+    artifact::{self, Declaration},
+    checked_input,
     result::{Evidence, Outcome},
     storage,
     worker::{Prepared, TaskResult},
@@ -123,7 +125,8 @@ pub fn describe() -> Value {
         "design":"centre plus seeded maximin Latin hypercube; one trust region without Thompson sampling or local-data restarts; no Sobol, asynchronous or noisy support in this release",
         "resources":"concurrent * evaluation_threads <= inner_threads <=8; outer_workers * inner_threads <=cpu_slots",
         "simulation":"Scalar::simulation receives SimContext: checkpoint, remaining_seconds, threads and stable point seed; currently supported by this profile only",
-        "logs":"checksummed surrogate-TASK.jsonl and atomic surrogate-observations-TASK.json in the attempt directory; local files, not shared MCP artifact entries",
+        "artifacts":{"surrogate-TASK":"records (file surrogate-TASK.jsonl): the evaluation trace, a header, then every start, proposal, completion, cancellation and recheck; readable in pages while the job runs",
+            "surrogate-observations-TASK":"json (file surrogate-observations-TASK.json): the compact observations snapshot, replaced after every completion; the warm_start input of a later job"},
         "warm_start":"a named hashed compact observations JSON file; matching model id/version/dimension/parameters and model-input hashes; new job, no solver resume",
         "budget":"evaluations counts new optimization callbacks; optional final independent callback is validation_evaluations",
         "default_parameters":Config::default(),"recheck_best":true})
@@ -280,6 +283,20 @@ impl Run {
         let warm_name = format!("surrogate-observations-{task}.json");
         let log = self.base.join(&log_name);
         let snapshot_path = self.base.join(&warm_name);
+        // Declared before their first write, so agents can read them while
+        // the job runs (`jobs artifact`, MCP `get_artifact`).
+        artifact::declare(
+            &self.base,
+            &Declaration::records(format!("surrogate-{task}"), &log_name)
+                .task(task)
+                .describe("Evaluation trace: header, starts, proposals, completions, cancellations, recheck"),
+        )?;
+        artifact::declare(
+            &self.base,
+            &Declaration::json(format!("surrogate-observations-{task}"), &warm_name)
+                .task(task)
+                .describe("Observations snapshot: the warm_start input of a later job"),
+        )?;
         fs::OpenOptions::new()
             .write(true)
             .create_new(true)
@@ -442,7 +459,8 @@ impl Run {
             "model_fits":result.model_fits,"fit_evaluations":result.fit_evaluations,"model_fallbacks":result.model_fallbacks,
             "last_hyperparameters":result.state.hyper,"proposal_seconds":result.proposal_seconds,
             "evaluation_seconds_sum":result.evaluation_seconds,"recheck":recheck,"reported_objective":reported_objective,
-            "log_file":log_name,"warm_start_file":warm_name,"artifact_access":"local attempt files; shared MCP artifact paging is deferred",
+            "log_file":log_name,"warm_start_file":warm_name,
+            "artifacts":{"log":format!("surrogate-{task}"),"warm_start":format!("surrogate-observations-{task}")},
             "global_optimum_certified":false});
         outcome
             .check()

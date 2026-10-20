@@ -8,6 +8,25 @@ phase, with breaking changes called out explicitly.
 
 ### Added
 
+- `fcmaes-surrogate` (source-only, 0.1.0) and the experimental
+  `fcmaes.surrogate/1` profile of the fcmaes job worker: exact-GP Bayesian
+  optimization of expensive deterministic scalar box models (1–32
+  variables, at most 256 new plus reused observations, synchronous batches
+  of 1–8), including cancellable `Scalar::simulation` models with
+  `SimContext`. Matérn-5/2 or RBF ARD kernels with MAP lengthscales fitted
+  by bounded L-BFGS on the analytic gradient, LogEI or LCB, a TuRBO-1-style
+  trust region for two of three proposals, a configurable nugget and
+  Kriging-believer batches; one exact recheck of the best point gives
+  `rechecked` evidence. Each task's trace and observations snapshot are
+  declared artifacts of the shared job API, readable while the job runs,
+  the trace in pages, and indexed with their SHA-256; a later job warm
+  starts from the snapshot. `benchmarks/surrogate-comparison` compares it
+  with BoTorch, egobox, scikit-optimize and Optuna. See
+  `docs/job-api/surrogate.md` and `tutorials/surrogate/`.
+- `fcmaes-core`: `ParetoArchive2D`, an exact archive of the non-dominated
+  pairs of two minimized objectives with incremental hypervolume, derived
+  from BiteOpt's `bitehv2.h` (`crates/fcmaes-core/PARETO_ARCHIVE.md`,
+  example `pareto_mode`).
 - `optimization-mcp`, the MCP server of the shared job API: the build of
   `optimization-runner` makes it next to `optimization-run`. An agent
   connected to a node with the fcmaes worker describes the worker, validates
@@ -133,6 +152,11 @@ phase, with breaking changes called out explicitly.
   `standard_error`. Discovery, the tutorial and `ai-context.md` no longer
   call every MODE hypervolume exact.
 - `tutorials/job-api/run.py` takes `--bin-dir` and honors `CARGO_TARGET_DIR`.
+- The shared job API moved to optimization-jobs `6a42472`: workers declare
+  artifacts, which agents read while a job runs (records in pages) and
+  which the sealed result indexes with their SHA-256; the shared harness
+  runs `fcmaes.surrogate/1`. The surrogate profile declares its trace and
+  snapshot; describe and `details` name them as artifacts.
 - The shared job API moved to optimization-jobs `eb1c9de` (cancellation that
   only escalates, objective-bound checks, MCP request limits, nested PID
   namespaces in its tests, CI that builds this worker against the shared

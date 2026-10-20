@@ -23,7 +23,7 @@ target/release/fcmaes-job-worker describe
 target/release/examples/simulation_worker describe
 ```
 
-The report records each job directory. Use `optimization-run --root NODE result JOB_DIRECTORY` to inspect common claims, evidence, counts and details. In the attempt directory task zero writes `surrogate-0.jsonl` and `surrogate-observations-0.json`. These are local files; the existing MCP result tools do not provide paged access to them yet. The script shows the exact input-copy/hash steps needed for warm starts; never edit a snapshot and reuse its old SHA-256.
+The report records each job directory. Use `optimization-run --root NODE result JOB_DIRECTORY` to inspect common claims, evidence, counts and details. Task zero writes the evaluation trace `surrogate-0.jsonl` and the observations snapshot `surrogate-observations-0.json` in the attempt directory and declares them as the [artifacts](https://github.com/dietmarwo/optimization-jobs/blob/main/docs/job-api.md#artifacts) `surrogate-0` and `surrogate-observations-0`: `jobs get` lists them while the job runs, `jobs artifact JOB_ID surrogate-0 --offset 0 --limit 100` reads the trace in pages (MCP `get_artifact` with `offset` and `limit`), and the result's `runner.artifact_index` records each file's SHA-256. The script reads the trace that way, then takes the snapshot and its SHA-256 from the index for the warm job; never edit a snapshot and reuse its old SHA-256.
 
 ## Adapt the Rust simulation
 

@@ -131,7 +131,7 @@ This delivery is a synchronous deterministic small-budget baseline. No asynchron
 
 Only fcmaes.surrogate/1 accepts Scalar::simulation. Other profiles reject it until adapted. Existing Scalar::new constructors retain behavior; external direct Scalar struct literals need migration due to private simulation storage. Resource allowances require simulation cooperation; callbacks creating their own pools can oversubscribe. Cancellation is checkpoint-based and plain callbacks finish or face the process deadline. No thread-scaling evidence above eight exists.
 
-Local traces/snapshots are not common registered/paged MCP artifacts. Warm start consumes a compact hashed observation snapshot and starts a new optimizer state, not an exact checkpoint or full-log resume. Checksums/replay/recheck are distinct checks and none certifies a global optimum. Model versioning and deterministic factory behavior are application responsibilities.
+Local traces/snapshots were not common registered/paged MCP artifacts in this delivery; since 2026-10-20 they are declared shared artifacts (see [decisions](decisions.md#evidence-and-warm-starts)). Warm start consumes a compact hashed observation snapshot and starts a new optimizer state, not an exact checkpoint or full-log resume. Checksums/replay/recheck are distinct checks and none certifies a global optimum. Model versioning and deterministic factory behavior are application responsibilities.
 
 The next milestone is cross-profile simulation semantics plus real 1–60 s baseline campaigns; then pathwise TS/TuRBO/handoff, async/governor, shared artifacts and held-out product gates. [PLAN.md](PLAN.md) gives concrete acceptance criteria for each. No future performance improvement is asserted before it is measured.
 

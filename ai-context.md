@@ -42,9 +42,12 @@ external Scalar struct literals. A stable point seed is not noisy GP support.
 Only independently re-evaluated exact agreement yields `rechecked` evidence;
 otherwise the best historical point remains `claimed`. Final validation is an
 extra separately counted call. Cancellation is partial work, not an evaluation
-failure; a cancelled recheck does not refute the objective. Logs/snapshots are
-local attempt files, not MCP downloadable artifacts. Warm starts are new jobs
-from hashed observations, not exact checkpoint resumes.
+failure; a cancelled recheck does not refute the objective. The trace and the
+snapshot of each task are declared artifacts (`surrogate-TASK`,
+`surrogate-observations-TASK`): `jobs get` and MCP `get_job` list them while
+the job runs, `jobs artifact` and MCP `get_artifact` page through the trace,
+and the result's `runner.artifact_index` records their SHA-256. Warm starts
+are new jobs from a hashed snapshot input, not exact checkpoint resumes.
 
 Read [the current API](docs/job-api/surrogate.md),
 [the executable tutorial](tutorials/surrogate/README.md), and

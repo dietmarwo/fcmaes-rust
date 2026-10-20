@@ -29,10 +29,16 @@ call('workers','add','--id','simulation','--executable',bins/'examples/simulatio
 spec=json.loads((HERE/'branin.json').read_text());job,result=run(spec,root/'branin.json');x=result['results'][0]['outcome']['x']
 value=(x[1]-5.1*x[0]*x[0]/(4*math.pi**2)+5*x[0]/math.pi-6)**2+10*(1-1/(8*math.pi))*math.cos(x[0])+10
 assert math.isclose(value,result['results'][0]['outcome']['objective'],abs_tol=1e-10)
-observations=Path(job['directory'])/'surrogate-observations-0.json';data=observations.read_bytes();(root/'previous.json').write_bytes(data)
+# The worker declares its log and snapshot as artifacts: the result indexes
+# them with their SHA-256, and jobs artifact (MCP get_artifact) reads them.
+index=result['runner']['artifact_index'];snapshot=index['surrogate-observations-0']
+log=call('jobs','artifact',job['id'],'surrogate-0','--offset',0,'--limit',1000)
+assert sum(r['record']=='event' and r['data']['event']=='completed' for r in log['records'])==48,log['available']
+data=call('jobs','artifact',job['id'],'surrogate-observations-0')['content'].encode()
+assert hashlib.sha256(data).hexdigest()==snapshot['sha256'];(root/'previous.json').write_bytes(data)
 warm=copy.deepcopy(spec);warm['request_key']='surrogate-tutorial-warm-v1';warm['payload']['evaluations']=8
 warm['payload']['warm_start']={'input':'previous'}
-warm['inputs']=[{'name':'previous','file':'previous.json','sha256':hashlib.sha256(data).hexdigest()}]
+warm['inputs']=[{'name':'previous','file':'previous.json','sha256':snapshot['sha256']}]
 warm_job,warm_result=run(warm,root/'warm.json');assert warm_result['results'][0]['outcome']['details']['warm_start_points']==48
 sim_job,sim_result=run(json.loads((HERE/'oscillator.json').read_text()),root/'oscillator.json')
 report={'node':str(root),'branin':{'job':job,'result':result},'warm':{'job':warm_job,'result':warm_result},'simulation':{'job':sim_job,'result':sim_result}}

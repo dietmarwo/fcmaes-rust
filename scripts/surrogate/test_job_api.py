@@ -55,6 +55,16 @@ class Jobs(unittest.TestCase):
         result=client.tool('get_result',{'job_id':ident});self.assertTrue(result['accounting_complete'])
         self.assertEqual(result['tasks'][0]['claim'],'best_found');self.assertEqual(result['tasks'][0]['evidence'],'rechecked')
         manifest=self.call('result',self.root/'jobs'/ident);self.assertGreater(manifest['work']['model_fits'],0)
+        # The trace and the snapshot are declared artifacts: indexed with their
+        # SHA-256 and readable through MCP, the trace in pages.
+        snapshot=result['artifact_index']['surrogate-observations-0']
+        data=(self.root/'jobs'/ident/snapshot['file']).read_bytes();self.assertEqual(snapshot['sha256'],hashlib.sha256(data).hexdigest())
+        records,offset=[],0
+        while True:
+            page=client.tool('get_artifact',{'job_id':ident,'name':'surrogate-0','offset':offset,'limit':10});records+=page['records'];offset=page['next_offset']
+            if offset>=page['available']:break
+        self.assertEqual(sum(r['record']=='event' and r['data']['event']=='completed' for r in records),12)
+        self.assertEqual(json.loads(client.tool('get_artifact',{'job_id':ident,'name':'surrogate-observations-0'})['content'])['observations'][0]['id'],0)
     def test_runner_cancels_in_flight_rust_simulations_without_failing_them(self):
         spec=json.loads((REPO/'tutorials/surrogate/oscillator.json').read_text());spec['request_key']='surrogate-cancel'
         spec['payload']['problem']['parameters'].update(steps=100000,pause_ms=1)
@@ -65,13 +75,12 @@ class Jobs(unittest.TestCase):
         process=subprocess.Popen([str(BINS/'optimization-run'),'--root',str(self.root),'run','--spec',str(path)],stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True)
         try:
             deadline=time.monotonic()+15;started=False
+            # The running job's trace, read as a declared artifact.
             while time.monotonic()<deadline and not started:
-                log=directory/'surrogate-0.jsonl'
-                if log.exists():
-                    for line in log.read_bytes().splitlines():
-                        try:record=json.loads(json.loads(line)['payload_json'])
-                        except (ValueError,KeyError):continue
-                        started|=record.get('record')=='event' and record['data'].get('event')=='started'
+                page=subprocess.run([str(BINS/'optimization-run'),'--root',str(self.root),'jobs','artifact',ident,'surrogate-0','--offset','0','--limit','10000'],capture_output=True,text=True)
+                if page.returncode==0:
+                    page=json.loads(page.stdout);self.assertFalse(page['final'])
+                    started=any(r['record']=='event' and r['data']['event']=='started' for r in page['records'])
                 time.sleep(.005)
             self.assertTrue(started,'simulation did not start')
             before=time.monotonic();self.call('jobs','cancel',ident)

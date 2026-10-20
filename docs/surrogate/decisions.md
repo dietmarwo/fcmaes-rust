@@ -4,7 +4,7 @@ Recorded 2026-10-20 for the first experimental delivery and revised the same day
 
 ## Placement and dependencies
 
-The numerical implementation is `crates/fcmaes-surrogate`, version 0.1.0, `publish=false`. The adapter is `crates/fcmaes-job-worker/src/surrogate.rs`. No changes to LP-IP-craft, SQP-craft or optimization-jobs are included. Source base is fcmaes-rust `92aaf03f9f03257a284126a322160d045422bc9a`; the existing shared API remains pinned to `eb1c9de66e677097a7ea22d9a4b2f6357c18751d`.
+The numerical implementation is `crates/fcmaes-surrogate`, version 0.1.0, `publish=false`. The adapter is `crates/fcmaes-job-worker/src/surrogate.rs`. The M0 delivery changed no other repository. Source base is fcmaes-rust `92aaf03f9f03257a284126a322160d045422bc9a`; the M0 delivery kept the shared API at `eb1c9de66e677097a7ea22d9a4b2f6357c18751d`. The review moved it to `6a42472d1904bdcc81f81a29023c8b51ca025ee6` for declared artifacts (see below).
 
 The GP uses a small purpose-built dense kernel module (`linalg.rs`): packed row-major lower-triangular storage, a left-looking Cholesky whose inner products run over contiguous rows, eight-accumulator dot products reduced in a fixed order, row-wise forward/backward substitution, an O(n) row append for fantasies, and `L^-1` / `K^-1` rows for the gradient. Each factorization is serial, so its result does not depend on the pool. Parallelism is across fitting restarts, gradient rows (n >= 96, reduced in row order), acquisition candidates/local starts and independent evaluations. libm supplies the GP special functions. The delivered nalgebra Cholesky (column-major storage, per-element divisions in the kernel fill) dominated proposal time and was replaced; the crate no longer depends on nalgebra. Existing fcmaes-core RNG/baseline algorithms avoid introducing an unrelated optimization stack. serde_json's `float_roundtrip` feature preserves exact serialized inputs for replay. Cargo.lock records exact dependency versions.
 
@@ -32,7 +32,7 @@ Each completed optimization callback is logged with shared checksum framing and 
 
 Compact warm inputs are SHA-256 checked and bind model identity, resolved parameters and model input hashes; simulation warm inputs also bind the run seed. Bound changes drop points rather than clip them. A warm job starts new strategy state. Final exact independent objective/bounds recheck upgrades evidence to rechecked; mismatch refutes the best_found claim and marks the snapshot untrusted. Neither recheck nor replay proves a global optimum.
 
-Shared remote artifacts/paging are not added. File names in result details refer to local attempt files. This avoids inventing common result contract fields before the shared SDK/runner/MCP capability is designed and tested.
+The M0 delivery added no shared artifacts: file names in result details referred to local attempt files, to avoid inventing common result contract fields before the shared SDK, runner and MCP capability existed. That capability now exists in optimization-jobs ([artifacts](https://github.com/dietmarwo/optimization-jobs/blob/main/docs/job-api.md#artifacts)): each task declares its trace (`records`) and snapshot (`json`) before writing them, agents read them while the job runs and page through the trace, and the sealed result records their SHA-256, which a warm-start input reuses. The declarations live in the shared declaration file, so the result contract and the worker protocol are unchanged.
 
 ## Measurements and reproduction
 
