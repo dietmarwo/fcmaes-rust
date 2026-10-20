@@ -99,8 +99,9 @@ assert_eq!(result.runs, 32);
 multi-objective problem. Each retry samples and p-norm-normalizes an
 independent weight vector, maps it through `weight_lower..weight_upper`, and
 presents a `WeightedObjective` to a scalar optimizer. The last `ncon` returned
-values are constraints; every positive constraint also adds its weight as a
-violation penalty.
+values are constraints, feasible at `<= 0`: only their violations `max(c, 0)`
+enter the p-norm, and every violated constraint also adds its weight as a
+penalty. A satisfied constraint adds nothing.
 
 ```rust
 use fcmaes_core::{
