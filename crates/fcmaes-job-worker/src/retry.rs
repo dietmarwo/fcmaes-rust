@@ -42,9 +42,10 @@ pub const PGPE_SIGMA: f64 = 0.1;
 pub const MAX_POPULATION_FACTOR: usize = 512;
 /// Largest population of any run.
 const POPULATION_LIMIT: usize = 1_000_000;
-/// Largest population (`max_population` with restarts) times dimension of a
-/// run, and largest dimension squared of a CMA-ES run, which holds
-/// dimension-by-dimension matrices.
+/// Largest population (`max_population` with restarts, `batch` for batched
+/// BiteOpt and DE) times dimension of a run, and largest dimension squared of
+/// a CMA-ES run, which holds dimension-by-dimension matrices. The legacy
+/// `fcmaes.job/0.1` validation applies the same limit.
 const MAX_CELLS: usize = 10_000_000;
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -160,10 +161,12 @@ pub fn describe() -> Value {
     let pgpe = PgpeParams::default();
     json!({
         "biteopt":{"profile":PROFILE,"limit":"hard","defaults":{"population":"9 + 3 * dimension"},
+            "ranges":{"population":"4..1000000; population * dimension <= 1e7 (the default exceeds it from dimension 1825 on)"},
             "batch":"optional, 1..1000000 (batch * dimension <= 1e7): ask, evaluate and tell batches of this many candidates (delayed feedback); absent: the serial algorithm of fcmaes.job/0.1",
             "inner_threads":"1 without batch; with batch, evaluates each batch on inner_threads threads"},
         "de":{"profile":PROFILE,"limit":"soft","maximum_overshoot_per_retry":"2*population-1; none with batch",
             "defaults":{"population":31},
+            "ranges":{"population":"4..1000000; population * dimension <= 1e7"},
             "batch":"optional, 1..1000000 (batch * dimension <= 1e7): candidates in flight, the delayed update of the Python fcmaes de.minimize(workers=batch); when the oldest is evaluated it is told and one new candidate is asked; results are told in ask order and a batch run spends at most evaluations_per_retry",
             "inner_threads":"1 without batch; with batch, evaluates the candidates in flight on inner_threads threads"},
         "cmaes":{"profile":PROFILE,"limit":"soft",
@@ -294,6 +297,14 @@ fn legacy_spec(s: &JobSpec, p: &mut Payload) -> Result<LegacySpec> {
         .unwrap_or(if kind == "de" { 31 } else { 9 + 3 * n });
     if !(4..=POPULATION_LIMIT).contains(&population) {
         return Err("population must be 4..1000000".into());
+    }
+    // BiteOpt and DE allocate several population x dimension tables before
+    // the first evaluation; the evaluation budget does not bound them.
+    if population.saturating_mul(n) > MAX_CELLS {
+        return Err(format!(
+            "population * dimension must be at most 1e7 (population {population}, dimension {n}); set a smaller optimizer.parameters.population"
+        )
+        .into());
     }
     let spec = LegacySpec {
         schema_version: "fcmaes.job/0.1".into(),

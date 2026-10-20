@@ -165,6 +165,44 @@ fn validation_resolves_defaults_and_rejects_unsupported_requests() {
 }
 
 #[test]
+fn biteopt_and_de_population_tables_are_bounded_at_validation() {
+    // Review FC-01: this one-evaluation job passed validation, and DE would
+    // have allocated 80 GB per population table before evaluating anything.
+    // Validation alone must reject it, without allocating.
+    let dir = tempfile::tempdir().unwrap();
+    let mut huge = job("de", "benchmark.sphere", 10000);
+    huge["payload"]["optimizer"]["parameters"]["population"] = json!(1_000_000);
+    huge["payload"]["retries"] = json!(1);
+    huge["payload"]["evaluations_per_retry"] = json!(1);
+    huge["resources"] = json!({"cpu_slots": 1, "outer_workers": 1, "inner_threads": 1});
+    let error = validate(dir.path(), &huge).unwrap_err();
+    assert!(error.contains("population * dimension"), "{error}");
+    // The limit itself passes, one cell more does not, for both optimizers.
+    for kind in ["de", "biteopt"] {
+        let mut at = huge.clone();
+        at["payload"]["optimizer"]["kind"] = json!(kind);
+        at["payload"]["evaluation_limit_mode"] = json!(if kind == "de" { "soft" } else { "hard" });
+        at["payload"]["optimizer"]["parameters"]["population"] = json!(1000);
+        assert!(validate(dir.path(), &at).is_ok(), "{kind}");
+        at["payload"]["optimizer"]["parameters"]["population"] = json!(1001);
+        assert!(validate(dir.path(), &at).is_err(), "{kind}");
+    }
+    // BiteOpt's default population, 9 + 3 * dimension, fits up to 1824.
+    let mut default = job("biteopt", "benchmark.sphere", 1824);
+    assert!(validate(dir.path(), &default).is_ok());
+    default["payload"]["problem"]["config"]["dimension"] = json!(1825);
+    assert!(
+        validate(dir.path(), &default)
+            .unwrap_err()
+            .contains("smaller optimizer.parameters.population")
+    );
+    // A batch is bounded the same way.
+    let mut batched = job("de", "benchmark.sphere", 10000);
+    batched["payload"]["optimizer"]["parameters"] = json!({"population": 12, "batch": 1001});
+    assert!(validate(dir.path(), &batched).is_err());
+}
+
+#[test]
 fn retries_match_the_shared_native_solver_and_honour_budgets() {
     for (problem, dim) in [("benchmark.rosenbrock", 6), ("gtop.cassini1", 6)] {
         for optimizer in ["biteopt", "de"] {

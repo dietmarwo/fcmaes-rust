@@ -33,7 +33,9 @@ cargo build --release --locked -p fcmaes-job-worker --example custom_worker
 python3 tutorials/job-api/run.py --root /tmp/fcmaes-job-tutorial
 ```
 
-The script initializes an eight-slot node, registers the stock worker as
+The script takes the binaries, the example's included, from `target/release`,
+or from `$CARGO_TARGET_DIR/release` when that is set; `--bin-dir` overrides
+both. It initializes an eight-slot node, registers the stock worker as
 `fcmaes` and the example application worker as `curve-fit`, validates and runs
 every example, then checks the results independently in Python. It
 prints the attempt directories and writes `tutorial-report.json` under the
@@ -173,7 +175,11 @@ values it ranks and keeps unclamped points, so for CR-FM-NES and PGPE the
 worker takes the best point from the evaluated, clamped populations.
 CMA-ES holds dimension × dimension matrices and accepts at most 3,162
 variables; CR-FM-NES and PGPE scale further. `population × dimension` (with
-restarts `max_population × dimension`) is at most 10⁷.
+restarts `max_population × dimension`, and `batch × dimension`) is at most
+10⁷ for every optimizer, BiteOpt and DE included: they allocate their
+population tables before the first evaluation, so the evaluation budget does
+not bound that memory. BiteOpt's default population, `9 + 3 × dimension`,
+exceeds the limit from dimension 1,825 on; set a smaller `population` there.
 
 BiteOpt and DE jobs without `batch` resolve through the same definitions as
 legacy `fcmaes.job/0.1` jobs, so both give identical retries.
@@ -212,9 +218,12 @@ A run's outcome has `claim: "non_dominated_set"` with no single `x` or
 `objective`. `details.front` lists the feasible, mutually non-dominated members
 of the final population, each with `x`, `objectives` and `constraints`, sorted
 by the first objective. Every member was re-evaluated outside the optimizer.
-`details.hypervolume` gives the exact hypervolume of the front with the
-reference point and `normalization: "none"` (raw objectives); points outside it
-are counted in `outside_reference`, not clipped. `details.front_source` is
+`details.hypervolume` gives the hypervolume of the front with the reference
+point and `normalization: "none"` (raw objectives): exact through four
+objectives (`method: "exact"`, `exact: true`); for an application model with
+more objectives a deterministic Monte Carlo estimate (`method: "monte_carlo"`,
+`exact: false`, with `samples`, `seed` and `standard_error`). Points outside
+the reference are counted in `outside_reference`, not clipped. `details.front_source` is
 `final_population`: unlike COCO's bi-objective archive of every non-dominated
 point evaluated, the front holds the final population's survivors, so compare
 hypervolumes only with the same reference point and source. A run without a

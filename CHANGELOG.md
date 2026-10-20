@@ -127,6 +127,25 @@ phase, with breaking changes called out explicitly.
   (CR-FM-NES and PGPE scale further), and `population × dimension` is at most
   10⁷ for CMA-ES, CR-FM-NES and PGPE. Every task runs inside its own thread
   pool, so no Rayon work reaches the global pool.
+- `fcmaes.mode/1` results name how their hypervolume was computed:
+  `method: "exact"` through four objectives, `method: "monte_carlo"` above
+  four (application models), with the estimate's `samples`, `seed` and
+  `standard_error`. Discovery, the tutorial and `ai-context.md` no longer
+  call every MODE hypervolume exact.
+- `tutorials/job-api/run.py` takes `--bin-dir` and honors `CARGO_TARGET_DIR`.
+- The shared job API moved to optimization-jobs `eb1c9de` (cancellation that
+  only escalates, objective-bound checks, MCP request limits, nested PID
+  namespaces in its tests, CI that builds this worker against the shared
+  checkout).
+
+### Fixed
+
+- `fcmaes.retry/1` and legacy `fcmaes.job/0.1` validation now also bound
+  `population × dimension` (at most 10⁷) for BiteOpt and DE, which allocate
+  their population tables before the first evaluation: a one-evaluation DE
+  job with dimension 10,000 and population 1,000,000 passed validation and
+  would have needed 80 GB per table. BiteOpt's default population,
+  `9 + 3 × dimension`, exceeds the limit from dimension 1,825 on.
 
 ## [0.1.5] - 2026-08-13
 

@@ -1,7 +1,8 @@
 //! `fcmaes.mode/1`: independent MODE runs on registered multi-objective
 //! models. Each task is one seeded run of `generations` asked populations;
 //! its outcome is the feasible non-dominated part of the final population,
-//! re-evaluated outside the optimizer, with its hypervolume. Populations are
+//! re-evaluated outside the optimizer, with its hypervolume (exact through
+//! four objectives, sampled above). Populations are
 //! evaluated on `inner_threads` threads; the run does not depend on their
 //! number.
 use crate::{
@@ -71,7 +72,8 @@ pub fn describe() -> Value {
             "dis_c":"> 0","dis_m":"> 0","pareto_update":"[0,1]"},
         "reference_point":"required unless the model defines one",
         "inner_threads":"evaluates each population on inner_threads threads",
-        "result":"feasible non-dominated final population members, re-evaluated, with exact hypervolume"})
+        "result":"feasible non-dominated final population members, re-evaluated, with their hypervolume",
+        "hypervolume":"exact through four objectives (method exact); above four a deterministic Monte Carlo estimate (method monte_carlo, with samples, seed and standard_error)"})
 }
 
 pub struct Run {
@@ -338,10 +340,25 @@ impl Run {
         } else {
             let h = hypervolume_with(&front_objectives, &self.reference, OutsidePolicy::Exclude)
                 .map_err(|e| format!("hypervolume: {e:?}"))?;
-            json!({"value":h.estimate.value(),
-                "exact":matches!(h.estimate, HypervolumeEstimate::Exact(_)),
+            let mut v = json!({"value":h.estimate.value(),
+                "exact":matches!(h.estimate, HypervolumeEstimate::Exact(_)),"method":"exact",
                 "reference_point":self.reference.as_slice(),"normalization":"none",
-                "retained_points":h.retained_points,"outside_reference":h.outside_reference})
+                "retained_points":h.retained_points,"outside_reference":h.outside_reference});
+            // Above four objectives the volume is sampled: keep what makes
+            // the estimate reproducible and comparable.
+            if let HypervolumeEstimate::MonteCarlo {
+                standard_error,
+                samples,
+                seed,
+                ..
+            } = h.estimate
+            {
+                v["method"] = json!("monte_carlo");
+                v["standard_error"] = json!(standard_error);
+                v["samples"] = json!(samples);
+                v["seed"] = json!(seed);
+            }
+            v
         };
         let claimed = !points.is_empty();
         let checks: &[&str] = if ncon > 0 {

@@ -576,10 +576,12 @@ archive) is `claimed`. The fcmaes claims are:
   as a defect report, not as an optimization result.
 - `non_dominated_set` (MODE): `details.front` lists the feasible, mutually
   non-dominated final-population members, each re-evaluated, with `x`,
-  `objectives` and `constraints`; `details.hypervolume` is the exact
-  hypervolume for the declared reference point (raw objectives,
-  `normalization: "none"`), counting points outside it instead of clipping
-  them. `front_source` is `final_population`, not an archive of every
+  `objectives` and `constraints`; `details.hypervolume` is the hypervolume
+  for the declared reference point (raw objectives, `normalization: "none"`),
+  counting points outside it instead of clipping them: exact through four
+  objectives (`method: "exact"`), a deterministic Monte Carlo estimate above
+  four (`method: "monte_carlo"`, `exact: false`, with `samples`, `seed` and
+  `standard_error`); compare sampled values within their standard errors. `front_source` is `final_population`, not an archive of every
   evaluated point. The outcome has no single `x` or `objective`. No
   Pareto-optimality certificate.
 - `elite_archive` (MAP-Elites): `details.elites` lists every occupied niche,

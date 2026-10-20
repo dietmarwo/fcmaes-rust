@@ -318,3 +318,53 @@ fn a_model_identifier_is_registered_once() {
         Ok(Scalar::new(|x: &[f64]| x[0]))
     });
 }
+
+#[test]
+fn mode_hypervolumes_are_exact_through_four_objectives_and_sampled_above() {
+    // Review FC-03: an application model may have any number of objectives;
+    // above four the hypervolume is a Monte Carlo estimate, which the result
+    // now says with its method, samples, seed and standard error.
+    let mut registry = Registry::benchmarks();
+    for k in [2usize, 4, 5] {
+        registry.multi_objective(&format!("app.objectives-{k}"), "1", json!({}), move |_| {
+            Ok(MultiObjective::new(k, 0, move |x: &[f64]| {
+                (0..k)
+                    .map(|i| (x[0] - i as f64 / k as f64).powi(2))
+                    .collect()
+            })
+            .reference_point(vec![2.0; k]))
+        });
+    }
+    let adapter = Adapter::new(registry);
+    let described = adapter.describe();
+    let text = described.to_string();
+    assert!(text.contains("exact through four objectives"), "{text}");
+    for (k, exact) in [(2, true), (4, true), (5, false)] {
+        let dir = tempfile::tempdir().unwrap();
+        let payload = json!({"problem": {"id": format!("app.objectives-{k}"), "version": "1",
+                "config": {"dimension": 1}, "bounds": {"lower": [0.0], "upper": [1.0], "broadcast": false}},
+            "optimizer": {"kind": "mode", "parameters": {"population": 4}},
+            "seed": 3, "runs": 1, "generations": 2});
+        let run = run(
+            &adapter,
+            spec("fcmaes.mode/1", payload, json!([])),
+            dir.path(),
+        )
+        .unwrap();
+        assert_eq!(run["status"], "completed");
+        let h = &run["results"][0]["outcome"]["details"]["hypervolume"];
+        assert_eq!(h["exact"], exact, "{k}: {h}");
+        if exact {
+            assert_eq!(h["method"], "exact");
+            assert!(h.get("samples").is_none() && h.get("standard_error").is_none());
+        } else {
+            assert_eq!(h["method"], "monte_carlo");
+            assert!(h["samples"].as_u64().unwrap() > 0, "{h}");
+            assert!(
+                h["seed"].is_u64() && h["standard_error"].as_f64().unwrap() >= 0.0,
+                "{h}"
+            );
+        }
+        assert_eq!(h["reference_point"], json!(vec![2.0; k]));
+    }
+}
