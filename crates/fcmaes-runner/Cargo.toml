@@ -9,9 +9,9 @@ publish = false
 name = "fcmaes-run"
 path = "src/main.rs"
 [dependencies]
-optimization-runner = { path = "../optimization-runner" }
+optimization-runner.workspace = true
 [dev-dependencies]
-fcmaes-job-api = { path = "../fcmaes-job-api" }
+optimization-job-api.workspace = true
 serde_json = "1"
 tempfile = "3"
 libc = "0.2"

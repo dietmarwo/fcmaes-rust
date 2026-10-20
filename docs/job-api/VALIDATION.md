@@ -144,7 +144,7 @@ and sets `JOB_API_REQUIRE_SCHEMA=1`, so the schema checks cannot be skipped
 there.
 
 An independent review before the merge reported 13 defects; all were fixed
-and are covered by tests (see the [plan](PLAN.md#6-result-contract-02-october-2026)).
+and are covered by tests (see the [plan](https://github.com/dietmarwo/optimization-jobs/blob/main/docs/job-api/PLAN.md#6-result-contract-02-october-2026)).
 After the fixes, 1.2 million generated outcomes found no disagreement between
 the JSON Schema and `Outcome::check`, and every case of `outcome_cases.json`
 behaves the same as a journal record through the runner.
@@ -176,7 +176,7 @@ The fcmaes worker gains a model registry for application workers,
 `inner_threads > 1` for its population-based optimizers and for BiteOpt and
 DE with `batch`, CR-FM-NES and PGPE retries, IPOP/BIPOP restarts, CVT
 archives and CMA-ME/CMA-MAE emitter phases
-([plan](PLAN.md#7-application-models-parallel-populations-and-more-algorithms-october-2026),
+([plan](https://github.com/dietmarwo/optimization-jobs/blob/main/docs/job-api/PLAN.md#7-application-models-parallel-populations-and-more-algorithms-october-2026),
 [application models](models.md)). Checked with Rust 1.97 on Linux x86_64:
 
 | Check | Observed result |
@@ -234,13 +234,41 @@ At equal budgets of 20,000 evaluations per run (four runs, 20 dimensions,
 | 100 SBX generations, then CMA-ME | 66% | 58% |
 | 100 SBX generations, then CMA-MAE (`threshold_init` 300 or 600) | 66% | 78% |
 
+## The shared crates move to optimization-jobs (19 October 2026)
+
+`optimization-job-api`, `optimization-runner`, the shared guide, plan,
+schemas and scripts moved to
+[optimization-jobs](https://github.com/dietmarwo/optimization-jobs)
+([plan](https://github.com/dietmarwo/optimization-jobs/blob/main/docs/job-api/PLAN.md#8-one-shared-repository-october-2026)).
+This repository depends on the crates at a pinned git revision; the copies and
+their checksum manifest are gone. The 26 tests of the shared crates
+(5 legacy spec, 13 contracts, 8 durability) now run only there, as do 7
+copies of the durability tests that ran here, so the workspace here has 33
+tests fewer. `fcmaes-job-worker` depends on the runner, so
+`cargo build -p optimization-runner -p fcmaes-job-worker` builds
+`optimization-run` here. On the git dependency:
+
+| Check | Observed result |
+| --- | --- |
+| `cargo fmt --check`, Clippy `-D warnings`, `cargo doc`, mdBook link check | Passed |
+| Workspace tests | 284 passed |
+| Legacy runner suite | 14 passed |
+| Shared harness and review tests from Cargo's checkout, with this repository's binaries | Harness: 14 run, 12 passed, 2 skipped without LP/SQP workers; review: 15 passed |
+| Tutorial | 12 examples completed; jobs and results validated against the schemas of the checkout |
+
+Earlier sections mention `scripts/job-api/` and the checksum manifest as they
+were at the time.
+
 ## Reproduce with sibling workers
 
 To run the mixed acceptance, build each repository's worker and pass the
-absolute paths:
+absolute paths to the shared harness (optimization-jobs' CI does the same with
+the three repositories' `main`):
 
 ```sh
-python3 scripts/job-api/test_integration.py \
+SHARED=$(python3 scripts/job-api/shared_root.py)
+python3 "$SHARED/scripts/job-api/test_integration.py" \
+  --runner "$PWD/target/release/optimization-run" \
   --fcmaes /path/to/fcmaes-job-worker \
   --lp-ip /path/to/lp-ip-job-worker --sqp /path/to/sqp-job-worker
 ```

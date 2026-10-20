@@ -27,9 +27,9 @@ Status:
 
 Linux and a Rust toolchain supporting edition 2024 (minimum 1.88) are
 required. All job-layer crates are source-only (`publish = false`).
-`fcmaes-runner` (`fcmaes-run`) wraps the shared `optimization-runner`,
-`fcmaes-job-api` re-exports the legacy contract from `optimization-job-api`, and
-the worker depends on `fcmaes-core` and `fcmaes-gtop`, never on
+`fcmaes-runner` (`fcmaes-run`) wraps the shared `optimization-runner`, the
+contract is the `legacy` module of the shared `optimization-job-api`, and the
+worker depends on `fcmaes-core` and `fcmaes-gtop`, never on
 `fcmaes-examples`.
 
 From the repository root:
@@ -57,7 +57,7 @@ All commands print JSON on stdout (`--json` is accepted for agent workflows
 and changes nothing). Diagnostics go to stderr. Runner errors, including
 malformed command lines, exit 2 with one JSON line
 `{"error":{"code":...,"message":...,"retryable":...}}`; the codes are listed
-in the [shared job API guide](job-api.md#errors). The worker exits 1 on
+in the [shared job API guide](https://github.com/dietmarwo/optimization-jobs/blob/main/docs/job-api.md#errors). The worker exits 1 on
 errors. A successful CLI call can report a failed or
 timed-out job, so automation must inspect `state` / `run.json` `status`, not
 only the exit code.
@@ -250,8 +250,8 @@ runner profile are readable as descriptive arms only.
 ## Verification
 
 ```bash
-cargo test --locked -p fcmaes-job-api -p fcmaes-native-worker -p fcmaes-runner
-cargo clippy --locked -p fcmaes-job-api -p fcmaes-native-worker -p fcmaes-runner --all-targets -- -D warnings
+cargo test --locked -p fcmaes-native-worker -p fcmaes-runner
+cargo clippy --locked -p fcmaes-native-worker -p fcmaes-runner --all-targets -- -D warnings
 ```
 
 The runner tests need the worker binary next to `fcmaes-run`; testing both
@@ -281,10 +281,11 @@ target machine.
 ## Shared utilities in the route-search tutorial
 
 The GTOC1 route-search tutorial delegates its JSONL, atomic-snapshot,
-checksummed-archive and bounded-subprocess helpers to `fcmaes-job-api`, so
-there is one implementation. It keeps `fcmaes-core = "=0.1.3"` from the
-registry but takes `fcmaes-job-api` by repository path, so the tutorial now
-builds only inside a repository checkout. Two error details changed: JSON
+checksummed-archive and bounded-subprocess helpers to the `storage` and
+`process` modules of `optimization-job-api`, so there is one implementation.
+It keeps `fcmaes-core = "=0.1.3"` from the registry and takes
+`optimization-job-api` from optimization-jobs through git, at the revision the
+root `Cargo.toml` pins. Two error details changed: JSON
 and checksum errors arrive as `RouteSearchError::Io`, and the subprocess
 helper also stops descendants of an agent command after it exits.
 

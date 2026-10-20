@@ -460,22 +460,13 @@ name = "fcmaes-gtop"
 version = "0.1.5"
 
 [[package]]
-name = "fcmaes-job-api"
-version = "0.1.0"
-dependencies = [
- "optimization-job-api",
- "serde_json",
- "tempfile",
-]
-
-[[package]]
 name = "fcmaes-job-worker"
 version = "0.1.5"
 dependencies = [
  "fcmaes-core",
- "fcmaes-job-api",
  "fcmaes-native-worker",
  "optimization-job-api",
+ "optimization-runner",
  "rayon",
  "serde",
  "serde_json",
@@ -488,7 +479,7 @@ version = "0.1.0"
 dependencies = [
  "fcmaes-core",
  "fcmaes-gtop",
- "fcmaes-job-api",
+ "optimization-job-api",
  "serde_json",
  "tempfile",
 ]
@@ -507,8 +498,8 @@ dependencies = [
 name = "fcmaes-runner"
 version = "0.1.0"
 dependencies = [
- "fcmaes-job-api",
  "libc",
+ "optimization-job-api",
  "optimization-runner",
  "serde_json",
  "tempfile",
@@ -1146,18 +1137,19 @@ checksum = "7c87def4c32ab89d880effc9e097653c8da5d6ef28e6b539d313baaacfbafcbe"
 [[package]]
 name = "optimization-job-api"
 version = "0.2.0"
+source = "git+https://github.com/dietmarwo/optimization-jobs?rev=9feb72ee6ef0224beba32c1ee528aa41020fcdb8#9feb72ee6ef0224beba32c1ee528aa41020fcdb8"
 dependencies = [
  "fs2",
  "libc",
  "serde",
  "serde_json",
  "sha2",
- "tempfile",
 ]
 
 [[package]]
 name = "optimization-runner"
 version = "0.2.0"
+source = "git+https://github.com/dietmarwo/optimization-jobs?rev=9feb72ee6ef0224beba32c1ee528aa41020fcdb8#9feb72ee6ef0224beba32c1ee528aa41020fcdb8"
 dependencies = [
  "clap",
  "fs2",

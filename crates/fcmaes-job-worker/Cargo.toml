@@ -6,7 +6,10 @@ rust-version.workspace = true
 license.workspace = true
 publish = false
 [dependencies]
-optimization-job-api = { path = "../optimization-job-api" }
+optimization-job-api.workspace = true
+# Not used by the worker: it puts the runner in the build graph, so that
+# cargo build -p optimization-runner -p fcmaes-job-worker builds optimization-run.
+optimization-runner.workspace = true
 fcmaes-core = { path = "../fcmaes-core" }
 fcmaes-native-worker = { path = "../fcmaes-native-worker" }
 serde = { version = "1", features = ["derive"] }
@@ -14,5 +17,4 @@ serde_json = "1"
 rayon = "1"
 
 [dev-dependencies]
-fcmaes-job-api = { path = "../fcmaes-job-api" }
 tempfile = "3"

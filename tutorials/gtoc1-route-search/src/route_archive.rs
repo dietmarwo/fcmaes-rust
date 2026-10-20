@@ -7,6 +7,7 @@ use std::cmp::Ordering;
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
 
+use optimization_job_api::storage;
 use pykep_core::astro::lambert::LambertPath;
 use serde::{Deserialize, Serialize};
 
@@ -609,7 +610,7 @@ impl RouteArchive {
 /// Returns an error for invalid data, serialization, or I/O.
 pub fn append_archive(path: &Path, result: &SearchResult) -> Result<(), RouteSearchError> {
     result.validate()?;
-    Ok(fcmaes_job_api::storage::append_checked(path, 2, result)?)
+    Ok(storage::append_checked(path, 2, result)?)
 }
 
 /// Loads and verifies a checksummed archive, tolerating only a truncated final
@@ -620,7 +621,7 @@ pub fn append_archive(path: &Path, result: &SearchResult) -> Result<(), RouteSea
 /// Returns an error for I/O, mid-file corruption, checksum mismatch,
 /// duplicates, or invalid values.
 pub fn load_archive(path: &Path) -> Result<RouteArchive, RouteSearchError> {
-    let records: Vec<SearchResult> = fcmaes_job_api::storage::read_checked(path, 2)?;
+    let records: Vec<SearchResult> = storage::read_checked(path, 2)?;
     let mut archive = RouteArchive::default();
     for result in records {
         if archive.contains_variant(&result.variant_key) {
@@ -718,7 +719,7 @@ fn checksum<T: Serialize>(value: &T) -> Result<String, RouteSearchError> {
 }
 
 fn checksum_bytes(value: &[u8]) -> String {
-    fcmaes_job_api::storage::digest(value)
+    storage::digest(value)
 }
 
 #[cfg(test)]
