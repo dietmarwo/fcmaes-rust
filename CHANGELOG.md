@@ -8,6 +8,12 @@ phase, with breaking changes called out explicitly.
 
 ### Added
 
+- `optimization-mcp`, the MCP server of the shared job API: the build of
+  `optimization-runner` makes it next to `optimization-run`. An agent
+  connected to a node with the fcmaes worker describes the worker, validates
+  and submits jobs, waits for them, reads their claims and evidence and
+  cancels them; with the MCP Tasks extension, a submitted job is a task that
+  completes with its result. See `docs/job-api.md` and the tutorial.
 - Application models for the fcmaes job worker. A `Registry` holds the
   models a worker solves; an application worker registers its own as Rust
   closures (scalar, multi-objective or quality-diversity) built by a factory
@@ -39,9 +45,8 @@ phase, with breaking changes called out explicitly.
   and CMA-ME or CMA-MAE emitter phases with exact budgets in
   `fcmaes.map-elites/1`.
 
-- Synchronized the shared job crates with LP-IP-craft and SQP-craft as
-  version 0.1.1. The three copies had drifted after the 0.1.0 delivery; they
-  are byte-identical again and every repository's CI checks the manifest.
+- The shared job crates 0.1.1 bring together the fixes that the three
+  repositories' copies had made separately after the 0.1.0 delivery.
   Changes taken from the SQP-craft review: a worker that writes an invalid
   journal record no longer leaves its job `running` and breaks `jobs list`
   (the attempt is sealed `failed` with `runner.journal_error`); staging uses
@@ -52,8 +57,9 @@ phase, with breaking changes called out explicitly.
   `optimization-job-ID.service`. The repair of a job whose launcher died
   while queued combines both reviews: it keeps the zero-work, complete
   accounting of this repository's fix, and detached attempts that their
-  unit may still start stay unknown. The shared
-  `scripts/job-api/test_review.py` and `fake_worker.py` run in CI.
+  unit may still start stay unknown. Their runner regression tests
+  (`scripts/job-api/test_review.py` with `fake_worker.py`, now in
+  optimization-jobs) run in CI.
 
 - The common fcmaes job worker covers CMA-ES, MODE and MAP-Elites.
   `fcmaes.retry/1` accepts `optimizer.kind: "cmaes"` (soft limit of at most

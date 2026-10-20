@@ -259,6 +259,7 @@ is no agent, Python, or network round trip for each objective evaluation.
 |---|---|
 | `optimization-job-api` (from optimization-jobs) | Strict envelopes, result contracts, hashes, durable journals and worker SDK. |
 | `optimization-runner` / `optimization-run` (from optimization-jobs) | Worker registration, staging, idempotency, CPU admission, process supervision and recovery. |
+| `optimization-runner` / `optimization-mcp` (from optimization-jobs) | MCP server over stdio: tools and tasks over `optimization-run` for agents. |
 | `crates/fcmaes-job-worker` | Native adapter for `fcmaes.retry/1` (BiteOpt, DE, CMA-ES with restarts, CR-FM-NES, PGPE retries), `fcmaes.mode/1` (MODE), `fcmaes.map-elites/1` (MAP-Elites, CVT, CMA-ME/CMA-MAE) and `fcmaes.evaluate/1` (given points), on the models of a `Registry`; a library, a thin binary with the benchmarks, and `examples/custom_worker.rs` for application models. |
 | `crates/fcmaes-runner` / `fcmaes-run` | Compatibility CLI entry point into the common runner. |
 | `crates/fcmaes-native-worker` | Original worker for `fcmaes.job/0.1` specifications. |
@@ -268,7 +269,7 @@ The shared crates live in
 common guide, the plan, the JSON Schemas and the shared test scripts; this
 repository depends on them at the git revision its root `Cargo.toml` pins,
 and `cargo build -p optimization-runner` still builds `optimization-run`
-here. [LP-IP-craft](https://github.com/dietmarwo/LP-IP-craft) and
+here, together with `optimization-mcp`. [LP-IP-craft](https://github.com/dietmarwo/LP-IP-craft) and
 [SQP-craft](https://github.com/dietmarwo/SQP-craft) depend on the same crates
 and build their own workers: `lp-ip-job-worker` with
 `lp-ip.solve/1` and `lp-ip.evaluate/1`, and `sqp-job-worker` with `sqp.solve/1`
@@ -278,16 +279,16 @@ repositories and register their executables with one runner using one absolute
 node root. The fcmaes checkout builds independently and does not link either
 other solver.
 
-Until October 2026 the three repositories carried byte-identical copies of
-the shared crates, checked by a manifest in each. Version 0.1.1 synchronized
-the copies, which had drifted after the 0.1.0 delivery. It carries every review fix: the zero-work repair of
+Until October 2026 the three repositories carried copies of the shared crates.
+Version 0.1.1 synchronized them, after they had drifted following the 0.1.0
+delivery. It carries every review fix: the zero-work repair of
 a job whose launcher died while queued, staging under the node root instead of
 `TMPDIR`, sealing an attempt with an unreadable journal `failed` instead of
 leaving it `running`, appends that end a torn journal tail first, validators
 stopped by a signal, `./`-relative input paths, `optimization-job-ID.service`
 unit names, and no reboot flag on finished jobs. It also carries the fcmaes
 `non_dominated_set` and `elite_archive` claims. The shared
-`scripts/job-api/test_review.py` covers the runner fixes.
+`scripts/job-api/test_review.py` in optimization-jobs covers the runner fixes.
 
 Version 0.2.0 of the shared crates adds the result contract
 `optimization.result/0.2` and worker protocol `optimization.worker/0.2`: five
@@ -630,8 +631,9 @@ new adapter as `fcmaes` for the examples above. Legacy comparison and benchmark
 tools remain separate from common-profile comparison rules.
 
 To add a scalar objective, change three places: its validation and discovery
-entry in `crates/optimization-job-api/src/legacy/spec.rs` (a shared file, so
-update the manifest and the sibling copies), its function in `objective_by_id`
+entry in `crates/optimization-job-api/src/legacy/spec.rs` of optimization-jobs
+(change it there first, then move this repository's pinned `rev`), its
+function in `objective_by_id`
 in `crates/fcmaes-native-worker/src/lib.rs` (used by both fcmaes workers), and
 deterministic tests for bounds, objective values, budget accounting and
 per-task seeds. Multi-objective and quality-diversity models live in
@@ -644,10 +646,16 @@ independent check with `Evidence::refuting`), and let the SDK own concurrency
 and journal commits.
 Version profiles when mathematical input or output semantics change.
 
-Current scope: local single-user trusted executables; no HTTP/MCP service
-(the guide maps the runner onto the MCP Tasks extension), distributed
-scheduler, arbitrary Python callback transport, solver checkpoint resume or
-automatic cross-solver pipeline. Direct integration can compose
+Agents drive the same jobs through `optimization-mcp`, an MCP server over
+stdio that the runner's build also makes: thirteen tools (describe, validate,
+submit, wait, result summaries, cancel, kill, repair) over `optimization-run`,
+and, with the MCP Tasks extension, a task per submitted job that completes
+with its result ([Agents and MCP](https://github.com/dietmarwo/optimization-jobs/blob/main/docs/job-api.md#agents-and-mcp)).
+The server registers no workers and never changes the node.
+
+Current scope: local single-user trusted executables; no HTTP service,
+distributed scheduler, arbitrary Python callback transport, solver checkpoint
+resume or automatic cross-solver pipeline. Direct integration can compose
 algorithms, but that is not a capability of this job protocol yet.
 
 ## Algorithm comparison
@@ -1229,6 +1237,7 @@ SHARED=$(python3 scripts/job-api/shared_root.py)
 export JOB_API_TARGET="$PWD/target/release" JOB_API_TUTORIALS="$PWD/tutorials/job-api"
 python3 "$SHARED/scripts/job-api/test_integration.py"
 python3 "$SHARED/scripts/job-api/test_review.py"
+python3 "$SHARED/scripts/job-api/test_mcp.py"
 python3 tutorials/job-api/run.py
 ```
 
@@ -1282,10 +1291,12 @@ reach a global optimum are not security defects.
   dispatch shared by both fcmaes workers.
 - In optimization-jobs: `crates/optimization-job-api/src/spec.rs` and
   `crates/optimization-job-api/src/result.rs` (authoritative common input and
-  result contracts), `scripts/job-api/test_integration.py` (local or
-  mixed-worker acceptance), `scripts/job-api/test_review.py` and
-  `fake_worker.py` (runner regression tests against a protocol fixture).
-  `scripts/job-api/shared_root.py` prints the path of Cargo's checkout.
+  result contracts), `crates/optimization-runner/src/mcp/` (the MCP server),
+  `scripts/job-api/test_integration.py` (local or mixed-worker acceptance),
+  `scripts/job-api/test_review.py` and `fake_worker.py` (runner regression
+  tests against a protocol fixture) and `scripts/job-api/test_mcp.py` (the
+  MCP server). Here, `scripts/job-api/shared_root.py` prints the path of
+  Cargo's checkout.
 - `scripts/runner/test_integration.py`: original runner compatibility checks.
 - `tutorials/RESULT_SCHEMA.md`: established tutorial and legacy result formats;
   use the explicitly versioned common result contract for common jobs.

@@ -24,7 +24,7 @@ API examples, and primary algorithm references are in the
 | [Optimizers](optimizers.md) | Pure-Rust optimizer APIs, defaults, one-shot operation, and ask/tell operation |
 | [Retry](retry.md) | Basic, coordinated, and multi-objective retry |
 | [Experiment runner](experiment-runner.md) | `fcmaes-run`: reproducible native optimization jobs with budgets, CPU-slot admission, cancellation, recovery and comparison |
-| [Shared job API](job-api.md) | `optimization-run`: one versioned job envelope and runner for fcmaes, LP-IP-craft and SQP-craft workers, with a shared CPU budget, checked results and recovery |
+| [Shared job API](job-api.md) | `optimization-run`: one versioned job envelope and runner for fcmaes, LP-IP-craft and SQP-craft workers, with a shared CPU budget, checked results and recovery, from optimization-jobs; `optimization-mcp` gives agents the same jobs over MCP |
 | [Application models](job-api/models.md) | Registering your own models, with parameters and hashed data inputs, in an fcmaes job worker |
 | [Optional Python bindings](python-bindings.md) | Direct PyO3 extension surface and GIL considerations |
 | [Examples](examples.md) | Every native binary, data input, GTOP problem, monitor, and benchmark |

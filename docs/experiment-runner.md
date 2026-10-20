@@ -65,7 +65,8 @@ only the exit code.
 ## Job specification
 
 Inputs use schema `fcmaes.job/0.1`
-(`crates/optimization-job-api/src/legacy/spec.rs`; examples in
+([`legacy/spec.rs`](https://github.com/dietmarwo/optimization-jobs/blob/main/crates/optimization-job-api/src/legacy/spec.rs)
+of `optimization-job-api`, in optimization-jobs; examples in
 `docs/runner-jobs/`). Every nested object rejects unknown fields.
 
 - Problems: `benchmark.sphere`, `benchmark.rosenbrock` (dimension >= 2) and
@@ -292,6 +293,8 @@ helper also stops descendants of an agent command after it exits.
 ## Deferred
 
 - No stop token in `fcmaes-core`, CMA-ES or coordinated retry, Python
-  objective loader, simulator plugin, distributed scheduler, auto-resume or MCP
-  frontend. MCP stays behind the plan's named-client value gate.
+  objective loader, simulator plugin, distributed scheduler or auto-resume.
+  Agents reach jobs through `optimization-mcp`
+  ([Agents and MCP](https://github.com/dietmarwo/optimization-jobs/blob/main/docs/job-api.md#agents-and-mcp)), whose `submit_job`
+  also accepts `fcmaes.job/0.1` specifications, like `run`.
 - No registry publication.

@@ -24,7 +24,8 @@ The workspace has four core crates, plus source-only job-layer crates:
 The shared [job API](job-api.md) crates, `optimization-job-api` (versioned
 envelope, worker SDK, checked journals, input hashing, process utilities and
 the legacy `fcmaes.job/0.1` contract) and `optimization-runner` (the
-`optimization-run` CLI), come from
+`optimization-run` CLI and `optimization-mcp`, the MCP server for agents),
+come from
 [optimization-jobs](https://github.com/dietmarwo/optimization-jobs) at the
 revision the root `Cargo.toml` pins; LP-IP-craft and SQP-craft use the same
 crates.
