@@ -54,7 +54,12 @@ and a cancellable Rust simulation API. Current limits are 32 coordinates,
 [API guide](docs/job-api/surrogate.md) (it links the executable tutorial),
 [measured results](docs/surrogate/validation/REPORT.md) and
 [reviewed roadmap](docs/surrogate/PLAN.md). Thompson-sampling TuRBO, asynchronous scheduling and
-large-budget handoff are future milestones.
+large-budget handoff are future milestones. In an
+[equal-budget comparison](benchmarks/surrogate-comparison/README.md) with
+BoTorch, egobox, scikit-optimize and Optuna it reached the lowest median
+final regret of the GP methods on four of five small problems at 1–3 orders
+of magnitude less proposal time; for separable or many-modal problems with
+tens of variables, BiteOpt retry (`fcmaes.retry/1`) remained better.
 
 ## Core design principle: improve results for the same wait
 
@@ -239,7 +244,9 @@ aggregate CSVs and plots spanning multiple seeds and validation studies.
 Implemented algorithms include Differential Evolution, active CMA-ES,
 CR-FM-NES, PGPE, Dual Annealing, BiteOpt, MODE, CVT-MAP-Elites, the
 Diversifier, independent retry, coordinated retry, and weighted
-multi-objective retry.
+multi-objective retry. `ParetoArchive2D` keeps the exact non-dominated front
+and hypervolume of all points evaluated on a two-objective problem, next to
+any optimizer ([guide](crates/fcmaes-core/PARETO_ARCHIVE.md)).
 
 The example crate includes GTOP mission optimization, Mazda factory-design
 objectives, stock-strategy optimization, material-flow planning, flexible

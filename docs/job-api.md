@@ -18,6 +18,7 @@ pinned in the root `Cargo.toml`, and contributes the fcmaes workers.
 | Error codes | [Errors](https://github.com/dietmarwo/optimization-jobs/blob/main/docs/job-api.md#errors) |
 | Claims, evidence and refutations | [Termination, claim and evidence](https://github.com/dietmarwo/optimization-jobs/blob/main/docs/job-api.md#termination-claim-and-evidence) |
 | Journals, accounting and recovery | [Accounting and recovery](https://github.com/dietmarwo/optimization-jobs/blob/main/docs/job-api.md#accounting-and-recovery) |
+| Logs and snapshots a worker declares, read while a job runs and in pages | [Artifacts](https://github.com/dietmarwo/optimization-jobs/blob/main/docs/job-api.md#artifacts) |
 | Agents and MCP | [Agents and MCP](https://github.com/dietmarwo/optimization-jobs/blob/main/docs/job-api.md#agents-and-mcp) |
 | JSON Schemas of jobs and results | [`docs/job-api/schemas`](https://github.com/dietmarwo/optimization-jobs/tree/main/docs/job-api/schemas) |
 | Implementation history and gates | [Plan](https://github.com/dietmarwo/optimization-jobs/blob/main/docs/job-api/PLAN.md) |
@@ -70,7 +71,8 @@ A change to the shared crates lands in optimization-jobs first. Then change
 `rev` in the root `Cargo.toml` and run
 `cargo update -p optimization-job-api -p optimization-runner`; the GTOC1
 route-search tutorial pins the same `rev` in its own `Cargo.toml` (then run
-`cargo update -p optimization-job-api` there). To develop both
+`cargo update -p optimization-job-api` there), and the dependency example in
+[application models](job-api/models.md) names it too. To develop both
 at once, add a `[patch."https://github.com/dietmarwo/optimization-jobs"]`
 section with path dependencies to a local checkout, as the
 [optimization-jobs README](https://github.com/dietmarwo/optimization-jobs#depending-on-this-repository)

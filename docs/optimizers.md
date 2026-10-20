@@ -33,11 +33,11 @@ improve the result returned after a fixed user-visible wait:
 
 | Algorithm | Population-evaluation interface | Notes |
 |---|---|---|
-| Differential Evolution | `ask` / `tell` | One ordered DE population batch |
+| Differential Evolution | `ask` / `tell`; `optimize_delayed(objective, workers)` | One ordered DE population batch; `optimize_delayed` keeps `workers` candidates in flight |
 | Active CMA-ES | `ask` / `tell`; `tell_x`; parallel one-shot evaluation | One CMA generation |
 | CR-FM-NES | `ask_pop` / `tell_pop`; `optimize_batch` | One mirrored population |
 | PGPE | `ask_pop` / `tell_pop`; `optimize_batch` | One mirrored population |
-| BiteOpt / DeepBiteOpt | `ask(batch)` / `tell` | Delayed-feedback candidate batch |
+| BiteOpt / DeepBiteOpt | `ask(batch)` / `tell`; `BiteOpt::optimize_batch` | Delayed-feedback candidate batch |
 | MODE | `ask` / `tell` | Objective-and-constraint rows for one population |
 | MAP-Elites / Diversifier | `*_batch` evaluators and ordered archive updates | Equivalent batch boundary rather than a literal optimizer `tell` |
 | Dual Annealing | None | Sequential proposal dependency; parallelize complete runs with retry instead |
@@ -269,6 +269,12 @@ Key `ModeParams` defaults:
 | `nsga_update` | true |
 | `pareto_update` | 0 |
 | `min_mutate` / `max_mutate` | 0.1 / 0.5 |
+
+The final population need not hold every non-dominated point a run evaluated.
+For two objectives, insert each feasible told row into a separate
+`ParetoArchive2D` to keep that exact front and its hypervolume; see
+[the Pareto archive guide](../crates/fcmaes-core/PARETO_ARCHIVE.md) and
+`cargo run --release -p fcmaes-core --example pareto_mode`.
 
 ## CVT-MAP-Elites and Diversifier
 

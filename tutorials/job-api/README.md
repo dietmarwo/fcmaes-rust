@@ -1,6 +1,8 @@
 # Tutorial: durable fcmaes optimization jobs
 
-The `fcmaes` worker accepts four profiles of the common job envelope:
+The `fcmaes` worker accepts these profiles of the common job envelope, plus
+the experimental `fcmaes.surrogate/1`, which has
+[its own tutorial](../surrogate/README.md):
 
 | Profile | One task is | Result claim |
 | --- | --- | --- |
@@ -123,7 +125,8 @@ point at a time and `fcmaes.evaluate/1` one point per task, so they require
 ## Scalar retries: BiteOpt, DE, CMA-ES, CR-FM-NES and PGPE
 
 `problem` selects a registered scalar model: `benchmark.sphere`,
-`benchmark.rosenbrock` or `gtop.cassini1` in the stock worker; `retries` and
+`benchmark.rosenbrock`, `gtop.cassini1`, `benchmark.branin` or
+`benchmark.hartmann3` in the stock worker; `retries` and
 `evaluations_per_retry` must be positive. The job's wall limit bounds the
 entire batch after admission.
 

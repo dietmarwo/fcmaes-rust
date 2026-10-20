@@ -13,7 +13,9 @@ optimizer and check of the stock worker.
 ```toml
 [dependencies]
 fcmaes-job-worker = { git = "https://github.com/dietmarwo/fcmaes-rust" }
-optimization-job-api = { git = "https://github.com/dietmarwo/fcmaes-rust" }
+# The same revision as fcmaes-rust's root Cargo.toml pins; another source or
+# revision would be a second, incompatible copy of the crate.
+optimization-job-api = { git = "https://github.com/dietmarwo/optimization-jobs", rev = "6a42472d1904bdcc81f81a29023c8b51ca025ee6" }
 serde_json = "1"
 ```
 
@@ -55,7 +57,7 @@ worker that fits a curve to a data file; the
 
 | Registration | The closure returns | Profile |
 | --- | --- | --- |
-| `registry.scalar(id, version, about, factory)` → `Scalar::new(f)` | one minimized value | `fcmaes.retry/1` |
+| `registry.scalar(id, version, about, factory)` → `Scalar::new(f)` | one minimized value | `fcmaes.retry/1`, `fcmaes.surrogate/1` |
 | `registry.multi_objective(...)` → `MultiObjective::new(objectives, constraints, f)` | the objectives, then the constraints (feasible at or below 0) | `fcmaes.mode/1` |
 | `registry.quality_diversity(...)` → `QualityDiversity::new(descriptor_lower, descriptor_upper, f)` | `(fitness, descriptor)`, fitness minimized | `fcmaes.map-elites/1` |
 
