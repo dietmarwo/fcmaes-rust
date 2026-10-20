@@ -422,7 +422,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "39cab71617ae0d63f51a36d69f866391735b51691dbda63cf6f96d042b63efeb"
 dependencies = [
  "libc",
- "windows-sys 0.52.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -465,6 +465,7 @@ version = "0.1.5"
 dependencies = [
  "fcmaes-core",
  "fcmaes-native-worker",
+ "fcmaes-surrogate",
  "optimization-job-api",
  "optimization-runner",
  "rayon",
@@ -503,6 +504,17 @@ dependencies = [
  "optimization-runner",
  "serde_json",
  "tempfile",
+]
+
+[[package]]
+name = "fcmaes-surrogate"
+version = "0.1.0"
+dependencies = [
+ "fcmaes-core",
+ "libm",
+ "rayon",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
@@ -1137,7 +1149,7 @@ checksum = "7c87def4c32ab89d880effc9e097653c8da5d6ef28e6b539d313baaacfbafcbe"
 [[package]]
 name = "optimization-job-api"
 version = "0.2.0"
-source = "git+https://github.com/dietmarwo/optimization-jobs?rev=eb1c9de66e677097a7ea22d9a4b2f6357c18751d#eb1c9de66e677097a7ea22d9a4b2f6357c18751d"
+source = "git+https://github.com/dietmarwo/optimization-jobs?rev=6a42472d1904bdcc81f81a29023c8b51ca025ee6#6a42472d1904bdcc81f81a29023c8b51ca025ee6"
 dependencies = [
  "fs2",
  "libc",
@@ -1149,7 +1161,7 @@ dependencies = [
 [[package]]
 name = "optimization-runner"
 version = "0.2.0"
-source = "git+https://github.com/dietmarwo/optimization-jobs?rev=eb1c9de66e677097a7ea22d9a4b2f6357c18751d#eb1c9de66e677097a7ea22d9a4b2f6357c18751d"
+source = "git+https://github.com/dietmarwo/optimization-jobs?rev=6a42472d1904bdcc81f81a29023c8b51ca025ee6#6a42472d1904bdcc81f81a29023c8b51ca025ee6"
 dependencies = [
  "clap",
  "fs2",
@@ -1365,7 +1377,7 @@ dependencies = [
  "once_cell",
  "socket2",
  "tracing",
- "windows-sys 0.52.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -1562,7 +1574,7 @@ dependencies = [
  "errno",
  "libc",
  "linux-raw-sys",
- "windows-sys 0.52.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -1619,7 +1631,7 @@ dependencies = [
  "security-framework",
  "security-framework-sys",
  "webpki-root-certs",
- "windows-sys 0.52.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -1911,7 +1923,7 @@ dependencies = [
  "getrandom 0.4.3",
  "once_cell",
  "rustix",
- "windows-sys 0.52.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -2290,7 +2302,7 @@ version = "0.1.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c2a7b1c03c876122aa43f3020e6c3c3ee5c05081c9a00739faf7503aeba10d22"
 dependencies = [
- "windows-sys 0.52.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]

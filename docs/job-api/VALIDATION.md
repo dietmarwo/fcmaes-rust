@@ -310,6 +310,31 @@ with Rust 1.97:
 | Tutorial | 12 examples completed, schemas validated; a missing binary under `CARGO_TARGET_DIR` is named |
 | GTOC1 route-search tutorial on the new revision | 56 tests passed, protocol smoke run passed |
 
+## Surrogate profile and declared artifacts (20 October 2026)
+
+`fcmaes.surrogate/1` (experimental, see [surrogate.md](surrogate.md)) runs
+exact-GP Bayesian optimization on registered scalar models. Its tasks declare
+their trace (`surrogate-TASK`, records) and observations snapshot
+(`surrogate-observations-TASK`, json) as artifacts of the shared job API, so
+agents read them while a job runs and page through the trace, and the sealed
+result records their SHA-256 for a warm-start input. This repository moved to
+optimization-jobs revision
+[`6a42472`](https://github.com/dietmarwo/optimization-jobs/commit/6a42472d1904bdcc81f81a29023c8b51ca025ee6),
+which adds the declarations, paged reads and a surrogate case in the shared
+harness. On Linux x86_64 with Rust 1.97:
+
+| Check | Observed result |
+| --- | --- |
+| `cargo fmt --check`, Clippy `-D warnings` for the workspace, documentation consistency | Passed |
+| Workspace tests | 312 passed |
+| Shared harness from Cargo's checkout | 15 run: 13 passed (including the surrogate case with artifact pages and a warm start), 2 skipped without LP/SQP workers |
+| Shared review tests (`JOB_API_REQUIRE_SCHEMA=1`) | 20 passed |
+| `test_mcp.py` with this repository's binaries | 29 passed |
+| `scripts/surrogate/test_job_api.py` | 2 passed: MCP pages through the trace; a running job's trace read as an artifact before a cooperative cancel |
+| `tutorials/surrogate/run.py` | Branin 0.3978880, warm job of 8 new calls from 48 observations taken through the artifact index, oscillator 1.3e-6 |
+| `tutorials/job-api/run.py` | Completed |
+| GTOC1 route-search tutorial on the new revision | 56 tests passed |
+
 ## Reproduce with sibling workers
 
 To run the mixed acceptance, build each repository's worker and pass the

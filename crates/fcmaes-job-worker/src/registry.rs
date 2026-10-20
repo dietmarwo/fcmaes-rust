@@ -28,7 +28,7 @@
 //! parameter value the factory used, defaults included, in the resolved job,
 //! and rejects parameters and inputs the factory did not use. Factories run
 //! at validation and again at execution, so they must be deterministic.
-use crate::{map_elites, mode, retry};
+use crate::{evaluate, map_elites, mode, retry, surrogate};
 use optimization_job_api::{JobSpec, Result, legacy};
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use serde_json::{Map, Value, json};
@@ -41,6 +41,11 @@ use std::{
 
 /// A scalar objective, minimized.
 pub type ScalarFn = Arc<dyn Fn(&[f64]) -> f64 + Send + Sync>;
+pub type SimulationFn = Arc<
+    dyn Fn(&[f64], &crate::simulation::SimContext) -> std::result::Result<f64, String>
+        + Send
+        + Sync,
+>;
 /// Objectives followed by constraints.
 pub type VectorFn = Arc<dyn Fn(&[f64]) -> Vec<f64> + Send + Sync>;
 /// Fitness, minimized, and behavior descriptor.
@@ -93,7 +98,10 @@ pub struct Domain {
 /// A scalar model: one minimized objective.
 #[derive(Clone)]
 pub struct Scalar {
+    /// Plain objective. For `Scalar::simulation` models it panics: call
+    /// [`Scalar::value`] with a `SimContext` instead.
     pub evaluate: ScalarFn,
+    pub(crate) simulation: Option<SimulationFn>,
     /// `None`: any finite box.
     pub domain: Option<Domain>,
 }
@@ -101,7 +109,39 @@ impl Scalar {
     pub fn new(evaluate: impl Fn(&[f64]) -> f64 + Send + Sync + 'static) -> Self {
         Self {
             evaluate: Arc::new(evaluate),
+            simulation: None,
             domain: None,
+        }
+    }
+    /// Fallible/cancellable simulation. In v0.1 this is accepted by the
+    /// surrogate profile only; legacy scalar profiles reject it explicitly.
+    pub fn simulation(
+        evaluate: impl Fn(&[f64], &crate::simulation::SimContext) -> std::result::Result<f64, String>
+        + Send
+        + Sync
+        + 'static,
+    ) -> Self {
+        Self {
+            // Profiles that would call this reject simulation models when the
+            // job is resolved; a direct call is a bug, not a bad objective value.
+            evaluate: Arc::new(|_| {
+                panic!("a Scalar::simulation model must be called through Scalar::value")
+            }),
+            simulation: Some(Arc::new(evaluate)),
+            domain: None,
+        }
+    }
+    pub fn is_simulation(&self) -> bool {
+        self.simulation.is_some()
+    }
+    pub fn value(
+        &self,
+        x: &[f64],
+        context: &crate::simulation::SimContext,
+    ) -> std::result::Result<f64, String> {
+        match &self.simulation {
+            Some(f) => f(x, context),
+            None => Ok((self.evaluate)(x)),
         }
     }
     /// Restricts job bounds to `[lower, upper]`.
@@ -235,6 +275,14 @@ impl Kind {
             Kind::Scalar => retry::PROFILE,
             Kind::MultiObjective => mode::PROFILE,
             Kind::QualityDiversity => map_elites::PROFILE,
+        }
+    }
+    /// Every supported profile; `profile()` remains the optimizing default.
+    pub fn profiles(self) -> &'static [&'static str] {
+        match self {
+            Kind::Scalar => &[retry::PROFILE, surrogate::PROFILE, evaluate::PROFILE],
+            Kind::MultiObjective => &[mode::PROFILE, evaluate::PROFILE],
+            Kind::QualityDiversity => &[map_elites::PROFILE, evaluate::PROFILE],
         }
     }
 }
@@ -419,9 +467,13 @@ impl Registry {
             .iter()
             .map(|(id, e)| {
                 let mut entry = json!({"id":id,"version":e.version,"kind":e.kind.name(),
-                    "profile":e.kind.profile()});
+                    "profile":e.kind.profile(), "profiles":e.kind.profiles()});
                 for (k, v) in e.about.as_object().into_iter().flatten() {
                     entry[k] = v.clone();
+                }
+                if entry["simulation"] == true {
+                    entry["profile"] = json!(surrogate::PROFILE);
+                    entry["profiles"] = json!([surrogate::PROFILE]);
                 }
                 entry
             })
@@ -458,10 +510,29 @@ impl Registry {
     /// `base` is the directory the job's input paths are relative to.
     pub fn resolve(
         &self,
-        mut problem: Problem,
+        problem: Problem,
         spec: &JobSpec,
         base: &Path,
     ) -> Result<(Problem, Model)> {
+        self.resolve_with_profile_inputs(problem, spec, base, &[])
+    }
+
+    /// Resolves a model while allowing explicitly named inputs owned and
+    /// hash-checked by the calling profile (for example surrogate warm data).
+    /// Normal model parameters and all other unused inputs remain rejected.
+    pub fn resolve_with_profile_inputs(
+        &self,
+        mut problem: Problem,
+        spec: &JobSpec,
+        base: &Path,
+        profile_inputs: &[&str],
+    ) -> Result<(Problem, Model)> {
+        let mut allowed = BTreeSet::new();
+        for &name in profile_inputs {
+            if !allowed.insert(name) || !spec.inputs.iter().any(|i| i.name == name) {
+                return Err(format!("missing or repeated profile-owned input {name}").into());
+            }
+        }
         let entry = self.entries.get(&problem.id).ok_or_else(|| {
             format!(
                 "unknown problem {}; describe lists the registered models",
@@ -489,6 +560,11 @@ impl Registry {
             inputs: RefCell::new(BTreeSet::new()),
         };
         let model = (entry.factory)(&instance)?;
+        if matches!(&model, Model::Scalar(m) if m.is_simulation())
+            && spec.payload_schema != surrogate::PROFILE
+        {
+            return Err("simulation models currently require fcmaes.surrogate/1; legacy retry/evaluate simulation adaptation is a later milestone".into());
+        }
         let used = instance.used.into_inner();
         let unknown: Vec<&str> = instance
             .given
@@ -500,7 +576,11 @@ impl Registry {
             return Err(format!("{} has no parameter {}", problem.id, unknown.join(", ")).into());
         }
         let read = instance.inputs.into_inner();
-        if let Some(unused) = spec.inputs.iter().find(|i| !read.contains(&i.name)) {
+        if let Some(unused) = spec
+            .inputs
+            .iter()
+            .find(|i| !read.contains(&i.name) && !allowed.contains(i.name.as_str()))
+        {
             return Err(format!("input {} is not used by {}", unused.name, problem.id).into());
         }
         let domain = match &model {

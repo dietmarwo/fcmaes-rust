@@ -1,0 +1,16 @@
+{
+  "schema_version": "optimization.job/0.1",
+  "request_key": "surrogate-tutorial-oscillator-v1",
+  "worker": "simulation",
+  "payload_schema": "fcmaes.surrogate/1",
+  "resources": {"cpu_slots": 8, "outer_workers": 1, "inner_threads": 8},
+  "limits": {"wall_time_seconds": 120.0, "grace_seconds": 1.0},
+  "inputs": [],
+  "payload": {
+    "problem": {"id": "app.damped-oscillator", "version": "1", "config": {"dimension": 2},
+      "parameters": {"steps": 2048, "replicas": 4, "pause_ms": 0},
+      "bounds": {"lower": [0.05, 0.5], "upper": [1.5, 4.0], "broadcast": false}},
+    "seed": 19, "evaluations": 32, "runs": 1, "concurrent": 4,
+    "evaluation_threads": 2, "parameters": {}, "recheck_best": true
+  }
+}

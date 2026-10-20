@@ -10,6 +10,50 @@ worker. In another checkout, check `Cargo.toml`, the available worker's
 discovery output, and the linked guides before using a command or claiming a
 capability.
 
+The experimental `fcmaes-surrogate` crate and `fcmaes.surrogate/1` profile
+(source-only, crate version 0.1.0) were added on 2026-10-20; see the next
+section.
+
+## Experimental surrogate chooser rule
+
+Use `fcmaes.surrogate/1` only for deterministic scalar continuous box problems
+with 1–32 variables and at most 256 new plus warm observations. It uses exact
+GPs, a single TuRBO-style trust region (two of three proposals; `trust_region`,
+default true) and synchronous Kriging-believer batches. The resource rule is
+`concurrent * evaluation_threads <= inner_threads <= 8`, within the common
+outer-worker reservation. Prefer existing retry algorithms for larger-budget
+conventional scalar problems until scalable local BO/handoff has passed its
+campaign. In the equal-budget comparison with BoTorch, egobox,
+scikit-optimize and Optuna (`benchmarks/surrogate-comparison`) it reached the
+lowest final regret on Hartmann-3/6, the RK4 oscillator and Styblinski–Tang-10
+among the GP methods, at 1–3 orders of magnitude less proposal time; BiteOpt
+retry was still better on the separable, many-modal Styblinski–Tang-10, so
+prefer retry for such problems at d >= 10. Raise `nugget` (default 1e-10)
+for rough or solver-noisy simulations. Do not emit unimplemented `auto`,
+`turbo`, async, noise or governor settings. Source-only means it is absent from the published core/Python API.
+
+`Scalar::simulation` receives a fallible `SimContext` callback with checkpoint,
+remaining seconds, point-derived seed and thread allowance. In this milestone
+only the surrogate profile accepts it; retry/evaluate explicitly reject it.
+Ordinary `Scalar::new` models retain behavior. Simulation metadata should
+include `simulation: true` for accurate discovery. Use constructors instead of
+external Scalar struct literals. A stable point seed is not noisy GP support.
+
+Only independently re-evaluated exact agreement yields `rechecked` evidence;
+otherwise the best historical point remains `claimed`. Final validation is an
+extra separately counted call. Cancellation is partial work, not an evaluation
+failure; a cancelled recheck does not refute the objective. The trace and the
+snapshot of each task are declared artifacts (`surrogate-TASK`,
+`surrogate-observations-TASK`): `jobs get` and MCP `get_job` list them while
+the job runs, `jobs artifact` and MCP `get_artifact` page through the trace,
+and the result's `runner.artifact_index` records their SHA-256. Warm starts
+are new jobs from a hashed snapshot input, not exact checkpoint resumes.
+
+Read [the current API](docs/job-api/surrogate.md),
+[the executable tutorial](tutorials/surrogate/README.md), and
+[the reviewed plan/status ledger](docs/surrogate/PLAN.md) before using this
+profile. The sections below keep their non-surrogate scope.
+
 This file is operational context for an AI that must design and implement an
 optimization solution with this repository. It is not a claim that one
 optimizer is universally best. Use the problem structure, evaluation cost, and

@@ -63,6 +63,9 @@ jobs:
           python3 "$SHARED/scripts/job-api/test_review.py"
           JOB_API_REQUIRE_WORKER=1 python3 "$SHARED/scripts/job-api/test_mcp.py"
           python3 tutorials/job-api/run.py --root "$RUNNER_TEMP/job-api-tutorial"
+          cargo build --release --locked -p fcmaes-job-worker --example simulation_worker
+          python3 scripts/surrogate/test_job_api.py
+          python3 tutorials/surrogate/run.py --root "$RUNNER_TEMP/surrogate-tutorial"
       - name: Python binding tests
         run: |
           python -m venv .venv
