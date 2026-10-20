@@ -11,7 +11,19 @@ compile, link, load, or call the historical C++ optimizer backend.
 cargo add fcmaes-core
 ```
 
-The minimum supported Rust version is 1.88.
+The minimum supported Rust version is 1.88. The crate depends on crates.io
+crates only. To build it from source, or to use changes not yet released:
+
+```bash
+git clone https://github.com/dietmarwo/fcmaes-rust
+cd fcmaes-rust
+cargo test -p fcmaes-core --locked
+```
+
+```toml
+[dependencies]
+fcmaes-core = { git = "https://github.com/dietmarwo/fcmaes-rust" }
+```
 
 `ParetoArchive2D` is an exact two-objective Pareto archive with incremental
 hypervolume, a Rust port derived from `bitehv2.h` in Aleksey Vaneev's

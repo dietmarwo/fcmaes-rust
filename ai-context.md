@@ -9,12 +9,18 @@ result contract 0.2; and the experimental `fcmaes-surrogate` crate with the
 Since `67bd698`, the job crates `optimization-job-api` and
 `optimization-runner` 0.2.0 come from
 [optimization-jobs](https://github.com/dietmarwo/optimization-jobs) (#11; the
-in-repo `fcmaes-job-api` crate is gone), now at the pinned revision `6a42472`,
-which adds worker-declared artifacts (#14); `optimization-mcp` serves the jobs
+in-repo `fcmaes-job-api` crate is gone), now at the pinned revision `423cd87`,
+which adds worker-declared artifacts (#14) and streaming artifact pages; `optimization-mcp` serves the jobs
 to agents (#12); and review fixes bound BiteOpt/DE populations, name MODE
 hypervolume methods and add the tutorial's `--bin-dir` (#13). In another
 checkout, check `Cargo.toml`, the available worker's discovery output, and the
 linked guides before using a command or claiming a capability.
+
+If the solver is not chosen yet, start with the
+[entry point](https://github.com/dietmarwo/optimization-jobs/blob/main/ai-context.md)
+in optimization-jobs. It routes between fast-cma-es, fcmaes-rust,
+LP-IP-craft and SQP-craft and covers installation, the job API and the MCP
+server.
 
 ## Experimental surrogate chooser rule
 
