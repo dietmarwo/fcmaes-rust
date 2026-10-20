@@ -50,7 +50,7 @@ Resources must satisfy `concurrent * evaluation_threads <= inner_threads <= 8` a
 | initial_points | 8 | 1–128 |
 | candidates | 256 | 32–4096 |
 | fit_restarts | 2 | 1–4 |
-| fit_sweeps | 8 | 1–24 |
+| fit_iterations | 50 | 1–200 bounded L-BFGS iterations per restart (analytic gradient of the MAP objective in log lengthscales) |
 | refit_interval | 3 | 1–64 proposal rounds |
 | lcb_beta | 2 | finite 0–20 |
 | minimum_distance | 1e-6 | unit-coordinate separation, 1e-12–0.01 |
@@ -87,7 +87,7 @@ M0 only supports simulation callbacks in `fcmaes.surrogate/1`. Retry/evaluate re
 
 Every task writes `surrogate-TASK.jsonl` and `surrogate-observations-TASK.json` in its attempt directory (task zero in the tutorial). The trace uses shared checksummed framing version 1 with Header/Event/Recheck records. Started/completed/cancelled events include IDs; completed observations are fsynced before waiting for stragglers. Snapshot updates are atomic. Write failures fail closed. These files are **local attempt files**; result details name them, but they are not registered downloadable/paged MCP artifacts in this version.
 
-To warm start, copy the compact snapshot beside the new job file, hash its bytes, add it to envelope `inputs`, and reference its input name in `warm_start`. The tutorial performs this exactly. A matching identity includes model id/version/dimension, resolved parameters, model data hashes and simulation seed where relevant. Incorrect hashes, identity, trust flags, malformed records and duplicate IDs are rejected. New bounds drop out-of-box points and report a count. Warm values are historical user-supplied evidence, not independently certified. Changing model code requires a new model version.
+To warm start, copy the compact snapshot beside the new job file, hash its bytes, add it to envelope `inputs`, and reference its input name in `warm_start`. The tutorial performs this exactly. A matching identity includes model id/version/dimension, resolved parameters, model data hashes and, for simulation models, the run seed passed to `SimContext` (`retry_run_seed(seed, task)`). A snapshot from task k of a multi-run job therefore only matches a new single-run job whose task-0 run seed is the same. Incorrect hashes, identity, trust flags, malformed records and duplicate IDs are rejected. New bounds drop out-of-box points and report a count. Warm values are historical user-supplied evidence, not independently certified. Changing model code requires a new model version.
 
 A warm job starts new optimization state from the observations and only spends its new callback budget. It is not an exact optimizer checkpoint resume. Full traces are not accepted as warm inputs. Library `driver::replay` accepts decoded Event records and verifies proposals, state and final counters; use the shared `storage::read_checked` first for worker files. Semantic replay requires a complete Finished event. Checksum verification and decision replay do not re-evaluate the objective.
 
@@ -102,7 +102,7 @@ A warm job starts new optimization state from the observations and only spends i
 | work.validation_evaluations | Extra best-point validation calls started (0 or 1 per run). |
 | work.cancelled_validation_evaluations | Validation calls stopped cooperatively. |
 | work.model_fits | Completed hyperparameter fit operations. |
-| details.fit_evaluations | Number of fit objective evaluations, not simulator calls. |
+| details.fit_evaluations | Kernel-matrix factorizations by the MAP fit (accepted L-BFGS points also compute a gradient), not simulator calls. |
 | details.proposal_seconds | Time in successful proposal rounds. |
 | details.evaluation_seconds_sum | Sum of optimization callback elapsed wall time, including cancelled partial calls; not process CPU time and not job wall time. |
 

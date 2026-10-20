@@ -1,11 +1,18 @@
 # AI context for solving user optimization problems with fcmaes-rust
 
-Surrogate addendum reviewed 2026-10-20 against source base `92aaf03f9f03257a284126a322160d045422bc9a`
-plus the unmerged implementation in this project. The shared optimization-jobs
-pin is `eb1c9de66e677097a7ea22d9a4b2f6357c18751d`. Workspace/core version remains
-0.1.5; the new source-only `fcmaes-surrogate` crate is 0.1.0. This is not a
-published-package update. Check Cargo.toml and worker discovery in the actual
-checkout before relying on commands or capabilities.
+Last reviewed 2026-10-19 against `main` at `67bd698`, which includes the
+shared agent job API 0.1 (#5), the CMA-ES, MODE and MAP-Elites job profiles,
+the 0.1.1 synchronization of the shared crates and the result contract 0.2
+(evidence, refutations, evaluation profiles, error codes and JSON Schemas),
+plus application models, parallel population evaluation, CR-FM-NES, PGPE,
+CMA-ES restarts, CVT archives and CMA-ME/CMA-MAE emitters in the fcmaes
+worker. In another checkout, check `Cargo.toml`, the available worker's
+discovery output, and the linked guides before using a command or claiming a
+capability.
+
+The experimental `fcmaes-surrogate` crate and `fcmaes.surrogate/1` profile
+(source-only, crate version 0.1.0) were added on 2026-10-20; see the next
+section.
 
 ## Experimental surrogate chooser rule
 
@@ -35,7 +42,7 @@ from hashed observations, not exact checkpoint resumes.
 Read [the current API](docs/job-api/surrogate.md),
 [the executable tutorial](tutorials/surrogate/README.md), and
 [the reviewed plan/status ledger](docs/surrogate/PLAN.md) before using this
-profile. Older sections below retain their original non-surrogate scope.
+profile. The sections below keep their non-surrogate scope.
 
 This file is operational context for an AI that must design and implement an
 optimization solution with this repository. It is not a claim that one

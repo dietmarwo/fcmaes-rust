@@ -52,22 +52,45 @@ fn replica(
 }
 fn main() {
     let mut registry = Registry::benchmarks();
-    registry.scalar("app.damped-oscillator","1",json!({"simulation":true,"dimensions":2,
-        "parameters":{"steps":"default 2048, multiple of 8","replicas":"default 4","pause_ms":"default 0; optional synthetic latency"},
-        "objective":"RK4 trajectory squared error; target damping 0.4, stiffness 2.3"}),|model|{
+    let about = json!({
+        "simulation": true,
+        "dimensions": 2,
+        "parameters": {
+            "steps": "default 2048, multiple of 8",
+            "replicas": "default 4",
+            "pause_ms": "default 0; optional synthetic latency",
+        },
+        "objective": "RK4 trajectory squared error; target damping 0.4, stiffness 2.3",
+    });
+    registry.scalar("app.damped-oscillator", "1", about, |model| {
         model.require_dimension(2..=2)?;
-        let steps:usize=model.parameter("steps",2048)?;let replicas:usize=model.parameter("replicas",4)?;let pause_ms:u64=model.parameter("pause_ms",0)?;
-        if !(64..=1_000_000).contains(&steps)||!steps.is_multiple_of(8)||!(1..=64).contains(&replicas)||pause_ms>10 {
+        let steps: usize = model.parameter("steps", 2048)?;
+        let replicas: usize = model.parameter("replicas", 4)?;
+        let pause_ms: u64 = model.parameter("pause_ms", 0)?;
+        if !(64..=1_000_000).contains(&steps)
+            || !steps.is_multiple_of(8)
+            || !(1..=64).contains(&replicas)
+            || pause_ms > 10
+        {
             return Err("steps 64..1e6 multiple of 8, replicas 1..64, pause_ms 0..10".into());
         }
-        Ok(Scalar::simulation(move|x,ctx|{
+        let simulate = move |x: &[f64], ctx: &SimContext| -> Result<f64, String> {
             ctx.checkpoint()?;
-            let values:Vec<Result<f64,String>>=if ctx.threads()>1{
-                (0..replicas).into_par_iter().map(|i|replica(x,ctx,steps,i,pause_ms)).collect()
-            }else{(0..replicas).map(|i|replica(x,ctx,steps,i,pause_ms)).collect()};
-            // Ordered collection and serial reduction, including on eight threads.
-            let mut total=0.0;for value in values{total+=value?;}Ok(total/replicas as f64)
-        }).domain(vec![0.05,0.5],vec![1.5,4.0]))
+            let run = |i| replica(x, ctx, steps, i, pause_ms);
+            let values: Vec<Result<f64, String>> = if ctx.threads() > 1 {
+                (0..replicas).into_par_iter().map(run).collect()
+            } else {
+                (0..replicas).map(run).collect()
+            };
+            // Ordered collection and serial reduction, so any pool size gives
+            // the same value.
+            let mut total = 0.0;
+            for value in values {
+                total += value?;
+            }
+            Ok(total / replicas as f64)
+        };
+        Ok(Scalar::simulation(simulate).domain(vec![0.05, 0.5], vec![1.5, 4.0]))
     });
     optimization_job_api::worker::run(Adapter::new(registry));
 }

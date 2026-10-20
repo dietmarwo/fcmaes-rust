@@ -150,3 +150,79 @@ fn spaces_transforms_and_lhs_are_checked_at_extreme_scales() {
     }
     assert!(serde_json::from_str::<Config>(r#"{"asynchronous":true}"#).is_err());
 }
+
+#[test]
+fn map_fit_improves_on_its_start_is_reproducible_and_stays_in_bounds() {
+    for (n, d) in [(10, 1), (40, 4), (120, 12)] {
+        let xs = design::latin_hypercube(n, d, 17);
+        let ys: Vec<f64> = xs
+            .iter()
+            .map(|x| {
+                x.iter()
+                    .enumerate()
+                    .map(|(j, v)| (4.0 * v + j as f64).sin())
+                    .sum()
+            })
+            .collect();
+        let mode = libm::exp(std::f64::consts::SQRT_2 + 0.5 * libm::log(d as f64) - 3.0);
+        for kernel in [Kernel::Matern52, Kernel::Rbf] {
+            let start = Hyper {
+                lengthscales: vec![mode; d],
+            };
+            let fit = |restarts| {
+                gp::fit(
+                    gp::Fit {
+                        xs: &xs,
+                        ys: &ys,
+                        kernel,
+                        warm: Some(&start),
+                        seed: 5,
+                        restarts,
+                        iterations: 50,
+                    },
+                    &|| false,
+                )
+                .unwrap()
+            };
+            let (single, evaluations) = fit(1);
+            let initial = ExactGp::with_hyper(&xs, &ys, kernel, start.clone()).unwrap();
+            assert!(single.negative_log_posterior < initial.negative_log_posterior);
+            assert!(evaluations > 1 && evaluations <= 50 * 31 + 1);
+            let (restarted, _) = fit(3);
+            assert!(restarted.negative_log_posterior <= single.negative_log_posterior);
+            assert_eq!(
+                fit(3).0.negative_log_posterior,
+                restarted.negative_log_posterior
+            );
+            // The carried hyperparameters rebuild exactly the fitted model.
+            let rebuilt = ExactGp::with_hyper(&xs, &ys, kernel, restarted.hyper.clone()).unwrap();
+            assert_eq!(
+                rebuilt.negative_log_posterior,
+                restarted.negative_log_posterior
+            );
+            let upper = 1000.0 * libm::sqrt(d as f64);
+            assert!(
+                restarted
+                    .hyper
+                    .lengthscales
+                    .iter()
+                    .all(|l| (0.025..=upper).contains(l))
+            );
+        }
+    }
+    assert!(matches!(
+        gp::fit(
+            gp::Fit {
+                xs: &[vec![0.5]],
+                ys: &[1.0],
+                kernel: Kernel::Rbf,
+                warm: None,
+                seed: 1,
+                restarts: 1,
+                iterations: 5,
+            },
+            &|| true,
+        ),
+        Err(fcmaes_surrogate::Error::Stopped)
+    ));
+}

@@ -17,7 +17,44 @@ struct Problem {
     space: Space,
     objective: fn(&[f64]) -> f64,
     optimum: f64,
+    evaluations: usize,
 }
+/// The tutorial's RK4 damped-oscillator calibration (four replicas, 2048
+/// steps): fit damping and stiffness, minimum 0 at (0.4, 2.3) up to
+/// integration error.
+fn oscillator(x: &[f64]) -> f64 {
+    let (c, k) = (x[0], x[1]);
+    let rhs = |y: [f64; 2]| [y[1], -c * y[1] - k * y[0]];
+    let steps = 2048;
+    let h = 4.0 / steps as f64;
+    let mut total = 0.0;
+    for replica in 0..4 {
+        let initial = 1.0 + 0.1 * replica as f64;
+        let mut y = [initial, 0.0];
+        let mut loss = 0.0;
+        for i in 0..steps {
+            let a = rhs(y);
+            let b = rhs([y[0] + h * a[0] / 2.0, y[1] + h * a[1] / 2.0]);
+            let d = rhs([y[0] + h * b[0] / 2.0, y[1] + h * b[1] / 2.0]);
+            let e = rhs([y[0] + h * d[0], y[1] + h * d[1]]);
+            y = [
+                y[0] + h * (a[0] + 2.0 * b[0] + 2.0 * d[0] + e[0]) / 6.0,
+                y[1] + h * (a[1] + 2.0 * b[1] + 2.0 * d[1] + e[1]) / 6.0,
+            ];
+            if (i + 1) % (steps / 8) == 0 {
+                let t = (i + 1) as f64 * h;
+                let omega = (2.3_f64 - 0.04).sqrt();
+                let target = initial
+                    * (-0.2 * t).exp()
+                    * ((omega * t).cos() + 0.2 / omega * (omega * t).sin());
+                loss += (y[0] - target).powi(2);
+            }
+        }
+        total += loss / 8.0;
+    }
+    total / 4.0
+}
+
 fn score(xs: &[Vec<f64>], objective: &(dyn Fn(&[f64]) -> f64 + Sync)) -> Vec<f64> {
     xs.par_iter().map(|x| objective(x)).collect()
 }
@@ -147,7 +184,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut output = PathBuf::from("surrogate-smoke.json");
     let mut threads = 8;
     let mut q = 4;
-    let mut budget = 48;
+    let mut budget = None;
+    let mut selected = vec!["branin".to_string(), "hartmann3".to_string()];
     let mut sleep_ms = 0;
     let mut seeds = vec![7, 11, 19, 23, 41];
     let mut args = std::env::args().skip(1);
@@ -157,33 +195,71 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             "--output" => output = value.into(),
             "--threads" => threads = value.parse()?,
             "--concurrent" => q = value.parse()?,
-            "--evaluations" => budget = value.parse()?,
+            "--evaluations" => budget = Some(value.parse()?),
+            "--problems" => selected = value.split(',').map(str::to_string).collect(),
             "--sleep-ms" => sleep_ms = value.parse()?,
             "--seeds" => seeds = value.split(',').map(str::parse).collect::<Result<_, _>>()?,
             _ => return Err(format!("unknown argument {arg}").into()),
         }
     }
-    if threads == 0 || threads > 16 || q == 0 || q > 8 || !(8..=256).contains(&budget) {
+    if threads == 0
+        || threads > 16
+        || q == 0
+        || q > 8
+        || budget.is_some_and(|b| !(8..=256).contains(&b))
+    {
         return Err("threads 1..16, batch size 1..8, evaluations 8..256".into());
     }
     let pool = ThreadPoolBuilder::new().num_threads(threads).build()?;
-    let problems = [
+    let catalogue = [
         Problem {
             name: "branin",
             space: Space::new(vec![-5.0, 0.0], vec![10.0, 15.0], vec![false; 2])?,
             objective: problems::branin,
             optimum: 0.39788735772973816,
+            evaluations: 48,
         },
         Problem {
             name: "hartmann3",
             space: Space::new(vec![0.0; 3], vec![1.0; 3], vec![false; 3])?,
             objective: problems::hartmann3,
             optimum: -3.86278214782076,
+            evaluations: 48,
+        },
+        Problem {
+            name: "hartmann6",
+            space: Space::new(vec![0.0; 6], vec![1.0; 6], vec![false; 6])?,
+            objective: problems::hartmann6,
+            optimum: -3.322368011415515,
+            evaluations: 96,
+        },
+        Problem {
+            name: "styblinski10",
+            space: Space::new(vec![-5.0; 10], vec![5.0; 10], vec![false; 10])?,
+            objective: problems::styblinski_tang,
+            optimum: -391.6616570377142,
+            evaluations: 128,
+        },
+        Problem {
+            name: "oscillator",
+            space: Space::new(vec![0.05, 0.5], vec![1.5, 4.0], vec![false; 2])?,
+            objective: oscillator,
+            optimum: 0.0,
+            evaluations: 32,
         },
     ];
+    let mut problems = Vec::new();
+    for name in &selected {
+        let problem = catalogue
+            .iter()
+            .find(|p| p.name == name)
+            .ok_or_else(|| format!("unknown problem {name}"))?;
+        problems.push(problem);
+    }
     let config = Config::default();
     let mut runs = Vec::new();
-    for problem in &problems {
+    for &problem in &problems {
+        let budget = budget.unwrap_or(problem.evaluations);
         for &seed in &seeds {
             for method in ["gp", "random", "cmaes", "biteopt"] {
                 let objective = |x: &[f64]| {
@@ -232,16 +308,38 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 let Observed::Finite(initial_best) = first.value else {
                     unreachable!()
                 };
-                runs.push(json!({"problem":problem.name,"method":method,"seed":seed,"evaluations":history.len(),"best":best_value,
-            "regret":(best_value-problem.optimum).max(0.0),"initial_best":initial_best,"wall_seconds":elapsed,
-            "proposal_seconds":proposal_seconds,"fit_evaluations":fit_evaluations,"history":history}));
+                runs.push(json!({
+                    "problem": problem.name,
+                    "dimension": problem.space.dimension(),
+                    "method": method,
+                    "seed": seed,
+                    "evaluations": history.len(),
+                    "best": best_value,
+                    "regret": (best_value - problem.optimum).max(0.0),
+                    "initial_best": initial_best,
+                    "wall_seconds": elapsed,
+                    "proposal_seconds": proposal_seconds,
+                    "fit_evaluations": fit_evaluations,
+                    "history": history,
+                }));
             }
         }
     }
-    let result: Value = json!({"schema_version":"fcmaes.surrogate.benchmark/1","kind":"smoke; no statistical superiority claim",
-        "threads":threads,"concurrent":q,"effective_evaluation_concurrency":q.min(threads),"sleep_ms":sleep_ms,"evaluations":budget,"seeds":seeds,"parameters":config,
-        "fairness":"all methods share centre/LHS evaluations and their incumbent; CMA-ES population=max(q,4), partial last generations count only evaluated points; no fictitious objective calls",
-        "timing":"real wall time, installed pool; GP sink in memory, excluding worker fsync; nondedicated host","runs":runs});
+    let result: Value = json!({
+        "schema_version": "fcmaes.surrogate.benchmark/1",
+        "kind": "smoke; no statistical superiority claim",
+        "threads": threads,
+        "concurrent": q,
+        "effective_evaluation_concurrency": q.min(threads),
+        "sleep_ms": sleep_ms,
+        "evaluations": budget,
+        "problems": selected,
+        "seeds": seeds,
+        "parameters": config,
+        "fairness": "all methods share centre/LHS evaluations and their incumbent; CMA-ES population=max(q,4), partial last generations count only evaluated points; no fictitious objective calls",
+        "timing": "real wall time, installed pool; GP sink in memory, excluding worker fsync; nondedicated host",
+        "runs": runs,
+    });
     if let Some(parent) = output.parent().filter(|p| !p.as_os_str().is_empty()) {
         fs::create_dir_all(parent)?;
     }

@@ -2,6 +2,20 @@
 
 Date: 2026-10-20. Status: **implemented and tested experimental milestone M0**. This project follows the supplied revised plan's Rust-simulation focus, with an explicit smaller first delivery. It does not claim completion of asynchronous TuRBO, large-budget handoff, or the full multi-week roadmap.
 
+## Review revision (2026-10-20)
+
+The delivered M0 was committed unchanged (`4dd693b`, without the two delivery-only root files and the raw evidence) and then revised:
+
+- **MAP fit.** The coordinate pattern search over log lengthscales (up to 2d factorizations per sweep, 66–1026 per fit) is replaced by a bounded L-BFGS with the analytic gradient of the negative log posterior (`optim.rs`, `gp.rs`). The gradient is checked against central differences for both kernels; the fit reaches an equal or lower NLP in 46 of 50 overhead configurations with 19–104 factorizations. Config `fit_sweeps` (1–24) is replaced by `fit_iterations` (default 50, 1–200).
+- **Linear algebra.** nalgebra's Cholesky is replaced by `linalg.rs`: packed row-major lower triangle, contiguous eight-accumulator dot products in fixed order, row-wise solves, O(n) row append for fantasies, `L^-1`/`K^-1` rows for the gradient. The kernel matrix is filled once per lengthscale vector from pre-scaled inputs, symmetric half only. The crate no longer depends on nalgebra. The independent 100-digit fixtures still pass at 1e-10.
+- **Simulation identity.** Snapshots recorded the payload seed as `simulation_seed` although simulations ran with `retry_run_seed(seed, task)`, so a task-k snapshot of a multi-run job could warm-start a single-run job that simulates with a different seed. The identity now records the task's run seed and warm starts compare against task 0's (a test covers both directions).
+- **Hygiene.** `Scalar::simulation`'s placeholder plain objective panics instead of silently returning `+inf`; the simulation worker example and `analyze.py` were rewritten for readability; the ai-context header was restored with the surrogate section added below it.
+- **Measured and not adopted:** a gradient (L-BFGS) acquisition refinement and an incumbent update inside Kriging-believer batches; both lost on Styblinski–Tang-10 (details in [decisions.md](decisions.md)).
+
+Results ([validation/REPORT.md](validation/REPORT.md)): a fresh fit plus one proposal at d=32, n=248 went from 4.6 s to 0.49 s on one thread (9.4x), at d=10 from 0.90 s to 0.19 s (4.8x); eight-point batch proposals with carried hyperparameters are about 1.3–1.5x faster at n=248. Quality shows no systematic change on Branin, Hartmann-3/6, Styblinski–Tang-10 and the tutorial's RK4 oscillator (20 seeds for the last three; per-seed outcomes split about evenly between the builds), and histories are identical on 1, 2 and 8 threads.
+
+Gates rerun for the revision: `cargo fmt --all -- --check`, clippy with `-D warnings` on both crates, release tests of both crates, the MSRV 1.88 check, `scripts/surrogate/test_job_api.py`, the tutorial, and the shared runner integration harness (see the pull request for the exact outputs).
+
 ## Source provenance and deliverables
 
 | Item | Exact basis |
@@ -45,9 +59,9 @@ The ZIP contains the full repository source tree, existing documentation/data, t
 - Prevented cancellation during final validation from becoming a false objective_mismatch refutation.
 - Allowed the library benchmark to serialize a fixed four-point logical batch on one thread, while retaining the stricter actual job reservation rule.
 
-## Tests actually run
+## Tests run for the M0 delivery
 
-Logs are in [validation/test-logs](validation/test-logs). These are targeted delivery gates, not a claim that every existing workspace/Python/tutorial/publication campaign was rerun.
+The M0 delivery archive carried the raw logs; they are not committed. These are targeted delivery gates, not a claim that every existing workspace/Python/tutorial/publication campaign was rerun.
 
 | Gate | Command / scope | Result |
 | --- | --- | --- |
@@ -64,9 +78,9 @@ Logs are in [validation/test-logs](validation/test-logs). These are targeted del
 
 The release suite includes 26 existing job-worker tests, seven new surrogate/simulation integration tests, ten library tests and one existing registry doc test. Tests execute real numerical callbacks; the separate Python integration checks launch real runner/worker/MCP processes. No real systemd service containment, mixed LP/SQP node run, or independent external code review was performed.
 
-## Measured results
+## Measured results of the M0 delivery (before review)
 
-Hardware/runtime: Linux x86_64, Rust 1.99.1/LLVM 23.1.1; Rust 1.88 checked; Python 3.12.14. Nine logical CPUs are visible, with `cpu.max = 800000 100000` (eight-CPU quota). Installed pools use one or eight threads. Host is shared, so timing numbers are observations, not portable guarantees. See [environment.json](validation/environment.json).
+These numbers describe the delivered code; the review revision above and [validation/REPORT.md](validation/REPORT.md) supersede them. Hardware/runtime: Linux x86_64, Rust 1.99.1/LLVM 23.1.1; Rust 1.88 checked; Python 3.12.14. Nine logical CPUs are visible, with `cpu.max = 800000 100000` (eight-CPU quota). Installed pools use one or eight threads. Host is shared, so timing numbers are observations, not portable guarantees.
 
 Five fixed seeds (7,11,19,23,41), 48 optimization callbacks, batch four, shared eight-point centre/LHS initialization, valid CMA-ES population four. Both benchmark functions minimize; lower objective/regret is better.
 
@@ -83,9 +97,9 @@ Five fixed seeds (7,11,19,23,41), 48 optimization callbacks, batch four, shared 
 
 All 40 corresponding one/eight-thread runs have exactly equal complete observation histories and final objectives. With one installed thread the logical batch still has four members, evaluated serially. GP median wall time was 29.593 ms (Branin) and 33.218 ms (Hartmann-3) on one thread. Eight-thread observations were about 1.68x/1.72x faster for this small GP workload; this is not eight-core linear speedup or a repeated dedicated performance study.
 
-An additional 16-run campaign added 10 ms artificial delay per call, two seeds, same budgets/batches. GP median wall time was 144.845/155.175 ms versus about 123–135 ms for baselines, while retaining better final objective quality on these cases. This exercises scheduling and illustrates overhead; it does not establish a crossover on real 1–60 second Rust simulations. Full raw JSON, [REPORT.md](validation/REPORT.md), and convergence.svg are included.
+An additional 16-run campaign added 10 ms artificial delay per call, two seeds, same budgets/batches. GP median wall time was 144.845/155.175 ms versus about 123–135 ms for baselines, while retaining better final objective quality on these cases. This exercises scheduling and illustrates overhead; it does not establish a crossover on real 1–60 second Rust simulations. Raw JSON and a convergence figure were part of the delivery archive and are not committed.
 
-The actual durable tutorial produced Branin 0.39789079962105767, eight new warm evaluations from 48 reused observations, and RK4 calibration loss 2.4197300658564477e-6. The quick oscillator exercises real Rust integration/checkpoints and nested capacity, but it is not the held-out expensive simulation campaign. The tutorial's exact output and result/work/evidence summary are retained in validation.
+The actual durable tutorial produced Branin 0.39789079962105767, eight new warm evaluations from 48 reused observations, and RK4 calibration loss 2.4197300658564477e-6. The quick oscillator exercises real Rust integration/checkpoints and nested capacity, but it is not the held-out expensive simulation campaign. The tutorial's exact output was part of the delivery archive.
 
 ## Build and reproduce
 

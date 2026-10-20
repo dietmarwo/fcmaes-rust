@@ -14,7 +14,7 @@ python3 tutorials/surrogate/run.py --root /tmp/surrogate-example
 
 Use a fresh directory for an independent rerun. Request keys are intentionally stable, so an existing node may return earlier idempotent jobs. With a custom target directory, use `--bin-dir /absolute/target/release` (or export `CARGO_TARGET_DIR`). The script creates node capacity eight, registers the standard and example workers, validates/runs all jobs, independently checks Branin in Python, checks evidence/accounting, hashes the compact snapshot, and writes `tutorial-report.json` under the node root. `branin.json` and `oscillator.json` are complete editable jobs.
 
-In the tested build the Branin result was about 0.3978908 (known optimum about 0.39788736), the warm job used exactly eight new optimization calls from 48 retained observations, and oscillator loss was about 2.42e-6. These are deterministic smoke results on this source, not a general performance guarantee. The optional final validation call is additional and separately counted.
+In the tested build the Branin result was about 0.3979181 (known optimum about 0.39788736), the warm job used exactly eight new optimization calls from 48 retained observations, and oscillator loss was about 1.45e-5 (the minimum is zero up to integration error; over 20 library-benchmark seeds the median is about 3e-6). These are deterministic smoke results on this source, not a general performance guarantee. The optional final validation call is additional and separately counted.
 
 ## Inspect a job manually
 

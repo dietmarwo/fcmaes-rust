@@ -47,7 +47,7 @@ class Jobs(unittest.TestCase):
         self.assertEqual(p.returncode,0,p.stderr);return json.loads(p.stdout)
     def test_mcp_submits_a_real_surrogate_job_and_reports_evidence(self):
         spec=json.loads((REPO/'tutorials/surrogate/branin.json').read_text());spec['payload']['evaluations']=12
-        spec['payload']['parameters']={'initial_points':4,'candidates':64,'fit_restarts':1,'fit_sweeps':3}
+        spec['payload']['parameters']={'initial_points':4,'candidates':64,'fit_restarts':1,'fit_iterations':10}
         client=Client(self.root);self.addCleanup(client.close)
         description=client.tool('describe_worker',{'worker':'fcmaes'});self.assertIn('fcmaes.surrogate/1',description['profiles'])
         ident=client.tool('submit_job',{'job':spec})['job_id']

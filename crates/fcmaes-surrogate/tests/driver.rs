@@ -14,7 +14,7 @@ fn config() -> Config {
         candidates: 64,
         initial_points: 4,
         fit_restarts: 2,
-        fit_sweeps: 4,
+        fit_iterations: 20,
         ..Config::default()
     }
 }

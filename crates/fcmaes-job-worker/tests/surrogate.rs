@@ -28,7 +28,7 @@ fn job() -> JobSpec {
             "payload":{"problem":{"id":"benchmark.sphere","version":"1","config":{"dimension":2},
                 "bounds":{"lower":[-2.0],"upper":[2.0],"broadcast":true}},
                 "seed":9,"evaluations":12,"concurrent":2,
-                "parameters":{"initial_points":4,"candidates":64,"fit_restarts":1,"fit_sweeps":3}}
+                "parameters":{"initial_points":4,"candidates":64,"fit_restarts":1,"fit_iterations":10}}
         }),
     )
     .unwrap()
@@ -287,6 +287,53 @@ fn seeded_simulation_recheck_uses_the_same_point_seed() {
         run["results"][0]["outcome"]["evidence"]["level"],
         "rechecked"
     );
+}
+
+#[test]
+fn simulation_snapshots_bind_the_seed_their_task_simulated_with() {
+    let mut registry = Registry::default();
+    registry.scalar("app.seeded", "1", json!({"simulation":true}), |_| {
+        Ok(Scalar::simulation(|x, ctx| {
+            let mut rng = fcmaes_core::Rng::new(ctx.seed());
+            Ok(x.iter().map(|x| x * x).sum::<f64>() + rng.uniform01() * 0.01)
+        }))
+    });
+    let adapter = Adapter::new(registry);
+    let first = tempfile::tempdir().unwrap();
+    let mut spec = job();
+    spec.payload["problem"]["id"] = json!("app.seeded");
+    spec.payload["runs"] = json!(2);
+    spec.payload["evaluations"] = json!(6);
+    execute(&adapter, spec.clone(), first.path());
+    let snapshot = |task: usize| {
+        fs::read(
+            first
+                .path()
+                .join(format!("surrogate-observations-{task}.json")),
+        )
+        .unwrap()
+    };
+    for task in 0..2 {
+        let warm: WarmFile = serde_json::from_slice(&snapshot(task)).unwrap();
+        assert_eq!(
+            warm.problem.simulation_seed,
+            Some(fcmaes_core::retry_run_seed(9, task))
+        );
+    }
+    // A single-run job with the same seed simulates with task 0's run seed, so
+    // only task 0's observations are consistent with it.
+    spec.payload["runs"] = json!(1);
+    spec.payload["evaluations"] = json!(2);
+    for (task, accepted) in [(0, true), (1, false)] {
+        let dir = tempfile::tempdir().unwrap();
+        let mut next = spec.clone();
+        warm_input(&mut next, dir.path(), &snapshot(task));
+        assert_eq!(
+            adapter.prepare(&mut next, dir.path()).is_ok(),
+            accepted,
+            "task {task}"
+        );
+    }
 }
 
 #[test]

@@ -12,7 +12,7 @@ The intended production product serves box-bounded simulation optimization. It m
 
 - Deterministic scalar minimization, 1–32 continuous coordinates, optional log-scaled positive bounds.
 - At most 256 total new plus retained observations; at most eight concurrent evaluations and eight inner threads per task.
-- Exact ARD Matérn-5/2 or RBF GP, fixed unit signal variance, deterministic nugget, bounded MAP coordinate search, LogEI or minimization LCB.
+- Exact ARD Matérn-5/2 or RBF GP, fixed unit signal variance, deterministic nugget, bounded L-BFGS MAP fit with analytic gradients, LogEI or minimization LCB.
 - Centre/maximin Latin hypercube design, seeded candidate generation, local coordinate refinement, synchronous Kriging-believer batches.
 - Ordered decisions independent of installed Rayon thread count; pending-point fantasies at the library proposal interface.
 - Fallible completion logging, checksummed durable worker traces, atomic compact warm snapshots, semantic decision replay, independent best-point re-evaluation.
@@ -30,8 +30,8 @@ The profile rejects unimplemented options. `auto`, `turbo`, asynchronous schedul
 | Noisy simulations | M0 requires a deterministic function, potentially made repeatable with a point seed. Repeating one seeded realization does not establish its expected value or uncertainty. Noise inference, replications, confidence intervals and noisy incumbent selection belong to a separate validated milestone. |
 | Transform tests | Standardization and bilog have usable inverses; a tied-rank copula generally does not. Test rank ordering, tie handling and predictive semantics, without claiming an invertible objective transform. Store raw outcomes. |
 | MAP objective | Define whether priors are densities on lengthscales or on log parameters. M0 uses the former, without a change-of-variables Jacobian; dropping parameter-independent constants is explicit in fixtures. Do not compare absolute NLP numbers from different conventions. |
-| Linear algebra | Use nalgebra 0.33 in M0, already in the workspace. Revisit faer only with numerical and whole-round measurements. Define covariance nugget, numerical jitter, latent variance and observation variance separately. |
-| Search algorithms | M0 uses bounded pattern search and maximin LHS. L-BFGS-B and Sobol remain candidate improvements, not descriptions of this implementation. Avoid unverified direction-number tables. |
+| Linear algebra | M0 uses its own packed row-major Cholesky/solves (`linalg.rs`, fixed summation order) after nalgebra's dominated proposal time in review. Revisit faer or blocked factorizations only with numerical and whole-round measurements at n=500–1000. Define covariance nugget, numerical jitter, latent variance and observation variance separately. |
+| Search algorithms | M0 fits hyperparameters by bounded L-BFGS with analytic gradients, refines the acquisition by coordinate pattern search (a gradient refinement was measured and not adopted, see decisions.md) and uses maximin LHS. Full L-BFGS-B and Sobol remain candidate improvements. Avoid unverified direction-number tables. |
 | Sobol acceptance | A two-dimensional dyadic square of side `2^-m` has expected occupancy `2^(k-2m)` in a balanced `2^k` net when the applicable net properties hold and `2m <= k`; it is not `2^(k-m)`. Test the actual chosen net parameters. |
 | Batch guarantees | A greedy `1-1/e` statement requires a specified set function and the theorem's assumptions. It is not a blanket guarantee for adaptive GP refits, local acquisition optimization, or Kriging-believer batches. |
 | Pathwise complexity | Count feature construction, dimension, covariance updates and triangular solves. Per-candidate RFF evaluation costs include `features * dimension`; an exact correction generally includes training-point kernel work. Report measured end-to-end complexity, not dimension-free `O(m+n)`. |
@@ -51,7 +51,7 @@ The profile rejects unimplemented options. `auto`, `turbo`, asynchronous schedul
 | F1 Space | Implemented | Mixed/discrete domains remain outside this profile. |
 | F2 Transforms | Partial | Standardize, bilog, auto implemented; rank/ties and transformed noisy semantics deferred. |
 | F3 GP | Partial | Exact kernels, ARD and deterministic nugget implemented; inferred noise deferred. |
-| F4 Priors/fitting | Partial | MAP lognormal lengthscale prior, deterministic restart pattern search; analytic gradients, L-BFGS-B and MLE option not implemented. |
+| F4 Priors/fitting | Partial | MAP lognormal lengthscale prior, deterministic restarts, bounded L-BFGS with analytic gradients (checked against finite differences); MLE option and signal-variance/noise hyperparameters not implemented. |
 | F5 Factorization | Implemented with explicit constants | Nugget 1e-8, initial jitter 1e-10, eight attempts with tenfold jitter; O(n²) fantasy append, fresh fit/rebuild per round. Verify larger caps before raising limits. |
 | F6 Acquisition | Partial | LogEI and LCB implemented; candidate/pathwise Thompson sampling in M2. |
 | F7 Acquisition search | Partial | LHS/global and sparse local candidates, four local starts; Sobol/Boltzmann/L-BFGS-B/CMA option deferred. |

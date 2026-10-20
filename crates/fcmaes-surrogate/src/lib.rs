@@ -1,7 +1,8 @@
 //! Small-budget, deterministic Bayesian optimization of continuous boxes.
 //!
-//! Version 0.1 implements exact RBF/Matérn-5/2 GPs, bounded MAP pattern
-//! search, LogEI or LCB, and synchronous Kriging-believer batches. It uses
+//! Version 0.1 implements exact RBF/Matérn-5/2 GPs with an analytic-gradient
+//! bounded L-BFGS MAP fit, LogEI or LCB maximized by gradient refinement of
+//! the best candidates, and synchronous Kriging-believer batches. It uses
 //! the current Rayon pool and constructs no per-run thread pools. Callers
 //! must install a bounded pool; otherwise Rayon's default global pool applies.
 //! The numerical library has no dependency on the optimization job API.
@@ -10,6 +11,8 @@
 pub mod design;
 pub mod driver;
 pub mod gp;
+mod linalg;
+mod optim;
 pub mod problems;
 pub mod space;
 pub mod special;

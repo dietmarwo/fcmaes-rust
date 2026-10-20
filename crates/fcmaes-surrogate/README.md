@@ -23,8 +23,8 @@ assert_eq!(result.evaluations, 48);
 # Ok::<(), Box<dyn std::error::Error>>(())
 ```
 
-Supported: 1–32 coordinates, at most 256 new plus warm observations, batches 1–8, Matérn-5/2/RBF, fixed nugget, MAP coordinate search, LogEI/LCB, standardize/bilog/auto, seeded centre/maximin LHS, fallible callbacks and semantic event replay. Invalid input errors propagate. GP fit failures use a logged design fallback; exhausted distinct candidates return an error. Cancelled calls are separate from completed callbacks and failed outcomes. Replay checks decisions from recorded observations; it never proves objective correctness.
+Supported: 1–32 coordinates, at most 256 new plus warm observations, batches 1–8, Matérn-5/2/RBF, fixed nugget, MAP fit by bounded L-BFGS with the analytic gradient (packed row-major Cholesky, deterministic summation order), LogEI/LCB maximized by coordinate refinement of the best candidates, standardize/bilog/auto, seeded centre/maximin LHS, fallible callbacks and semantic event replay. Invalid input errors propagate. GP fit failures use a logged design fallback; exhausted distinct candidates return an error. Cancelled calls are separate from completed callbacks and failed outcomes. Replay checks decisions from recorded observations; it never proves objective correctness.
 
-Absent: TuRBO, async, noisy GP, Thompson sampling, Sobol, L-BFGS-B, constraints, handoff, Python bindings and stateless job sessions. A warm start creates a new state from observations, not an interrupted-state resume. Same-host thread determinism is tested; cross-platform bit equality is not promised.
+Absent: TuRBO, async, noisy GP, Thompson sampling, Sobol, full L-BFGS-B (Cauchy point and subspace minimization), constraints, handoff, Python bindings and stateless job sessions. A warm start creates a new state from observations, not an interrupted-state resume. Same-host thread determinism is tested; cross-platform bit equality is not promised.
 
 See [reviewed plan](../../docs/surrogate/PLAN.md), [job profile](../../docs/job-api/surrogate.md), [tutorial](../../tutorials/surrogate/README.md) and [measured results](../../docs/surrogate/validation/REPORT.md).

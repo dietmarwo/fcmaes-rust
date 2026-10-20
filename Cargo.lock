@@ -512,7 +512,6 @@ version = "0.1.0"
 dependencies = [
  "fcmaes-core",
  "libm",
- "nalgebra",
  "rayon",
  "serde",
  "serde_json",

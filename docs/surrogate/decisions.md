@@ -1,26 +1,27 @@
 # Surrogate implementation decisions
 
-Recorded 2026-10-20 for the first experimental delivery. See [PLAN.md](PLAN.md) for the revised full program.
+Recorded 2026-10-20 for the first experimental delivery and revised the same day after review (performance and the simulation-seed identity fix). See [PLAN.md](PLAN.md) for the revised full program.
 
 ## Placement and dependencies
 
 The numerical implementation is `crates/fcmaes-surrogate`, version 0.1.0, `publish=false`. The adapter is `crates/fcmaes-job-worker/src/surrogate.rs`. No changes to LP-IP-craft, SQP-craft or optimization-jobs are included. Source base is fcmaes-rust `92aaf03f9f03257a284126a322160d045422bc9a`; the existing shared API remains pinned to `eb1c9de66e677097a7ea22d9a4b2f6357c18751d`.
 
-Use nalgebra 0.33, already present in the workspace, with serial Cholesky/ordered solves inside each model. Parallelism is across fitting restarts, acquisition candidates/local starts and independent evaluations. libm supplies the GP special functions. Existing fcmaes-core RNG/baseline algorithms avoid introducing an unrelated optimization stack. serde_json's `float_roundtrip` feature preserves exact serialized inputs for replay. Cargo.lock records exact dependency versions.
+The GP uses a small purpose-built dense kernel module (`linalg.rs`): packed row-major lower-triangular storage, a left-looking Cholesky whose inner products run over contiguous rows, eight-accumulator dot products reduced in a fixed order, row-wise forward/backward substitution, an O(n) row append for fantasies, and `L^-1` / `K^-1` rows for the gradient. Each factorization is serial, so its result does not depend on the pool. Parallelism is across fitting restarts, gradient rows (n >= 96, reduced in row order), acquisition candidates/local starts and independent evaluations. libm supplies the GP special functions. The delivered nalgebra Cholesky (column-major storage, per-element divisions in the kernel fill) dominated proposal time and was replaced; the crate no longer depends on nalgebra. Existing fcmaes-core RNG/baseline algorithms avoid introducing an unrelated optimization stack. serde_json's `float_roundtrip` feature preserves exact serialized inputs for replay. Cargo.lock records exact dependency versions.
 
-This choice prioritizes a small verifiable baseline. It does not conclude that nalgebra is faster than faer at n=500 or that no Rust L-BFGS-B/Sobol implementation exists. Such decisions require future prototypes, dependency review and latency evidence.
+This choice keeps the dependency set small for n <= 256. It does not conclude anything about faer or blocked BLAS-3 factorizations at n=500–1000; those need their own prototypes and latency evidence.
 
 ## Numerics and search
 
 - Matérn-5/2 and RBF kernels have unit signal variance, ARD lengthscales, nugget 1e-8, and jitter starting at 1e-10 with eight bounded attempts. Posterior variance is latent. Fantasy append updates a factor in O(n²) and recomputes the diagnostic negative log posterior; its agreement with full refactorization is tested.
-- Lengthscale priors are LogNormal with log mean sqrt(2)+0.5 log(d), log variance three, as densities on physical lengthscales. MAP uses bounded coordinate-pattern search in log lengthscales, with 0.025 lower bound and deterministic restarts. There are no analytic-gradient or L-BFGS-B claims.
+- Lengthscale priors are LogNormal with log mean sqrt(2)+0.5 log(d), log variance three, as densities on physical lengthscales. The MAP fit minimizes the negative log posterior over log lengthscales in `[log 0.025, log(1000 sqrt d)]` with a bounded L-BFGS (memory 8, projected Armijo backtracking, variables held at a bound by their gradient frozen per iteration) and the analytic gradient `dNLP/du_j = sum_{a>b} W_ab g_ab (z_aj - z_bj)^2 + 1 + (u_j - mu)/3`, `W = K^-1 - alpha alpha^T`, `z = x/l`, `g = -2 dk/dr^2` (`k` for RBF, `5/3 (1+s) e^-s` for Matérn-5/2). The gradient is checked against central differences in unit tests. Restart 0 starts from the carried (warm) hyperparameters or the prior mode, further restarts from seeded draws around the mode. `fit_iterations` (default 50) bounds iterations per restart; values are computed before gradients, so rejected line-search trials cost one factorization only. This is a compact projected quasi-Newton method, not full L-BFGS-B.
 - Initial points are the centre plus maximin LHS (best of four seeded candidates); proposal candidates combine global LHS and sparse local perturbations. Four best starts get coordinate refinement. This is not Sobol/RAASP's complete published implementation.
+- Measured during review and **not adopted**: (1) gradient L-BFGS refinement of the acquisition (analytic posterior-mean/variance gradients and LogEI derivatives) made eight-point batch proposals at n=248 2–4x faster but did worse on Styblinski–Tang-10 (mean final regret 98.9 vs 77.7 with coordinate refinement, 20 seeds; Hartmann-6 indistinguishable), and a coordinate-then-gradient hybrid did not help either; (2) lowering the Kriging-believer incumbent to the fantasy mean inside a batch made Styblinski–Tang-10 worse in two paired 10-seed comparisons (median regret 122.6 vs 96.1 and 126.1 vs 95.7). The coordinate refinement and the delivered incumbent rule are kept. Both are single-suite observations, not general conclusions.
 - LogEI includes a numerically stable negative-tail expansion and exact zero-variance cases. LCB is a minimization alternative. Standardize/bilog/auto preserve raw observations; failed outcomes are excluded from the GP rather than represented as invented precise penalties.
-- M0 caps dimension at 32, new+warm history at 256, q at eight and job inner threads at eight. These caps bound work; they are not evidence of good quality at every point inside the cap. The measured quality cases are d=2/3, n=48.
+- M0 caps dimension at 32, new+warm history at 256, q at eight and job inner threads at eight. These caps bound work; they are not evidence of good quality at every point inside the cap. The measured quality cases are d=2/3 with n=48 and d=6/10 with n=96/128.
 
 ## Reproducibility and cancellation
 
-Synchronous decisions depend on seed, ordered history and explicit state, not completion timing. Independent stream seeds are indexed by semantic item. Parallel vectors collect in input order; reductions remain ordered. Completion logging is immediate and can arrive out of order, while decision commits use proposal order. The complete histories match across one and eight installed threads in all 40 paired benchmark runs; unit tests cover 1/2/3/8. Cross-CPU/compiler bit equality is untested.
+Synchronous decisions depend on seed, ordered history and explicit state, not completion timing. Independent stream seeds are indexed by semantic item. Parallel vectors collect in input order; reductions remain ordered. Completion logging is immediate and can arrive out of order, while decision commits use proposal order. The complete histories match across one, two and eight installed threads in every paired benchmark run (see the report); unit tests cover 1/2/3/8. Cross-CPU/compiler bit equality is untested.
 
 The task owns one bounded pool. `concurrent * evaluation_threads <= inner_threads`, and inner_threads<=8. `SimContext.threads()` is a callback allowance, not a per-evaluation OS partition. Nested Rayon work shares aggregate capacity. Ordinary callbacks cannot be interrupted mid-call; simulation checkpoints observe cancellation/deadline. Cancelled calls are counted separately, and their elapsed wall time contributes to the callback sum. Final validation cancellation leaves the historical claim unrefuted.
 
@@ -34,26 +35,30 @@ Shared remote artifacts/paging are not added. File names in result details refer
 
 ## Measurements and reproduction
 
-[validation/REPORT.md](validation/REPORT.md) summarizes raw JSON and environment metadata in that directory. The host exposes nine logical CPUs and an eight-CPU cgroup quota; pools explicitly use one or eight threads. It is not a dedicated eight-core server. Library timings exclude fsync/startup, while the tutorial exercises durable worker paths. The 10 ms delay campaign is synthetic, not a real 1–60 s simulation study.
+[validation/REPORT.md](validation/REPORT.md) compares the delivered M0 (`4dd693b`) with the reviewed code: proposal overhead over d in {2,5,10,20,32} and n in {16..248}, and equal-budget quality on Branin/Hartmann-3 (48 calls, 5 seeds), Hartmann-6/Styblinski–Tang-10 (96/128 calls, 20 seeds) and the tutorial's RK4 oscillator (32 calls, 20 seeds). Only compact summaries are committed; the raw histories are regenerated by the commands below. The measuring container exposed two CPUs; pools of 1, 2 and 8 threads were installed. Library timings exclude fsync/startup.
 
 From the repository root:
 
 ```sh
-cargo run --release --locked -p fcmaes-surrogate --example benchmark -- \
-  --threads 8 --concurrent 4 --evaluations 48 \
-  --output docs/surrogate/validation/smoke-8-threads.json
-cargo run --release --locked -p fcmaes-surrogate --example benchmark -- \
-  --threads 1 --concurrent 4 --evaluations 48 \
-  --output docs/surrogate/validation/smoke-1-thread.json
-cargo run --release --locked -p fcmaes-surrogate --example benchmark -- \
-  --threads 8 --concurrent 4 --evaluations 48 --sleep-ms 10 --seeds 7,11 \
-  --output docs/surrogate/validation/sleepy-8-threads.json
-python3 scripts/surrogate/analyze.py
+cargo build --release --locked -p fcmaes-surrogate --examples
+B=target/release/examples
+OUT=/tmp/surrogate-evidence; mkdir -p $OUT
+S20=7,11,19,23,41,43,47,53,59,61,67,71,73,79,83,89,97,101,103,107
+for t in 1 2 8; do $B/benchmark --threads $t --output $OUT/new-small-$t.json; done
+for t in 1 2; do
+  $B/benchmark --threads $t --problems hartmann6,styblinski10 --seeds $S20 \
+    --output $OUT/new-medium-$t.json
+  $B/benchmark --threads $t --problems oscillator --seeds $S20 \
+    --output $OUT/new-oscillator-$t.json
+done
+$B/overhead 1 > $OUT/overhead-new-1.jsonl
+$B/overhead 2 > $OUT/overhead-new-2.jsonl
+python3 scripts/surrogate/analyze.py $OUT
 ```
 
-The one-thread library run serializes four logical pending evaluations; it is a decision-determinism check, not a legal four-concurrent-evaluation worker reservation. All methods share eight initial evaluations and the 48-total-call budget. CMA-ES population is four. Quality improves strongly on these low-dimensional functions; proposal overhead is higher than the baselines, so no general wall-time win is claimed.
+The `old-*` inputs of the comparison come from the same examples built at `4dd693b` (copy `examples/benchmark.rs`, `examples/overhead.rs` and `src/problems.rs` into that checkout); `analyze.py` reports whatever pairs are present. The one-thread library run serializes four logical pending evaluations; it is a decision-determinism check, not a legal four-concurrent-evaluation worker reservation. All methods share eight initial evaluations and the per-problem call budget. CMA-ES population is four.
 
-For the optional figure install matplotlib and run `python3 scripts/surrogate/analyze.py --plot`. To regenerate independent numeric fixtures use `mpmath==1.4.1` and `scripts/surrogate/generate_fixtures.py`; Rust tests use checked-in JSON and do not need Python numerical packages.
+To regenerate independent numeric fixtures use `mpmath==1.4.1` and `scripts/surrogate/generate_fixtures.py`; Rust tests use checked-in JSON and do not need Python numerical packages.
 
 ## Deferred decisions
 

@@ -98,6 +98,8 @@ pub struct Domain {
 /// A scalar model: one minimized objective.
 #[derive(Clone)]
 pub struct Scalar {
+    /// Plain objective. For `Scalar::simulation` models it panics: call
+    /// [`Scalar::value`] with a `SimContext` instead.
     pub evaluate: ScalarFn,
     pub(crate) simulation: Option<SimulationFn>,
     /// `None`: any finite box.
@@ -120,7 +122,11 @@ impl Scalar {
         + 'static,
     ) -> Self {
         Self {
-            evaluate: Arc::new(|_| f64::INFINITY),
+            // Profiles that would call this reject simulation models when the
+            // job is resolved; a direct call is a bug, not a bad objective value.
+            evaluate: Arc::new(|_| {
+                panic!("a Scalar::simulation model must be called through Scalar::value")
+            }),
             simulation: Some(Arc::new(evaluate)),
             domain: None,
         }

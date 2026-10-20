@@ -69,6 +69,8 @@ pub struct Identity {
     pub dimension: usize,
     pub parameters: serde_json::Map<String, Value>,
     pub model_inputs: BTreeMap<String, String>,
+    /// The run seed passed to `SimContext` (`retry_run_seed(seed, task)`),
+    /// so a snapshot is reusable only by a run with the same simulation seed.
     pub simulation_seed: Option<u64>,
 }
 
@@ -116,9 +118,9 @@ struct Run {
 
 pub fn describe() -> Value {
     json!({"profile":PROFILE,"release":"0.1.0",
-        "method":"exact GP: matern52 or rbf, ARD MAP by bounded coordinate search; analytic LogEI or minimization LCB; synchronous Kriging believer",
+        "method":"exact GP: matern52 or rbf, ARD MAP by bounded L-BFGS with analytic gradients; analytic LogEI or minimization LCB refined by bounded L-BFGS; synchronous Kriging believer",
         "scope":"deterministic scalar box models, 1..32 variables, new plus reused observations <=256, concurrent 1..8",
-        "design":"centre plus seeded maximin Latin hypercube; no Sobol, asynchronous, noisy, TuRBO or L-BFGS-B support in this release",
+        "design":"centre plus seeded maximin Latin hypercube; no Sobol, asynchronous, noisy or TuRBO support in this release",
         "resources":"concurrent * evaluation_threads <= inner_threads <=8; outer_workers * inner_threads <=cpu_slots",
         "simulation":"Scalar::simulation receives SimContext: checkpoint, remaining_seconds, threads and stable point seed; currently supported by this profile only",
         "logs":"checksummed surrogate-TASK.jsonl and atomic surrogate-observations-TASK.json in the attempt directory; local files, not shared MCP artifact entries",
@@ -185,7 +187,8 @@ pub fn prepare(registry: &Registry, s: &mut JobSpec, base: &Path) -> Result<Box<
             .filter(|i| !profile_inputs.contains(&i.name.as_str()))
             .map(|i| (i.name.clone(), i.sha256.clone()))
             .collect(),
-        simulation_seed: model.is_simulation().then_some(p.seed),
+        // Warm starts need runs=1, so the new run is task 0.
+        simulation_seed: model.is_simulation().then(|| retry_run_seed(p.seed, 0)),
     };
     let mut warm = Vec::new();
     let mut dropped_warm = 0;
@@ -291,18 +294,22 @@ impl Run {
             run_seed,
         );
         let evaluate = |x: &[f64]| self.objective.value(x, &context.at_point(x));
+        let identity = Identity {
+            simulation_seed: self.identity.simulation_seed.map(|_| run_seed),
+            ..self.identity.clone()
+        };
         storage::append_checked(
             &log,
             1,
             &LogRecord::Header {
                 profile: PROFILE.into(),
-                problem: self.identity.clone(),
+                problem: identity.clone(),
                 run_seed,
             },
         )?;
         let mut snapshot = WarmFile {
             schema_version: WARM_SCHEMA.into(),
-            problem: self.identity.clone(),
+            problem: identity,
             usable_for_warm_start: true,
             observations: self.warm.clone(),
         };

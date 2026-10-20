@@ -25,7 +25,10 @@ pub struct Config {
     pub initial_points: usize,
     pub candidates: usize,
     pub fit_restarts: usize,
-    pub fit_sweeps: usize,
+    /// L-BFGS iterations per MAP restart. Each accepted iteration costs one
+    /// factorization plus one analytic gradient; rejected line-search trials
+    /// cost a factorization only.
+    pub fit_iterations: usize,
     pub refit_interval: usize,
     pub lcb_beta: f64,
     pub minimum_distance: f64,
@@ -40,7 +43,7 @@ impl Default for Config {
             initial_points: 8,
             candidates: 256,
             fit_restarts: 2,
-            fit_sweeps: 8,
+            fit_iterations: 50,
             refit_interval: 3,
             lcb_beta: 2.0,
             minimum_distance: 1e-6,
@@ -53,7 +56,7 @@ impl Config {
         if !(1..=128).contains(&self.initial_points)
             || !(32..=4096).contains(&self.candidates)
             || !(1..=4).contains(&self.fit_restarts)
-            || !(1..=24).contains(&self.fit_sweeps)
+            || !(1..=gp::MAX_FIT_ITERATIONS).contains(&self.fit_iterations)
             || !(1..=64).contains(&self.refit_interval)
             || !self.lcb_beta.is_finite()
             || !(0.0..=20.0).contains(&self.lcb_beta)
@@ -156,6 +159,7 @@ fn optimize(
             let mut x = candidates[i].clone();
             let mut value = score(gp, &x, best, config)?;
             let mut step = 0.1;
+            let mut trial = x.clone();
             for _ in 0..12 {
                 let mut improved = false;
                 for j in 0..x.len() {
@@ -164,16 +168,18 @@ fn optimize(
                         if stop() {
                             return Err(Error::Stopped);
                         }
-                        let mut trial = x.clone();
                         trial[j] = (base + direction * step).clamp(0.0, 1.0);
                         if !distinct(&trial, occupied, config.minimum_distance) {
+                            trial[j] = x[j];
                             continue;
                         }
                         let s = score(gp, &trial, best, config)?;
                         if s > value {
-                            x = trial;
+                            x[j] = trial[j];
                             value = s;
                             improved = true;
+                        } else {
+                            trial[j] = x[j];
                         }
                     }
                 }
@@ -265,7 +271,7 @@ pub fn propose(round: &Round<'_>, stop: &(dyn Fn() -> bool + Sync)) -> Result<Pr
                     warm: round.state.hyper.as_ref(),
                     seed,
                     restarts: round.config.fit_restarts,
-                    sweeps: round.config.fit_sweeps,
+                    iterations: round.config.fit_iterations,
                 },
                 stop,
             )
