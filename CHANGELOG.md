@@ -165,6 +165,11 @@ scalarization). The job worker, the experiment runner, the shared job API,
 
 ### Changed
 
+- Discovery: the repository README, the `fcmaes-core` crate README and the
+  Python README start with links to the shared solver-selection guide and
+  the ecosystem overview; `pyproject.toml` adds both as project URLs. The
+  crates.io and PyPI pages show them from the next release. `RELEASING.md`
+  covers discovery after a release.
 - `fcmaes.evaluate/1` (review F08): scalar and quality-diversity outcomes
   say in `details.constraints` that the model declares no constraints and
   that penalties inside the objective are not checked, and `describe`

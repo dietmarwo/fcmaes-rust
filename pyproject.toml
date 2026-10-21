@@ -39,6 +39,8 @@ test = [
 ]
 
 [project.urls]
+"Optimization ecosystem" = "https://dietmarwo.github.io/optimization-jobs/"
+"AI agent guide" = "https://github.com/dietmarwo/optimization-jobs/blob/main/ai-context.md"
 Repository = "https://github.com/dietmarwo/fcmaes-rust"
 Documentation = "https://dietmarwo.github.io/fcmaes-rust/"
 Issues = "https://github.com/dietmarwo/fcmaes-rust/issues"

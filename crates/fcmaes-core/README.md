@@ -1,5 +1,8 @@
 # fcmaes-core
 
+[Optimization ecosystem](https://dietmarwo.github.io/optimization-jobs/) ·
+[Shared solver-selection and agent guide](https://github.com/dietmarwo/optimization-jobs/blob/main/ai-context.md)
+
 `fcmaes-core` provides fast, parallel, gradient-free optimization algorithms
 implemented entirely in Rust. It is the reusable optimizer core of the
 [fcmaes-rust](https://github.com/dietmarwo/fcmaes-rust) project and does not

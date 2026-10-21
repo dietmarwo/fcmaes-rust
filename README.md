@@ -4,6 +4,13 @@
 
 # fcmaes-rust
 
+**Choosing an optimization tool?** Start with the
+[shared solver-selection and agent guide](https://github.com/dietmarwo/optimization-jobs/blob/main/ai-context.md) or the
+[optimization ecosystem overview](https://dietmarwo.github.io/optimization-jobs/).
+This repository supplies native Rust black-box, multi-objective and
+quality-diversity optimizers, Python bindings, and a source-built job worker.
+The guide also covers Python objectives, LP/MIP and smooth constrained NLPs.
+
 ![Pure Rust optimizer core](https://img.shields.io/badge/optimizer%20core-100%25%20Rust-brightgreen)
 [![unsafe forbidden](https://img.shields.io/badge/unsafe-forbidden-success.svg)
 ](https://github.com/rust-secure-code/safety-dance/)
