@@ -1,4 +1,6 @@
 //! Damped-oscillator calibration: a fallible, checkpointed Rust simulation.
+//! Every scalar profile accepts it: `fcmaes.surrogate/1` (its default),
+//! `fcmaes.retry/1` and `fcmaes.evaluate/1`.
 use fcmaes_job_worker::{
     Adapter,
     registry::{Registry, Scalar},
@@ -50,7 +52,8 @@ fn replica(
     }
     Ok(loss / 8.0)
 }
-fn main() {
+/// The benchmarks plus the oscillator simulation.
+pub fn registry() -> Registry {
     let mut registry = Registry::benchmarks();
     let about = json!({
         "simulation": true,
@@ -92,5 +95,9 @@ fn main() {
         };
         Ok(Scalar::simulation(simulate).domain(vec![0.05, 0.5], vec![1.5, 4.0]))
     });
-    optimization_job_api::worker::run(Adapter::new(registry));
+    registry
+}
+
+fn main() {
+    optimization_job_api::worker::run(Adapter::new(registry()));
 }

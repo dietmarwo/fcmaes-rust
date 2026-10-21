@@ -363,7 +363,9 @@ python examples/python/test_cma.py
 
 - [Rendered user guide and tutorial book](https://dietmarwo.github.io/fcmaes-rust/)
 - [Generated `fcmaes-core` API reference](https://docs.rs/fcmaes-core)
-- [AI problem-solving context](ai-context.md)
+- [AI problem-solving context](ai-context.md), with its task index
+  ("Start here"), and the short [agent guide](AGENTS.md) (build, test and
+  documentation checks)
 - [Security and numerical-integrity reporting](SECURITY.md)
 - [Getting started](docs/getting-started.md)
 - [Choosing an optimizer](docs/choosing-an-optimizer.md)

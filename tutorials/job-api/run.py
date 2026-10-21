@@ -17,6 +17,7 @@ EXAMPLES=['sphere', 'rosenbrock', 'cassini1', 'rosenbrock-cmaes', 'cassini1-bipo
           'exponential-fit']
 sys.path.insert(0,str(REPO/'scripts/job-api'))
 from shared_root import shared_root
+import payload_schemas
 # The schemas live in optimization-jobs, at the revision Cargo.toml pins.
 SCHEMAS=shared_root()/'docs/job-api/schemas'
 if jsonschema is None and os.environ.get('JOB_API_REQUIRE_SCHEMA')=='1':
@@ -121,6 +122,15 @@ def check_evaluate(spec,record,outcome):
 if not (root/'node.json').exists():call('node','init','--capacity',8)
 call('workers','add','--id',WORKER,'--executable',worker)
 call('workers','add','--id',APPLICATION[0],'--executable',application)
+# Discovery: every example and every tutorial payload validates against the
+# worker's payload_schemas, and every example runs.
+specs={example:json.loads((HERE/(example+'.json')).read_text()) for example in EXAMPLES}
+discovery={'validated':0,'runs':[]}
+for worker_id in (WORKER,APPLICATION[0]):
+    description=call('problems','describe',worker_id)
+    payloads=[(example,s['payload_schema'],s['payload']) for example,s in specs.items() if s['worker']==worker_id]
+    discovery['validated']+=payload_schemas.check(description,payloads)
+    discovery['runs']+=payload_schemas.run_examples(call,root/'discovery',worker_id,description,conforms)
 report=[]
 for example in EXAMPLES:
     spec_path=HERE/(example+'.json');spec=json.loads(spec_path.read_text())
@@ -156,6 +166,6 @@ for example in EXAMPLES:
     report.append({'example':example,'profile':spec['payload_schema'],'job_id':job['id'],'directory':job['directory'],
                    'state':job['state'],'completed_tasks':result['completed_tasks'],
                    'first_outcome':{**first,'details':summary},'work':result['work']})
-output={'node':str(root),'worker':WORKER,'runs':report}
+output={'node':str(root),'worker':WORKER,'runs':report,'discovery':discovery}
 (root/'tutorial-report.json').write_text(json.dumps(output,indent=2)+'\n')
 print(json.dumps(output,indent=2))

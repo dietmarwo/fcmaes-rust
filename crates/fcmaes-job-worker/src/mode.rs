@@ -7,7 +7,8 @@
 //! number.
 use crate::{
     Control,
-    registry::{Kind, Model, MultiObjective, Problem, Registry},
+    registry::{Kind, Model, MultiObjective, Probe, Problem, Registry},
+    schema,
     threads::Threads,
 };
 use fcmaes_core::{
@@ -396,4 +397,42 @@ impl Run {
             .into(),
         })
     }
+}
+
+/// JSON Schema of the payload, with `problem` the schema of its problems.
+pub fn payload_schema(problem: Value) -> Value {
+    use crate::schema::{integer, number, numbers, or_null, payload, u64};
+    let unit = || or_null(number(Some(0.0), Some(1.0), false));
+    let positive = || or_null(number(Some(0.0), None, true));
+    payload(
+        PROFILE,
+        json!({"type":"object","additionalProperties":false,
+        "required":["problem","optimizer","seed","runs","generations"],
+        "properties":{"problem":problem,
+            "optimizer":{"type":"object","additionalProperties":false,"required":["kind"],
+                "properties":{"kind":{"const":"mode"},
+                    "parameters":{"type":"object","additionalProperties":false,"properties":{
+                        "population":or_null(integer(4, 10_000)),"nsga_update":or_null(json!({"type":"boolean"})),
+                        "pareto_update":unit(),"f":or_null(number(Some(0.0), Some(2.0), true)),
+                        "cr":or_null(number(Some(0.0), Some(1.0), true)),"pro_c":unit(),"dis_c":positive(),
+                        "pro_m":unit(),"dis_m":positive()}}}},
+            "seed":u64(),"runs":integer(1, 1_000_000),"generations":integer(1, u64::MAX),
+            "reference_point":or_null(numbers())},
+        "$comment":"population <= 1000 for models with three or more objectives (problems: objectives) and population times dimension <= 1e7; reference_point: one value per objective, required unless the model's problems entry has one; inner_threads: the threads evaluating a population (results do not depend on them); generations times population times runs must not overflow."}),
+    )
+}
+
+/// The `examples` entry of this profile on `probe`.
+pub fn example(probe: &Probe) -> Value {
+    let mut payload = json!({"problem":probe.problem(),"optimizer":{"kind":"mode","parameters":{"population":16}},
+        "seed":1,"runs":1,"generations":20});
+    if let Some(point) = &probe.reference_point {
+        payload["reference_point"] = json!(point);
+    }
+    schema::example(
+        PROFILE,
+        format!("MODE on {}: 1 run of 20 generations of 16", probe.id),
+        probe,
+        payload,
+    )
 }

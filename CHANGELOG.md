@@ -15,6 +15,36 @@ scalarization). The job worker, the experiment runner, the shared job API,
 
 ### Added
 
+- Discovery for agents (review F01): the fcmaes job worker's `describe`
+  lists a JSON Schema (draft 2020-12) of each profile's payload
+  (`payload_schemas`), the warm-start snapshot format (`input_schemas`), each
+  model's `parameters_schema` and runnable `examples`, so an MCP-only client
+  can build and validate one job per profile from `describe` alone. The
+  examples come from the registry: `describe` builds every model for a
+  registered `Example` (`Registry::example`, with data inputs, parameters,
+  bounds or a reference point) or a probe of small dimensions, so an
+  application worker advertises its own models; `custom_worker` registers
+  its curve fit's CSV. `profiles` now lists only the profiles the registered
+  models support. The job and surrogate tutorials validate every example and
+  tutorial payload with `jsonschema>=4.18` and run every example. Stock
+  `describe` output is 38,858 bytes (the pinned runner reads at most 64 KiB).
+- `fcmaes.retry/1` takes an optional `guess` (review F10): every retry starts
+  its CMA-ES, CR-FM-NES or PGPE distribution there with the given `sigma`
+  (IPOP/BIPOP restarts start at random points), BiteOpt builds its initial
+  population around it, and DE samples around it with `sigma` (only with a
+  guess). Jobs without a guess are unchanged.
+- `Scalar::simulation` models run in `fcmaes.retry/1` and `fcmaes.evaluate/1`
+  too (review F11), so one model can be compared under the surrogate and
+  BiteOpt. fcmaes-core's optimizers sanitize non-finite values and rank them
+  worst, so a failed evaluation counts as `+inf` in a retry and is counted
+  (`failed_evaluations`, `failures`); a cancel stops the simulation at its
+  checkpoints and leaves the retry's best point unchecked (`claimed`).
+  Evaluate reports a failed point as claim `none` with `details.error` and
+  takes `run_seed` to reproduce a retry's simulation seeds.
+- `AGENTS.md` and a "Start here" task index at the top of `ai-context.md`,
+  which also warns that the published `fcmaes-core` and `fcmaes-rust` 0.1.5
+  lack the MODE fixes below and `ParetoArchive2D`: use a git dependency or a
+  source build for MODE until the next release.
 - `fcmaes-surrogate` (source-only, 0.1.0) and the experimental
   `fcmaes.surrogate/1` profile of the fcmaes job worker: exact-GP Bayesian
   optimization of expensive deterministic scalar box models (1–32
@@ -135,6 +165,13 @@ scalarization). The job worker, the experiment runner, the shared job API,
 
 ### Changed
 
+- `fcmaes.evaluate/1` (review F08): scalar and quality-diversity outcomes
+  say in `details.constraints` that the model declares no constraints and
+  that penalties inside the objective are not checked, and `describe`
+  documents their `feasible` claim as "within bounds and a usable value; no
+  constraint check". `ai-context.md` adds the rule to keep raw objective and
+  constraint values and to check feasibility separately, for example on a
+  multi-objective model with declared constraints.
 - `scalarize` (and so `moretry` and the Python `minimize_moretry`): a
   satisfied constraint no longer enters the weighted p-norm; only its
   violation `max(c, 0)` does, plus the weight of each violated constraint as

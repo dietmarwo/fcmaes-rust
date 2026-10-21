@@ -262,10 +262,12 @@ fn simulation_context_is_seeded_bounded_and_cooperatively_cancellable() {
     assert_eq!(result.work["evaluations"], 0);
     assert!(result.work["cancelled_evaluations"] > 0);
     result.outcome.check().unwrap();
+    // Retry and evaluate accept simulation models too (tests/simulation.rs).
     let mut retry = job();
     retry.payload_schema = "fcmaes.retry/1".into();
+    retry.resources.inner_threads = 1;
     retry.payload = json!({"problem":spec.payload["problem"],"optimizer":{"kind":"biteopt","parameters":{}},"seed":1,"retries":1,"evaluations_per_retry":10,"evaluation_limit_mode":"hard"});
-    assert!(adapter.prepare(&mut retry, dir.path()).is_err());
+    assert!(adapter.prepare(&mut retry, dir.path()).is_ok());
 }
 
 #[test]

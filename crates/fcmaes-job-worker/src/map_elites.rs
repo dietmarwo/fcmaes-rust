@@ -14,7 +14,8 @@
 //! depend on the number of threads.
 use crate::{
     Control,
-    registry::{Kind, Model, Problem, QualityDiversity, Registry},
+    registry::{Kind, Model, Probe, Problem, QualityDiversity, Registry},
+    schema,
     threads::Threads,
 };
 use fcmaes_core::{
@@ -816,6 +817,71 @@ impl Run {
             .into(),
         })
     }
+}
+
+/// JSON Schema of the payload, with `problem` the schema of its problems.
+pub fn payload_schema(problem: Value) -> Value {
+    use crate::schema::{absent, integer, number, or_null, payload, u64};
+    let nonnegative = || or_null(number(Some(0.0), None, false));
+    let positive = || or_null(number(Some(0.0), None, true));
+    let cma = [
+        "emitter",
+        "emitters",
+        "population",
+        "sigma",
+        "archive_learning_rate",
+        "threshold_init",
+    ];
+    let mut chunk = or_null(integer(2, 10_000));
+    chunk["multipleOf"] = json!(2);
+    let parameters = json!({"type":"object","additionalProperties":false,"properties":{
+            "chunk_size":chunk,"variation":{"enum":["sbx","iso_dd",null]},"dis_c":positive(),"dis_m":positive(),
+            "iso_sigma":nonnegative(),"line_sigma":nonnegative(),"cma_generations":or_null(integer(0, u64::MAX)),
+            "emitter":{"enum":["cma_me","cma_mae",null]},"emitters":or_null(integer(1, 1000)),
+            "population":or_null(integer(4, 10_000)),"sigma":or_null(number(Some(0.0), Some(2.0), true)),
+            "archive_learning_rate":or_null(number(Some(0.0), Some(1.0), false)),
+            "threshold_init":or_null(json!({"type":"number"}))},
+        "allOf":[
+            {"if":{"required":["variation"],"properties":{"variation":{"const":"iso_dd"}}},
+                "then":absent(&["dis_c","dis_m"]),"else":absent(&["iso_sigma","line_sigma"])},
+            {"if":{"required":["cma_generations"],"properties":{"cma_generations":{"type":"integer","minimum":1}}},
+                "else":absent(&cma)},
+            {"if":{"required":["emitter"],"properties":{"emitter":{"const":"cma_mae"}}},
+                "then":{"required":["threshold_init"],"properties":{"threshold_init":{"type":"number"}}},
+                "else":absent(&["archive_learning_rate","threshold_init"])}]});
+    payload(
+        PROFILE,
+        json!({"type":"object","additionalProperties":false,
+        "required":["problem","archive","optimizer","seed","runs","generations"],
+        "properties":{"problem":problem,
+            "archive":{"type":"object","additionalProperties":false,"required":["capacity"],
+                "properties":{"capacity":integer(1, 10_000),"kind":{"enum":["grid","cvt",null]},
+                    "samples_per_niche":or_null(integer(1, MAX_CVT_SAMPLES as u64)),"seed":or_null(u64())},
+                "if":{"required":["kind"],"properties":{"kind":{"const":"grid"}}},
+                "then":absent(&["samples_per_niche","seed"])},
+            "optimizer":{"type":"object","additionalProperties":false,"required":["kind"],
+                "properties":{"kind":{"const":"map_elites"},"parameters":parameters}},
+            "seed":u64(),"runs":integer(1, 1_000_000),"generations":integer(0, u64::MAX)},
+        "if":{"properties":{"generations":{"const":0}}},
+        "then":{"required":["optimizer"],"properties":{"optimizer":{"required":["parameters"],
+            "properties":{"parameters":{"required":["cma_generations"],
+                "properties":{"cma_generations":{"type":"integer","minimum":1}}}}}}},
+        "$comment":"archive.kind defaults to grid for two-dimensional descriptors (problems: descriptor_bounds) and to cvt otherwise; a grid needs two-dimensional descriptors and takes no samples_per_niche or seed. capacity, chunk_size and emitters times population, each times dimension, <= 1e7; emitters times dimension^2 <= 1e7; cvt: capacity times samples_per_niche <= 1e6 and capacity^2 times samples_per_niche times descriptor dimension <= 1e9; 1..100 descriptor dimensions. inner_threads: the threads evaluating a generation (results do not depend on them)."}),
+    )
+}
+
+/// The `examples` entry of this profile on `probe`.
+pub fn example(probe: &Probe) -> Value {
+    schema::example(
+        PROFILE,
+        format!(
+            "MAP-Elites on {}: 16 niches, 1 run of 20 generations of 10",
+            probe.id
+        ),
+        probe,
+        json!({"problem":probe.problem(),"archive":{"capacity":16},
+            "optimizer":{"kind":"map_elites","parameters":{"chunk_size":10}},"seed":1,"runs":1,"generations":20}),
+    )
 }
 
 #[cfg(test)]

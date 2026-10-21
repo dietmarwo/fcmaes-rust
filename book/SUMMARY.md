@@ -126,3 +126,4 @@
 - [Release history](CHANGELOG.md)
 - [Publishing checklist](RELEASING.md)
 - [AI problem-solving context](ai-context.md)
+- [Agent guide](AGENTS.md)
