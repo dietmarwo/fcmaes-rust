@@ -1,12 +1,16 @@
 //! `fcmaes.retry/1`: independent retries of BiteOpt, DE, CMA-ES, CR-FM-NES or
-//! PGPE on registered scalar models. BiteOpt and DE run the shared native
-//! solver of the legacy `fcmaes.job/0.1` profile, so both profiles run
-//! identical retries on the built-in models. CMA-ES, CR-FM-NES and PGPE
-//! evaluate whole populations, in parallel with `inner_threads > 1`; CMA-ES
-//! can restart with growing populations (IPOP) or alternate large and small
-//! ones (BIPOP) inside the retry's budget.
+//! PGPE on registered scalar models. Without a `guess`, BiteOpt and DE run
+//! the shared native solver of the legacy `fcmaes.job/0.1` profile, so both
+//! profiles run identical retries on the built-in models. CMA-ES, CR-FM-NES
+//! and PGPE evaluate whole populations, in parallel with `inner_threads > 1`;
+//! CMA-ES can restart with growing populations (IPOP) or alternate large and
+//! small ones (BIPOP) inside the retry's budget. A `guess` starts every
+//! retry there. A `Scalar::simulation` model's failed evaluations count as
+//! `+inf`; its evaluations stop at its `SimContext` checkpoints on a cancel.
 use crate::{
-    registry::{Kind, Model, Problem, Registry, ScalarFn},
+    Control,
+    registry::{Kind, Model, Problem, Registry, Scalar},
+    simulation::{Evaluator, Failure},
     threads::Threads,
 };
 use fcmaes_core::{
@@ -57,6 +61,12 @@ pub struct Payload {
     pub retries: usize,
     pub evaluations_per_retry: u64,
     pub evaluation_limit_mode: String,
+    /// Initial point of every retry, inside the bounds: the start of the
+    /// first CMA-ES, CR-FM-NES or PGPE run (restarts start at random points),
+    /// the centre of BiteOpt's initial population, the mean DE samples
+    /// around with `sigma`. Absent: random starts.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub guess: Option<Vec<f64>>,
 }
 /// Serializes like `legacy::Optimizer` when only `population` is set, so
 /// BiteOpt and DE payloads and their job digests are unchanged.
@@ -70,8 +80,8 @@ pub struct Optimizer {
 #[serde(deny_unknown_fields)]
 pub struct Parameters {
     pub population: Option<usize>,
-    /// CMA-ES, CR-FM-NES, PGPE: initial step size in the normalized
-    /// `[-1, 1]` box.
+    /// CMA-ES, CR-FM-NES, PGPE, and DE with a guess: initial step size (DE:
+    /// the spread around the guess) in the normalized `[-1, 1]` box.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub sigma: Option<f64>,
     /// CMA-ES: `none` (absent when resolved), `ipop` or `bipop`.
@@ -121,6 +131,8 @@ pub struct EsSettings {
     pub max_population: usize,
     pub center_learning_rate: f64,
     pub stdev_learning_rate: f64,
+    /// Start of the first run of every retry; `None`: a uniform random point.
+    pub guess: Option<Vec<f64>>,
 }
 impl EsSettings {
     /// CMA-ES without restarts.
@@ -134,16 +146,29 @@ impl EsSettings {
             max_population: population,
             center_learning_rate: d.center_learning_rate,
             stdev_learning_rate: d.stdev_learning_rate,
+            guess: None,
         }
     }
 }
 
+/// A BiteOpt or DE retry's initial point.
+#[derive(Clone, Debug)]
+pub struct Start {
+    pub x: Vec<f64>,
+    /// DE: the standard deviation of its samples around `x` in the
+    /// normalized `[-1, 1]` box; BiteOpt ignores it.
+    pub sigma: f64,
+}
+/// Default DE spread around a guess in the normalized box, as CMA-ES's step.
+pub const DE_GUESS_SIGMA: f64 = CMAES_SIGMA;
+
 enum Engine {
-    /// BiteOpt or DE: serially through the shared native solver, or in
-    /// delayed-feedback batches of `batch` candidates.
+    /// BiteOpt or DE: serially (through the shared native solver without a
+    /// start), or in delayed-feedback batches of `batch` candidates.
     Legacy {
         spec: Box<LegacySpec>,
         batch: Option<usize>,
+        start: Option<Start>,
     },
     Es(EsSettings),
 }
@@ -151,7 +176,8 @@ pub struct Run {
     engine: Engine,
     payload: Payload,
     bounds: RetryBounds,
-    objective: ScalarFn,
+    model: Scalar,
+    control: Control,
     threads: usize,
     /// Largest evaluation count one retry may report.
     per_retry_limit: u64,
@@ -163,11 +189,13 @@ pub fn describe() -> Value {
         "biteopt":{"profile":PROFILE,"limit":"hard","defaults":{"population":"9 + 3 * dimension"},
             "ranges":{"population":"4..1000000; population * dimension <= 1e7 (the default exceeds it from dimension 1825 on)"},
             "batch":"optional, 1..1000000 (batch * dimension <= 1e7): ask, evaluate and tell batches of this many candidates (delayed feedback); absent: the serial algorithm of fcmaes.job/0.1",
+            "start":"without guess: BiteOpt's own initial population around the box centre (the serial run is that of fcmaes.job/0.1); guess: a population member, the others Gaussian around it with a quarter of each range",
             "inner_threads":"1 without batch; with batch, evaluates each batch on inner_threads threads"},
         "de":{"profile":PROFILE,"limit":"soft","maximum_overshoot_per_retry":"2*population-1; none with batch",
-            "defaults":{"population":31},
-            "ranges":{"population":"4..1000000; population * dimension <= 1e7"},
+            "defaults":{"population":31,"sigma":format!("with guess: {DE_GUESS_SIGMA}")},
+            "ranges":{"population":"4..1000000; population * dimension <= 1e7","sigma":"(0,2], only with guess"},
             "batch":"optional, 1..1000000 (batch * dimension <= 1e7): candidates in flight, the delayed update of the Python fcmaes de.minimize(workers=batch); when the oldest is evaluated it is told and one new candidate is asked; results are told in ask order and a batch run spends at most evaluations_per_retry",
+            "start":"without guess: uniform samples in the bounds (the serial run is that of fcmaes.job/0.1); guess: initial and replacement members are normal samples around it with standard deviation sigma in the normalized [-1,1] box, clamped to the bounds",
             "inner_threads":"1 without batch; with batch, evaluates the candidates in flight on inner_threads threads"},
         "cmaes":{"profile":PROFILE,"limit":"soft",
             "maximum_overshoot_per_retry":"population-1; max_population-1 with restarts",
@@ -175,21 +203,23 @@ pub fn describe() -> Value {
                 "max_population":format!("with restarts: {MAX_POPULATION_FACTOR} * population, at most 1e6 and 1e7 / dimension")},
             "sigma":"initial step size in the normalized [-1,1] box, (0,2]",
             "limits":"dimension <= 3162 (dimension^2 <= 1e7); population * dimension <= 1e7 (max_population with restarts)",
-            "restarts":"none | ipop (double the population after every stop) | bipop (alternate doubled populations with small populations and step sizes); runs restart until the retry's budget is spent, each from a new uniform random point",
-            "start":"uniform random point in the bounds from the retry seed",
+            "restarts":"none | ipop (double the population after every stop) | bipop (alternate doubled populations with small populations and step sizes); runs restart until the retry's budget is spent, each from a new uniform random point (also with guess)",
+            "start":"guess, or a uniform random point in the bounds from the retry seed; initial step size sigma",
             "inner_threads":"evaluates each population on inner_threads threads"},
         "crfmnes":{"profile":PROFILE,"limit":"soft","maximum_overshoot_per_retry":"population-1",
             "defaults":{"population":CRFMNES_POPULATION,"sigma":CRFMNES_SIGMA},
             "ranges":{"population":"even, 4..1000000; population * dimension <= 1e7","sigma":"(0,2]"},
-            "start":"uniform random point in the bounds from the retry seed",
+            "start":"guess, or a uniform random point in the bounds from the retry seed; initial step size sigma",
             "inner_threads":"evaluates each population on inner_threads threads"},
         "pgpe":{"profile":PROFILE,"limit":"soft","maximum_overshoot_per_retry":"population-1",
             "defaults":{"population":PGPE_POPULATION,"sigma":PGPE_SIGMA,
                 "center_learning_rate":pgpe.center_learning_rate,"stdev_learning_rate":pgpe.stdev_learning_rate},
             "ranges":{"population":"even, 4..1000000; population * dimension <= 1e7","sigma":"(0,2]","center_learning_rate":"(0,1]","stdev_learning_rate":"(0,1]"},
-            "start":"uniform random point in the bounds from the retry seed",
+            "start":"guess, or a uniform random point in the bounds from the retry seed; initial standard deviation sigma",
             "inner_threads":"evaluates each population on inner_threads threads"},
-        "best":"every optimizer reports the best point it evaluated; for CR-FM-NES and PGPE it is tracked from the evaluated populations"
+        "best":"every optimizer reports the best point it evaluated; for CR-FM-NES and PGPE it is tracked from the evaluated populations",
+        "guess":"optional payload field: the problem's dimension of numbers inside its bounds; every retry starts there (different seeds still make retries differ)",
+        "simulation":"Scalar::simulation models: SimContext with threads() 1, a seed from the retry's run_seed and the point, the remaining time and the job's cancellation; a failed evaluation is +inf, counted in work and details (failed_evaluations, failures); after a cancel, evaluations return +inf without calling the model (cancelled_evaluations, termination cancelled) and the best point is not rechecked (evidence claimed)"
     })
 }
 
@@ -202,6 +232,9 @@ pub fn prepare(registry: &Registry, s: &mut JobSpec, base: &Path) -> Result<Box<
     p.problem = problem;
     if p.retries == 0 || p.evaluations_per_retry == 0 {
         return Err("positive retries and evaluations_per_retry required".into());
+    }
+    if let Some(guess) = &p.guess {
+        check_guess(guess, &p.problem)?;
     }
     let threads = s.resources.inner_threads;
     let (engine, per_retry_limit) = match p.optimizer.kind.as_str() {
@@ -226,10 +259,15 @@ pub fn prepare(registry: &Registry, s: &mut JobSpec, base: &Path) -> Result<Box<
                 Some(_) => p.evaluations_per_retry,
                 None => spec.maximum_evaluations()? / p.retries as u64,
             };
+            let start = p.guess.clone().map(|x| Start {
+                x,
+                sigma: p.optimizer.parameters.sigma.unwrap_or(DE_GUESS_SIGMA),
+            });
             (
                 Engine::Legacy {
                     spec: Box::new(spec),
                     batch,
+                    start,
                 },
                 limit,
             )
@@ -257,18 +295,61 @@ pub fn prepare(registry: &Registry, s: &mut JobSpec, base: &Path) -> Result<Box<
         engine,
         payload: p,
         bounds,
-        objective: model.evaluate,
+        model,
+        control: Control::default(),
         threads,
         per_retry_limit,
     }))
+}
+
+/// Checks that `guess` is a point of the problem's box.
+fn check_guess(guess: &[f64], problem: &Problem) -> Result<()> {
+    let n = problem.config.dimension;
+    if guess.len() != n {
+        return Err(format!(
+            "guess has {} entries; the problem has dimension {n}",
+            guess.len()
+        )
+        .into());
+    }
+    let (lower, upper) = (&problem.bounds.lower, &problem.bounds.upper);
+    if let Some(i) = guess
+        .iter()
+        .zip(lower.iter().zip(upper))
+        .position(|(v, (l, u))| !v.is_finite() || v < l || v > u)
+    {
+        return Err(format!(
+            "guess[{i}] = {} lies outside the bounds [{}, {}]",
+            guess[i], lower[i], upper[i]
+        )
+        .into());
+    }
+    Ok(())
 }
 
 /// Validates a BiteOpt or DE request like `fcmaes.job/0.1` and returns the
 /// legacy specification the shared native solver runs.
 fn legacy_spec(s: &JobSpec, p: &mut Payload) -> Result<LegacySpec> {
     let q = &p.optimizer.parameters;
+    let kind = p.optimizer.kind.as_str();
+    // DE samples around a guess with sigma; BiteOpt has its own spread.
+    let sigma = match (kind, &p.guess, q.sigma) {
+        ("de", Some(_), sigma) => Some(in_range(
+            "de sigma (normalized box units)",
+            sigma.unwrap_or(DE_GUESS_SIGMA),
+            0.0,
+            2.0,
+        )?),
+        ("de", None, Some(_)) => {
+            return Err(
+                "optimizer.parameters.sigma applies to de only with a guess, as the spread of its samples around it"
+                    .into(),
+            );
+        }
+        _ => None,
+    };
     for (name, given) in [
-        ("sigma", q.sigma.is_some()),
+        ("sigma", q.sigma.is_some() && kind != "de"),
         ("restarts", q.restarts.is_some()),
         ("max_population", q.max_population.is_some()),
         ("center_learning_rate", q.center_learning_rate.is_some()),
@@ -282,7 +363,6 @@ fn legacy_spec(s: &JobSpec, p: &mut Payload) -> Result<LegacySpec> {
             .into());
         }
     }
-    let kind = p.optimizer.kind.as_str();
     match (kind, p.evaluation_limit_mode.as_str()) {
         ("biteopt", "hard") | ("de", "soft") => (),
         _ => {
@@ -336,6 +416,7 @@ fn legacy_spec(s: &JobSpec, p: &mut Payload) -> Result<LegacySpec> {
     spec.requested()?;
     spec.maximum_evaluations()?;
     p.optimizer.parameters.population = Some(population);
+    p.optimizer.parameters.sigma = sigma;
     Ok(spec)
 }
 
@@ -466,6 +547,7 @@ fn es_settings(p: &mut Payload) -> Result<EsSettings> {
             0.0,
             1.0,
         )?,
+        guess: p.guess.clone(),
     };
     let pgpe = kind == EsKind::Pgpe;
     let restarting = restarts != Restarts::None;
@@ -517,10 +599,11 @@ fn normalized(bounds: &RetryBounds) -> Fitness {
 }
 
 /// One CMA-ES, CR-FM-NES or PGPE retry of `evaluations` evaluations (a soft
-/// limit) from a uniform random start drawn from a stream derived from
-/// `seed`. Populations are evaluated on `threads` and the result does not
-/// depend on their number. With restarts, every restart begins at a new
-/// random start and runs until the retry's budget is spent.
+/// limit) from `settings.guess` or a uniform random start drawn from a stream
+/// derived from `seed`. Populations are evaluated on `threads` and the result
+/// does not depend on their number. With restarts, every restart begins at a
+/// new random start (with or without a guess) and runs until the retry's
+/// budget is spent.
 pub fn es_retry(
     settings: &EsSettings,
     bounds: &RetryBounds,
@@ -528,6 +611,27 @@ pub fn es_retry(
     evaluations: u64,
     objective: &(dyn Fn(&[f64]) -> f64 + Send + Sync),
     threads: &Threads,
+) -> EsRun {
+    es_retry_until(
+        settings,
+        bounds,
+        seed,
+        evaluations,
+        objective,
+        threads,
+        &|| false,
+    )
+}
+
+/// [`es_retry`] that starts no further restart once `stopped` returns true.
+pub fn es_retry_until(
+    settings: &EsSettings,
+    bounds: &RetryBounds,
+    seed: u64,
+    evaluations: u64,
+    objective: &(dyn Fn(&[f64]) -> f64 + Send + Sync),
+    threads: &Threads,
+    stopped: &dyn Fn() -> bool,
 ) -> EsRun {
     let s = settings;
     let mut start = Rng::new(seed ^ 0x9E37_79B9_7F4A_7C15);
@@ -562,7 +666,13 @@ pub fn es_retry(
             large_runs += 1;
             (doubled(large_runs), s.sigma, remaining, true)
         };
-        let guess = uniform(bounds, &mut start);
+        // The draw is made with a guess too, so restarts begin where they
+        // would without one.
+        let random = uniform(bounds, &mut start);
+        let guess = match &s.guess {
+            Some(guess) if run == 0 => guess.clone(),
+            _ => random,
+        };
         let run_seed = if run == 0 {
             seed
         } else {
@@ -584,7 +694,7 @@ pub fn es_retry(
             best = Some(r);
         }
         run += 1;
-        if s.restarts == Restarts::None || used >= evaluations || spent == 0 {
+        if s.restarts == Restarts::None || used >= evaluations || spent == 0 || stopped() {
             break;
         }
     }
@@ -711,6 +821,19 @@ pub fn batch_retry(
     objective: &(dyn Fn(&[f64]) -> f64 + Send + Sync),
     threads: &Threads,
 ) -> RetryRunResult {
+    batch_retry_from(spec, batch, None, bounds, seed, objective, threads)
+}
+
+/// [`batch_retry`] from `start`, if given.
+pub fn batch_retry_from(
+    spec: &LegacySpec,
+    batch: usize,
+    start: Option<&Start>,
+    bounds: &RetryBounds,
+    seed: u64,
+    objective: &(dyn Fn(&[f64]) -> f64 + Send + Sync),
+    threads: &Threads,
+) -> RetryRunResult {
     let population = spec.optimizer.parameters.population.unwrap() as i32;
     let evaluations = spec.budget.evaluations_per_retry;
     let evaluate = |rows: &[Vec<f64>]| threads.map(rows, |x| objective(x));
@@ -718,7 +841,7 @@ pub fn batch_retry(
         let r = BiteOpt::new(
             bounds.lower(),
             bounds.upper(),
-            None,
+            start.map(|s| s.x.as_slice()),
             &BiteParams {
                 seed,
                 runid: 0,
@@ -734,25 +857,7 @@ pub fn batch_retry(
             evaluations: r.evaluations,
         }
     } else {
-        let fitness = Fitness::new(
-            bounds.dim(),
-            1,
-            bounds.lower().to_vec(),
-            bounds.upper().to_vec(),
-        );
-        let mut de = De::new(
-            fitness,
-            &[],
-            &[],
-            None,
-            &DeParams {
-                seed,
-                runid: 0,
-                popsize: population,
-                max_evaluations: evaluations,
-                ..Default::default()
-            },
-        );
+        let mut de = de(spec, start, bounds, seed);
         let r = threads.install(|| de.optimize_delayed(&|x: &[f64]| objective(x), batch));
         RetryRunResult {
             x: r.x,
@@ -760,6 +865,74 @@ pub fn batch_retry(
             evaluations: r.evaluations,
         }
     }
+}
+
+/// The DE of a retry with the native solver's settings: uniform samples, or
+/// normal samples around `start` with its sigma scaled to each half-range.
+fn de(spec: &LegacySpec, start: Option<&Start>, bounds: &RetryBounds, seed: u64) -> De {
+    let fitness = Fitness::new(
+        bounds.dim(),
+        1,
+        bounds.lower().to_vec(),
+        bounds.upper().to_vec(),
+    );
+    let (guess, sigma) = match start {
+        Some(s) => (
+            s.x.clone(),
+            bounds
+                .lower()
+                .iter()
+                .zip(bounds.upper())
+                .map(|(l, u)| s.sigma * 0.5 * (u - l))
+                .collect(),
+        ),
+        None => (Vec::new(), Vec::new()),
+    };
+    De::new(
+        fitness,
+        &guess,
+        &sigma,
+        None,
+        &DeParams {
+            seed,
+            runid: 0,
+            popsize: spec.optimizer.parameters.population.unwrap() as i32,
+            max_evaluations: spec.budget.evaluations_per_retry,
+            ..Default::default()
+        },
+    )
+}
+
+/// A serial BiteOpt or DE retry from `start`: the run of the shared native
+/// solver, with BiteOpt's population around the start and DE's samples
+/// around it.
+pub fn serial_retry(
+    spec: &LegacySpec,
+    start: &Start,
+    bounds: &RetryBounds,
+    seed: u64,
+    objective: &(dyn Fn(&[f64]) -> f64 + Send + Sync),
+) -> RetryRunResult {
+    let (x, y, evaluations) = if spec.optimizer.kind == "biteopt" {
+        let r = BiteOpt::new(
+            bounds.lower(),
+            bounds.upper(),
+            Some(&start.x),
+            &BiteParams {
+                seed,
+                runid: 0,
+                popsize: spec.optimizer.parameters.population.unwrap() as i32,
+                max_evaluations: spec.budget.evaluations_per_retry,
+                ..Default::default()
+            },
+        )
+        .optimize(&|x: &[f64]| objective(x));
+        (r.x, r.y, r.evaluations)
+    } else {
+        let r = de(spec, Some(start), bounds, seed).optimize(&|x: &[f64]| objective(x));
+        (r.x, r.y, r.evaluations)
+    };
+    RetryRunResult { x, y, evaluations }
 }
 
 /// Judges one retry's answer: the best point it evaluated and its value. A
@@ -774,6 +947,20 @@ pub fn judge(
     r: RetryRunResult,
     bounds: &RetryBounds,
     objective: &dyn Fn(&[f64]) -> f64,
+) -> Result<(Outcome, u64)> {
+    judge_with(r, bounds, Some(objective))
+}
+
+/// [`judge`], or without `objective` the same checks without the
+/// re-evaluation: a usable point inside the box keeps `best_found` with
+/// `claimed` evidence.
+/// A scalar objective as the judge recomputes it.
+type Recheck<'a> = &'a dyn Fn(&[f64]) -> f64;
+
+fn judge_with(
+    r: RetryRunResult,
+    bounds: &RetryBounds,
+    objective: Option<Recheck>,
 ) -> Result<(Outcome, u64)> {
     let usable = |v: f64| v.is_finite() && v < 1e99;
     if !usable(r.y) {
@@ -816,6 +1003,17 @@ pub fn judge(
         };
         return Ok((outcome, 0));
     }
+    let Some(objective) = objective else {
+        let outcome = Outcome {
+            claim: "best_found".into(),
+            feasible: Some(true),
+            objective: Some(r.y),
+            x: Some(r.x),
+            evidence: Some(Evidence::claimed(&[])),
+            ..Outcome::default()
+        };
+        return Ok((outcome, 0));
+    };
     let value = objective(&r.x);
     let outcome = if value != r.y {
         let message = format!("reported {} but the point evaluates to {value}", r.y);
@@ -847,37 +1045,60 @@ impl Prepared for Run {
     fn tasks(&self) -> usize {
         self.payload.retries
     }
-    fn cancel(&self) {} // fcmaes core has no in-retry stop token.
-    fn solve(&self, task: usize, _: f64) -> Result<TaskResult> {
+    /// fcmaes-core has no in-retry stop token: a plain model's retry runs to
+    /// its budget, while a `Scalar::simulation` model sees the cancel at its
+    /// checkpoints and every further evaluation returns at once.
+    fn cancel(&self) {
+        self.control.cancel();
+    }
+    fn solve(&self, task: usize, remaining: f64) -> Result<TaskResult> {
         // The whole task runs on its own threads, so no Rayon work of the
         // task (or of the model) reaches the global pool.
         let threads = Threads::new(self.threads)?;
-        threads.install(|| self.task(task, &threads))
+        threads.install(|| self.task(task, remaining, &threads))
     }
 }
 
 impl Run {
-    fn task(&self, task: usize, threads: &Threads) -> Result<TaskResult> {
+    fn task(&self, task: usize, remaining: f64, threads: &Threads) -> Result<TaskResult> {
         let seed = retry_run_seed(self.payload.seed, task);
-        let objective = &*self.objective;
+        let evaluator = Evaluator::new(&self.model, &self.control, remaining, seed);
+        let objective = |x: &[f64]| evaluator.value(x);
         let mut details = json!({"run_seed":seed,"evaluation_limit_mode":self.payload.evaluation_limit_mode,
             "requested_evaluations":self.payload.evaluations_per_retry,"global_optimum_certified":false});
         let r = match &self.engine {
-            Engine::Legacy { spec, batch: None } => {
-                solve(spec, &self.bounds, seed, &|x: &[f64]| objective(x))
-            }
+            Engine::Legacy {
+                spec,
+                batch: None,
+                start: None,
+            } => solve(spec, &self.bounds, seed, &objective),
+            Engine::Legacy {
+                spec,
+                batch: None,
+                start: Some(start),
+            } => serial_retry(spec, start, &self.bounds, seed, &objective),
             Engine::Legacy {
                 spec,
                 batch: Some(batch),
-            } => batch_retry(spec, *batch, &self.bounds, seed, objective, threads),
+                start,
+            } => batch_retry_from(
+                spec,
+                *batch,
+                start.as_ref(),
+                &self.bounds,
+                seed,
+                &objective,
+                threads,
+            ),
             Engine::Es(settings) => {
-                let run = es_retry(
+                let run = es_retry_until(
                     settings,
                     &self.bounds,
                     seed,
                     self.payload.evaluations_per_retry,
-                    objective,
+                    &objective,
                     threads,
+                    &|| evaluator.is_cancelled(),
                 );
                 details["stop_code"] = json!(run.stop);
                 if settings.restarts != Restarts::None {
@@ -890,17 +1111,67 @@ impl Run {
         if r.evaluations == 0 || r.evaluations > self.per_retry_limit {
             return Err("native evaluation budget mismatch".into());
         }
+        let (failed, cancelled) = (evaluator.failed(), evaluator.cancelled());
         // BiteOpt and DE always spend their budget; CMA-ES, CR-FM-NES and
-        // PGPE without restarts can stop earlier on their own tests.
-        let termination = if r.evaluations >= self.payload.evaluations_per_retry {
+        // PGPE without restarts can stop earlier on their own tests. After a
+        // cancel, a simulation's remaining evaluations return at once.
+        let termination = if cancelled > 0 {
+            "cancelled"
+        } else if r.evaluations >= self.payload.evaluations_per_retry {
             "evaluation_limit"
         } else {
             "optimizer_stop"
         };
-        let evaluations = r.evaluations;
-        let (outcome, validations) = judge(r, &self.bounds, objective)?;
+        let attempts = r.evaluations;
+        let mut cancelled_validations = 0;
+        let (outcome, validations) = if !evaluator.is_simulation() {
+            judge(r, &self.bounds, &objective)?
+        } else if evaluator.is_cancelled() {
+            details["recheck"] = json!("skipped: cancelled");
+            judge_with(r, &self.bounds, None)?
+        } else {
+            // The recheck uses the point's seed again; a failure refutes
+            // the claim, a cancel leaves it unchecked.
+            let failure = std::sync::Mutex::new(None);
+            let recheck = |x: &[f64]| {
+                evaluator.try_value(x).unwrap_or_else(|f| {
+                    *failure.lock().unwrap() = Some(f);
+                    f64::INFINITY
+                })
+            };
+            let judged = judge(r.clone(), &self.bounds, &recheck)?;
+            match failure.into_inner().unwrap() {
+                Some(Failure::Cancelled) => {
+                    details["recheck"] = json!("cancelled during validation; not rechecked");
+                    cancelled_validations = judged.1;
+                    (judge_with(r, &self.bounds, None)?.0, judged.1)
+                }
+                Some(Failure::Failed(message)) => {
+                    details["recheck"] = json!(format!("failed: {message}"));
+                    judged
+                }
+                None => judged,
+            }
+        };
         if let Some(reported) = outcome.details.get("reported_objective") {
             details["reported_objective"] = reported.clone();
+        }
+        let mut work: std::collections::BTreeMap<String, u64> = [
+            ("evaluations".into(), attempts - cancelled),
+            ("validation_evaluations".into(), validations),
+        ]
+        .into();
+        if evaluator.is_simulation() {
+            details["failed_evaluations"] = json!(failed);
+            details["cancelled_evaluations"] = json!(cancelled);
+            details["failures"] = json!(evaluator.messages());
+            work.insert("failed_evaluations".into(), failed);
+            work.insert("cancelled_evaluations".into(), cancelled);
+            work.insert("evaluation_attempts".into(), attempts);
+            work.insert(
+                "cancelled_validation_evaluations".into(),
+                cancelled_validations,
+            );
         }
         Ok(TaskResult {
             outcome: Outcome {
@@ -908,11 +1179,7 @@ impl Run {
                 details,
                 ..outcome
             },
-            work: [
-                ("evaluations".into(), evaluations),
-                ("validation_evaluations".into(), validations),
-            ]
-            .into(),
+            work,
         })
     }
 }

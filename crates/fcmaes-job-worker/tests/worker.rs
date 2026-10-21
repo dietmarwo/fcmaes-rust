@@ -93,6 +93,11 @@ fn describe_reports_profile_and_workspace_engine_version() {
         ])
     );
     assert_eq!(d["evaluation"]["profile"], "fcmaes.evaluate/1");
+    let feasible = d["claims"]["feasible"].as_str().unwrap();
+    assert!(
+        feasible.contains("within bounds and a usable value; no constraint check"),
+        "{feasible}"
+    );
     assert_eq!(d["resources"]["inner_threads_max"], 1024);
     let problems = d["problems"].as_array().unwrap();
     for (profile, id) in [
@@ -867,6 +872,13 @@ fn evaluate_checks_given_points_on_every_model_family() {
     assert_eq!(first["objective"], 9.0);
     assert_eq!(first["x"], json!([1.0, 2.0, 2.0]));
     assert_eq!(first["evidence"]["level"], "rechecked");
+    // Review F08: a scalar model declares no constraints; a penalty inside
+    // its objective is part of the value, not a checked constraint.
+    assert_eq!(
+        first["details"]["constraints"],
+        "none declared; penalties inside the objective are not checked"
+    );
+    assert_eq!(first["evidence"]["checks"], json!(["objective", "bounds"]));
     assert_eq!(run["results"][1]["outcome"]["objective"], 0.0);
 
     // Binh-Korn: (1, 1) satisfies both constraints, (0, 3) violates the first.

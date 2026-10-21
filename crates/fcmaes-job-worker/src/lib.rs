@@ -12,10 +12,12 @@
 //! - `fcmaes.evaluate/1`: evaluates given points on any of these models
 //!   without optimizing;
 //! - `fcmaes.surrogate/1`: exact-GP synchronous batches for small-budget,
-//!   deterministic scalar models, including cancellable Rust simulations.
+//!   deterministic scalar models.
 //!
-//! Models come from a [`Registry`]: the built-in benchmarks and whatever an
-//! application registers (`registry` module docs, `examples/custom_worker.rs`).
+//! Every scalar profile accepts `Scalar::simulation` models: cancellable,
+//! fallible Rust simulations. Models come from a [`Registry`]: the built-in
+//! benchmarks and whatever an application registers (`registry` module docs,
+//! `examples/custom_worker.rs`).
 //! Every optimizing task is one seeded run with its own optimizer state; a
 //! population-based run evaluates its populations on `inner_threads`
 //! threads of its own and gives the same result with any number of them.
@@ -134,20 +136,20 @@ impl Worker for Adapter {
             "best_found":"fcmaes.retry/1: the best point the optimizer evaluated (not a model mean or recommendation), re-evaluated and inside the bounds; evidence rechecked [objective, bounds]; no global certificate",
             "non_dominated_set":"fcmaes.mode/1: details.front is the feasible non-dominated part of the final population, re-evaluated; evidence rechecked; no Pareto-optimality certificate",
             "elite_archive":"fcmaes.map-elites/1: every elite in details.elites is re-evaluated and maps to its niche; x/objective are the best elite; evidence rechecked [objective, bounds, niche]",
-            "feasible":"fcmaes.evaluate/1: the given point has a usable value (or satisfies the constraints); fcmaes.retry/1 after an objective_mismatch refutation",
-            "none":"no usable answer (claimed evidence: a penalty value, an empty front or archive); with evidence.refuted, a best_found claim that failed its re-check"
+            "feasible":"scalar and quality-diversity models (fcmaes.evaluate/1; fcmaes.retry/1 and fcmaes.surrogate/1 after an objective_mismatch refutation): within bounds and a usable value; no constraint check (they declare no constraints; a penalty inside the objective is not checked). Multi-objective models (fcmaes.evaluate/1): every declared constraint <= 0, rechecked",
+            "none":"no usable answer (claimed evidence: a penalty value, a failed simulation, an empty front or archive); with evidence.refuted, a best_found claim that failed its re-check"
         });
         d["cancellation"] = json!({
-            retry::PROFILE: "between retries; active retries run until their budget or process deadline",
+            retry::PROFILE: "between retries; active retries run until their budget or process deadline; Scalar::simulation models stop at SimContext checkpoints, and the rest of the retry's evaluations return +inf at once",
             mode::PROFILE: "between generations; the run returns what it has",
             map_elites::PROFILE: "between generations; the run returns what it has",
-            evaluate::PROFILE: "between points"
+            evaluate::PROFILE: "between points; Scalar::simulation models also at SimContext checkpoints"
         });
         d["cancellation"][surrogate::PROFILE] = json!(
             "stop before proposals and evaluations; Scalar::simulation also stops at SimContext checkpoints; plain callbacks must finish or the runner enforces the process deadline"
         );
         d["claims"]["best_found"] = json!(
-            "fcmaes.retry/1 and fcmaes.surrogate/1: best evaluated point, no global certificate; surrogate evidence is rechecked only after exact independent deterministic re-evaluation, otherwise claimed; warm values remain historical inputs"
+            "fcmaes.retry/1 and fcmaes.surrogate/1: best evaluated point, no global certificate; surrogate evidence is rechecked only after exact independent deterministic re-evaluation, otherwise claimed; warm values remain historical inputs; a cancelled Scalar::simulation retry's point is not rechecked (claimed)"
         );
         d
     }

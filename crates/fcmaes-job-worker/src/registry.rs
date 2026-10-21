@@ -113,8 +113,12 @@ impl Scalar {
             domain: None,
         }
     }
-    /// Fallible/cancellable simulation. In v0.1 this is accepted by the
-    /// surrogate profile only; legacy scalar profiles reject it explicitly.
+    /// Fallible/cancellable simulation, called with a [`SimContext`]
+    /// (`crate::simulation`). `fcmaes.surrogate/1`, `fcmaes.retry/1` and
+    /// `fcmaes.evaluate/1` accept it: a failed evaluation is a failed
+    /// observation, `+inf` for a retry's optimizer, or claim `none`.
+    ///
+    /// [`SimContext`]: crate::simulation::SimContext
     pub fn simulation(
         evaluate: impl Fn(&[f64], &crate::simulation::SimContext) -> std::result::Result<f64, String>
         + Send
@@ -122,8 +126,8 @@ impl Scalar {
         + 'static,
     ) -> Self {
         Self {
-            // Profiles that would call this reject simulation models when the
-            // job is resolved; a direct call is a bug, not a bad objective value.
+            // Every profile calls a simulation through `Scalar::value`; a
+            // direct call is a bug, not a bad objective value.
             evaluate: Arc::new(|_| {
                 panic!("a Scalar::simulation model must be called through Scalar::value")
             }),
@@ -471,9 +475,10 @@ impl Registry {
                 for (k, v) in e.about.as_object().into_iter().flatten() {
                     entry[k] = v.clone();
                 }
+                // An expensive simulation is optimized by the surrogate by
+                // default; retry and evaluate accept it as well.
                 if entry["simulation"] == true {
                     entry["profile"] = json!(surrogate::PROFILE);
-                    entry["profiles"] = json!([surrogate::PROFILE]);
                 }
                 entry
             })
@@ -560,11 +565,6 @@ impl Registry {
             inputs: RefCell::new(BTreeSet::new()),
         };
         let model = (entry.factory)(&instance)?;
-        if matches!(&model, Model::Scalar(m) if m.is_simulation())
-            && spec.payload_schema != surrogate::PROFILE
-        {
-            return Err("simulation models currently require fcmaes.surrogate/1; legacy retry/evaluate simulation adaptation is a later milestone".into());
-        }
         let used = instance.used.into_inner();
         let unknown: Vec<&str> = instance
             .given
