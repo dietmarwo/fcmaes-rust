@@ -219,7 +219,8 @@ fn every_advertised_profile_has_a_schema_and_an_example() {
                 }
             }
         }
-        // The pinned runner reads at most 64 KiB of describe output.
+        // Runners before optimization-jobs 069d87c read at most 64 KiB of
+        // describe output (newer ones 1 MiB); stay well below the old limit.
         let size = d.to_string().len();
         assert!(size < 48 * 1024, "{worker}: {size} bytes");
     }

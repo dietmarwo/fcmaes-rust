@@ -15,7 +15,7 @@ optimizer and check of the stock worker.
 fcmaes-job-worker = { git = "https://github.com/dietmarwo/fcmaes-rust" }
 # The same revision as fcmaes-rust's root Cargo.toml pins; another source or
 # revision would be a second, incompatible copy of the crate.
-optimization-job-api = { git = "https://github.com/dietmarwo/optimization-jobs", rev = "423cd87a01d8e3c73697ffca6224979efee46258" }
+optimization-job-api = { git = "https://github.com/dietmarwo/optimization-jobs", rev = "069d87c29170c8a5a1f4641028811df1a2de0585" }
 serde_json = "1"
 ```
 
@@ -73,11 +73,13 @@ it (Cassini1 is one).
 `id`, `version`, `kind`, `profile`, `profiles` and `parameters_schema` the
 registry fills in. Describe there what an agent needs to write a job:
 dimensions, parameters, inputs, the meaning of the variables. Keep it short:
-the runner at the pinned revision reads at most 64 KiB of `describe` output
-in `workers add`. With its payload schemas and examples the stock worker's
-`describe` has about 39 KB; another model adds roughly 0.5 KB plus its
-`about` (the curve fit adds 1.7 KB, its example's data included), so about
-50 models of this size fit next to the benchmarks. A worker that does not
+the runner reads at most 1 MiB of `describe` output in `workers add` (64 KiB
+before optimization-jobs `069d87c`; keep a worker under that if it must
+register with older runners). With its payload schemas and examples the
+stock worker's `describe` has about 39 KB; another model adds roughly 0.5 KB
+plus its `about` (the curve fit adds 1.7 KB, its example's data included), so
+about 50 models of this size fit next to the benchmarks under 64 KiB, and
+well over a thousand under 1 MiB. A worker that does not
 need the benchmarks starts from `Registry::new()`.
 
 ## Discovery: payload schemas and examples
@@ -117,7 +119,7 @@ registry.example(
 ```
 
 Its inputs appear as `content_text` in the example; keep them small, they
-count against the 64 KiB. `Example::reference_point` gives `fcmaes.mode/1`
+count against that limit. `Example::reference_point` gives `fcmaes.mode/1`
 examples a reference point. A model without an example that `describe`
 cannot build has neither an example nor a `parameters_schema`; jobs on it
 still work. Since `describe` runs every factory, keep factories quick: `workers
