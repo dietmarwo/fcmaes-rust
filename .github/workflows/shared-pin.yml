@@ -3,8 +3,10 @@ name: Shared job API pin
 # The workspace depends on optimization-jobs at a pinned git revision, and the
 # runner and MCP server built here embed that revision's guide (get_guide) and
 # run its shared test scripts. This check fails when optimization-jobs' main
-# has changed the shared crates, the guide, the docs or the scripts since the
-# pinned revision, so the pin is moved instead of drifting (third review N1).
+# has changed the shared crates, the guide, the job API docs or the shared
+# test scripts since the pinned revision, so the pin is moved instead of
+# drifting (third review N1). The landing page (site/, scripts/build_site.py)
+# and docs/discovery/ are not shared with the workers and do not count.
 on:
   schedule:
     - cron: "23 5 * * 1"
@@ -52,7 +54,7 @@ jobs:
           if ! git merge-base --is-ancestor "$PIN" "$head"; then
             echo "::error::the pinned revision $PIN is not on optimization-jobs main"; exit 1
           fi
-          changed=$(git diff --name-only "$PIN" "$head" -- crates ai-context.md docs scripts Cargo.lock)
+          changed=$(git diff --name-only "$PIN" "$head" -- crates ai-context.md docs/job-api.md docs/job-api scripts/job-api Cargo.lock)
           if [ -n "$changed" ]; then
             echo "::error::optimization-jobs main ($head) changed shared files since the pinned revision $PIN: move the pin (the rev in Cargo.toml and the source lines in Cargo.lock) and rerun the job-API checks."
             echo "$changed"

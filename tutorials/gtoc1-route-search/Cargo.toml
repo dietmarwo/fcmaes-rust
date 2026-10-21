@@ -15,7 +15,7 @@ name = "gtoc1_pykep"
 [dependencies]
 # Durable JSONL, snapshot, checksum and subprocess helpers; the same
 # revision as the repository's root Cargo.toml.
-optimization-job-api = { git = "https://github.com/dietmarwo/optimization-jobs", rev = "8d1927899958bedc6effeef4581e660aceb3b66c", version = "0.2" }
+optimization-job-api = { git = "https://github.com/dietmarwo/optimization-jobs", rev = "43ef3aee7be78274da529f10af5839a16bbf047e", version = "0.2" }
 fcmaes-core = "=0.1.3"
 # Repository development alternative:
 # fcmaes-core = { path = "../../crates/fcmaes-core" }
