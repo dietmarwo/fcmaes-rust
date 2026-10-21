@@ -1,7 +1,8 @@
 //! First synchronous surrogate profile on any registered scalar model.
 use crate::{
     Control,
-    registry::{Model, Problem, Registry, Scalar},
+    registry::{Model, Probe, Problem, Registry, Scalar},
+    schema,
     simulation::SimContext,
     threads::Threads,
 };
@@ -26,7 +27,8 @@ use std::{
 };
 
 pub const PROFILE: &str = "fcmaes.surrogate/1";
-const WARM_SCHEMA: &str = "fcmaes.surrogate.observations/1";
+/// Format of the observations snapshot a warm start reads (`input_schemas`).
+pub const WARM_SCHEMA: &str = "fcmaes.surrogate.observations/1";
 fn yes() -> bool {
     true
 }
@@ -491,4 +493,71 @@ impl Run {
             .into(),
         })
     }
+}
+
+/// JSON Schema of the payload, with `problem` the schema of its problems.
+pub fn payload_schema(problem: Value) -> Value {
+    use crate::schema::{integer, number, or_null, payload, u64};
+    let range = |r: &std::ops::RangeInclusive<f64>| number(Some(*r.start()), Some(*r.end()), false);
+    let parameters = json!({"type":"object","additionalProperties":false,"properties":{
+        "kernel":{"enum":["matern52","rbf"]},"acquisition":{"enum":["log_ei","lcb"]},
+        "output_transform":{"enum":["standardize","bilog","auto"]},
+        "initial_points":integer(1, 128),"candidates":integer(32, 4096),"fit_restarts":integer(1, 4),
+        "fit_iterations":integer(1, bo::gp::MAX_FIT_ITERATIONS as u64),"refit_interval":integer(1, 64),
+        "lcb_beta":range(&(0.0..=20.0)),"minimum_distance":range(&(1e-12..=0.01)),
+        "failure_threshold":number(Some(0.0), None, true),"nugget":range(&bo::gp::NUGGET_RANGE),
+        "trust_region":{"type":"boolean"}}});
+    let batch = bo::MAX_BATCH as u64;
+    payload(
+        PROFILE,
+        json!({"type":"object","additionalProperties":false,"required":["problem","seed","evaluations"],
+        "properties":{"problem":problem,"seed":u64(),"evaluations":integer(1, bo::MAX_OBSERVATIONS as u64),
+            "runs":integer(1, 1024),"concurrent":integer(1, batch),"evaluation_threads":integer(1, batch),
+            "parameters":parameters,"log_scale":{"type":"array","items":{"type":"boolean"}},
+            "target":or_null(json!({"type":"number"})),"recheck_best":{"type":"boolean"},
+            "warm_start":or_null(json!({"type":"object","additionalProperties":false,"required":["input"],
+                "properties":{"input":{"type":"string"}}}))},
+        "if":{"required":["warm_start"],"properties":{"warm_start":{"type":"object"}}},
+        "then":{"properties":{"runs":{"const":1}}},
+        "$comment":"concurrent times evaluation_threads <= inner_threads <= 8; log_scale is empty or has one entry per variable, and a log-scaled variable needs a positive lower bound; evaluations plus warm-start observations <= 256; warm_start.input names an envelope input in the format fcmaes.surrogate.observations/1 (input_schemas) for the same model, parameters, model inputs and, for simulation models, run seed; gtop models default to failure_threshold 1e10."}),
+    )
+}
+
+/// JSON Schema of the warm-start observations snapshot.
+pub fn warm_start_schema() -> Value {
+    use crate::schema::{DRAFT, integer, or_null, u64};
+    let value = |kind: &str, value: Value| {
+        json!({"type":"object","additionalProperties":false,"required":["kind","value"],
+            "properties":{"kind":{"const":kind},"value":value}})
+    };
+    json!({"$schema":DRAFT,"$id":format!("urn:optimization-jobs:input:{WARM_SCHEMA}"),
+        "type":"object","additionalProperties":false,
+        "required":["schema_version","problem","usable_for_warm_start","observations"],
+        "properties":{"schema_version":{"const":WARM_SCHEMA},
+            "problem":{"type":"object","additionalProperties":false,
+                "required":["id","version","dimension","parameters","model_inputs"],
+                "properties":{"id":{"type":"string"},"version":{"type":"string"},
+                    "dimension":integer(1, bo::MAX_DIMENSION as u64),"parameters":{"type":"object"},
+                    "model_inputs":{"type":"object","additionalProperties":{"type":"string","pattern":"^[0-9a-f]{64}$"}},
+                    "simulation_seed":or_null(u64())}},
+            "usable_for_warm_start":{"const":true},
+            "observations":{"type":"array","maxItems":bo::MAX_OBSERVATIONS,
+                "items":{"type":"object","additionalProperties":false,"required":["id","x","value"],
+                    "properties":{"id":u64(),"x":{"type":"array","items":{"type":"number"}},
+                        "value":{"oneOf":[value("finite", json!({"type":"number"})),value("failed", json!({"type":"string"}))]}}}}},
+        "$comment":"the surrogate-observations-TASK artifact of an earlier job; its problem must equal the new job's resolved model identity (parameters with defaults, SHA-256 of the model inputs, simulation run seed); observation ids are unique and each x has dimension values"})
+}
+
+/// The `examples` entry of this profile on `probe`.
+pub fn example(probe: &Probe) -> Value {
+    schema::example(
+        PROFILE,
+        format!(
+            "exact-GP surrogate on {}: 8 evaluations, 4 of them initial",
+            probe.id
+        ),
+        probe,
+        json!({"problem":probe.problem(),"seed":1,"evaluations":8,
+            "parameters":{"initial_points":4,"candidates":64,"fit_restarts":1,"fit_iterations":10}}),
+    )
 }

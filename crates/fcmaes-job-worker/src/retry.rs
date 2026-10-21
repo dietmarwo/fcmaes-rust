@@ -9,7 +9,8 @@
 //! `+inf`; its evaluations stop at its `SimContext` checkpoints on a cancel.
 use crate::{
     Control,
-    registry::{Kind, Model, Problem, Registry, Scalar},
+    registry::{Kind, Model, Probe, Problem, Registry, Scalar},
+    schema,
     simulation::{Evaluator, Failure},
     threads::Threads,
 };
@@ -1182,4 +1183,76 @@ impl Run {
             work,
         })
     }
+}
+
+/// JSON Schema of the payload, with `problem` the schema of its problems.
+pub fn payload_schema(problem: Value) -> Value {
+    use crate::schema::{absent, integer, number, numbers, or_null, payload, u64};
+    let limit = POPULATION_LIMIT as u64;
+    let parameters = json!({"type":"object","additionalProperties":false,"properties":{
+        "population":or_null(integer(4, limit)),
+        "batch":or_null(integer(1, limit)),
+        "sigma":or_null(number(Some(0.0), Some(2.0), true)),
+        "restarts":{"enum":["none","ipop","bipop",null]},
+        "max_population":or_null(integer(4, limit)),
+        "center_learning_rate":or_null(number(Some(0.0), Some(1.0), true)),
+        "stdev_learning_rate":or_null(number(Some(0.0), Some(1.0), true))}});
+    // The rules of one optimizer kind: its evaluation limit mode, the
+    // parameters that apply to it, and `rules` on the whole payload.
+    let kind = |kind: &str, mode: &str, parameters: Value, rules: Value| {
+        let mut then = json!({"properties":{"evaluation_limit_mode":{"const":mode},
+            "optimizer":{"properties":{"parameters":parameters}}}});
+        if rules.as_array().is_some_and(|r| !r.is_empty()) {
+            then["allOf"] = rules;
+        }
+        json!({"if":{"properties":{"optimizer":{"properties":{"kind":{"const":kind}}}}},"then":then})
+    };
+    let all = |a: Value, b: Value| json!({"allOf":[a, b]});
+    let even = json!({"properties":{"population":{"multipleOf":2}}});
+    let es = ["batch", "center_learning_rate", "stdev_learning_rate"];
+    payload(
+        PROFILE,
+        json!({"type":"object","additionalProperties":false,
+        "required":["problem","optimizer","seed","retries","evaluations_per_retry","evaluation_limit_mode"],
+        "properties":{"problem":problem,
+            "optimizer":{"type":"object","additionalProperties":false,"required":["kind","parameters"],
+                "properties":{"kind":{"enum":["biteopt","de","cmaes","crfmnes","pgpe"]},"parameters":parameters}},
+            "seed":u64(),"retries":integer(1, 1_000_000),"evaluations_per_retry":integer(1, u64::MAX),
+            "evaluation_limit_mode":{"enum":["hard","soft"]},"guess":or_null(numbers())},
+        "allOf":[
+            kind("biteopt","hard",absent(&["sigma","restarts","max_population","center_learning_rate","stdev_learning_rate"]),json!([])),
+            kind("de","soft",absent(&["restarts","max_population","center_learning_rate","stdev_learning_rate"]),
+                json!([{"if":{"required":["guess"],"properties":{"guess":{"type":"array"}}},
+                    "else":{"properties":{"optimizer":{"properties":{"parameters":absent(&["sigma"])}}}}}])),
+            kind("cmaes","soft",all(absent(&es),
+                json!({"if":{"required":["restarts"],"properties":{"restarts":{"enum":["ipop","bipop"]}}},
+                    "else":absent(&["max_population"])})),json!([])),
+            kind("crfmnes","soft",all(absent(&["batch","restarts","max_population","center_learning_rate","stdev_learning_rate"]),even.clone()),json!([])),
+            kind("pgpe","soft",all(absent(&["batch","restarts","max_population"]),even),json!([]))],
+        "$comment":"inner_threads: 1 for biteopt and de without parameters.batch, otherwise the threads evaluating a population (results do not depend on them). population, batch and (with restarts) max_population times dimension <= 1e7; cmaes: dimension <= 3162 and max_population >= population. guess: one value per variable inside the bounds. de: sigma only with a guess. retries times the per-retry maximum must not overflow."}),
+    )
+}
+
+/// The `examples` of this profile on `probe`: BiteOpt, and for the profile's
+/// `representative` model also CMA-ES from a guess.
+pub fn examples(probe: &Probe, representative: bool) -> Vec<Value> {
+    let (id, problem) = (&probe.id, probe.problem());
+    let mut examples = vec![schema::example(
+        PROFILE,
+        format!("BiteOpt on {id}: 2 retries of 500 evaluations"),
+        probe,
+        json!({"problem":problem,"optimizer":{"kind":"biteopt","parameters":{}},"seed":1,"retries":2,
+            "evaluations_per_retry":500,"evaluation_limit_mode":"hard"}),
+    )];
+    if representative && probe.dimension * probe.dimension <= MAX_CELLS {
+        examples.push(schema::example(
+            PROFILE,
+            format!("CMA-ES on {id} from a guess, the box centre: 2 retries of 500 evaluations"),
+            probe,
+            json!({"problem":problem,"optimizer":{"kind":"cmaes","parameters":{"sigma":0.2}},"seed":1,
+                "retries":2,"evaluations_per_retry":500,"evaluation_limit_mode":"soft",
+                "guess":schema::centre(probe)}),
+        ));
+    }
+    examples
 }

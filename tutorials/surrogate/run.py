@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 """Run Branin, warm continuation, and a Rust RK4 simulation through the job API."""
-import argparse, copy, hashlib, json, math, os, subprocess, tempfile
+import argparse, copy, hashlib, json, math, os, subprocess, sys, tempfile
 from pathlib import Path
 
 REPO=Path(__file__).resolve().parents[2]
 HERE=Path(__file__).resolve().parent
+sys.path.insert(0,str(REPO/'scripts/job-api'))
+import payload_schemas
 p=argparse.ArgumentParser(description=__doc__)
 p.add_argument('--root',type=Path)
 p.add_argument('--bin-dir',type=Path,default=Path(os.environ.get('CARGO_TARGET_DIR',REPO/'target'))/'release')
@@ -26,6 +28,14 @@ def run(spec,path):
 if not(root/'node.json').exists():call('node','init','--capacity',8)
 call('workers','add','--id','fcmaes','--executable',bins/'fcmaes-job-worker')
 call('workers','add','--id','simulation','--executable',bins/'examples/simulation_worker')
+# Discovery: the tutorial payloads validate against their worker's
+# payload_schemas, and every example of the simulation worker (its
+# oscillator in the surrogate, retry and evaluate profiles included) runs.
+described={worker:call('problems','describe',worker) for worker in ('fcmaes','simulation')}
+tutorial={name:json.loads((HERE/name).read_text()) for name in ('branin.json','oscillator.json')}
+validated=sum(payload_schemas.check(d,[(n,s['payload_schema'],s['payload']) for n,s in tutorial.items() if s['worker']==w])
+              for w,d in described.items())
+example_runs=payload_schemas.run_examples(call,root/'discovery','simulation',described['simulation'])
 spec=json.loads((HERE/'branin.json').read_text());job,result=run(spec,root/'branin.json');x=result['results'][0]['outcome']['x']
 value=(x[1]-5.1*x[0]*x[0]/(4*math.pi**2)+5*x[0]/math.pi-6)**2+10*(1-1/(8*math.pi))*math.cos(x[0])+10
 assert math.isclose(value,result['results'][0]['outcome']['objective'],abs_tol=1e-10)
@@ -39,9 +49,12 @@ assert hashlib.sha256(data).hexdigest()==snapshot['sha256'];(root/'previous.json
 warm=copy.deepcopy(spec);warm['request_key']='surrogate-tutorial-warm-v1';warm['payload']['evaluations']=8
 warm['payload']['warm_start']={'input':'previous'}
 warm['inputs']=[{'name':'previous','file':'previous.json','sha256':snapshot['sha256']}]
+validated+=payload_schemas.check(described['fcmaes'],[('warm start','fcmaes.surrogate/1',warm['payload'])])
+validated+=payload_schemas.check_input(described['fcmaes'],'fcmaes.surrogate.observations/1',json.loads(data))
 warm_job,warm_result=run(warm,root/'warm.json');assert warm_result['results'][0]['outcome']['details']['warm_start_points']==48
 sim_job,sim_result=run(json.loads((HERE/'oscillator.json').read_text()),root/'oscillator.json')
-report={'node':str(root),'branin':{'job':job,'result':result},'warm':{'job':warm_job,'result':warm_result},'simulation':{'job':sim_job,'result':sim_result}}
+report={'node':str(root),'branin':{'job':job,'result':result},'warm':{'job':warm_job,'result':warm_result},'simulation':{'job':sim_job,'result':sim_result},
+    'discovery':{'validated':validated,'runs':example_runs}}
 (root/'tutorial-report.json').write_text(json.dumps(report,indent=2)+'\n')
 print(json.dumps({'report':str(root/'tutorial-report.json'),'branin_best':result['results'][0]['outcome']['objective'],
     'warm_new_evaluations':warm_result['work']['evaluations'],'simulation_best':sim_result['results'][0]['outcome']['objective']},indent=2))

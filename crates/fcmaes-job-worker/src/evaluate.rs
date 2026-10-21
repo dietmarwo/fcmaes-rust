@@ -3,7 +3,8 @@
 //! its own candidates checked. One task per point.
 use crate::{
     Control,
-    registry::{Model, Problem, Registry},
+    registry::{Model, Probe, Problem, Registry},
+    schema,
     simulation::{Evaluator, Failure},
     threads::Threads,
 };
@@ -230,4 +231,30 @@ impl Run {
             work,
         })
     }
+}
+
+/// JSON Schema of the payload, with `problem` the schema of its problems.
+pub fn payload_schema(problem: Value) -> Value {
+    use crate::schema::{numbers, or_null, payload, u64};
+    payload(
+        PROFILE,
+        json!({"type":"object","additionalProperties":false,"required":["problem","points"],
+        "properties":{"problem":problem,
+            "points":{"type":"array","minItems":1,"maxItems":MAX_POINTS,"items":numbers()},
+            "run_seed":or_null(u64())},
+        "$comment":"inner_threads 1, one task per point; every point has one value per variable inside the bounds; run_seed only for Scalar::simulation models (problems: simulation true)."}),
+    )
+}
+
+/// The `examples` entry of this profile on `probe`.
+pub fn example(probe: &Probe) -> Value {
+    schema::example(
+        PROFILE,
+        format!(
+            "evaluate {} at the centre and the lower corner of its box",
+            probe.id
+        ),
+        probe,
+        json!({"problem":probe.problem(),"points":[schema::centre(probe), probe.lower]}),
+    )
 }

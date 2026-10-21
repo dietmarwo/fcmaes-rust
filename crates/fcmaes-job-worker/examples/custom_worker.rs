@@ -20,10 +20,12 @@
 //! optimization-run workers add --id curve-fit --executable target/release/examples/custom_worker
 //! ```
 //!
-//! `tutorials/job-api` runs it on `decay.csv` (`exponential-fit.json`).
+//! `tutorials/job-api` runs it on `decay.csv` (`exponential-fit.json`). The
+//! registered [`Example`] makes `describe` advertise a runnable job with that
+//! data inline, so a client without this repository can build one.
 use fcmaes_job_worker::{
     Adapter,
-    registry::{Instance, Registry, Scalar},
+    registry::{Example, Instance, Registry, Scalar},
 };
 use optimization_job_api::Result;
 use serde_json::json;
@@ -76,18 +78,31 @@ fn exponential_fit(model: &Instance) -> Result<Scalar> {
     }))
 }
 
+/// The data of the tutorial's job: `a = 3, b = 0.7, c = 0.5` plus noise.
+const DECAY_CSV: &str = include_str!("../../../tutorials/job-api/decay.csv");
+
 /// The benchmarks plus the application's model.
 pub fn registry() -> Registry {
     let mut registry = Registry::benchmarks();
-    registry.scalar(
-        "app.exponential-fit",
-        "1",
-        json!({"dimensions":3,"variables":["a","b","c"],
-            "objective":"sum over the data rows of the loss of a*exp(-b*t) + c - y",
-            "parameters":{"loss":"squared (default) or absolute"},
-            "inputs":{"data":"CSV rows t,y; an optional header line"}}),
-        exponential_fit,
-    );
+    registry
+        .scalar(
+            "app.exponential-fit",
+            "1",
+            json!({"dimensions":3,"variables":["a","b","c"],
+                "objective":"sum over the data rows of the loss of a*exp(-b*t) + c - y",
+                "parameters":{"loss":"squared (default) or absolute"},
+                "inputs":{"data":"CSV rows t,y; an optional header line"}}),
+            exponential_fit,
+        )
+        // The model reads a data file: describe can only build it, and
+        // advertise a job on it, with an example of that file.
+        .example(
+            "app.exponential-fit",
+            Example::new(3)
+                .bounds(vec![0.0, 0.0, -10.0], vec![10.0, 5.0, 10.0])
+                .parameter("loss", "squared")
+                .input_text("data", "decay.csv", DECAY_CSV),
+        );
     registry
 }
 
