@@ -1,0 +1,61 @@
+name: Shared job API pin
+
+# The workspace depends on optimization-jobs at a pinned git revision, and the
+# runner and MCP server built here embed that revision's guide (get_guide) and
+# run its shared test scripts. This check fails when optimization-jobs' main
+# has changed the shared crates, the guide, the docs or the scripts since the
+# pinned revision, so the pin is moved instead of drifting (third review N1).
+on:
+  schedule:
+    - cron: "23 5 * * 1"
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "**/Cargo.toml"
+      - "**/Cargo.lock"
+      - ".github/workflows/shared-pin.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  pin:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: One pinned revision in every manifest and lockfile
+        id: pin
+        shell: bash
+        run: |
+          revs=$(git grep -h -o 'github.com/dietmarwo/optimization-jobs", rev = "[0-9a-f]\{40\}"' -- '*Cargo.toml' \
+            | grep -o '[0-9a-f]\{40\}' | sort -u)
+          echo "pinned: $revs"
+          if [ -z "$revs" ] || [ "$(wc -l <<<"$revs")" -ne 1 ]; then
+            echo "::error::the Cargo.toml files must pin exactly one optimization-jobs revision"; exit 1
+          fi
+          for lock in $(git ls-files '*Cargo.lock'); do
+            if grep -q 'github.com/dietmarwo/optimization-jobs' "$lock" \
+                && grep 'github.com/dietmarwo/optimization-jobs' "$lock" | grep -qv "rev=$revs#$revs"; then
+              echo "::error::$lock resolves optimization-jobs at another revision than $revs"; exit 1
+            fi
+          done
+          echo "rev=$revs" >> "$GITHUB_OUTPUT"
+      - name: optimization-jobs main changed nothing shared since the pin
+        shell: bash
+        env:
+          PIN: ${{ steps.pin.outputs.rev }}
+        run: |
+          git clone --quiet --filter=blob:none https://github.com/dietmarwo/optimization-jobs "$RUNNER_TEMP/optimization-jobs"
+          cd "$RUNNER_TEMP/optimization-jobs"
+          head=$(git rev-parse HEAD)
+          echo "pinned $PIN, optimization-jobs main $head"
+          if ! git merge-base --is-ancestor "$PIN" "$head"; then
+            echo "::error::the pinned revision $PIN is not on optimization-jobs main"; exit 1
+          fi
+          changed=$(git diff --name-only "$PIN" "$head" -- crates ai-context.md docs scripts Cargo.lock)
+          if [ -n "$changed" ]; then
+            echo "::error::optimization-jobs main ($head) changed shared files since the pinned revision $PIN: move the pin (the rev in Cargo.toml and the source lines in Cargo.lock) and rerun the job-API checks."
+            echo "$changed"
+            exit 1
+          fi
+          echo "the pin is current for every shared file"
