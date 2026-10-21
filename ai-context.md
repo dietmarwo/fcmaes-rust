@@ -147,11 +147,14 @@ require Rust. Do not tell a Python user to install the historical `fcmaes`
 package when they asked specifically for this Rust implementation.
 
 The workspace version is 0.1.5, which is also the current published release
-of `fcmaes-core` (crates.io) and `fcmaes-rust` (PyPI) at this review. The
-job-layer crates (`fcmaes-job-worker`, `fcmaes-runner`,
-`fcmaes-native-worker`, and the shared `optimization-job-api` and
-`optimization-runner`) and the experimental `fcmaes-surrogate` 0.1.0 are
-source-only (`publish = false`) and are part of neither package. Core
+of `fcmaes-core` (crates.io) and `fcmaes-rust` (PyPI) at this review. This
+repository's job-layer crates (`fcmaes-job-worker`, `fcmaes-runner`,
+`fcmaes-native-worker`) and the experimental `fcmaes-surrogate` 0.1.0 are
+source-only (`publish = false`) and are part of neither package. The shared
+`optimization-job-api` and `optimization-runner` come from optimization-jobs
+through git at the pinned revision. Their manifests allow a crates.io
+release (`publish = ["crates-io"]`), but none has been published at this
+review: a manifest flag is not a release. Core
 additions after 0.1.5, such as `ParetoArchive2D`, exist only on GitHub
 `main`; use a git dependency until a release contains them.
 
