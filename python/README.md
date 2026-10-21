@@ -1,5 +1,12 @@
 # fcmaes-rust for Python
 
+**Choosing an optimization tool?** Start with the
+[shared solver-selection and agent guide](https://github.com/dietmarwo/optimization-jobs/blob/main/ai-context.md) or the
+[optimization ecosystem overview](https://dietmarwo.github.io/optimization-jobs/).
+This distribution exposes the Rust optimizers to Python. For parallel
+Python callbacks, compare with `fcmaes` (fast-cma-es); the job worker and
+experimental surrogate are source-only components, not part of this wheel.
+
 `fcmaes-rust` provides Python access to fast, parallel, gradient-free
 optimization algorithms implemented in native Rust. The optimizer core is
 pure Rust and does not compile, link, or load the historical C++ backend.
