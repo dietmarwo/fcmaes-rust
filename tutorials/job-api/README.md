@@ -64,6 +64,10 @@ script also validates every job and result against the published
 [job](https://github.com/dietmarwo/optimization-jobs/blob/main/docs/job-api/schemas/optimization.job-0.1.schema.json) and
 [result](https://github.com/dietmarwo/optimization-jobs/blob/main/docs/job-api/schemas/optimization.result-0.2.schema.json)
 schemas, from Cargo's checkout of optimization-jobs at the pinned revision.
+It also validates every tutorial payload and every example that the two
+workers' `describe` advertises against their `payload_schemas`, and runs each
+example as a client would build it (under `discovery/` in the node); CI
+requires the package (`jsonschema>=4.18`, `JOB_API_REQUIRE_SCHEMA=1`).
 
 ## Run one job manually
 
@@ -78,9 +82,14 @@ schemas, from Cargo's checkout of optimization-jobs at the pinned revision.
   --spec tutorials/job-api/zdt1-mode.json
 ```
 
-`problems describe fcmaes` lists each registered model with its `profile`, the
-optimizers with their defaults and ranges, the evaluation profile, the claims
-and the cancellation behavior. Read `run.json` in the returned `directory`, or use
+`problems describe fcmaes` lists each registered model with its `profile`,
+`profiles` and `parameters_schema`, the optimizers with their defaults and
+ranges, the evaluation profile, the claims and the cancellation behavior. It
+also lists a JSON Schema of each profile's payload (`payload_schemas`, rules
+a schema cannot state in `$comment`), the warm-start snapshot format
+(`input_schemas`) and runnable `examples`: a client adds `schema_version`, a
+`request_key`, the worker ID, `payload_schema` (the example's `profile`) and
+each input's SHA-256 after writing its `content_text` to its `file`. Read `run.json` in the returned `directory`, or use
 `optimization-run result JOB_DIRECTORY`. `work.evaluations` sums optimizer
 work. The additional `validation_evaluations` counter counts independent
 re-evaluations: the best point of a retry, every member of MODE's final
@@ -149,11 +158,13 @@ entire batch after admission.
   so it may spend at most `population-1` extra evaluations. Its parameters are
   `population` (default 31) and `sigma` (default 0.3), the initial step size in
   the box normalized to `[-1, 1]` (0.3 is about 15% of each range). Each retry
-  starts from a uniform random point drawn from its seed. CMA-ES can stop
+  starts from a uniform random point drawn from its seed, or from `guess`
+  (below). CMA-ES can stop
   before its budget on its own convergence tests; the task then reports
   `termination: "optimizer_stop"` and `details.stop_code`.
 - **CMA-ES with restarts** (`restarts: ipop` or `bipop`) restarts until the
-  retry's budget is spent, each run from a new uniform random point. IPOP
+  retry's budget is spent, each run from a new uniform random point (with a
+  `guess`, only the first run starts there). IPOP
   (Auger and Hansen 2005) doubles the population after every stop. BIPOP
   (Hansen 2009) alternates doubled populations with small populations and
   smaller step sizes, choosing the regime that has used fewer evaluations.
@@ -169,6 +180,13 @@ entire batch after admission.
   center it moves with Adam; a common choice for neural-network weights.
   `population` (even, default 32), `sigma` (default 0.1), and the
   `center_learning_rate` (0.15) and `stdev_learning_rate` (0.1).
+- **A start point** (`"guess": [...]`, one value per variable inside the
+  bounds, next to `seed`): every retry starts its CMA-ES, CR-FM-NES or PGPE
+  distribution there with the given `sigma`; retries still differ by seed.
+  BiteOpt builds its initial population around it, and DE samples its
+  population around it with `sigma` (default 0.3, normalized box; DE takes
+  `sigma` only with a guess). Without a guess, BiteOpt and DE run as in
+  `fcmaes.job/0.1`.
 
 Settings of another optimizer are rejected, never ignored: `sigma` for
 BiteOpt, `restarts` for CR-FM-NES, `center_learning_rate` for CMA-ES. CMA-ES,
@@ -300,7 +318,15 @@ Each point is one task with `termination: "evaluated"`. A scalar or
 quality-diversity model gives claim `feasible` and the objective (fitness)
 for a usable value; a multi-objective model gives `details.objectives` and
 `details.constraints`, claim `feasible` when every constraint is at most zero,
-and no single objective. Points must lie inside the problem's bounds, where
+and no single objective. A scalar model declares no constraints:
+`details.constraints` says so, and a penalty it adds to its objective is
+part of the value, not a checked constraint, so a point that violates the
+application's constraints by a little can still be `feasible`. Register a
+multi-objective model that returns the raw objective and the raw
+constraints when evaluate must check them. A `Scalar::simulation` model
+that fails at a point gives claim `none` with `details.error`; `run_seed`
+(a retry's `details.run_seed`) reproduces that retry's point seeds. Points
+must lie inside the problem's bounds, where
 the registered models are defined; validation rejects any other point.
 `work.evaluations` counts one per point. Points are inline in the job, which
 the runner's validation echoes within 4 MiB: keep all points together well
@@ -309,7 +335,10 @@ below that (about 100,000 two-dimensional points).
 ## Cancellation and deadlines
 
 Retries check cancellation between retries; an active retry may continue until
-its evaluation budget. MODE and MAP-Elites runs check it between generations,
+its evaluation budget, except on a `Scalar::simulation` model, which stops at
+its next `SimContext` checkpoint: the retry's remaining evaluations then
+return `+inf` at once (`cancelled_evaluations`), and its best point is
+reported without a recheck. MODE and MAP-Elites runs check it between generations,
 in both MAP-Elites phases:
 an active run stops and returns its current front or archive, re-evaluated as
 usual, with `termination: "cancelled"`. The SDK uses the same signal at the wall
@@ -337,7 +366,8 @@ data from the job's input `data` and takes a `loss` parameter;
 
 The runner copies the input into the attempt and checks its SHA-256; the
 resolved job records `"parameters": {"loss": "squared"}`, the default the
-model used. [Application models](../../docs/job-api/models.md) explains the
+model used. The example registers an `Example` with `decay.csv`, so the
+worker's `describe` advertises a runnable job with the data inline. [Application models](../../docs/job-api/models.md) explains the
 registry, the checks and how to build and register such a worker.
 
 ## Legacy jobs

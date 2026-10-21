@@ -16,7 +16,7 @@ The intended production product serves box-bounded simulation optimization. It m
 - Centre/maximin Latin hypercube design, seeded candidate generation, local coordinate refinement, a TuRBO-1-style trust region for two of every three proposals, synchronous Kriging-believer batches.
 - Ordered decisions independent of installed Rayon thread count; pending-point fantasies at the library proposal interface.
 - Fallible completion logging, checksummed durable worker traces, atomic compact warm snapshots, semantic decision replay, independent best-point re-evaluation.
-- `Scalar::simulation` with cancellation checkpoints, remaining time, point-derived seed, and per-evaluation thread allowance. **Only the surrogate profile accepts these callbacks in M0.**
+- `Scalar::simulation` with cancellation checkpoints, remaining time, point-derived seed, and per-evaluation thread allowance. **Only the surrogate profile accepted these callbacks in M0; retry and evaluate accept them since the agent-discovery review (October 2026).**
 - Tested CLI, shared runner, MCP, warm-start, and RK4 simulation tutorial.
 
 The profile rejects unimplemented options. `auto`, `turbo`, asynchronous scheduling, observation noise, rank transforms, Sobol, Thompson sampling, constraints, and handoff are not aliases for simpler algorithms. Existing `fcmaes.retry/1` remains the available choice for larger-budget conventional scalar objectives. Simulation models requiring that profile need the M1 API extension below.
@@ -73,7 +73,7 @@ The profile rejects unimplemented options. `auto`, `turbo`, asynchronous schedul
 | F23 lq-CMA-ES | Deferred, P2 | M5; ranking acceptance, rejected-model behavior and equal-wall comparisons. |
 | F24 Breadth | Deferred, P3 | Multiobjective, mixed integer, known constraints, sparse GP. |
 | F25 Background refit | Deferred, P1 | M3: immutable model snapshots; logged adoption boundaries. |
-| F26 Simulation API | Partial | Surrogate-only context implemented. M1 extends retry/evaluate and defines errors for each profile. |
+| F26 Simulation API | Done for retry and evaluate | Surrogate, retry and evaluate accept `Scalar::simulation`: failures are `+inf` in a retry and claim `none` in evaluate; cancellation stops at checkpoints. MODE and MAP-Elites have no simulation models. |
 | F27 Queue/governor | Deferred, P1 | M3, with measured latency and event replay; not a fixed sampling shortcut. |
 
 ## 4. Architecture and contracts

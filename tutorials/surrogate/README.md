@@ -35,7 +35,7 @@ Read [simulation_worker.rs](../../crates/fcmaes-job-worker/examples/simulation_w
 
 Replace the integration body with your Rust model. Return `Err` for evaluation failures, use checkpoints in long loops, obey `ctx.threads()`, and derive reproducible simulation randomness from `ctx.seed()`. Do not start a new native pool on every evaluation. Bump the model version when its objective changes. Register factories on a deterministic registry; jobs carry model parameters and data hashes, not source code.
 
-The first API accepts simulation models only in this profile. Global GP is limited to 32 coordinates and 256 new+retained observations. Multiple trust regions with Thompson sampling, async queues, the overhead governor, handoff and noisy optimization remain roadmap work. The seeded simulation callback is repeatable; it is not an expected-value estimator.
+Retry and evaluate accept the same simulation model (the worker's `describe` has examples of all three on the oscillator, which the script runs), so it can be compared with BiteOpt under one budget. Global GP is limited to 32 coordinates and 256 new+retained observations. Multiple trust regions with Thompson sampling, async queues, the overhead governor, handoff and noisy optimization remain roadmap work. The seeded simulation callback is repeatable; it is not an expected-value estimator.
 
 ## Run the actual runner/MCP tests
 
