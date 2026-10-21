@@ -180,6 +180,13 @@ scalarization). The job worker, the experiment runner, the shared job API,
   constraint weights. Same change as fast-cma-es `moretry`.
 - The shared job API moved to optimization-jobs `423cd87`: streaming
   artifact pages (one pass over the file, memory for the page alone).
+- The shared job API moved to optimization-jobs `069d87c` (its review of
+  agent discovery): `optimization-mcp` gains `put_input`, which stages an
+  input file such as an application model's CSV or a surrogate snapshot,
+  and `get_guide`, which returns the cross-repository AI entry point. `node
+  doctor` reports the host's usable CPUs and memory, `workers add` accepts
+  up to 1 MiB of `describe` output, and the shared harness checks every
+  worker's payload schemas and runs its examples, also over MCP.
 - The README describes installation from source, including the git
   dependency on optimization-jobs that Cargo fetches at the pinned revision.
   `ai-context.md` points to the AI entry point of optimization-jobs, which

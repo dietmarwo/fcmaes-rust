@@ -9,8 +9,10 @@ result contract 0.2; and the experimental `fcmaes-surrogate` crate with the
 Since `67bd698`, the job crates `optimization-job-api` and
 `optimization-runner` 0.2.0 come from
 [optimization-jobs](https://github.com/dietmarwo/optimization-jobs) (#11; the
-in-repo `fcmaes-job-api` crate is gone), now at the pinned revision `423cd87`,
-which adds worker-declared artifacts (#14) and streaming artifact pages; `optimization-mcp` serves the jobs
+in-repo `fcmaes-job-api` crate is gone), now at the pinned revision `069d87c`,
+which adds worker-declared artifacts (#14), streaming artifact pages, the MCP
+tools `put_input` and `get_guide`, a host report in `node doctor` and a 1 MiB
+limit for `describe` output; `optimization-mcp` serves the jobs
 to agents (#12); and review fixes bound BiteOpt/DE populations, name MODE
 hypervolume methods and add the tutorial's `--bin-dir` (#13). The
 agent-discovery review then added the worker's payload schemas and runnable
@@ -493,9 +495,10 @@ and each model's `parameters_schema`. Build a job from an example by adding
 and adding its SHA-256; validate payloads against `payload_schemas` before
 `validate_job`. The examples are generated from the worker's registry, so an
 application worker advertises its own models, data inputs included.
-optimization-jobs is adding an MCP `put_input` tool (not in the pinned
-revision `423cd87`) that stages an input file for a job: the CSV of an
-application model or a surrogate warm-start snapshot. `profiles` lists only
+The MCP tool `put_input` stages an input file for a job (the CSV of an
+application model, or a surrogate warm-start snapshot, also copied directly
+from an earlier job's artifact) and returns its `file`, `sha256` and the
+`input_dir` to validate and submit the job with. `profiles` lists only
 the profiles the registered models support. Each model entry names its
 optimizing `profile` and all accepted `profiles`:
 

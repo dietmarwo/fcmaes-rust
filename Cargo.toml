@@ -29,8 +29,8 @@ fcmaes-core = { path = "crates/fcmaes-core" }
 fcmaes-gtop = { path = "crates/fcmaes-gtop" }
 # The shared job API (envelope, result contract, worker SDK, runner) lives in
 # github.com/dietmarwo/optimization-jobs; change the revision there first.
-optimization-job-api = { git = "https://github.com/dietmarwo/optimization-jobs", rev = "423cd87a01d8e3c73697ffca6224979efee46258" }
-optimization-runner = { git = "https://github.com/dietmarwo/optimization-jobs", rev = "423cd87a01d8e3c73697ffca6224979efee46258" }
+optimization-job-api = { git = "https://github.com/dietmarwo/optimization-jobs", rev = "069d87c29170c8a5a1f4641028811df1a2de0585" }
+optimization-runner = { git = "https://github.com/dietmarwo/optimization-jobs", rev = "069d87c29170c8a5a1f4641028811df1a2de0585" }
 
 # The runner and its workers hash their staged executables (tens of MB in
 # debug builds) on every job start; unoptimized SHA-256 made debug start-up

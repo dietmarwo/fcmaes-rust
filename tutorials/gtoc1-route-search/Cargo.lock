@@ -306,7 +306,7 @@ dependencies = [
 [[package]]
 name = "optimization-job-api"
 version = "0.2.0"
-source = "git+https://github.com/dietmarwo/optimization-jobs?rev=423cd87a01d8e3c73697ffca6224979efee46258#423cd87a01d8e3c73697ffca6224979efee46258"
+source = "git+https://github.com/dietmarwo/optimization-jobs?rev=069d87c29170c8a5a1f4641028811df1a2de0585#069d87c29170c8a5a1f4641028811df1a2de0585"
 dependencies = [
  "fs2",
  "libc",
