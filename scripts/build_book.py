@@ -22,6 +22,7 @@ TOP_LEVEL_FILES = (
     "RELEASING.md",
     "SECURITY.md",
     "ai-context.md",
+    "AGENTS.md",
     "LICENSE",
 )
 SOURCE_DIRECTORIES = (
