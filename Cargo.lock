@@ -433,7 +433,7 @@ checksum = "da7c62ceae207dd37ea5b845da6a0696c799f85e97da1ab5b7910be3c1c80223"
 
 [[package]]
 name = "fcmaes-core"
-version = "0.1.5"
+version = "0.2.0"
 dependencies = [
  "libm",
  "nalgebra",
@@ -445,7 +445,7 @@ dependencies = [
 
 [[package]]
 name = "fcmaes-examples"
-version = "0.1.5"
+version = "0.2.0"
 dependencies = [
  "fcmaes-core",
  "fcmaes-gtop",
@@ -457,11 +457,11 @@ dependencies = [
 
 [[package]]
 name = "fcmaes-gtop"
-version = "0.1.5"
+version = "0.2.0"
 
 [[package]]
 name = "fcmaes-job-worker"
-version = "0.1.5"
+version = "0.2.0"
 dependencies = [
  "fcmaes-core",
  "fcmaes-native-worker",
@@ -487,7 +487,7 @@ dependencies = [
 
 [[package]]
 name = "fcmaes-py"
-version = "0.1.5"
+version = "0.2.0"
 dependencies = [
  "fcmaes-core",
  "fcmaes-gtop",

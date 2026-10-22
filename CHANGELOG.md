@@ -6,6 +6,8 @@ phase, with breaking changes called out explicitly.
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-10-22
+
 What reaches the registries: the published crate `fcmaes-core` and the
 Python wheel `fcmaes-rust` change through the entries marked `fcmaes-core`
 (MODE fixes, `ParetoArchive2D`, `De::optimize_delayed`,
@@ -638,7 +640,9 @@ Initial crates.io bootstrap release.
   before configuring trusted publishing.
 - There was no corresponding `fcmaes-rust` 0.1.1 release on PyPI.
 
-[Unreleased]: https://github.com/dietmarwo/fcmaes-rust/compare/v0.1.4...HEAD
+[Unreleased]: https://github.com/dietmarwo/fcmaes-rust/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/dietmarwo/fcmaes-rust/compare/v0.1.5...v0.2.0
+[0.1.5]: https://github.com/dietmarwo/fcmaes-rust/compare/v0.1.4...v0.1.5
 [0.1.4]: https://github.com/dietmarwo/fcmaes-rust/compare/v0.1.3...v0.1.4
 [0.1.3]: https://github.com/dietmarwo/fcmaes-rust/compare/v0.1.2...v0.1.3
 [0.1.2]: https://github.com/dietmarwo/fcmaes-rust/releases/tag/v0.1.2
