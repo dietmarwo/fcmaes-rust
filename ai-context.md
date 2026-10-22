@@ -36,7 +36,7 @@ server. In this file:
 | Python, direct Rust or a durable job | [Choose the integration surface](#choose-the-integration-surface) |
 | One objective | [Scalar parameters](#scalar-optimizer-parameters), [recipes](#recommended-scalar-recipes), [retry](#retry-selection-and-parameters) |
 | Constraints and penalties | [Constraints and variable encoding](#constraints-and-variable-encoding) |
-| A Pareto front (MODE: build from source, 0.1.5 lacks its fixes) | [MODE](#mode), [weighted retry](#weighted-multi-objective-retry), [exact archive](#exact-two-objective-archive) |
+| A Pareto front (MODE: 0.2.0 or later; 0.1.5 lacks its fixes) | [MODE](#mode), [weighted retry](#weighted-multi-objective-retry), [exact archive](#exact-two-objective-archive) |
 | Diverse behaviors | [Quality diversity](#quality-diversity) |
 | An expensive simulation with at most 32 variables | [Surrogate chooser rule](#experimental-surrogate-chooser-rule) |
 | Jobs, discovery, MCP and results | [Shared agent job API](#shared-agent-job-api), [MCP](#agents-the-mcp-server), [results](#interpret-results-and-compare-experiments) |
@@ -147,8 +147,9 @@ C/C++ compiler. Building the Python package from its source distribution does
 require Rust. Do not tell a Python user to install the historical `fcmaes`
 package when they asked specifically for this Rust implementation.
 
-The workspace version is 0.1.5, which is also the current published release
-of `fcmaes-core` (crates.io) and `fcmaes-rust` (PyPI) at this review. This
+The workspace version is 0.2.0, the release that follows the published
+`fcmaes-core` 0.1.5 (crates.io) and `fcmaes-rust` 0.1.5 (PyPI). Check the
+registries for the latest published version before relying on it. This
 repository's job-layer crates (`fcmaes-job-worker`, `fcmaes-runner`,
 `fcmaes-native-worker`) and the experimental `fcmaes-surrogate` 0.1.0 are
 source-only (`publish = false`) and are part of neither package. The shared
@@ -156,21 +157,22 @@ source-only (`publish = false`) and are part of neither package. The shared
 through git at the pinned revision. Their manifests allow a crates.io
 release (`publish = ["crates-io"]`), but none has been published at this
 review: a manifest flag is not a release. Core
-additions after 0.1.5, such as `ParetoArchive2D`, exist only on GitHub
-`main`; use a git dependency until a release contains them.
+additions after 0.1.5, such as `ParetoArchive2D`, need 0.2.0 or later;
+changes after the latest release need a git dependency on `main`.
 
-**MODE warning.** The published `fcmaes-core` 0.1.5 (crates.io) and
-`fcmaes-rust` 0.1.5 (PyPI) predate the October 2026 MODE fixes (#1: the SBX
-expanding branch, polynomial mutation's upward branch, non-dominated sorting
-and feasibility-first constraint handling), with which MODE no longer
-collapses to one extreme point or stalls, and `ParetoArchive2D`. Until the
-next release, use MODE through a git dependency
+**MODE warning.** `fcmaes-core` and `fcmaes-rust` 0.1.5 and earlier predate
+the October 2026 MODE fixes (#1: the SBX expanding branch, polynomial
+mutation's upward branch, non-dominated sorting and feasibility-first
+constraint handling), with which MODE no longer collapses to one extreme
+point or stalls, and `ParetoArchive2D`. Use 0.2.0 or later
+(`fcmaes-core = "0.2"`, `pip install "fcmaes-rust>=0.2"`); if that version
+is not yet on the registries, use a git dependency
 (`fcmaes-core = { git = "https://github.com/dietmarwo/fcmaes-rust" }`) or a
-[source build](./README.md#install-from-source) of the Python package; the job
-worker always builds with the checkout's core. The other unreleased core
-changes (CHANGELOG `[Unreleased]`) are `De::optimize_delayed`,
-`BiteOpt::optimize_batch`, thread-independent CVT archives and the
-`moretry` constraint scalarization. Schema versions
+[source build](./README.md#install-from-source) of the Python package. The job
+worker always builds with the checkout's core. The other core changes of
+0.2.0 (CHANGELOG) are `De::optimize_delayed`, `BiteOpt::optimize_batch`,
+thread-independent CVT archives and the `moretry` constraint
+scalarization. Schema versions
 such as `optimization.job/0.1` and `fcmaes.retry/1` are protocol identifiers,
 independent of crate versions.
 Use `CHANGELOG.md`, package manifests, and the actual registry metadata when
@@ -1103,8 +1105,8 @@ feasible boundary.
 
 ### MODE
 
-Run MODE from a git dependency, a source build or the job worker: the
-published `fcmaes-core` and `fcmaes-rust` 0.1.5 predate the October 2026
+Run MODE with `fcmaes-core`/`fcmaes-rust` 0.2.0 or later, a git dependency,
+a source build or the job worker: 0.1.5 and earlier predate the October 2026
 MODE fixes (#1), with which MODE no longer collapses to one extreme point;
 see the MODE warning with the package facts above.
 
@@ -1166,7 +1168,7 @@ points beyond the reference return `ParetoUpdate::Outside` and are not kept
 (as `OutsidePolicy::Exclude`); non-finite objectives are errors; capacity is
 unbounded. `preferred()` and `ranked()` order entries by a score that never
 changes membership (normalize scales with `ParetoBounds2D`). It has no
-Python binding and is not in the published 0.1.5 crate. See
+Python binding and needs `fcmaes-core` 0.2.0 or later. See
 [`PARETO_ARCHIVE.md`](crates/fcmaes-core/PARETO_ARCHIVE.md) and
 `cargo run --release -p fcmaes-core --example pareto_mode` (a constrained MODE
 run with a separate archive).

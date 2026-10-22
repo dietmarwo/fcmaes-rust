@@ -13,7 +13,7 @@ gradient-reference = ["dep:argmin", "dep:argmin-math"]
 [workspace]
 
 [dependencies]
-fcmaes-core = { path = "../crates/fcmaes-core", version = "=0.1.5" }
+fcmaes-core = { path = "../crates/fcmaes-core", version = "=0.2.0" }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 sha2 = "0.10"
