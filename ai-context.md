@@ -9,10 +9,11 @@ result contract 0.2; and the experimental `fcmaes-surrogate` crate with the
 Since `67bd698`, the job crates `optimization-job-api` and
 `optimization-runner` 0.2.0 come from
 [optimization-jobs](https://github.com/dietmarwo/optimization-jobs) (#11; the
-in-repo `fcmaes-job-api` crate is gone), now at the pinned revision `069d87c`,
+in-repo `fcmaes-job-api` crate is gone), now at the pinned revision `43ef3ae`,
 which adds worker-declared artifacts (#14), streaming artifact pages, the MCP
-tools `put_input` and `get_guide`, a host report in `node doctor` and a 1 MiB
-limit for `describe` output; `optimization-mcp` serves the jobs
+tools `put_input` and `get_guide`, a host report in `node doctor`, a 1 MiB
+limit for `describe` output, and the corrected Pareto guidance that
+`get_guide` serves; `optimization-mcp` serves the jobs
 to agents (#12); and review fixes bound BiteOpt/DE populations, name MODE
 hypervolume methods and add the tutorial's `--bin-dir` (#13). The
 agent-discovery review then added the worker's payload schemas and runnable
