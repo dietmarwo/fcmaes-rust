@@ -7,9 +7,10 @@ PGPE), MODE, MAP-Elites (CVT, CMA-ME/CMA-MAE) and evaluation profiles under
 result contract 0.2; and the experimental `fcmaes-surrogate` crate with the
 `fcmaes.surrogate/1` profile and `benchmarks/surrogate-comparison` (#14).
 Since `67bd698`, the job crates `optimization-job-api` and
-`optimization-runner` 0.2.0 come from
+`optimization-runner` (0.3.0 since the pin move after their first crates.io
+release) come from
 [optimization-jobs](https://github.com/dietmarwo/optimization-jobs) (#11; the
-in-repo `fcmaes-job-api` crate is gone), now at the pinned revision `43ef3ae`,
+in-repo `fcmaes-job-api` crate is gone), now at the pinned revision `37b30e4` (tag `v0.3.0`),
 which adds worker-declared artifacts (#14), streaming artifact pages, the MCP
 tools `put_input` and `get_guide`, a host report in `node doctor`, a 1 MiB
 limit for `describe` output, and the corrected Pareto guidance that
