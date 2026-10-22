@@ -167,6 +167,11 @@ scalarization). The job worker, the experiment runner, the shared job API,
 
 ### Changed
 
+- `fcmaes-core` on crates.io and docs.rs: the homepage is the user guide
+  (https://dietmarwo.github.io/fcmaes-rust/), the README (also the crate's
+  rustdoc front page) links `PARETO_ARCHIVE.md` by absolute URL, which a
+  relative link would break on docs.rs, and its API map lists
+  `ParetoArchive2D`.
 - Discovery: the repository README, the `fcmaes-core` crate README and the
   Python README start with links to the shared solver-selection guide and
   the ecosystem overview; `pyproject.toml` adds both as project URLs. The

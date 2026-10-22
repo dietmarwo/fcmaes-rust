@@ -31,7 +31,7 @@ fcmaes-core = { git = "https://github.com/dietmarwo/fcmaes-rust" }
 `ParetoArchive2D` is an exact two-objective Pareto archive with incremental
 hypervolume, a Rust port derived from `bitehv2.h` in Aleksey Vaneev's
 [BiteOpt](https://github.com/avaneev/biteopt) repository. See
-[PARETO_ARCHIVE.md](PARETO_ARCHIVE.md).
+[PARETO_ARCHIVE.md](https://github.com/dietmarwo/fcmaes-rust/blob/main/crates/fcmaes-core/PARETO_ARCHIVE.md).
 
 ## Minimal example
 
@@ -114,6 +114,7 @@ between the two layers to avoid oversubscription.
 | Independent or adaptive restarts | [`retry`](https://docs.rs/fcmaes-core/latest/fcmaes_core/retry/index.html) |
 | Several competing objectives | [`mode`](https://docs.rs/fcmaes-core/latest/fcmaes_core/mode/index.html) and [`moretry`](https://docs.rs/fcmaes-core/latest/fcmaes_core/moretry/index.html) |
 | Audit a multi-objective front | [`indicators`](https://docs.rs/fcmaes-core/latest/fcmaes_core/indicators/index.html) |
+| Keep the exact two-objective front of all evaluations, with hypervolume | [`ParetoArchive2D`](https://docs.rs/fcmaes-core/latest/fcmaes_core/pareto/struct.ParetoArchive2D.html) |
 | Diverse high-quality solutions | [`mapelites`](https://docs.rs/fcmaes-core/latest/fcmaes_core/mapelites/index.html) |
 | External, GPU, service, or custom batch evaluator | the ask/tell methods on DE, CMA-ES, CR-FM-NES, PGPE, BiteOpt, and MODE |
 

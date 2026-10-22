@@ -9,7 +9,7 @@ repository.workspace = true
 description = "Fast, parallel, gradient-free optimization algorithms implemented in pure Rust."
 readme = "README.md"
 documentation = "https://docs.rs/fcmaes-core"
-homepage = "https://github.com/dietmarwo/fcmaes-rust"
+homepage = "https://dietmarwo.github.io/fcmaes-rust/"
 keywords = [
     "optimization",
     "black-box",
