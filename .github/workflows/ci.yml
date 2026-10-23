@@ -440,15 +440,22 @@ jobs:
           cargo clippy --manifest-path tutorials/${{ matrix.tutorial }}/Cargo.toml --all-targets -- -D warnings
       - name: cargo test
         run: cargo test --manifest-path tutorials/${{ matrix.tutorial }}/Cargo.toml
-      - name: Optional application job worker (clippy and tests)
-        # The prompt tutorials in optimization-jobs build these workers with
-        # --features job-worker; the default build above keeps the original CLI.
+      # The prompt tutorials in optimization-jobs build these workers with
+      # --features job-worker; the default build above keeps the original CLI.
+      - name: Optional application job worker (clippy)
         if: contains(fromJSON('["rapier-trebuchet", "nexosim-production-line", "energy-hub-bilevel", "gtoc1-route-search"]'), matrix.tutorial)
-        run: |
-          cargo clippy --locked --manifest-path tutorials/${{ matrix.tutorial }}/Cargo.toml \
-            --all-targets --features job-worker -- -D warnings
-          cargo test --locked --manifest-path tutorials/${{ matrix.tutorial }}/Cargo.toml \
-            --features job-worker
+        env:
+          CARGO_TERM_COLOR: never  # plain output, so the matcher can parse it
+        run: >-
+          cargo clippy --locked --manifest-path tutorials/${{ matrix.tutorial }}/Cargo.toml
+          --all-targets --features job-worker -- -D warnings
+      - name: Optional application job worker (tests)
+        if: contains(fromJSON('["rapier-trebuchet", "nexosim-production-line", "energy-hub-bilevel", "gtoc1-route-search"]'), matrix.tutorial)
+        env:
+          CARGO_TERM_COLOR: never
+        run: >-
+          cargo test --locked --manifest-path tutorials/${{ matrix.tutorial }}/Cargo.toml
+          --features job-worker
       - name: Check field-service API documentation coverage
         if: matrix.tutorial == 'field-service-routing'
         run: >-
