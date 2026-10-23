@@ -1,17 +1,16 @@
 //! PyO3 bindings for the native GTOP benchmark crate.
 
 use fcmaes_gtop as gtop;
-use numpy::PyReadonlyArray1;
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 
-use crate::common::slice_or_vec;
+use crate::common::{F64Vec, slice_or_vec};
 
 macro_rules! scalar_benchmark {
     ($rust_name:ident, $python_name:literal, $function:path, $doc:literal) => {
         #[doc = $doc]
         #[pyfunction(name = $python_name)]
-        fn $rust_name(x: PyReadonlyArray1<'_, f64>) -> f64 {
+        fn $rust_name(x: F64Vec<'_>) -> f64 {
             $function(&slice_or_vec(&x))
         }
     };
@@ -99,7 +98,7 @@ fn extract_sequence(sequence: Vec<i64>) -> PyResult<Vec<usize>> {
 /// Raises ``ValueError`` if ``sequence`` is not five identifiers in ``1..=6``.
 /// Invalid or undersized ``x`` receives a finite penalty rather than raising.
 #[pyfunction(name = "gtop_tandem")]
-fn tandem(x: PyReadonlyArray1<'_, f64>, sequence: Vec<i64>) -> PyResult<f64> {
+fn tandem(x: F64Vec<'_>, sequence: Vec<i64>) -> PyResult<f64> {
     Ok(gtop::tandem(
         &slice_or_vec(&x),
         &extract_sequence(sequence)?,
@@ -115,7 +114,7 @@ fn tandem(x: PyReadonlyArray1<'_, f64>, sequence: Vec<i64>) -> PyResult<f64> {
 /// Raises ``ValueError`` if ``sequence`` is not five identifiers in ``1..=6``.
 /// Invalid or undersized ``x`` receives a finite penalty rather than raising.
 #[pyfunction(name = "gtop_tandem_unconstrained")]
-fn tandem_unconstrained(x: PyReadonlyArray1<'_, f64>, sequence: Vec<i64>) -> PyResult<f64> {
+fn tandem_unconstrained(x: F64Vec<'_>, sequence: Vec<i64>) -> PyResult<f64> {
     Ok(gtop::tandem_unconstrained(
         &slice_or_vec(&x),
         &extract_sequence(sequence)?,
@@ -128,7 +127,7 @@ fn tandem_unconstrained(x: PyReadonlyArray1<'_, f64>, sequence: Vec<i64>) -> PyR
 /// integer-valued planet identifiers. Invalid or undersized vectors return
 /// finite penalty values.
 #[pyfunction(name = "gtop_cassini1_minlp")]
-fn cassini1_minlp(x: PyReadonlyArray1<'_, f64>) -> (f64, f64) {
+fn cassini1_minlp(x: F64Vec<'_>) -> (f64, f64) {
     gtop::cassini1_minlp(&slice_or_vec(&x))
 }
 

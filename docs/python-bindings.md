@@ -107,6 +107,57 @@ callable signatures and docstrings are generated from the
 `#[pyo3(signature = ...)]` declarations and Rust documentation comments under
 `crates/fcmaes-py/src/`.
 
+## Inputs, failures and evaluation counts
+
+Array arguments accept NumPy arrays of any numeric dtype, lists and tuples; a
+`float64` array is used without a copy. The `ints` masks of `optimize_de`,
+`DE` and `MODE` accept Booleans or 0/1 values. A nested list is accepted
+wherever a matrix is expected (`ACMA.tell_x`, `MODE.tell`,
+`MODE.set_population`). An argument with the wrong number of dimensions raises
+`TypeError`; values NumPy cannot convert raise `ValueError`. Releases up to
+0.2.0 accepted only NumPy arrays of the exact dtype although the type stub
+promised sequences.
+
+Invalid inputs raise `ValueError`: bounds that do not match the dimension or
+violate finite `lower < upper`, guesses and sigmas of the wrong length or with
+non-finite values, and integer masks of the wrong length. ACMA, CR-FM-NES, PGPE
+and Dual Annealing accept empty `lower` and `upper` for an unbounded search;
+DE accepts them only together with a `guess` and `sigma`; BiteOpt and MODE
+always need bounds. In 0.2.0 several of these cases ended in pyo3's
+`PanicException`, which derives from `BaseException` and escapes
+`except Exception`.
+
+An exception raised by an objective callback does not abort the run, as in
+the fcmaes C++ bindings: the call counts as a failed evaluation and ranks
+worst. A return value of the wrong type or shape is treated the same way, and
+so is a non-finite value, which is a legitimate way to reject a point. The
+first exception or unusable return value of a run is logged once, with its
+traceback, as a warning on the `fcmaes_rust` logger; later failures in the
+same run are not logged, so an objective that fails on every one of a million
+calls produces a single message:
+
+```python
+import logging
+logging.basicConfig()                                    # show the warning
+logging.getLogger("fcmaes_rust").setLevel(logging.ERROR)  # or silence it
+```
+
+Errors in the `optimize` callbacks of `minimize_retry` and `minimize_moretry`
+propagate.
+
+The `evaluations` field of a result counts the objective calls actually made.
+`max_evaluations` is a stopping threshold, not always a hard cap:
+
+| Entry point | Overshoot of `max_evaluations` |
+|---|---|
+| `optimize_bite`, `optimize_da` | none |
+| `optimize_de` | up to `2 * popsize - 1` (checked before each generation; a member costs one or two calls) |
+| `optimize_acma`, `optimize_crfmnes`, `optimize_pgpe`, `Archive.diversify` | up to `popsize - 1` (whole generations) |
+
+Use the reported count, not the requested budget, when comparing optimizers.
+Dual Annealing counts its attempts to find a start point against the budget; its
+`stop == -1` means none of them produced a value below `1e16`.
+
 ## MODE and quality diversity
 
 `MODE.ask()` returns a `(popsize, dim)` matrix. `tell()` accepts a

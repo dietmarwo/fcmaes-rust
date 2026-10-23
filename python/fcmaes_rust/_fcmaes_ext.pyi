@@ -8,10 +8,32 @@ Rust defaults in ``__text_signature__``, so ``inspect.signature`` reports
 (``stop_hist=-1.0``, ``update_gap=-1``). The defaults written here are the
 values the Rust code actually uses.
 
-Array parameters accept anything NumPy converts to a contiguous ``float64``
-array; a non-convertible dtype raises ``TypeError``. Invalid dimensions,
-bounds, population sizes and out-of-order ``ask``/``tell`` calls raise
-``ValueError``.
+Array parameters accept NumPy arrays and sequences such as lists and tuples,
+converted by NumPy to ``float64`` (``bool`` for the ``ints`` masks); a
+``float64`` array is used without a copy. An argument with the wrong number of
+dimensions raises ``TypeError``, values NumPy cannot convert raise
+``ValueError``. Mismatched lengths, invalid bounds and population sizes raise
+``ValueError``, as does a ``tell`` with the wrong number of values; ``Bite``
+raises ``RuntimeError`` for ``tell`` before ``ask`` and for two ``ask`` calls
+in a row.
+
+As in fcmaes, an objective callback that raises does not abort the run: the
+call counts as a failed evaluation (ranked worst) and the exception is not
+re-raised. The same holds for a return value of the wrong type or shape. The
+first such failure of a run is logged once, with its traceback, as a warning
+on the ``fcmaes_rust`` logger (``logging.getLogger("fcmaes_rust")``); later
+failures in that run are not logged, and deliberate non-finite values never
+are. Exceptions from the ``optimize`` callbacks of ``minimize_retry`` and
+``minimize_moretry`` propagate, and so do those of ``fun`` in
+``minimize_retry``, which only ``optimize`` calls.
+
+``evaluations`` in an ``optimize_*`` result is the number of objective
+evaluations actually made. ``optimize_bite`` and ``optimize_da`` keep to
+``max_evaluations``. ``optimize_de`` checks it before each generation and can
+make up to ``2 * popsize - 1`` more; ``optimize_acma``, ``optimize_crfmnes``,
+``optimize_pgpe`` and ``Archive.diversify`` evaluate whole generations and can
+make up to ``popsize - 1`` more.
+
 """
 
 from collections.abc import Callable, Sequence
@@ -22,6 +44,7 @@ from numpy.typing import NDArray
 
 _F64 = NDArray[np.float64]
 _ArrayLike = Sequence[float] | _F64
+_Matrix = Sequence[Sequence[float]] | _F64
 
 # (x, fun, evaluations, iterations, stop)
 _Result = tuple[_F64, float, int, int, int]
@@ -239,7 +262,7 @@ class ACMA:
     def population(self) -> _F64: ...
     def result(self) -> _Result: ...
     def tell(self, ys: _ArrayLike) -> int: ...
-    def tell_x(self, ys: _ArrayLike, xs: _ArrayLike) -> int: ...
+    def tell_x(self, ys: _ArrayLike, xs: _Matrix) -> int: ...
 
 class Bite:
     """Stateful BiteOpt driven by external ``ask``/``tell`` calls."""
@@ -372,11 +395,11 @@ class MODE:
     def stop(self) -> int: ...
     def ask(self) -> _F64: ...
     def population(self) -> _F64: ...
-    def set_population(self, xs: _ArrayLike, ys: _ArrayLike) -> int: ...
-    def tell(self, ys: _ArrayLike) -> int: ...
+    def set_population(self, xs: _Matrix, ys: _Matrix) -> int: ...
+    def tell(self, ys: _Matrix) -> int: ...
     def tell_switch(
         self,
-        ys: _ArrayLike,
+        ys: _Matrix,
         nsga_update: bool = True,
         pareto_update: float = 0.0,
     ) -> int: ...
@@ -476,7 +499,7 @@ class Archive:
 # --------------------------------------------------------------------------
 
 def gtop_cassini1(x: _ArrayLike) -> float: ...
-def gtop_cassini1_minlp(x: _ArrayLike) -> float: ...
+def gtop_cassini1_minlp(x: _ArrayLike) -> tuple[float, float]: ...
 def gtop_cassini2(x: _ArrayLike) -> float: ...
 def gtop_cassini2_minlp(x: _ArrayLike) -> float: ...
 def gtop_gtoc1(x: _ArrayLike) -> float: ...

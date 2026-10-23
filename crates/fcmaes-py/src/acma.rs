@@ -2,11 +2,14 @@
 //! `ACMA` ask/tell class, backed by `fcmaes_core::Cmaes`.
 
 use fcmaes_core::{Cmaes, CmaesParams, Fitness};
-use numpy::{PyArray2, PyReadonlyArray1, PyReadonlyArray2};
+use numpy::PyArray2;
 use pyo3::prelude::*;
 use pyo3::types::PyTuple;
 
-use crate::common::{PyObjective, result_tuple, rows_to_pyarray, slice_or_vec};
+use crate::common::{
+    F64Mat, F64Vec, PyObjective, check_box, check_vector, result_tuple, rows_to_pyarray,
+    slice_or_vec,
+};
 
 fn build_fitness(dim: usize, lower: &[f64], upper: &[f64], normalize: bool) -> (Fitness, bool) {
     if lower.is_empty() {
@@ -24,6 +27,19 @@ fn acma_result_tuple<'py>(
     r: &fcmaes_core::AcmaResult,
 ) -> PyResult<Bound<'py, PyTuple>> {
     result_tuple(py, &r.x, r.y, r.evaluations, r.iterations, r.stop)
+}
+
+/// Validate the inputs `Cmaes::new` would otherwise panic on.
+fn check_acma_inputs(
+    dim: usize,
+    guess: &[f64],
+    lower: &[f64],
+    upper: &[f64],
+    sigma: &[f64],
+) -> PyResult<()> {
+    check_box("ACMA", dim, lower, upper, true)?;
+    check_vector("ACMA", "guess", guess, &[dim])?;
+    check_vector("ACMA", "sigma", sigma, &[1, dim])
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -65,10 +81,21 @@ fn make_params(
 ///
 /// Returns ``(x, fun, evaluations, iterations, stop)``.
 ///
-/// Raises ``ValueError`` if the bound arrays are empty, of unequal length, or
-/// do not satisfy finite ``lower < upper``, and ``TypeError`` if an array
-/// argument cannot be converted to contiguous ``float64``. Exceptions raised
-/// inside the objective callback propagate to the caller.
+/// ``evaluations`` counts the objective calls actually made.
+/// ``max_evaluations`` is checked before each generation and whole generations
+/// are evaluated, so a run can make up to ``popsize - 1`` calls more.
+///
+/// Raises ``ValueError`` if ``lower`` and ``upper`` do not have one entry per
+/// element of ``guess`` (both may be empty for an unbounded search) or do not
+/// satisfy finite ``lower < upper``, or if ``guess`` or ``sigma`` holds
+/// non-finite values or ``sigma`` has neither one nor ``len(guess)`` entries.
+/// Array arguments accept NumPy arrays and sequences: one that is not
+/// one-dimensional raises ``TypeError``, values NumPy cannot convert to
+/// ``float64`` raise ``ValueError``. As in fcmaes, an exception raised by the
+/// objective callback is not re-raised: that call, like a non-finite result,
+/// counts as a failed evaluation and ranks worst. The run's first exception or
+/// unusable return value is logged once as a warning on the ``fcmaes_rust``
+/// logger; non-finite values are not logged.
 #[pyfunction]
 #[pyo3(signature = (fun, batch_fun, guess, lower, upper, sigma, *, seed, runid=0,
     max_evaluations=100000, stop_fitness=f64::NEG_INFINITY, stop_hist=-1.0, mu=0,
@@ -78,10 +105,10 @@ pub fn optimize_acma<'py>(
     py: Python<'py>,
     fun: Py<PyAny>,
     batch_fun: Py<PyAny>,
-    guess: PyReadonlyArray1<f64>,
-    lower: PyReadonlyArray1<f64>,
-    upper: PyReadonlyArray1<f64>,
-    sigma: PyReadonlyArray1<f64>,
+    guess: F64Vec<'_>,
+    lower: F64Vec<'_>,
+    upper: F64Vec<'_>,
+    sigma: F64Vec<'_>,
     seed: u64,
     runid: i64,
     max_evaluations: u64,
@@ -101,6 +128,7 @@ pub fn optimize_acma<'py>(
     let lower = slice_or_vec(&lower);
     let upper = slice_or_vec(&upper);
     let dim = guess.len();
+    check_acma_inputs(dim, &guess, &lower, &upper, &sigma)?;
 
     let (fitness, _) = build_fitness(dim, &lower, &upper, normalize);
     let params = make_params(
@@ -129,11 +157,15 @@ pub fn optimize_acma<'py>(
 /// alternate :meth:`ask` with :meth:`tell` or :meth:`tell_x`. Bounds may be
 /// empty for an unbounded search.
 ///
-/// Raises ``ValueError`` if the bound arrays do not match the decision
-/// dimension or do not satisfy finite ``lower < upper``, and ``TypeError`` if
-/// an array argument cannot be converted to contiguous ``float64``.
-/// :meth:`tell` raises ``ValueError`` if it does not receive exactly one value
-/// per row returned by the most recent :meth:`ask`.
+/// Raises ``ValueError`` if ``lower`` and ``upper`` do not have one entry per
+/// element of ``guess`` (both may be empty for an unbounded search) or do not
+/// satisfy finite ``lower < upper``, or if ``guess`` or ``sigma`` holds
+/// non-finite values or ``sigma`` has neither one nor ``len(guess)`` entries.
+/// Array arguments accept NumPy arrays and sequences: one that is not
+/// one-dimensional raises ``TypeError``, values NumPy cannot convert to
+/// ``float64`` raise ``ValueError``. :meth:`tell` raises ``ValueError`` if it
+/// does not receive exactly one value per row returned by the most recent
+/// :meth:`ask`.
 #[allow(clippy::upper_case_acronyms)]
 #[pyclass]
 pub struct ACMA {
@@ -149,10 +181,10 @@ impl ACMA {
         accuracy=1.0, seed, runid=0, normalize=true, delayed_update=true,
         update_gap=-1))]
     fn new(
-        guess: PyReadonlyArray1<f64>,
-        lower: PyReadonlyArray1<f64>,
-        upper: PyReadonlyArray1<f64>,
-        sigma: PyReadonlyArray1<f64>,
+        guess: F64Vec<'_>,
+        lower: F64Vec<'_>,
+        upper: F64Vec<'_>,
+        sigma: F64Vec<'_>,
         max_evaluations: u64,
         stop_fitness: f64,
         stop_hist: f64,
@@ -164,13 +196,14 @@ impl ACMA {
         normalize: bool,
         delayed_update: bool,
         update_gap: i32,
-    ) -> Self {
+    ) -> PyResult<Self> {
         let _ = delayed_update;
         let guess = slice_or_vec(&guess);
         let sigma = slice_or_vec(&sigma);
         let lower = slice_or_vec(&lower);
         let upper = slice_or_vec(&upper);
         let dim = guess.len();
+        check_acma_inputs(dim, &guess, &lower, &upper, &sigma)?;
         let (fitness, _) = build_fitness(dim, &lower, &upper, normalize);
         let params = make_params(
             seed,
@@ -183,9 +216,9 @@ impl ACMA {
             accuracy,
             update_gap,
         );
-        ACMA {
+        Ok(ACMA {
             inner: Cmaes::new(fitness, &guess, &sigma, &params),
-        }
+        })
     }
 
     /// Return the next decoded offspring population, shape ``(popsize, dim)``.
@@ -198,7 +231,7 @@ impl ACMA {
     ///
     /// ``ys`` must contain one minimized scalar value per offspring. Returns
     /// the current stop code.
-    fn tell(&mut self, ys: PyReadonlyArray1<f64>) -> i32 {
+    fn tell(&mut self, ys: F64Vec<'_>) -> i32 {
         self.inner.tell(&slice_or_vec(&ys))
     }
 
@@ -206,7 +239,7 @@ impl ACMA {
     ///
     /// ``xs`` has shape ``(popsize, dim)`` and ``ys`` has length ``popsize``.
     /// This supports evaluators that repair or otherwise modify candidates.
-    fn tell_x(&mut self, ys: PyReadonlyArray1<f64>, xs: PyReadonlyArray2<f64>) -> i32 {
+    fn tell_x(&mut self, ys: F64Vec<'_>, xs: F64Mat<'_>) -> i32 {
         let ys = slice_or_vec(&ys);
         let arr = xs.as_array();
         let rows: Vec<Vec<f64>> = arr.outer_iter().map(|r| r.to_vec()).collect();

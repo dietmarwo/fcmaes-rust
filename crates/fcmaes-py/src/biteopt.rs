@@ -3,12 +3,12 @@
 
 use fcmaes_core::{BiteParams, DeepBiteOpt, optimize_bite, validate_bite_inputs};
 use numpy::ndarray::Array2;
-use numpy::{IntoPyArray, PyArray2, PyReadonlyArray1};
+use numpy::{IntoPyArray, PyArray2};
 use pyo3::exceptions::{PyRuntimeError, PyValueError};
 use pyo3::prelude::*;
 use pyo3::types::PyTuple;
 
-use crate::common::{PyObjective, result_tuple, rows_to_pyarray, slice_or_vec};
+use crate::common::{F64Vec, PyObjective, result_tuple, rows_to_pyarray, slice_or_vec};
 
 fn make_params(
     seed: u64,
@@ -38,10 +38,17 @@ fn make_params(
 ///
 /// Returns ``(x, fun, evaluations, iterations, stop)``.
 ///
+/// ``evaluations`` counts the objective calls actually made and never exceeds
+/// ``max_evaluations``.
+///
 /// Raises ``ValueError`` if the bound arrays are empty, of unequal length, or
-/// do not satisfy finite ``lower < upper``, and ``TypeError`` if an array
-/// argument cannot be converted to contiguous ``float64``. Exceptions raised
-/// inside the objective callback propagate to the caller.
+/// do not satisfy finite ``lower < upper``. Array arguments accept NumPy arrays
+/// and sequences: one that is not one-dimensional raises ``TypeError``, values
+/// NumPy cannot convert to ``float64`` raise ``ValueError``. As in fcmaes, an
+/// exception raised by the objective callback is not re-raised: that call, like
+/// a non-finite result, counts as a failed evaluation and ranks worst. The
+/// run's first exception or unusable return value is logged once as a warning
+/// on the ``fcmaes_rust`` logger; non-finite values are not logged.
 #[pyfunction]
 #[pyo3(name = "optimize_bite")]
 #[pyo3(signature = (fun, guess, lower, upper, *, seed, runid=0,
@@ -50,9 +57,9 @@ fn make_params(
 pub fn optimize_bite_py<'py>(
     py: Python<'py>,
     fun: Py<PyAny>,
-    guess: PyReadonlyArray1<f64>,
-    lower: PyReadonlyArray1<f64>,
-    upper: PyReadonlyArray1<f64>,
+    guess: F64Vec<'_>,
+    lower: F64Vec<'_>,
+    upper: F64Vec<'_>,
     seed: u64,
     runid: i64,
     max_evaluations: u64,
@@ -97,10 +104,11 @@ pub fn optimize_bite_py<'py>(
 /// Calls must alternate strictly between :meth:`ask` and :meth:`tell`.
 ///
 /// Raises ``ValueError`` if the bound arrays do not match the decision
-/// dimension or do not satisfy finite ``lower < upper``, and ``TypeError`` if
-/// an array argument cannot be converted to contiguous ``float64``.
-/// :meth:`tell` raises ``ValueError`` if it does not receive exactly one value
-/// per row returned by the most recent :meth:`ask`.
+/// dimension or do not satisfy finite ``lower < upper``. Array arguments accept
+/// NumPy arrays and sequences: one that is not one-dimensional raises
+/// ``TypeError``, values NumPy cannot convert to ``float64`` raise
+/// ``ValueError``. :meth:`tell` raises ``ValueError`` if it does not receive
+/// exactly one value per row returned by the most recent :meth:`ask`.
 #[allow(clippy::upper_case_acronyms)]
 #[pyclass]
 pub struct Bite {
@@ -116,9 +124,9 @@ impl Bite {
         max_evaluations=100000, stop_fitness=f64::NEG_INFINITY, stall_criterion=0,
         seed, runid=0))]
     fn new(
-        guess: PyReadonlyArray1<f64>,
-        lower: PyReadonlyArray1<f64>,
-        upper: PyReadonlyArray1<f64>,
+        guess: F64Vec<'_>,
+        lower: F64Vec<'_>,
+        upper: F64Vec<'_>,
         #[allow(non_snake_case)] M: i32,
         popsize: i32,
         batch_size: i32,
@@ -176,7 +184,7 @@ impl Bite {
     ///
     /// Returns the stop code. A missing ask or wrong feedback length raises an
     /// exception.
-    fn tell(&mut self, ys: PyReadonlyArray1<f64>) -> PyResult<i32> {
+    fn tell(&mut self, ys: F64Vec<'_>) -> PyResult<i32> {
         let expected = self.inner.current_batch_size();
         if expected == 0 {
             return Err(PyRuntimeError::new_err("Bite tell() called before ask()"));

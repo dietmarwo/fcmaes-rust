@@ -4,11 +4,11 @@
 //! `(popsize, dim)`, `tell(ys)` takes `(popsize, nobj + ncon)`.
 
 use fcmaes_core::{Fitness, Mode, ModeParams};
-use numpy::{PyArray2, PyReadonlyArray1, PyReadonlyArray2};
+use numpy::{PyArray2, PyReadonlyArray1};
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 
-use crate::common::{matrix_rows, rows_to_pyarray, slice_or_vec};
+use crate::common::{BoolVec, F64Mat, F64Vec, matrix_rows, rows_to_pyarray, slice_or_vec};
 
 fn opt_ints(ints: &PyReadonlyArray1<bool>) -> Option<Vec<bool>> {
     if ints.len().unwrap_or(0) == 0 {
@@ -48,9 +48,9 @@ impl MODE {
         dim: usize,
         nobj: usize,
         ncon: usize,
-        lower: PyReadonlyArray1<f64>,
-        upper: PyReadonlyArray1<f64>,
-        ints: PyReadonlyArray1<bool>,
+        lower: F64Vec<'_>,
+        upper: F64Vec<'_>,
+        ints: BoolVec<'_>,
         popsize: i32,
         #[allow(non_snake_case)] F: f64,
         #[allow(non_snake_case)] CR: f64,
@@ -114,7 +114,7 @@ impl MODE {
     ///
     /// ``ys`` must have shape ``(popsize, nobj + ncon)``. Returns the current
     /// stop code.
-    fn tell(&mut self, ys: PyReadonlyArray2<f64>) -> PyResult<i32> {
+    fn tell(&mut self, ys: F64Mat<'_>) -> PyResult<i32> {
         self.inner
             .try_tell(&matrix_rows(&ys))
             .map_err(PyValueError::new_err)
@@ -127,7 +127,7 @@ impl MODE {
     /// the alternate Pareto-update probability for this batch.
     fn tell_switch(
         &mut self,
-        ys: PyReadonlyArray2<f64>,
+        ys: F64Mat<'_>,
         nsga_update: bool,
         pareto_update: f64,
     ) -> PyResult<i32> {
@@ -141,11 +141,7 @@ impl MODE {
     /// ``xs`` has shape ``(popsize, dim)`` and ``ys`` has shape
     /// ``(popsize, nobj + ncon)``. This supports warm starts and checkpoint
     /// restoration. Returns the current stop code.
-    fn set_population(
-        &mut self,
-        xs: PyReadonlyArray2<f64>,
-        ys: PyReadonlyArray2<f64>,
-    ) -> PyResult<i32> {
+    fn set_population(&mut self, xs: F64Mat<'_>, ys: F64Mat<'_>) -> PyResult<i32> {
         self.inner
             .try_set_population(&matrix_rows(&xs), &matrix_rows(&ys))
             .map_err(PyValueError::new_err)

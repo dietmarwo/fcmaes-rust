@@ -44,7 +44,9 @@ pub struct DeResult {
     pub x: Vec<f64>,
     /// Objective value at [`x`](Self::x).
     pub y: f64,
-    /// Number of objective evaluations charged to the run.
+    /// Objective evaluations actually made; the serial
+    /// [`optimize`](De::optimize) can exceed [`DeParams::max_evaluations`]
+    /// (see there).
     pub evaluations: u64,
     /// Number of completed generations.
     pub iterations: i32,
@@ -57,7 +59,11 @@ pub struct DeResult {
 pub struct DeParams {
     /// Population size; non-positive values select the dimension-dependent default.
     pub popsize: i32,
-    /// Maximum number of objective evaluations.
+    /// Evaluation budget. [`optimize_delayed`](De::optimize_delayed) never
+    /// exceeds it. The serial [`optimize`](De::optimize) checks it before each
+    /// generation, and a generation costs one or two evaluations per member,
+    /// so a run can make up to `2 * popsize - 1` more evaluations;
+    /// [`DeResult::evaluations`] reports the actual count.
     pub max_evaluations: u64,
     /// Expected lifetime controlling age-based population reinitialization.
     pub keep: f64,
@@ -454,6 +460,10 @@ impl De {
     }
 
     /// Run the serial generational loop against an in-process objective.
+    ///
+    /// The budget is checked before each generation, so the run can overshoot
+    /// [`DeParams::max_evaluations`] by up to `2 * popsize - 1` evaluations;
+    /// use [`optimize_delayed`](De::optimize_delayed) for an exact limit.
     pub fn optimize(&mut self, obj: &impl Objective) -> DeResult {
         self.iterations = 1;
         self.fitfun.reset_evaluations();

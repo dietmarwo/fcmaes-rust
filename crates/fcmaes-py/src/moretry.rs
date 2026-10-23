@@ -1,6 +1,6 @@
 //! Python callback bridge for native multi-objective weighted retry.
 
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 
 use fcmaes_core::{
     MoRetryConfig, MoRetryResult, MultiObjective, NAN_REPLACEMENT, RetryBounds, RetryConfig,
@@ -11,17 +11,18 @@ use pyo3::exceptions::{PyRuntimeError, PyValueError};
 use pyo3::prelude::*;
 use pyo3::types::PyDict;
 
-use crate::common::{rows_to_pyarray, slice_or_vec};
+use crate::common::{F64Vec, FailureLog, rows_to_pyarray, slice_or_vec};
 use crate::retry::call_optimizer;
 
 struct PyMultiObjective {
     fun: Py<PyAny>,
     width: usize,
+    failures: Arc<FailureLog>,
 }
 
 impl MultiObjective for PyMultiObjective {
     fn eval(&self, x: &[f64]) -> Vec<f64> {
-        Python::with_gil(|py| call_vector(py, &self.fun, x, self.width))
+        Python::with_gil(|py| call_vector(py, &self.fun, x, self.width, &self.failures))
     }
 }
 
@@ -36,29 +37,46 @@ struct PyWeightedObjective {
     weights: Vec<f64>,
     ncon: usize,
     value_exp: f64,
+    failures: Arc<FailureLog>,
 }
 
 #[pymethods]
 impl PyWeightedObjective {
     /// Evaluate and scalarize the original multi-objective function at ``x``.
-    fn __call__(&self, py: Python<'_>, x: PyReadonlyArray1<'_, f64>) -> f64 {
+    fn __call__(&self, py: Python<'_>, x: F64Vec<'_>) -> f64 {
         let x = slice_or_vec(&x);
-        let values = call_vector(py, &self.fun, &x, self.weights.len());
+        let values = call_vector(py, &self.fun, &x, self.weights.len(), &self.failures);
         scalarize(&values, &self.weights, self.ncon, self.value_exp)
     }
 }
 
-fn call_vector(py: Python<'_>, fun: &Py<PyAny>, x: &[f64], width: usize) -> Vec<f64> {
+fn call_vector(
+    py: Python<'_>,
+    fun: &Py<PyAny>,
+    x: &[f64],
+    width: usize,
+    failures: &FailureLog,
+) -> Vec<f64> {
     let array = PyArray1::from_slice(py, x);
-    let Ok(result) = fun.call1(py, (array,)) else {
-        return vec![NAN_REPLACEMENT; width];
+    let result = match fun.call1(py, (array,)) {
+        Ok(result) => result,
+        Err(error) => {
+            failures.raised(py, "objective fun", &error);
+            return vec![NAN_REPLACEMENT; width];
+        }
     };
-    if let Ok(array) = result.extract::<PyReadonlyArray1<'_, f64>>(py) {
-        slice_or_vec(&array)
+    let values = if let Ok(array) = result.extract::<PyReadonlyArray1<'_, f64>>(py) {
+        Some(slice_or_vec(&array))
     } else {
-        result
-            .extract::<Vec<f64>>(py)
-            .unwrap_or_else(|_| vec![NAN_REPLACEMENT; width])
+        result.extract::<Vec<f64>>(py).ok()
+    };
+    match values {
+        Some(values) if values.len() == width => values,
+        _ => {
+            let expected = format!("{width} floats");
+            failures.bad_value(py, "objective fun", result.bind(py), &expected);
+            vec![NAN_REPLACEMENT; width]
+        }
     }
 }
 
@@ -125,12 +143,16 @@ fn result_dict(py: Python<'_>, result: MoRetryResult) -> PyResult<Py<PyDict>> {
 /// ``scalar_fun``, evaluation and run counts, retained ``xs``, ``ys``,
 /// ``weights``, ``scalar_ys``, and progress ``improvements``.
 ///
-/// Raises ``ValueError`` if the decision or weight bounds are empty, of
-/// unequal length, or do not satisfy finite ``lower < upper``; if ``ncon``
-/// leaves no objective; if ``value_exp`` is not finite and positive; if
-/// ``value_limits`` does not match the objective width; or if ``optimize``
-/// does not return an ``(x, value, evaluations)`` triple. Exceptions raised
-/// inside ``fun`` or ``optimize`` propagate to the caller.
+/// Raises ``ValueError`` if the decision or weight bounds are empty, of unequal
+/// length, or do not satisfy finite ``lower < upper``; if ``ncon`` leaves no
+/// objective; if ``value_exp`` is not finite and positive; if ``value_limits``
+/// does not match the objective width; or if ``optimize`` does not return an
+/// ``(x, value, evaluations)`` triple. Exceptions raised inside ``optimize``
+/// propagate to the caller. As in fcmaes, an exception raised by ``fun`` is not
+/// re-raised: that call, like a return value of the wrong width, counts as a
+/// failed evaluation with every objective value set to ``1e99``. The run's
+/// first such failure is logged once as a warning on the ``fcmaes_rust``
+/// logger.
 #[pyfunction]
 #[pyo3(signature = (fun, optimize, lower, upper, weight_lower, weight_upper,
     ncon=0, value_exp=2.0, value_limits=None, num_retries=1024, workers=0,
@@ -141,13 +163,13 @@ fn minimize_moretry(
     py: Python<'_>,
     fun: Py<PyAny>,
     optimize: Py<PyAny>,
-    lower: PyReadonlyArray1<'_, f64>,
-    upper: PyReadonlyArray1<'_, f64>,
-    weight_lower: PyReadonlyArray1<'_, f64>,
-    weight_upper: PyReadonlyArray1<'_, f64>,
+    lower: F64Vec<'_>,
+    upper: F64Vec<'_>,
+    weight_lower: F64Vec<'_>,
+    weight_upper: F64Vec<'_>,
     ncon: usize,
     value_exp: f64,
-    value_limits: Option<PyReadonlyArray1<'_, f64>>,
+    value_limits: Option<F64Vec<'_>>,
     num_retries: usize,
     workers: usize,
     capacity: usize,
@@ -176,12 +198,14 @@ fn minimize_moretry(
         weight_upper: slice_or_vec(&weight_upper),
         ncon,
         value_exp,
-        value_limits: value_limits.as_ref().map(slice_or_vec),
+        value_limits: value_limits.as_deref().map(slice_or_vec),
     };
     config.validate().map_err(PyValueError::new_err)?;
+    let failures = Arc::new(FailureLog::default());
     let objective = PyMultiObjective {
         fun: fun.clone_ref(py),
         width,
+        failures: Arc::clone(&failures),
     };
     let first_error = Mutex::new(None);
     let result = py
@@ -199,6 +223,7 @@ fn minimize_moretry(
                                 weights: weighted.weights().to_vec(),
                                 ncon: weighted.ncon(),
                                 value_exp: weighted.value_exp(),
+                                failures: Arc::clone(&failures),
                             },
                         )
                         .map(Py::into_any)

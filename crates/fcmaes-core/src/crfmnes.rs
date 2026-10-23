@@ -47,7 +47,7 @@ pub struct CrfmnesResult {
     pub x: Vec<f64>,
     /// Objective value at [`x`](Self::x).
     pub y: f64,
-    /// Number of objective evaluations charged to the run.
+    /// Objective evaluations actually made (see `max_evaluations`).
     pub evaluations: u64,
     /// Number of completed generations.
     pub iterations: i32,
@@ -60,7 +60,9 @@ pub struct CrfmnesResult {
 pub struct CrfmnesParams {
     /// Population size; values below two are raised to two.
     pub popsize: i32,
-    /// Maximum number of objective evaluations.
+    /// Evaluation budget, checked before each generation: whole generations
+    /// are evaluated, so a run can make up to `popsize - 1` more evaluations.
+    /// The result's `evaluations` field reports the actual count.
     pub max_evaluations: u64,
     /// Stop after finding an objective value strictly below this threshold.
     pub stop_fitness: f64,

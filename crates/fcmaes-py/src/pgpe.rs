@@ -2,11 +2,13 @@
 //! and the `PGPE` ask/tell class, backed by `fcmaes_core::Pgpe`.
 
 use fcmaes_core::{Fitness, Pgpe, PgpeParams};
-use numpy::{PyArray2, PyReadonlyArray1};
+use numpy::PyArray2;
 use pyo3::prelude::*;
 use pyo3::types::PyTuple;
 
-use crate::common::{result_tuple, rows_to_pyarray, slice_or_vec};
+use crate::common::{
+    F64Vec, FailureLog, check_box, check_vector, result_tuple, rows_to_pyarray, slice_or_vec,
+};
 
 fn build_fitness(dim: usize, lower: &[f64], upper: &[f64], normalize: bool) -> Fitness {
     if lower.is_empty() {
@@ -16,6 +18,19 @@ fn build_fitness(dim: usize, lower: &[f64], upper: &[f64], normalize: bool) -> F
         f.set_normalize(normalize);
         f
     }
+}
+
+/// Validate the inputs `Pgpe::new` would otherwise panic on.
+fn check_pgpe_inputs(
+    dim: usize,
+    guess: &[f64],
+    lower: &[f64],
+    upper: &[f64],
+    sigma: &[f64],
+) -> PyResult<()> {
+    check_box("PGPE", dim, lower, upper, true)?;
+    check_vector("PGPE", "guess", guess, &[dim])?;
+    check_vector("PGPE", "sigma", sigma, &[1, dim])
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -53,14 +68,22 @@ fn make_params(
     }
 }
 
-fn eval_batch(batch_fun: &Py<PyAny>, rows: &[Vec<f64>]) -> Vec<f64> {
+fn eval_batch(batch_fun: &Py<PyAny>, rows: &[Vec<f64>], failures: &FailureLog) -> Vec<f64> {
     Python::with_gil(|py| {
         let arr = rows_to_pyarray(py, rows);
+        let expected = || format!("{} floats", rows.len());
         match batch_fun.call1(py, (arr,)) {
-            Ok(v) => v
-                .extract::<Vec<f64>>(py)
-                .unwrap_or_else(|_| vec![f64::NAN; rows.len()]),
-            Err(_) => vec![f64::NAN; rows.len()],
+            Ok(v) => match v.extract::<Vec<f64>>(py) {
+                Ok(ys) if ys.len() == rows.len() => ys,
+                _ => {
+                    failures.bad_value(py, "objective batch_fun", v.bind(py), &expected());
+                    vec![f64::NAN; rows.len()]
+                }
+            },
+            Err(error) => {
+                failures.raised(py, "objective batch_fun", &error);
+                vec![f64::NAN; rows.len()]
+            }
         }
     })
 }
@@ -75,10 +98,21 @@ fn eval_batch(batch_fun: &Py<PyAny>, rows: &[Vec<f64>]) -> Vec<f64> {
 ///
 /// Returns ``(x, fun, evaluations, iterations, stop)``.
 ///
-/// Raises ``ValueError`` if the bound arrays are empty, of unequal length, or
-/// do not satisfy finite ``lower < upper``, and ``TypeError`` if an array
-/// argument cannot be converted to contiguous ``float64``. Exceptions raised
-/// inside the objective callback propagate to the caller.
+/// ``evaluations`` counts the rows actually passed to ``batch_fun``.
+/// ``max_evaluations`` is checked before each generation and whole generations
+/// are evaluated, so a run can evaluate up to ``popsize - 1`` rows more.
+///
+/// Raises ``ValueError`` if ``lower`` and ``upper`` do not have one entry per
+/// element of ``guess`` (both may be empty for an unbounded search) or do not
+/// satisfy finite ``lower < upper``, or if ``guess`` or ``sigma`` holds
+/// non-finite values or ``sigma`` has neither one nor ``len(guess)`` entries.
+/// Array arguments accept NumPy arrays and sequences: one that is not
+/// one-dimensional raises ``TypeError``, values NumPy cannot convert to
+/// ``float64`` raise ``ValueError``. As in fcmaes, an exception raised by the
+/// objective callback is not re-raised: that call, like a non-finite result,
+/// counts as a failed evaluation and ranks worst. The run's first exception or
+/// unusable return value is logged once as a warning on the ``fcmaes_rust``
+/// logger; non-finite values are not logged.
 #[pyfunction]
 #[pyo3(signature = (batch_fun, guess, lower, upper, sigma, *, seed, runid=0,
     max_evaluations=100000, stop_fitness=f64::NEG_INFINITY, popsize=32,
@@ -88,10 +122,10 @@ fn eval_batch(batch_fun: &Py<PyAny>, rows: &[Vec<f64>]) -> Vec<f64> {
 pub fn optimize_pgpe<'py>(
     py: Python<'py>,
     batch_fun: Py<PyAny>,
-    guess: PyReadonlyArray1<f64>,
-    lower: PyReadonlyArray1<f64>,
-    upper: PyReadonlyArray1<f64>,
-    sigma: PyReadonlyArray1<f64>,
+    guess: F64Vec<'_>,
+    lower: F64Vec<'_>,
+    upper: F64Vec<'_>,
+    sigma: F64Vec<'_>,
     seed: u64,
     runid: i64,
     max_evaluations: u64,
@@ -113,6 +147,7 @@ pub fn optimize_pgpe<'py>(
     let upper = slice_or_vec(&upper);
     let sigma = slice_or_vec(&sigma);
     let dim = guess.len();
+    check_pgpe_inputs(dim, &guess, &lower, &upper, &sigma)?;
 
     let fitness = build_fitness(dim, &lower, &upper, normalize);
     let params = make_params(
@@ -132,9 +167,10 @@ pub fn optimize_pgpe<'py>(
         decay_coef,
     );
 
+    let failures = FailureLog::default();
     let result = py.allow_threads(move || {
         let mut opt = Pgpe::new(fitness, &guess, &sigma, &params);
-        opt.optimize_batch(|rows| eval_batch(&batch_fun, rows))
+        opt.optimize_batch(|rows| eval_batch(&batch_fun, rows, &failures))
     });
     result_tuple(
         py,
@@ -151,11 +187,15 @@ pub fn optimize_pgpe<'py>(
 /// The optimizer uses mirrored parameter samples and an Adam center update.
 /// Alternate :meth:`ask` and :meth:`tell`, preserving row order.
 ///
-/// Raises ``ValueError`` if the bound arrays do not match the decision
-/// dimension or do not satisfy finite ``lower < upper``, and ``TypeError`` if
-/// an array argument cannot be converted to contiguous ``float64``.
-/// :meth:`tell` raises ``ValueError`` if it does not receive exactly one value
-/// per row returned by the most recent :meth:`ask`.
+/// Raises ``ValueError`` if ``lower`` and ``upper`` do not have one entry per
+/// element of ``guess`` (both may be empty for an unbounded search) or do not
+/// satisfy finite ``lower < upper``, or if ``guess`` or ``sigma`` holds
+/// non-finite values or ``sigma`` has neither one nor ``len(guess)`` entries.
+/// Array arguments accept NumPy arrays and sequences: one that is not
+/// one-dimensional raises ``TypeError``, values NumPy cannot convert to
+/// ``float64`` raise ``ValueError``. :meth:`tell` raises ``ValueError`` if it
+/// does not receive exactly one value per row returned by the most recent
+/// :meth:`ask`.
 #[allow(clippy::upper_case_acronyms)]
 #[pyclass]
 pub struct PGPE {
@@ -171,10 +211,10 @@ impl PGPE {
         stdev_learning_rate=0.1, stdev_max_change=0.2, b1=0.9, b2=0.999,
         eps=1e-8, decay_coef=1.0, normalize=true))]
     fn new(
-        guess: PyReadonlyArray1<f64>,
-        lower: PyReadonlyArray1<f64>,
-        upper: PyReadonlyArray1<f64>,
-        sigma: PyReadonlyArray1<f64>,
+        guess: F64Vec<'_>,
+        lower: F64Vec<'_>,
+        upper: F64Vec<'_>,
+        sigma: F64Vec<'_>,
         popsize: i32,
         seed: u64,
         runid: i64,
@@ -188,12 +228,13 @@ impl PGPE {
         eps: f64,
         decay_coef: f64,
         normalize: bool,
-    ) -> Self {
+    ) -> PyResult<Self> {
         let guess = slice_or_vec(&guess);
         let lower = slice_or_vec(&lower);
         let upper = slice_or_vec(&upper);
         let sigma = slice_or_vec(&sigma);
         let dim = guess.len();
+        check_pgpe_inputs(dim, &guess, &lower, &upper, &sigma)?;
         let fitness = build_fitness(dim, &lower, &upper, normalize);
         let params = make_params(
             seed,
@@ -211,9 +252,9 @@ impl PGPE {
             eps,
             decay_coef,
         );
-        PGPE {
+        Ok(PGPE {
             inner: Pgpe::new(fitness, &guess, &sigma, &params),
-        }
+        })
     }
 
     /// Return the next mirrored candidate population, shape ``(popsize, dim)``.
@@ -224,7 +265,7 @@ impl PGPE {
     /// Submit one minimized value per row from the most recent :meth:`ask`.
     ///
     /// Returns the current stop code.
-    fn tell(&mut self, ys: PyReadonlyArray1<f64>) -> i32 {
+    fn tell(&mut self, ys: F64Vec<'_>) -> i32 {
         self.inner.tell_pop(&slice_or_vec(&ys))
     }
 
