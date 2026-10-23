@@ -6,6 +6,14 @@ phase, with breaking changes called out explicitly.
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-10-23
+
+A patch release of the published packages. `fcmaes-core` gains the Dual
+Annealing fix and corrected budget documentation; the `fcmaes-rust` wheel
+gains the binding fixes below. Results of valid calls are unchanged: lists
+and tuples now give the same results as the equivalent NumPy arrays. The
+calls that change are those that 0.2.0 rejected or that panicked.
+
 ### Fixed
 
 - Python binding (`fcmaes-rust`): array arguments accept lists, tuples and
@@ -694,7 +702,8 @@ Initial crates.io bootstrap release.
   before configuring trusted publishing.
 - There was no corresponding `fcmaes-rust` 0.1.1 release on PyPI.
 
-[Unreleased]: https://github.com/dietmarwo/fcmaes-rust/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/dietmarwo/fcmaes-rust/compare/v0.2.1...HEAD
+[0.2.1]: https://github.com/dietmarwo/fcmaes-rust/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/dietmarwo/fcmaes-rust/compare/v0.1.5...v0.2.0
 [0.1.5]: https://github.com/dietmarwo/fcmaes-rust/compare/v0.1.4...v0.1.5
 [0.1.4]: https://github.com/dietmarwo/fcmaes-rust/compare/v0.1.3...v0.1.4
