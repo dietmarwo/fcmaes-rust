@@ -46,7 +46,9 @@ fn make_params(
 /// and sequences: one that is not one-dimensional raises ``TypeError``, values
 /// NumPy cannot convert to ``float64`` raise ``ValueError``. As in fcmaes, an
 /// exception raised by the objective callback is not re-raised: that call, like
-/// a non-finite result, counts as a failed evaluation and ranks worst.
+/// a non-finite result, counts as a failed evaluation and ranks worst. The
+/// run's first exception or unusable return value is logged once as a warning
+/// on the ``fcmaes_rust`` logger; non-finite values are not logged.
 #[pyfunction]
 #[pyo3(name = "optimize_bite")]
 #[pyo3(signature = (fun, guess, lower, upper, *, seed, runid=0,

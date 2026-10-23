@@ -402,8 +402,9 @@ to 0.2.0 accepted only NumPy arrays of the exact dtype (`float64`, `bool` for
 `ints`), so pass `np.asarray(..., dtype=...)` when the installed version may
 be older. Invalid bounds, guesses, sigmas and masks raise `ValueError` (0.2.0
 raised pyo3's `PanicException` for several of them). An objective callback that
-raises is not re-raised: the call counts as a failed evaluation, as in fcmaes,
-so test the objective on its own first. The `evaluations` field is the number
+raises is not re-raised: the call counts as a failed evaluation, as in fcmaes.
+The first failure of a run is logged once as a warning on the `fcmaes_rust`
+logger (0.2.0 logged nothing); still test the objective on its own first. The `evaluations` field is the number
 of calls actually made: `optimize_de` can exceed `max_evaluations` by up to
 `2 * popsize - 1`, ACMA, CR-FM-NES and PGPE by up to `popsize - 1`; BiteOpt and
 Dual Annealing never exceed it.

@@ -104,7 +104,9 @@ fn make_params(
 /// ``TypeError``, values NumPy cannot convert to ``float64`` (``bool`` for
 /// ``ints``) raise ``ValueError``. As in fcmaes, an exception raised by the
 /// objective callback is not re-raised: that call, like a non-finite result,
-/// counts as a failed evaluation and ranks worst.
+/// counts as a failed evaluation and ranks worst. The run's first exception or
+/// unusable return value is logged once as a warning on the ``fcmaes_rust``
+/// logger; non-finite values are not logged.
 #[pyfunction]
 #[pyo3(signature = (fun, dim, lower, upper, guess, sigma, ints, *, seed, runid=0,
     max_evaluations=100000, keep=200.0, stop_fitness=f64::NEG_INFINITY, popsize=31,

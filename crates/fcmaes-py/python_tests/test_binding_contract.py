@@ -347,3 +347,81 @@ def test_unbounded_search_with_empty_bounds_still_works():
         shifted_sphere, 2, [], [], start, [0.3, 0.3], [], seed=1, max_evaluations=600
     )
     assert result[1] < 1e-3
+
+
+def _failure_records(caplog):
+    return [r for r in caplog.records if r.name == "fcmaes_rust" and r.levelname == "WARNING"]
+
+
+def _always_fails(x):
+    raise RuntimeError("simulator failed")
+
+
+def _batch_always_fails(xs):
+    raise RuntimeError("simulator failed")
+
+
+FAILING_RUNS = {
+    "optimize_de": lambda f, b: fcmaes_rust.optimize_de(f, DIM, LOWER, UPPER, [], [], [], seed=1, max_evaluations=400),
+    "optimize_acma": lambda f, b: fcmaes_rust.optimize_acma(f, None, GUESS, LOWER, UPPER, SIGMA, seed=1, max_evaluations=400),
+    "optimize_bite": lambda f, b: fcmaes_rust.optimize_bite(f, GUESS, LOWER, UPPER, seed=1, max_evaluations=400),
+    "optimize_da": lambda f, b: fcmaes_rust.optimize_da(f, GUESS, LOWER, UPPER, seed=1, max_evaluations=400),
+    "optimize_crfmnes": lambda f, b: fcmaes_rust.optimize_crfmnes(b, GUESS, LOWER, UPPER, 0.3, seed=1, max_evaluations=400),
+    "optimize_pgpe": lambda f, b: fcmaes_rust.optimize_pgpe(b, GUESS, LOWER, UPPER, SIGMA, seed=1, max_evaluations=400),
+}
+
+
+@pytest.mark.parametrize("name", sorted(FAILING_RUNS))
+def test_failing_objective_logs_one_warning_per_run(name, caplog):
+    caplog.set_level("WARNING", logger="fcmaes_rust")
+    run = FAILING_RUNS[name]
+    result = run(_always_fails, _batch_always_fails)
+    assert result[2] >= 100  # hundreds of failed calls ...
+    records = _failure_records(caplog)
+    assert len(records) == 1  # ... and a single warning
+    message = records[0].getMessage()
+    assert "RuntimeError: simulator failed" in message and "failed evaluation" in message
+    assert records[0].exc_info is not None and records[0].exc_info[0] is RuntimeError
+    run(_always_fails, _batch_always_fails)
+    assert len(_failure_records(caplog)) == 2  # once per run, not once per process
+
+
+def test_unusable_return_values_are_logged_once(caplog):
+    caplog.set_level("WARNING", logger="fcmaes_rust")
+    fcmaes_rust.optimize_de(lambda x: "bad", DIM, LOWER, UPPER, [], [], [], seed=1, max_evaluations=200)
+    fcmaes_rust.optimize_pgpe(lambda xs: [1.0], GUESS, LOWER, UPPER, SIGMA, seed=1, max_evaluations=200)
+    messages = [r.getMessage() for r in _failure_records(caplog)]
+    assert len(messages) == 2
+    assert "returned 'bad', expected a float" in messages[0]
+    assert "returned [1.0], expected 32 floats" in messages[1]
+
+
+def test_rejections_with_non_finite_values_are_not_logged(caplog):
+    caplog.set_level("WARNING", logger="fcmaes_rust")
+    fcmaes_rust.optimize_de(
+        lambda x: float("inf") if x[0] < 0 else shifted_sphere(x),
+        DIM, LOWER, UPPER, [], [], [], seed=1, max_evaluations=300,
+    )
+    assert _failure_records(caplog) == []
+
+
+def test_retry_drivers_and_archive_log_once_per_run(caplog):
+    caplog.set_level("WARNING", logger="fcmaes_rust")
+
+    def optimize(fun, bounds, guess, sdev, rng, store):
+        x, y, evaluations, _, _ = fcmaes_rust.optimize_bite(
+            fun, (bounds.lb + bounds.ub) / 2, bounds.lb, bounds.ub,
+            seed=int(rng.integers(1 << 31)), max_evaluations=50,
+        )
+        return x, y, evaluations
+
+    result = fcmaes_rust.minimize_moretry(
+        _always_fails, optimize, LOWER, UPPER, [0.0, 0.0], [1.0, 1.0], num_retries=8, workers=1,
+    )
+    assert result["nfev"] >= 8 * 50
+    archive = fcmaes_rust.Archive(DIM, LOWER, UPPER, [0.0, 0.0], [1.0, 1.0], 16, seed=1)
+    archive.optimize_map_elites(_always_fails, generations=3, chunk_size=8)
+    messages = [r.getMessage() for r in _failure_records(caplog)]
+    assert len(messages) == 2
+    assert messages[0].startswith("objective fun raised RuntimeError")
+    assert messages[1].startswith("qd_fitness raised RuntimeError")

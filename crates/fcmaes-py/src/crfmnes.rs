@@ -6,7 +6,9 @@ use numpy::PyArray2;
 use pyo3::prelude::*;
 use pyo3::types::PyTuple;
 
-use crate::common::{F64Vec, check_box, check_vector, result_tuple, rows_to_pyarray, slice_or_vec};
+use crate::common::{
+    F64Vec, FailureLog, check_box, check_vector, result_tuple, rows_to_pyarray, slice_or_vec,
+};
 
 fn build_fitness(dim: usize, lower: &[f64], upper: &[f64], normalize: bool) -> Fitness {
     if lower.is_empty() {
@@ -72,7 +74,9 @@ fn make_params(
 /// one-dimensional raises ``TypeError``, values NumPy cannot convert to
 /// ``float64`` raise ``ValueError``. As in fcmaes, an exception raised by the
 /// objective callback is not re-raised: that call, like a non-finite result,
-/// counts as a failed evaluation and ranks worst.
+/// counts as a failed evaluation and ranks worst. The run's first exception or
+/// unusable return value is logged once as a warning on the ``fcmaes_rust``
+/// logger; non-finite values are not logged.
 #[pyfunction]
 #[pyo3(signature = (batch_fun, guess, lower, upper, sigma=0.3, *, seed, runid=0,
     max_evaluations=100000, stop_fitness=f64::NEG_INFINITY, popsize=32,
@@ -110,9 +114,10 @@ pub fn optimize_crfmnes<'py>(
         use_constraint_violation,
     );
 
+    let failures = FailureLog::default();
     let result = py.allow_threads(move || {
         let mut opt = Crfmnes::new(fitness, &guess, sigma, &params);
-        opt.optimize_batch(|rows| eval_batch(&batch_fun, rows))
+        opt.optimize_batch(|rows| eval_batch(&batch_fun, rows, &failures))
     });
     result_tuple(
         py,
@@ -126,14 +131,22 @@ pub fn optimize_crfmnes<'py>(
 
 /// Evaluate a decoded population through the Python batch callable, re-acquiring
 /// the GIL for the call (the loop runs under `py.allow_threads`).
-fn eval_batch(batch_fun: &Py<PyAny>, rows: &[Vec<f64>]) -> Vec<f64> {
+fn eval_batch(batch_fun: &Py<PyAny>, rows: &[Vec<f64>], failures: &FailureLog) -> Vec<f64> {
     Python::with_gil(|py| {
         let arr = rows_to_pyarray(py, rows);
+        let expected = || format!("{} floats", rows.len());
         match batch_fun.call1(py, (arr,)) {
-            Ok(v) => v
-                .extract::<Vec<f64>>(py)
-                .unwrap_or_else(|_| vec![f64::NAN; rows.len()]),
-            Err(_) => vec![f64::NAN; rows.len()],
+            Ok(v) => match v.extract::<Vec<f64>>(py) {
+                Ok(ys) if ys.len() == rows.len() => ys,
+                _ => {
+                    failures.bad_value(py, "objective batch_fun", v.bind(py), &expected());
+                    vec![f64::NAN; rows.len()]
+                }
+            },
+            Err(error) => {
+                failures.raised(py, "objective batch_fun", &error);
+                vec![f64::NAN; rows.len()]
+            }
         }
     })
 }

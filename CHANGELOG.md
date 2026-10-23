@@ -37,6 +37,16 @@ phase, with breaking changes called out explicitly.
   except in the `optimize` callbacks of the retry functions. The type stub
   gives `gtop_cassini1_minlp` its real return type, `tuple[float, float]`.
 
+### Added
+
+- Python binding: the first failed objective call of an optimization run (an
+  exception, or a return value of the wrong type or shape) is logged once as a
+  warning on the `fcmaes_rust` logger, with the traceback; later failures in
+  the run are not logged, and deliberate non-finite values never are. 0.2.0
+  swallowed these failures silently. A batch or vector objective that returns
+  the wrong number of values is now a failed evaluation instead of being
+  passed on.
+
 ### Changed
 
 - optimization-jobs pin `37b30e4` (tag `v0.3.0`, the first crates.io release

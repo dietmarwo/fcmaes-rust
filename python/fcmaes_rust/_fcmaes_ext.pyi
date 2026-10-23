@@ -19,7 +19,11 @@ in a row.
 
 As in fcmaes, an objective callback that raises does not abort the run: the
 call counts as a failed evaluation (ranked worst) and the exception is not
-re-raised. Exceptions from the ``optimize`` callbacks of ``minimize_retry`` and
+re-raised. The same holds for a return value of the wrong type or shape. The
+first such failure of a run is logged once, with its traceback, as a warning
+on the ``fcmaes_rust`` logger (``logging.getLogger("fcmaes_rust")``); later
+failures in that run are not logged, and deliberate non-finite values never
+are. Exceptions from the ``optimize`` callbacks of ``minimize_retry`` and
 ``minimize_moretry`` propagate, and so do those of ``fun`` in
 ``minimize_retry``, which only ``optimize`` calls.
 

@@ -31,7 +31,9 @@ use crate::common::{F64Vec, PyObjective, check_box, check_vector, result_tuple, 
 /// one-dimensional raises ``TypeError``, values NumPy cannot convert to
 /// ``float64`` raise ``ValueError``. As in fcmaes, an exception raised by the
 /// objective callback is not re-raised: that call, like a non-finite result,
-/// counts as a failed evaluation and ranks worst.
+/// counts as a failed evaluation and ranks worst. The run's first exception or
+/// unusable return value is logged once as a warning on the ``fcmaes_rust``
+/// logger; non-finite values are not logged.
 #[pyfunction]
 #[pyo3(name = "optimize_da")]
 #[pyo3(signature = (fun, guess, lower, upper, *, seed, runid=0,

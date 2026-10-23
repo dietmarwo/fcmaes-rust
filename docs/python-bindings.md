@@ -127,11 +127,23 @@ always need bounds. In 0.2.0 several of these cases ended in pyo3's
 `PanicException`, which derives from `BaseException` and escapes
 `except Exception`.
 
-An exception raised by an objective callback is not re-raised, as in the
-fcmaes C++ bindings: the call counts as a failed evaluation and ranks worst
-(a non-finite return value is treated the same way). Validate an objective on
-a few points before optimizing it. Errors in the `optimize` callbacks of
-`minimize_retry` and `minimize_moretry` propagate.
+An exception raised by an objective callback does not abort the run, as in
+the fcmaes C++ bindings: the call counts as a failed evaluation and ranks
+worst. A return value of the wrong type or shape is treated the same way, and
+so is a non-finite value, which is a legitimate way to reject a point. The
+first exception or unusable return value of a run is logged once, with its
+traceback, as a warning on the `fcmaes_rust` logger; later failures in the
+same run are not logged, so an objective that fails on every one of a million
+calls produces a single message:
+
+```python
+import logging
+logging.basicConfig()                                    # show the warning
+logging.getLogger("fcmaes_rust").setLevel(logging.ERROR)  # or silence it
+```
+
+Errors in the `optimize` callbacks of `minimize_retry` and `minimize_moretry`
+propagate.
 
 The `evaluations` field of a result counts the objective calls actually made.
 `max_evaluations` is a stopping threshold, not always a hard cap:
