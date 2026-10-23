@@ -42,7 +42,8 @@ pub fn check_discovery(r: Registry, expected: usize) {
     let a = Adapter::new(r);
     let d = a.describe();
     assert_eq!(d["problems"].as_array().unwrap().len(), expected);
-    assert!(!d["examples"].as_array().unwrap().is_empty());
+    let examples = d["examples"].as_array().unwrap().len();
+    assert_ne!(examples, 0, "discovery lists no runnable example");
     for p in d["problems"].as_array().unwrap() {
         assert!(p.get("parameters_schema").is_some(), "{p}");
     }
