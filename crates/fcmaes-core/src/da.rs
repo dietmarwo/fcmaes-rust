@@ -40,22 +40,27 @@ use crate::rng::Rng;
 /// Outcome of a Dual Annealing run.
 #[derive(Clone, Debug)]
 pub struct DaResult {
-    /// Best decoded decision vector found.
+    /// Best decoded decision vector found. When no start point was accepted
+    /// (`stop == -1`), the best point evaluated, or the last point tried if
+    /// every value was NaN or `+inf`.
     pub x: Vec<f64>,
-    /// Objective value at [`x`](Self::x).
+    /// Objective value at [`x`](Self::x); `f64::MAX` if it was NaN.
     pub y: f64,
-    /// Number of objective evaluations charged to the run.
+    /// Objective evaluations actually made; never more than
+    /// [`DaParams::max_evaluations`].
     pub evaluations: u64,
     /// Reserved iteration counter; currently zero.
     pub iterations: i32,
-    /// Termination code; `-1` indicates initialization failed.
+    /// Termination code; `-1` means no start point with a value below `1e16`
+    /// was found within 1,000 attempts or the evaluation budget.
     pub stop: i32,
 }
 
 /// Tunable inputs for [`optimize_da`].
 #[derive(Clone, Debug)]
 pub struct DaParams {
-    /// Maximum number of global and local objective evaluations combined.
+    /// Maximum number of global and local objective evaluations combined,
+    /// including the attempts to find a start point; `0` selects 10,000,000.
     pub max_evaluations: u64,
     /// Enable the projected limited-memory local-search phase.
     pub use_local_search: bool,
@@ -307,6 +312,9 @@ impl<'a, O: Objective> Da<'a, O> {
         loop {
             self.current_energy = self.value(&self.current_location.clone());
             if self.current_energy >= BIG_VALUE || self.current_energy.is_nan() {
+                if self.max_eval_reached() {
+                    return;
+                }
                 if reinit_counter >= MAX_REINIT_COUNT {
                     self.reinit_failed = true;
                     return;
@@ -567,7 +575,7 @@ impl<'a, O: Objective> Da<'a, O> {
                 }
                 if temperature < TEMPERATURE_RESTART {
                     self.reset_energy(&[]);
-                    if self.reinit_failed {
+                    if self.reinit_failed || self.max_eval_reached() {
                         return;
                     }
                     break;
@@ -592,15 +600,36 @@ impl<'a, O: Objective> Da<'a, O> {
         self.emin = self.current_energy;
         self.xmin = self.current_location.clone();
         self.not_improved_max_idx = 1000;
-        if !self.reinit_failed {
+        if !self.reinit_failed && !self.max_eval_reached() {
             self.search();
         }
+        let started = !self.xbest.is_empty();
+        let (x, y) = if started {
+            (self.decode(&self.xbest), self.ebest)
+        } else if !self.fit_best_x.is_empty() {
+            // No start point below BIG_VALUE: report the best point evaluated.
+            let x = self.closest_feasible(&self.fit_best_x);
+            (self.decode(&x), self.fit_best_y)
+        } else {
+            // Every value was NaN or +inf: report the last point tried.
+            let x = self.closest_feasible(&self.current_location);
+            let y = if self.current_energy.is_nan() {
+                f64::MAX
+            } else {
+                self.current_energy
+            };
+            (self.decode(&x), y)
+        };
         DaResult {
-            x: self.decode(&self.xbest),
-            y: self.ebest,
+            x,
+            y,
             evaluations: self.eval_counter,
             iterations: 0,
-            stop: if self.reinit_failed { -1 } else { 0 },
+            stop: if self.reinit_failed || !started {
+                -1
+            } else {
+                0
+            },
         }
     }
 }
@@ -699,6 +728,65 @@ mod tests {
         );
         assert_eq!(result.stop, -1);
         assert!(result.evaluations > 1_000);
+    }
+
+    #[test]
+    fn bounded_objective_without_start_point_returns_evaluated_point() {
+        // Every value is at or above BIG_VALUE (a large penalty, +inf, NaN):
+        // no start point is accepted. The run must not panic, must keep to the
+        // budget and must report a point inside the box that was evaluated.
+        for (value, expected_y) in [
+            (1e300, 1e300),
+            (f64::INFINITY, f64::INFINITY),
+            (f64::NAN, f64::MAX),
+        ] {
+            let objective = move |_: &[f64]| value;
+            for max_evaluations in [60, 5_000] {
+                let result = optimize_da(
+                    &objective,
+                    &[0.5, 0.5],
+                    vec![-1.0, 0.0],
+                    vec![1.0, 2.0],
+                    &DaParams {
+                        max_evaluations,
+                        use_local_search: true,
+                        seed: 7,
+                        runid: 0,
+                    },
+                );
+                assert_eq!(result.stop, -1);
+                assert_eq!(result.y, expected_y);
+                assert!(result.evaluations <= max_evaluations);
+                assert_eq!(result.x.len(), 2);
+                assert!((-1.0..=1.0).contains(&result.x[0]) && (0.0..=2.0).contains(&result.x[1]));
+            }
+        }
+    }
+
+    #[test]
+    fn budget_bounds_start_point_search() {
+        let calls = std::sync::atomic::AtomicU64::new(0);
+        let objective = |x: &[f64]| {
+            calls.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+            if x[0] > 0.9 { x[0] } else { 1e20 }
+        };
+        let result = optimize_da(
+            &objective,
+            &[0.0],
+            vec![0.0],
+            vec![1.0],
+            &DaParams {
+                max_evaluations: 200,
+                use_local_search: false,
+                seed: 3,
+                runid: 0,
+            },
+        );
+        assert!(result.evaluations <= 200);
+        assert_eq!(
+            result.evaluations,
+            calls.load(std::sync::atomic::Ordering::Relaxed)
+        );
     }
 
     #[test]

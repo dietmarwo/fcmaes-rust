@@ -120,7 +120,7 @@ pub struct BiteResult {
     pub x: Vec<f64>,
     /// Objective value at [`x`](Self::x).
     pub y: f64,
-    /// Number of objective evaluations charged to the run.
+    /// Objective evaluations actually made; never more than `max_evaluations`.
     pub evaluations: u64,
     /// Number of candidates incorporated into the optimizer state.
     pub iterations: i32,

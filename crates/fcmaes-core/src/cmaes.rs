@@ -43,7 +43,7 @@ pub struct AcmaResult {
     pub x: Vec<f64>,
     /// Objective value at [`x`](Self::x).
     pub y: f64,
-    /// Number of objective evaluations charged to the run.
+    /// Objective evaluations actually made (see `max_evaluations`).
     pub evaluations: u64,
     /// Number of completed generations.
     pub iterations: i32,
@@ -58,7 +58,9 @@ pub struct CmaesParams {
     pub popsize: i32,
     /// Number of selected parents; non-positive values use half the population.
     pub mu: i32,
-    /// Maximum number of objective evaluations.
+    /// Evaluation budget, checked before each generation: whole generations
+    /// are evaluated, so a run can make up to `popsize - 1` more evaluations.
+    /// The result's `evaluations` field reports the actual count.
     pub max_evaluations: u64,
     /// Scale applied to numerical termination tolerances.
     pub accuracy: f64,
