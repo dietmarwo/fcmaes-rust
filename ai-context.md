@@ -43,6 +43,7 @@ server. In this file:
 | Jobs, discovery, MCP and results | [Shared agent job API](#shared-agent-job-api), [MCP](#agents-the-mcp-server), [results](#interpret-results-and-compare-experiments) |
 | Your own model as a job | [Application models](docs/job-api/models.md), [extend the worker](#preserve-legacy-jobs-and-extend-the-worker) |
 | Threads and cores | [Parallelism rules](#parallelism-rules) |
+| CFD experiment through prompts | [Room-ventilation workshop](tutorials/cfd-room-ventilation/agentic/README.md): direct native CLI, fixed budgets, held-out replay and grid/setup sensitivity; no registered CFD job profile |
 | Checking a solution | [Validation checklist](#validation-and-reporting-checklist), [failure diagnosis](#failure-diagnosis) |
 
 ## Experimental surrogate chooser rule

@@ -1,0 +1,74 @@
+name: Agentic fluid dynamics tutorial
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'tutorials/cfd-room-ventilation/**'
+      - 'crates/fcmaes-core/**'
+      - '.github/workflows/agentic-fluid-dynamics.yml'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+  pull_request:
+    paths:
+      - 'tutorials/cfd-room-ventilation/**'
+      - 'crates/fcmaes-core/**'
+      - '.github/workflows/agentic-fluid-dynamics.yml'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  workshop:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      CARGO_BUILD_JOBS: '2'
+      MPLBACKEND: Agg
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: tutorials/cfd-room-ventilation
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Python dependencies and artifact-check tests
+        run: |
+          python3 -m pip install -r tutorials/cfd-room-ventilation/agentic/requirements.txt
+          python3 tutorials/cfd-room-ventilation/agentic/test_audit.py
+      - name: Register Rust diagnostics
+        run: echo "::add-matcher::.github/rust-problem-matcher.json"
+      - name: Clippy
+        env:
+          CARGO_TERM_COLOR: never
+        run: cargo clippy --locked --all-targets --manifest-path tutorials/cfd-room-ventilation/Cargo.toml -- -D warnings
+      - name: Native model tests
+        env:
+          CARGO_TERM_COLOR: never
+        run: cargo test --locked --all-targets --manifest-path tutorials/cfd-room-ventilation/Cargo.toml
+      - name: Locked release build
+        env:
+          CARGO_TERM_COLOR: never
+        run: cargo build --release --locked --manifest-path tutorials/cfd-room-ventilation/Cargo.toml
+      - name: Real simulation and artifact audit
+        run: >-
+          python3 tutorials/cfd-room-ventilation/agentic/run.py
+          --bin-dir tutorials/cfd-room-ventilation/target/release
+          --output prompt-cfd-results --seeds 42 --evaluations 512 --workers 2
+      - name: Retain experiment evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: prompt-cfd-results
+          path: prompt-cfd-results

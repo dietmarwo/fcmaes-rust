@@ -54,6 +54,8 @@ BuckinghamPy dependency.
 
 [Prompt-driven application tutorials](https://github.com/dietmarwo/optimization-jobs/tree/main/tutorials/agentic) reuse the native models through [optional tutorial workers](docs/job-api/application-tutorials.md).
 
+The [fluid dynamics prompt workshop](tutorials/cfd-room-ventilation/agentic/README.md) uses the existing native room-ventilation CLI to compare designs, test unseen release locations and examine grid/setup sensitivity.
+
 The [prompt-driven surrogate tutorial](https://github.com/dietmarwo/optimization-jobs/tree/main/tutorials/agentic/surrogate) adds a checked agent workflow over the existing `fcmaes-job-worker`.
 
 ## Experimental surrogate optimization
