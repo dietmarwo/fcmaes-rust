@@ -1,6 +1,6 @@
 # CFD workshop validation record
 
-Date: 23 October 2026. Source base: fcmaes-rust `92e1deb266910fff69cd0964ee3dba418d4a36e1`, fetched after the preceding tutorial merges. The patch adds a prompt workshop, Python orchestration/auditing and CI; it changes no native model, optimizer, Cargo manifest or lockfile.
+Date: 23 October 2026. Source base: fcmaes-rust `92e1deb266910fff69cd0964ee3dba418d4a36e1`, fetched after the preceding tutorial merges. The workshop adds prompts, Python orchestration/auditing and CI; it changes no native model, optimizer, Cargo manifest or lockfile.
 
 ## Executed campaigns
 
@@ -11,7 +11,7 @@ Date: 23 October 2026. Source base: fcmaes-rust `92e1deb266910fff69cd0964ee3dba4
 
 Both use MODE and MAP-Elites, two candidate workers, the existing 40x24 model, 800 maximum flow steps, 600 scalar steps and a 600-second limit per native command. All commands exited successfully. Baseline, held-out replay and verification work is additional to search evaluation counts. The reporting scalar selects representatives using training cases only. The first requested seed is predetermined as the field/grid representative.
 
-Each campaign retained all fronts/archives, convergence and held-out CSVs, native logs, commands/exit codes/timings, binary hashes, 18 grid/source/design comparisons, a straight-channel reference, three field CSVs, four figures and output checksums. The downloaded evidence package includes these raw artifacts. [validation.json](validation.json) is the final three-seed summary; the figures beside this page come from that campaign.
+Each campaign retained all fronts/archives, convergence and held-out CSVs, native logs, commands/exit codes/timings, binary hashes, 18 grid/source/design comparisons, a straight-channel reference, three field CSVs, four figures and output checksums. These raw artifacts were reviewed during integration but are not published; `run.py` regenerates them. [validation.json](validation.json) is the final three-seed summary; the figures beside this page come from that campaign.
 
 ## Assertions executed by the driver
 
@@ -40,6 +40,13 @@ Executed on Linux x86-64, Rust/Cargo 1.99.1 stable, Python 3.12.14, Matplotlib 3
 - A real CI-sized campaign, separate from the tutorial measurements; no mocked simulation output.
 
 The workflow uses stable Rust, a locked build, plain Rust diagnostics plus the repository's problem matcher, and uploads experiment evidence even on failure. All new Markdown pages are listed in the book summary to avoid source links becoming missing rendered-book pages.
+
+## Integration re-run
+
+When the workshop was integrated (23 October 2026), the standalone workspace was built again with `--locked` on Rust/Cargo 1.97.0, and both campaigns were rerun with matplotlib 3.11.2:
+- the 13 native tests, Clippy with warnings denied, the formatting check and the three audit tests pass;
+- the three-seed campaign again counted 12,288 search evaluations, and its `summary.json` equals [validation.json](validation.json) apart from binary hashes and timings;
+- in both campaigns every exported CSV is byte-identical except the `elapsed_seconds` column of `convergence.csv`, and the four figures are byte-identical to those beside this page.
 
 ## Interpretation limits
 

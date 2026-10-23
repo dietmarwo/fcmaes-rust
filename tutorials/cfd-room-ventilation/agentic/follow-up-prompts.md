@@ -14,4 +14,4 @@
 
 ## German opening
 
-> Sei meine Kollegin fuer simulationsgestuetzte Optimierung. Fuehre das Experiment in `prompt.md` mit dem vorhandenen Rust-Modell aus und berichte auf Deutsch. Vergleiche MODE und MAP-Elites anhand der vier Zielgroessen, der Randbedingungen und der unterschiedlichen Aufgaben der beiden Verfahren. Halte die vorab festgelegten Seeds und Budgets ein. Unterscheide Optimierungsfortschritt, iterative Konvergenz, Netz-/Modellsensitivitaet, unbekannte Freisetzungsorte und physikalische Validierung. Zeige auch verletzte Randbedingungen und liefere die Rohdaten und Diagramme mit.
+> Sei meine Kollegin für simulationsgestützte Optimierung. Führe das Experiment in `prompt.md` mit dem vorhandenen Rust-Modell aus und berichte auf Deutsch. Vergleiche MODE und MAP-Elites anhand der vier Zielgrößen, der Randbedingungen und der unterschiedlichen Aufgaben der beiden Verfahren. Halte die vorab festgelegten Seeds und Budgets ein. Unterscheide Optimierungsfortschritt, iterative Konvergenz, Netz-/Modellsensitivität, unbekannte Freisetzungsorte und physikalische Validierung. Zeige auch verletzte Randbedingungen und liefere die Rohdaten und Diagramme mit.

@@ -18,7 +18,7 @@ Prepare the environment using [SETUP.md](SETUP.md). Give a shell-capable agent t
 >
 > Preselect seed 42 for field plots and the existing three-grid verification study. Check the channel reference, constraint margins, actual evaluation counts, exported decisions and objective components. Distinguish optimizer progress, iterative convergence, grid/setup sensitivity, unseen scenarios and physical validation. Return an engineering note, figures and exact artifact paths.
 
-Use a capable agent with terminal access, such as a Work Mode session. These prompts are provider independent. The numerical experiment needs no model API key. This CFD tutorial currently exposes a native CLI; it has no registered optimization-jobs worker profile.
+Use a capable agent with terminal access. These prompts are provider independent. The numerical experiment needs no model API key. This CFD tutorial currently exposes a native CLI; it has no registered optimization-jobs worker profile.
 
 <!-- pagebreak -->
 
@@ -148,6 +148,6 @@ These are executed CLI experiments and code tests. No fresh-context model trial 
 
 [1] The maintained [native tutorial](https://github.com/dietmarwo/fcmaes-rust/tree/main/tutorials/cfd-room-ventilation) and [backend description](https://github.com/dietmarwo/fcmaes-rust/blob/main/tutorials/cfd-room-ventilation/BACKEND.md) define the model used here.
 
-[2] NASA/NPARC, [Examining Spatial (Grid) Convergence](https://www.grc.nasa.gov/www/wind/valid/tutorial/spatconv.html) and [Assessing Validation](https://www.grc.nasa.gov/www/wind/valid/tutorial/valassess.html), accessed 23 October 2026, provide background for the distinction between refinement evidence and agreement with physical measurements.
+[2] NASA/NPARC, [Examining Spatial (Grid) Convergence](https://www.grc.nasa.gov/www/wind/valid/tutorial/spatconv.html) and [Validation Assessment](https://www.grc.nasa.gov/www/wind/valid/tutorial/valassess.html), accessed 23 October 2026, provide background for the distinction between refinement evidence and agreement with physical measurements.
 
 All figures and workshop measurements here were computed for this tutorial. This educational model is not a calibrated ventilation design or health-assessment tool.
