@@ -54,7 +54,7 @@ BuckinghamPy dependency.
 
 [Prompt-driven application tutorials](https://github.com/dietmarwo/optimization-jobs/tree/main/tutorials/agentic) reuse the native models through [optional tutorial workers](docs/job-api/application-tutorials.md).
 
-[Prompt tutorial: surrogate](https://github.com/dietmarwo/optimization-jobs/tree/main/tutorials/agentic/surrogate) adds a checked agent workflow over the existing native worker.
+The [prompt-driven surrogate tutorial](https://github.com/dietmarwo/optimization-jobs/tree/main/tutorials/agentic/surrogate) adds a checked agent workflow over the existing `fcmaes-job-worker`.
 
 ## Experimental surrogate optimization
 
