@@ -6,6 +6,11 @@ phase, with breaking changes called out explicitly.
 
 ## [Unreleased]
 
+### Changed
+
+- `ai-context.md` records 0.2.1 as published on crates.io and PyPI
+  (23 October 2026), after installing it from both registries.
+
 ## [0.2.1] - 2026-10-23
 
 A patch release of the published packages. `fcmaes-core` gains the Dual
