@@ -8,6 +8,8 @@ phase, with breaking changes called out explicitly.
 
 ### Added
 
+- Link the [surrogate prompt tutorial](https://github.com/dietmarwo/optimization-jobs/tree/main/tutorials/agentic/surrogate) with checked examples and follow-up experiments over the existing native worker. No numerical code or dependency pins change.
+
 - [Prompt-driven application tutorials](https://github.com/dietmarwo/optimization-jobs/tree/main/tutorials/agentic)
   reuse the native models through
   [optional tutorial workers](docs/job-api/application-tutorials.md).
