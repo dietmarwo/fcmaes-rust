@@ -27,6 +27,7 @@ htmlcov/
 /build/
 /dist/
 *.egg-info/
+*.whl
 *.so
 *.pyd
 *.dylib

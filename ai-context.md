@@ -148,18 +148,19 @@ C/C++ compiler. Building the Python package from its source distribution does
 require Rust. Do not tell a Python user to install the historical `fcmaes`
 package when they asked specifically for this Rust implementation.
 
-The workspace version is 0.2.0, the release that follows the published
-`fcmaes-core` 0.1.5 (crates.io) and `fcmaes-rust` 0.1.5 (PyPI). Check the
-registries for the latest published version before relying on it. This
-repository's job-layer crates (`fcmaes-job-worker`, `fcmaes-runner`,
-`fcmaes-native-worker`) and the experimental `fcmaes-surrogate` 0.1.0 are
-source-only (`publish = false`) and are part of neither package. The shared
-`optimization-job-api` and `optimization-runner` come from optimization-jobs
-through git at the pinned revision. Their manifests allow a crates.io
-release (`publish = ["crates-io"]`), but none has been published at this
-review: a manifest flag is not a release. Core
-additions after 0.1.5, such as `ParetoArchive2D`, need 0.2.0 or later;
-changes after the latest release need a git dependency on `main`.
+The workspace version is 0.2.1, the patch release that follows the
+published `fcmaes-core` 0.2.0 (crates.io) and `fcmaes-rust` 0.2.0 (PyPI).
+Check the registries for the latest published version before relying on
+it. This repository's job-layer crates (`fcmaes-job-worker`,
+`fcmaes-runner`, `fcmaes-native-worker`) and the experimental
+`fcmaes-surrogate` 0.1.0 are source-only (`publish = false`) and are part
+of neither package. The shared `optimization-job-api` and
+`optimization-runner` come from optimization-jobs through git at the pinned
+revision; both are also on crates.io from 0.3.0. Core additions after
+0.1.5, such as `ParetoArchive2D`, need 0.2.0 or later. The Python binding
+fixes (sequence arguments, `ValueError` instead of panics, logged callback
+failures) and the Dual Annealing start-point fix need 0.2.1. Changes after
+the latest release need a git dependency on `main`.
 
 **MODE warning.** `fcmaes-core` and `fcmaes-rust` 0.1.5 and earlier predate
 the October 2026 MODE fixes (#1: the SBX expanding branch, polynomial
@@ -397,17 +398,18 @@ classes expose the corresponding ask/tell or archive workflows. Retry is
 available through `minimize_retry`, `minimize_advanced_retry`, and
 `minimize_moretry`. Treat this as a low-level NumPy-oriented API and consult
 `docs/python-bindings.md` for the authoritative signatures and result layouts.
-Array arguments accept lists and tuples as well as NumPy arrays; releases up
-to 0.2.0 accepted only NumPy arrays of the exact dtype (`float64`, `bool` for
-`ints`), so pass `np.asarray(..., dtype=...)` when the installed version may
-be older. Invalid bounds, guesses, sigmas and masks raise `ValueError` (0.2.0
-raised pyo3's `PanicException` for several of them). An objective callback that
-raises is not re-raised: the call counts as a failed evaluation, as in fcmaes.
-The first failure of a run is logged once as a warning on the `fcmaes_rust`
-logger (0.2.0 logged nothing); still test the objective on its own first. The `evaluations` field is the number
-of calls actually made: `optimize_de` can exceed `max_evaluations` by up to
-`2 * popsize - 1`, ACMA, CR-FM-NES and PGPE by up to `popsize - 1`; BiteOpt and
-Dual Annealing never exceed it.
+From 0.2.1, array arguments accept lists and tuples as well as NumPy arrays.
+0.2.0 and earlier accepted only NumPy arrays of the exact dtype (`float64`,
+`bool` for `ints`), so pass `np.asarray(..., dtype=...)` when the installed
+version may be older. Invalid bounds, guesses, sigmas and masks raise
+`ValueError` (0.2.0 raised pyo3's `PanicException` for several of them). An
+objective callback that raises is not re-raised: the call counts as a failed
+evaluation, as in fcmaes. From 0.2.1, the first failure of a run is logged
+once as a warning on the `fcmaes_rust` logger; still test the objective on its
+own first. The `evaluations` field is the number of calls actually made:
+`optimize_de` can exceed `max_evaluations` by up to `2 * popsize - 1`, ACMA,
+CR-FM-NES and PGPE by up to `popsize - 1`; BiteOpt and Dual Annealing never
+exceed it.
 
 The native optimizer loop releases the GIL, but every Python objective callback
 must reacquire it. Cheap objectives written in Python therefore rarely scale
