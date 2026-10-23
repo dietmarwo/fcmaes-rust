@@ -1,5 +1,7 @@
 # Surrogate optimization through the shared job API
 
+**Prompt-driven adaptation:** [agent walkthrough](https://github.com/dietmarwo/optimization-jobs/tree/main/tutorials/agentic/surrogate) using this repository's existing worker.
+
 This executable tutorial runs three jobs: 48-call Branin minimization, an eight-new-call warm start, and a 32-call native Rust damped-oscillator calibration. It uses an eight-slot node. The oscillator has four concurrent evaluations, each with a two-thread allowance; nested work uses the same task pool.
 
 ## Prerequisites and commands

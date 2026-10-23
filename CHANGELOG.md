@@ -8,6 +8,11 @@ phase, with breaking changes called out explicitly.
 
 ### Added
 
+- The [prompt-driven surrogate tutorial](https://github.com/dietmarwo/optimization-jobs/tree/main/tutorials/agentic/surrogate) reuses the
+  existing `fcmaes.surrogate/1` worker: Branin observation reuse and an
+  oscillator calibration against a BiteOpt baseline, with checked examples and
+  follow-ups. No numerical code or dependency pin changes.
+
 - [Prompt-driven application tutorials](https://github.com/dietmarwo/optimization-jobs/tree/main/tutorials/agentic)
   reuse the native models through
   [optional tutorial workers](docs/job-api/application-tutorials.md).
