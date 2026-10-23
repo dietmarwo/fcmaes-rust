@@ -27,6 +27,8 @@ backend is understandable and fast enough for an optimization tutorial, but
 it is not a general CFD library and its evidence must not be interpreted as
 engineering validation. See [BACKEND.md](BACKEND.md).
 
+The [prompt-driven workshop](agentic/README.md) adds an engineer-facing conversation, executed small-budget results, held-out replay and grid/setup sensitivity checks over this same CLI. [Setup](agentic/SETUP.md) and the [full prompt](agentic/prompt.md) are included.
+
 ## Design problem
 
 Nine continuous variables control opposing wall vents and an internal baffle:

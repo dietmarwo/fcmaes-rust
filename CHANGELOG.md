@@ -8,6 +8,8 @@ phase, with breaking changes called out explicitly.
 
 ### Added
 
+- A [fluid dynamics prompt workshop](tutorials/cfd-room-ventilation/agentic/README.md) over the existing room-ventilation CLI, with fixed-budget MODE/MAP-Elites runs, held-out and grid/setup checks, artifact auditing and a CI pilot. No numerical code or dependency pin changes.
+
 - The [prompt-driven surrogate tutorial](https://github.com/dietmarwo/optimization-jobs/tree/main/tutorials/agentic/surrogate) reuses the
   existing `fcmaes.surrogate/1` worker: Branin observation reuse and an
   oscillator calibration against a BiteOpt baseline, with checked examples and
