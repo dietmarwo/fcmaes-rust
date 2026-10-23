@@ -1,4 +1,5 @@
 [package]
+default-run = "rapier-trebuchet"
 name = "rapier-trebuchet"
 version = "0.1.0"
 edition = "2024"
@@ -10,6 +11,8 @@ description = "Experimental fcmaes-rust optimization of a Rapier 2D trebuchet"
 [workspace]
 
 [dependencies]
+optimization-job-api = { git = "https://github.com/dietmarwo/optimization-jobs", rev = "37b30e428c5fdd017975e0093cc261243148257f", optional = true }
+fcmaes-job-worker = { path = "../../crates/fcmaes-job-worker", optional = true }
 fcmaes-core = { path = "../../crates/fcmaes-core" }
 rapier2d-f64 = { version = "0.34.0", default-features = false, features = [
     "dim2",
@@ -22,3 +25,11 @@ serde_json = "1"
 [profile.release]
 codegen-units = 1
 lto = "thin"
+
+[features]
+job-worker = ["dep:fcmaes-job-worker", "dep:optimization-job-api"]
+
+[[bin]]
+name = "trebuchet-job-worker"
+path = "src/bin/job_worker.rs"
+required-features = ["job-worker"]

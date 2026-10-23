@@ -22,6 +22,7 @@
 - [Shared job API](docs/job-api.md)
   - [Native job API tutorial](tutorials/job-api/README.md)
   - [Application models](docs/job-api/models.md)
+  - [Application tutorial workers](docs/job-api/application-tutorials.md)
   - [Validation](docs/job-api/VALIDATION.md)
   - [Surrogate profile (experimental)](docs/job-api/surrogate.md)
     - [Surrogate tutorial](tutorials/surrogate/README.md)

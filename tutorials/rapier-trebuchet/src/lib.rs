@@ -5,6 +5,10 @@
 //! belongs at the outer objective-evaluation level where fcmaes can keep every
 //! worker busy on a separate candidate.
 
+/// Optional models for durable optimization jobs.
+#[cfg(feature = "job-worker")]
+pub mod job_models;
+
 use std::error::Error;
 use std::fmt::Write as _;
 use std::fs;

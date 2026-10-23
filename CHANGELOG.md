@@ -6,10 +6,31 @@ phase, with breaking changes called out explicitly.
 
 ## [Unreleased]
 
+### Added
+
+- [Prompt-driven application tutorials](https://github.com/dietmarwo/optimization-jobs/tree/main/tutorials/agentic)
+  reuse the native models through
+  [optional tutorial workers](docs/job-api/application-tutorials.md).
+  - `rapier-trebuchet`, `nexosim-production-line`, `energy-hub-bilevel` and
+    `gtoc1-route-search` gain an off-by-default `job-worker` feature with an
+    application worker binary, 11 registered models and parity tests; the
+    default build is the original CLI.
+  - `gtoc1-route-card` derives route bounds and a neutral schedule for a body
+    order, and `evaluate_holdout_aggregate` scores a frozen energy design on
+    the holdout scenarios with the training formulas.
+  - CI runs clippy and the tests of these four tutorials with the feature too,
+    and the guide is in the documentation book.
+
 ### Changed
 
 - `ai-context.md` records 0.2.1 as published on crates.io and PyPI
   (23 October 2026), after installing it from both registries.
+
+### Fixed
+
+- Nine tutorials that build `fcmaes-core` from the checkout still recorded it
+  as 0.1.4 in their lockfiles, so `cargo build --locked` failed there; they
+  record 0.2.1 now, as do rapier-trebuchet and nexosim-production-line.
 
 ## [0.2.1] - 2026-10-23
 

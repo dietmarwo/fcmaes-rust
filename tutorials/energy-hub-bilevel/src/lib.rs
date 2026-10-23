@@ -2,6 +2,10 @@
 
 #![deny(missing_docs)]
 
+/// Optional models for durable optimization jobs.
+#[cfg(feature = "job-worker")]
+pub mod job_models;
+
 pub mod annual;
 pub mod archive_grid;
 pub mod artifacts;

@@ -1,4 +1,5 @@
 [package]
+default-run = "gtoc1-route-search"
 name = "gtoc1-route-search"
 version = "0.1.0"
 edition = "2024"
@@ -13,6 +14,7 @@ description = "Split-brain GTOC1 route proposal with equal-budget Rust evaluatio
 name = "gtoc1_pykep"
 
 [dependencies]
+fcmaes-job-worker = { path = "../../crates/fcmaes-job-worker", optional = true }
 # Durable JSONL, snapshot, checksum and subprocess helpers; the same
 # revision as the repository's root Cargo.toml.
 optimization-job-api = { git = "https://github.com/dietmarwo/optimization-jobs", rev = "37b30e428c5fdd017975e0093cc261243148257f", version = "0.3" }
@@ -35,3 +37,16 @@ pedantic = "warn"
 [profile.release]
 codegen-units = 1
 lto = "thin"
+
+[features]
+job-worker = ["dep:fcmaes-job-worker"]
+
+[[bin]]
+name = "gtoc1-job-worker"
+path = "src/bin/job_worker.rs"
+required-features = ["job-worker"]
+
+[[bin]]
+name = "gtoc1-route-card"
+path = "src/bin/route_card.rs"
+required-features = ["job-worker"]
