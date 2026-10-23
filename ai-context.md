@@ -1653,3 +1653,7 @@ reach a global optimum are not security defects.
 When code and this guide disagree, treat the current public Rust API and tests
 as authoritative, update the guide with the implementation, and document the
 reason for the change.
+
+## Optional application tutorial workers
+
+For prompt-driven trebuchet, production-line, energy-hub and GTOC1 experiments, see [application tutorial workers](docs/job-api/application-tutorials.md). Build the selected standalone tutorial with `--features job-worker`, register its separate binary, then use discovery. These application registrations reuse the generic worker API; they are not models bundled into the stock worker. The linked guide explains parameter validation, parity tests and the differences from the original search campaigns.

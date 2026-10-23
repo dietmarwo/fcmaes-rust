@@ -1,5 +1,7 @@
 # Split-brain GTOC1 route discovery
 
+**Run this model through prompts:** [agent walkthrough](https://github.com/dietmarwo/optimization-jobs/tree/main/tutorials/agentic/gtoc1) · [optional job worker](../../docs/job-api/application-tutorials.md).
+
 > **Claim boundary.** This tutorial discovers planet orders with an impulsive
 > multiple-gravity-assist (MGA) model. “MGA-qualified” means only that the
 > declared optimizer found a finite Lambert/flyby solution. It does not mean

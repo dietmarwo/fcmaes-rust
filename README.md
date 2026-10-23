@@ -52,6 +52,8 @@ also implements dimension-matrix enumeration, numerical nullspace analysis,
 regression, and continuous-exponent optimization directly in Rust; it has no
 BuckinghamPy dependency.
 
+[Prompt-driven application tutorials](https://github.com/dietmarwo/optimization-jobs/tree/main/tutorials/agentic) reuse the native models through [optional tutorial workers](docs/job-api/application-tutorials.md).
+
 ## Experimental surrogate optimization
 
 The new source-only `fcmaes-surrogate` crate and `fcmaes.surrogate/1` job

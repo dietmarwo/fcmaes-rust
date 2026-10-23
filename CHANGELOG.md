@@ -6,6 +6,10 @@ phase, with breaking changes called out explicitly.
 
 ## [Unreleased]
 
+### Prompt tutorials
+
+- [Prompt-driven application tutorials](https://github.com/dietmarwo/optimization-jobs/tree/main/tutorials/agentic) reuse the native models through [optional tutorial workers](docs/job-api/application-tutorials.md).
+
 ## [0.2.1] - 2026-10-23
 
 A patch release of the published packages. `fcmaes-core` gains the Dual

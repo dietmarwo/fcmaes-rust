@@ -1,5 +1,7 @@
 # NeXosim production-line optimization
 
+**Run this model through prompts:** [agent walkthrough](https://github.com/dietmarwo/optimization-jobs/tree/main/tutorials/agentic/production) · [optional job worker](../../docs/job-api/application-tutorials.md).
+
 This standalone tutorial is part of the public `fcmaes-rust` repository. It
 combines:
 

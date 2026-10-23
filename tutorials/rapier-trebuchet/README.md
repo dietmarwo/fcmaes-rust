@@ -1,5 +1,7 @@
 # Rapier trebuchet optimization
 
+**Run this model through prompts:** [agent walkthrough](https://github.com/dietmarwo/optimization-jobs/tree/main/tutorials/agentic/trebuchet) · [optional job worker](../../docs/job-api/application-tutorials.md).
+
 This standalone tutorial is part of the public `fcmaes-rust` repository. It
 combines the pure-Rust `fcmaes-core` optimizers with
 [`rapier2d-f64`](https://crates.io/crates/rapier2d-f64), the double-precision

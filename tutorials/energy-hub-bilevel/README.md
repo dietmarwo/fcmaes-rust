@@ -1,5 +1,7 @@
 # Bilevel energy-hub sizing with a pure-Rust inner LP
 
+**Run this model through prompts:** [agent walkthrough](https://github.com/dietmarwo/optimization-jobs/tree/main/tutorials/agentic/energy) · [optional job worker](../../docs/job-api/application-tutorials.md).
+
 This tutorial sizes PV, wind, a battery, a tiered grid connection, and—in a
 separate chronological experiment—an electrolyser and hydrogen store. Each
 outer candidate creates a linear dispatch problem. `microlp` solves that inner

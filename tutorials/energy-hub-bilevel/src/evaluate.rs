@@ -267,6 +267,15 @@ pub fn evaluate_holdout(
         .collect()
 }
 
+/// Aggregate the disjoint holdout replays using the training model's exact
+/// accounting and constraint formulas. Use only after selecting a design.
+pub fn evaluate_holdout_aggregate(controls: &[f64], preset: Preset) -> Option<OuterEvaluation> {
+    let design = decode_outer(controls, false).ok()?;
+    let capex = annualized_capex(&design);
+    let scenarios = evaluate_holdout(controls, preset).ok()?;
+    aggregate(controls, design, capex, scenarios)
+}
+
 /// Extract the three registered descriptor pairs.
 #[must_use]
 pub fn behavior(evaluation: &OuterEvaluation) -> Behavior {

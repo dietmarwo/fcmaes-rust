@@ -11,6 +11,10 @@
 
 #![allow(clippy::excessive_precision)] // Preserve the GTOP toolbox constants.
 
+/// Optional models for durable optimization jobs.
+#[cfg(feature = "job-worker")]
+pub mod job_models;
+
 /// Full low-thrust validation for alternate competition planet sequences.
 pub mod low_thrust_sequences;
 /// Impulsive MGA screening with the GTOC1 asteroid-impact terminal objective.
