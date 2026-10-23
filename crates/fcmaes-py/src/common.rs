@@ -2,9 +2,102 @@
 
 use fcmaes_core::Objective;
 use numpy::ndarray::Array2;
-use numpy::{IntoPyArray, PyArray1, PyArray2, PyReadonlyArray1, PyReadonlyArray2};
+use numpy::{
+    AllowTypeChange, IntoPyArray, PyArray1, PyArray2, PyArrayLike1, PyArrayLike2, PyReadonlyArray1,
+    PyReadonlyArray2,
+};
+use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3::types::PyTuple;
+
+/// One-dimensional float argument: a ``float64`` NumPy array is borrowed
+/// without a copy; lists, tuples and arrays of other numeric dtypes are
+/// converted by NumPy, as the type stub (``Sequence[float] | NDArray``)
+/// promises.
+pub type F64Vec<'py> = PyArrayLike1<'py, f64, AllowTypeChange>;
+
+/// One-dimensional Boolean argument (the ``ints`` masks): a ``bool`` NumPy
+/// array, or a sequence or array NumPy converts to ``bool``.
+pub type BoolVec<'py> = PyArrayLike1<'py, bool, AllowTypeChange>;
+
+/// Two-dimensional float argument: a NumPy matrix or a nested sequence of rows.
+pub type F64Mat<'py> = PyArrayLike2<'py, f64, AllowTypeChange>;
+
+/// Check a search box for `dim` decision variables: `lower` and `upper` must
+/// have `dim` entries each with finite `lower < upper` (and a finite width).
+/// With `allow_unbounded`, both may instead be empty.
+pub fn check_box(
+    optimizer: &str,
+    dim: usize,
+    lower: &[f64],
+    upper: &[f64],
+    allow_unbounded: bool,
+) -> PyResult<()> {
+    if dim == 0 {
+        return Err(PyValueError::new_err(format!(
+            "{optimizer} needs at least one decision variable"
+        )));
+    }
+    if allow_unbounded && lower.is_empty() && upper.is_empty() {
+        return Ok(());
+    }
+    if lower.len() != dim || upper.len() != dim {
+        let or_empty = if allow_unbounded {
+            " (or both be empty)"
+        } else {
+            ""
+        };
+        return Err(PyValueError::new_err(format!(
+            "{optimizer} lower and upper must have {dim} entries each{or_empty}, got {} and {}",
+            lower.len(),
+            upper.len()
+        )));
+    }
+    let invalid = |(&lo, &hi): (&f64, &f64)| {
+        !lo.is_finite() || !hi.is_finite() || lo >= hi || !(hi - lo).is_finite()
+    };
+    if lower.iter().zip(upper).any(invalid) {
+        return Err(PyValueError::new_err(format!(
+            "{optimizer} bounds must be finite with lower < upper"
+        )));
+    }
+    Ok(())
+}
+
+/// Check that a per-variable argument has one of the `allowed` lengths and
+/// only finite values.
+pub fn check_vector(
+    optimizer: &str,
+    name: &str,
+    values: &[f64],
+    allowed: &[usize],
+) -> PyResult<()> {
+    check_length(optimizer, name, values.len(), allowed)?;
+    if values.iter().any(|v| !v.is_finite()) {
+        return Err(PyValueError::new_err(format!(
+            "{optimizer} {name} must contain only finite values"
+        )));
+    }
+    Ok(())
+}
+
+/// Check that a per-variable argument has one of the `allowed` lengths.
+pub fn check_length(optimizer: &str, name: &str, len: usize, allowed: &[usize]) -> PyResult<()> {
+    if allowed.contains(&len) {
+        return Ok(());
+    }
+    let mut lengths = allowed.to_vec();
+    lengths.sort_unstable();
+    lengths.dedup();
+    let expected = lengths
+        .iter()
+        .map(usize::to_string)
+        .collect::<Vec<_>>()
+        .join(" or ");
+    Err(PyValueError::new_err(format!(
+        "{optimizer} {name} must have {expected} entries, got {len}"
+    )))
+}
 
 /// Copy a read-only 2-D float array into row vectors.
 pub fn matrix_rows(a: &PyReadonlyArray2<f64>) -> Vec<Vec<f64>> {

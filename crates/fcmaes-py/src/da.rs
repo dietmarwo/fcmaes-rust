@@ -2,26 +2,36 @@
 //! `fcmaes_core::optimize_da`. DA has no ask/tell interface.
 
 use fcmaes_core::{DaParams, optimize_da};
-use numpy::PyReadonlyArray1;
 use pyo3::prelude::*;
 use pyo3::types::PyTuple;
 
-use crate::common::{PyObjective, result_tuple, slice_or_vec};
+use crate::common::{F64Vec, PyObjective, check_box, check_vector, result_tuple, slice_or_vec};
 
 #[allow(clippy::too_many_arguments)]
 /// Minimize a bounded scalar objective with Dual Annealing.
 ///
-/// ``fun(x)`` receives a one-dimensional decoded ``float64`` array. ``guess``,
-/// ``lower``, and ``upper`` must have the same length. Set
-/// ``use_local_search`` to enable the bounded finite-difference quasi-Newton
-/// phase after annealing steps.
+/// ``fun(x)`` receives a one-dimensional decoded ``float64`` array. ``lower``
+/// and ``upper`` must match ``guess`` in length, or both be empty for an
+/// unbounded search. Set ``use_local_search`` to enable the bounded
+/// finite-difference quasi-Newton phase after annealing steps.
 ///
 /// Returns ``(x, fun, evaluations, iterations, stop)``.
 ///
-/// Raises ``ValueError`` if the bound arrays are empty, of unequal length, or
-/// do not satisfy finite ``lower < upper``, and ``TypeError`` if an array
-/// argument cannot be converted to contiguous ``float64``. Exceptions raised
-/// inside the objective callback propagate to the caller.
+/// ``evaluations`` counts the objective calls actually made and never exceeds
+/// ``max_evaluations``, which includes the attempts to find a start point.
+/// ``stop == -1`` means that no start point with an objective value below
+/// ``1e16`` was found within 1,000 attempts or the budget; ``x`` and ``fun``
+/// then describe the best point evaluated (``fun`` is the largest float if
+/// every value was NaN).
+///
+/// Raises ``ValueError`` if ``lower`` and ``upper`` do not have one entry per
+/// element of ``guess`` (both may be empty for an unbounded search) or do not
+/// satisfy finite ``lower < upper``, or if ``guess`` is empty or not finite.
+/// Array arguments accept NumPy arrays and sequences: one that is not
+/// one-dimensional raises ``TypeError``, values NumPy cannot convert to
+/// ``float64`` raise ``ValueError``. As in fcmaes, an exception raised by the
+/// objective callback is not re-raised: that call, like a non-finite result,
+/// counts as a failed evaluation and ranks worst.
 #[pyfunction]
 #[pyo3(name = "optimize_da")]
 #[pyo3(signature = (fun, guess, lower, upper, *, seed, runid=0,
@@ -29,9 +39,9 @@ use crate::common::{PyObjective, result_tuple, slice_or_vec};
 pub fn optimize_da_py<'py>(
     py: Python<'py>,
     fun: Py<PyAny>,
-    guess: PyReadonlyArray1<f64>,
-    lower: PyReadonlyArray1<f64>,
-    upper: PyReadonlyArray1<f64>,
+    guess: F64Vec<'_>,
+    lower: F64Vec<'_>,
+    upper: F64Vec<'_>,
     seed: u64,
     runid: i64,
     max_evaluations: u64,
@@ -40,6 +50,8 @@ pub fn optimize_da_py<'py>(
     let guess = slice_or_vec(&guess);
     let lower = slice_or_vec(&lower);
     let upper = slice_or_vec(&upper);
+    check_box("Dual Annealing", guess.len(), &lower, &upper, true)?;
+    check_vector("Dual Annealing", "guess", &guess, &[guess.len()])?;
     let params = DaParams {
         max_evaluations,
         use_local_search,

@@ -6,7 +6,10 @@ use numpy::PyReadonlyArray1;
 use pyo3::prelude::*;
 use pyo3::types::PyTuple;
 
-use crate::common::{PyObjective, result_tuple, rows_to_pyarray, slice_or_vec};
+use crate::common::{
+    BoolVec, F64Vec, PyObjective, check_box, check_length, check_vector, result_tuple,
+    rows_to_pyarray, slice_or_vec,
+};
 
 fn build_fitness(dim: usize, lower: &[f64], upper: &[f64]) -> Fitness {
     if lower.is_empty() {
@@ -22,6 +25,23 @@ fn opt_ints(ints: &PyReadonlyArray1<bool>) -> Option<Vec<bool>> {
     } else {
         Some(ints.as_array().iter().copied().collect())
     }
+}
+
+/// Validate the inputs `De::new` would otherwise panic on. Without bounds,
+/// the start distribution comes from `guess` and `sigma`, so both are needed.
+fn check_de_inputs(
+    dim: usize,
+    lower: &[f64],
+    upper: &[f64],
+    guess: &[f64],
+    sigma: &[f64],
+    ints: Option<&[bool]>,
+) -> PyResult<()> {
+    check_box("DE", dim, lower, upper, !guess.is_empty())?;
+    check_vector("DE", "guess", guess, &[0, dim])?;
+    let sigma_lengths: &[usize] = if guess.is_empty() { &[0, dim] } else { &[dim] };
+    check_vector("DE", "sigma", sigma, sigma_lengths)?;
+    check_length("DE", "ints", ints.map_or(0, <[bool]>::len), &[0, dim])
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -69,11 +89,22 @@ fn make_params(
 /// Returns ``(x, fun, evaluations, iterations, stop)``. ``stop == 1`` means
 /// ``stop_fitness`` was reached.
 ///
-/// Raises ``ValueError`` if the bound arrays are empty, of unequal length, or
-/// do not satisfy finite ``lower < upper``, or if ``ints`` does not have one
-/// entry per decision variable, and ``TypeError`` if an array argument cannot
-/// be converted to contiguous ``float64``. Exceptions raised inside the
-/// objective callback propagate to the caller.
+/// ``evaluations`` counts the objective calls actually made.
+/// ``max_evaluations`` is checked before each generation, and a generation
+/// costs one or two calls per population member, so a run can make up to
+/// ``2 * popsize - 1`` calls more than ``max_evaluations``.
+///
+/// Raises ``ValueError`` if ``lower`` and ``upper`` do not have ``dim`` entries
+/// each with finite ``lower < upper`` (both may be empty only with a
+/// ``guess``), if a non-empty ``guess`` does not have ``dim`` finite entries,
+/// if ``sigma`` does not have ``dim`` finite entries when a ``guess`` is given
+/// (or is neither empty nor of length ``dim`` without one), or if a non-empty
+/// ``ints`` does not have one entry per decision variable. Array arguments
+/// accept NumPy arrays and sequences: one that is not one-dimensional raises
+/// ``TypeError``, values NumPy cannot convert to ``float64`` (``bool`` for
+/// ``ints``) raise ``ValueError``. As in fcmaes, an exception raised by the
+/// objective callback is not re-raised: that call, like a non-finite result,
+/// counts as a failed evaluation and ranks worst.
 #[pyfunction]
 #[pyo3(signature = (fun, dim, lower, upper, guess, sigma, ints, *, seed, runid=0,
     max_evaluations=100000, keep=200.0, stop_fitness=f64::NEG_INFINITY, popsize=31,
@@ -83,11 +114,11 @@ pub fn optimize_de<'py>(
     py: Python<'py>,
     fun: Py<PyAny>,
     dim: usize,
-    lower: PyReadonlyArray1<f64>,
-    upper: PyReadonlyArray1<f64>,
-    guess: PyReadonlyArray1<f64>,
-    sigma: PyReadonlyArray1<f64>,
-    ints: PyReadonlyArray1<bool>,
+    lower: F64Vec<'_>,
+    upper: F64Vec<'_>,
+    guess: F64Vec<'_>,
+    sigma: F64Vec<'_>,
+    ints: BoolVec<'_>,
     seed: u64,
     runid: i64,
     max_evaluations: u64,
@@ -109,6 +140,7 @@ pub fn optimize_de<'py>(
     let guess = slice_or_vec(&guess);
     let sigma = slice_or_vec(&sigma);
     let ints = opt_ints(&ints);
+    check_de_inputs(dim, &lower, &upper, &guess, &sigma, ints.as_deref())?;
 
     let fitness = build_fitness(dim, &lower, &upper);
     let params = make_params(
@@ -147,11 +179,12 @@ pub fn optimize_de<'py>(
 /// evaluate every returned row in the same order, and pass the scalar values
 /// to :meth:`tell`.
 ///
-/// Raises ``ValueError`` if the bound arrays do not match the decision
-/// dimension or do not satisfy finite ``lower < upper``, and ``TypeError`` if
-/// an array argument cannot be converted to contiguous ``float64``.
-/// :meth:`tell` raises ``ValueError`` if it does not receive exactly one value
-/// per row returned by the most recent :meth:`ask`.
+/// Raises ``ValueError`` on the same ``lower``, ``upper``, ``guess``, ``sigma``
+/// and ``ints`` violations as :func:`optimize_de`. Array arguments accept NumPy
+/// arrays and sequences: one that is not one-dimensional raises ``TypeError``,
+/// values NumPy cannot convert to ``float64`` (``bool`` for ``ints``) raise
+/// ``ValueError``. :meth:`tell` raises ``ValueError`` if it does not receive
+/// exactly one value per row returned by the most recent :meth:`ask`.
 #[pyclass]
 pub struct DE {
     inner: De,
@@ -167,11 +200,11 @@ impl DE {
         *, seed, runid=0))]
     fn new(
         dim: usize,
-        lower: PyReadonlyArray1<f64>,
-        upper: PyReadonlyArray1<f64>,
-        guess: PyReadonlyArray1<f64>,
-        sigma: PyReadonlyArray1<f64>,
-        ints: PyReadonlyArray1<bool>,
+        lower: F64Vec<'_>,
+        upper: F64Vec<'_>,
+        guess: F64Vec<'_>,
+        sigma: F64Vec<'_>,
+        ints: BoolVec<'_>,
         popsize: i32,
         keep: f64,
         F: f64,
@@ -181,13 +214,14 @@ impl DE {
         max_mutate: f64,
         seed: u64,
         runid: i64,
-    ) -> Self {
+    ) -> PyResult<Self> {
         let (f, cr) = (F, CR);
         let lower = slice_or_vec(&lower);
         let upper = slice_or_vec(&upper);
         let guess = slice_or_vec(&guess);
         let sigma = slice_or_vec(&sigma);
         let ints = opt_ints(&ints);
+        check_de_inputs(dim, &lower, &upper, &guess, &sigma, ints.as_deref())?;
         let fitness = build_fitness(dim, &lower, &upper);
         let params = make_params(
             seed,
@@ -202,9 +236,9 @@ impl DE {
             min_mutate,
             max_mutate,
         );
-        DE {
+        Ok(DE {
             inner: De::new(fitness, &guess, &sigma, ints, &params),
-        }
+        })
     }
 
     /// Return the next decoded candidate population, shape ``(popsize, dim)``.
@@ -215,7 +249,7 @@ impl DE {
     /// Submit one minimized objective value per row returned by :meth:`ask`.
     ///
     /// Returns the optimizer stop code.
-    fn tell(&mut self, ys: PyReadonlyArray1<f64>) -> i32 {
+    fn tell(&mut self, ys: F64Vec<'_>) -> i32 {
         self.inner.tell(&slice_or_vec(&ys))
     }
 

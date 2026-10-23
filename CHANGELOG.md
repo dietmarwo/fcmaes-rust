@@ -6,6 +6,37 @@ phase, with breaking changes called out explicitly.
 
 ## [Unreleased]
 
+### Fixed
+
+- Python binding (`fcmaes-rust`): array arguments accept lists, tuples and
+  NumPy arrays of other dtypes, as the type stub has promised since its first
+  release (`Sequence[float] | NDArray`, `Sequence[bool] | NDArray[np.bool_]`
+  for `ints`). 0.2.0 accepted only exact-dtype NumPy arrays and raised
+  `TypeError` for a list. Matrix arguments accept nested lists.
+- Python binding: invalid bounds, guesses, sigmas and integer masks raise
+  `ValueError` in `optimize_de`/`DE`, `optimize_acma`/`ACMA`,
+  `optimize_crfmnes`/`CRFMNES`, `optimize_pgpe`/`PGPE` and `optimize_da`, as
+  their docstrings state; 0.2.0 raised pyo3's `PanicException` for most of
+  them (for example an `ints` mask shorter than the dimension, or unequal
+  bounds). Empty bounds still select an unbounded search where the optimizer
+  supports one.
+- `fcmaes-core` Dual Annealing: an objective whose start values are all at or
+  above `1e16` (a large penalty, `inf`, NaN) no longer panics on a bounded
+  problem; the run reports `stop == -1` with the best point evaluated. The
+  start-point attempts now count against `max_evaluations` (previously up to
+  1,000 extra calls).
+- Documentation of evaluation budgets: `max_evaluations` is a threshold that
+  DE's serial `optimize` checks before each generation (up to
+  `2 * popsize - 1` extra calls), and CMA-ES, CR-FM-NES and PGPE evaluate
+  whole generations (up to `popsize - 1`); BiteOpt, Dual Annealing and
+  `De::optimize_delayed` never exceed it. `evaluations` always reports the
+  calls actually made. Rust field docs, Python docstrings, the type stub,
+  `docs/python-bindings.md` and `ai-context.md` now say so.
+- Python docstrings no longer claim that objective exceptions propagate: as in
+  fcmaes, a raising callback is a failed evaluation (MAP-Elites: not archived),
+  except in the `optimize` callbacks of the retry functions. The type stub
+  gives `gtop_cassini1_minlp` its real return type, `tuple[float, float]`.
+
 ### Changed
 
 - optimization-jobs pin `37b30e4` (tag `v0.3.0`, the first crates.io release

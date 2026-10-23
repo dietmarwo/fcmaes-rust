@@ -11,7 +11,7 @@ use pyo3::exceptions::{PyRuntimeError, PyValueError};
 use pyo3::prelude::*;
 use pyo3::types::PyDict;
 
-use crate::common::{rows_to_pyarray, slice_or_vec};
+use crate::common::{F64Vec, rows_to_pyarray, slice_or_vec};
 
 /// Read-only retry context passed to a Python optimizer callback.
 ///
@@ -143,8 +143,8 @@ fn minimize_retry(
     py: Python<'_>,
     fun: Py<PyAny>,
     optimize: Py<PyAny>,
-    lower: PyReadonlyArray1<'_, f64>,
-    upper: PyReadonlyArray1<'_, f64>,
+    lower: F64Vec<'_>,
+    upper: F64Vec<'_>,
     num_retries: usize,
     workers: usize,
     capacity: usize,
@@ -210,8 +210,8 @@ fn minimize_advanced_retry(
     py: Python<'_>,
     fun: Py<PyAny>,
     optimize: Py<PyAny>,
-    lower: PyReadonlyArray1<'_, f64>,
-    upper: PyReadonlyArray1<'_, f64>,
+    lower: F64Vec<'_>,
+    upper: F64Vec<'_>,
     num_retries: usize,
     workers: usize,
     capacity: usize,

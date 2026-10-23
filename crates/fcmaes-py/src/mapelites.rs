@@ -14,8 +14,7 @@ use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3::types::PyTuple;
 
-use crate::common::{rows_to_pyarray, slice_or_vec};
-use numpy::PyReadonlyArray1;
+use crate::common::{F64Vec, rows_to_pyarray, slice_or_vec};
 
 /// Quality-diversity fitness backed by a Python callable
 /// `fun(x) -> (float, np.ndarray)`. Re-acquires the GIL per call.
@@ -66,10 +65,10 @@ impl Archive {
         samples_per_niche=20, *, seed, seed_parents=true))]
     fn new(
         dim: usize,
-        lower: PyReadonlyArray1<f64>,
-        upper: PyReadonlyArray1<f64>,
-        qd_lower: PyReadonlyArray1<f64>,
-        qd_upper: PyReadonlyArray1<f64>,
+        lower: F64Vec<'_>,
+        upper: F64Vec<'_>,
+        qd_lower: F64Vec<'_>,
+        qd_upper: F64Vec<'_>,
         capacity: usize,
         samples_per_niche: usize,
         seed: u64,
@@ -115,9 +114,10 @@ impl Archive {
     /// Returns ``None``. Inspect :attr:`occupied`, :attr:`qd_score`, and the
     /// archive arrays after completion.
     ///
-    /// Raises ``ValueError`` if ``qd_fitness`` does not return a
-    /// ``(quality, descriptor)`` pair whose descriptor has length
-    /// :attr:`qd_dim`. Exceptions raised inside ``qd_fitness`` propagate.
+    /// A ``qd_fitness`` call that raises, returns non-finite values, or does
+    /// not return a ``(quality, descriptor)`` pair whose descriptor has length
+    /// :attr:`qd_dim` counts as a failed evaluation and is not archived; the
+    /// exception is not re-raised.
     #[pyo3(signature = (qd_fitness, generations=100, chunk_size=20, use_sbx=true,
         dis_c=20.0, dis_m=20.0, iso_sigma=0.02, line_sigma=0.2, cma_generations=0))]
     fn optimize_map_elites(
@@ -162,9 +162,9 @@ impl Archive {
     /// ``qd_fitness`` follows the same ``(quality, descriptor)`` contract as
     /// :meth:`optimize_map_elites`. Returns ``(best_x, best_quality)``.
     ///
-    /// Raises ``ValueError`` on the same descriptor-shape violations as
-    /// :meth:`optimize_map_elites`. Exceptions raised inside ``qd_fitness``
-    /// propagate.
+    /// ``max_evaluations`` is checked before each generation, so up to
+    /// ``popsize - 1`` more ``qd_fitness`` calls can be made. Failed
+    /// ``qd_fitness`` calls are handled as in :meth:`optimize_map_elites`.
     #[pyo3(signature = (qd_fitness, max_evaluations=100000, popsize=31, stall_criterion=20))]
     fn diversify<'py>(
         &mut self,

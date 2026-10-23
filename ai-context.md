@@ -397,6 +397,16 @@ classes expose the corresponding ask/tell or archive workflows. Retry is
 available through `minimize_retry`, `minimize_advanced_retry`, and
 `minimize_moretry`. Treat this as a low-level NumPy-oriented API and consult
 `docs/python-bindings.md` for the authoritative signatures and result layouts.
+Array arguments accept lists and tuples as well as NumPy arrays; releases up
+to 0.2.0 accepted only NumPy arrays of the exact dtype (`float64`, `bool` for
+`ints`), so pass `np.asarray(..., dtype=...)` when the installed version may
+be older. Invalid bounds, guesses, sigmas and masks raise `ValueError` (0.2.0
+raised pyo3's `PanicException` for several of them). An objective callback that
+raises is not re-raised: the call counts as a failed evaluation, as in fcmaes,
+so test the objective on its own first. The `evaluations` field is the number
+of calls actually made: `optimize_de` can exceed `max_evaluations` by up to
+`2 * popsize - 1`, ACMA, CR-FM-NES and PGPE by up to `popsize - 1`; BiteOpt and
+Dual Annealing never exceed it.
 
 The native optimizer loop releases the GIL, but every Python objective callback
 must reacquire it. Cheap objectives written in Python therefore rarely scale
@@ -911,7 +921,7 @@ constraint terms explicitly when their magnitudes differ materially.
 | Field | Default | Tuning guidance |
 |---|---:|---|
 | `popsize` | 31 | Increase for broad multimodal exploration or large dimensions; ensure the budget still permits many generations. |
-| `max_evaluations` | 100,000 | Set from the user's real budget. |
+| `max_evaluations` | 100,000 | Set from the user's real budget. `optimize` checks it before each generation and can spend up to `2 * popsize - 1` more; `optimize_delayed` never exceeds it. Report `DeResult::evaluations`, the actual count. |
 | `keep` | 200 | Usually leave unchanged; it controls temporal/history behavior. |
 | `stop_fitness` | negative infinity | Set only when a genuine target is known. |
 | `f` | 0.5 | Higher explores farther; lower takes smaller differential steps. Tune after population and budget. |
