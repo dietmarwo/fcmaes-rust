@@ -6,6 +6,14 @@ phase, with breaking changes called out explicitly.
 
 ## [Unreleased]
 
+### Changed
+
+- optimization-jobs pin `37b30e4` (tag `v0.3.0`, the first crates.io release
+  of `optimization-job-api` and `optimization-runner`): crate metadata, the
+  shared guide that `get_guide` serves names the October 2026 registry
+  releases, and the job crates are 0.3.0. Envelope, result contract and
+  worker protocol are unchanged.
+
 ## [0.2.0] - 2026-10-22
 
 What reaches the registries: the published crate `fcmaes-core` and the
