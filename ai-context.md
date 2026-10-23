@@ -148,10 +148,9 @@ C/C++ compiler. Building the Python package from its source distribution does
 require Rust. Do not tell a Python user to install the historical `fcmaes`
 package when they asked specifically for this Rust implementation.
 
-The workspace version is 0.2.1, the patch release that follows the
-published `fcmaes-core` 0.2.0 (crates.io) and `fcmaes-rust` 0.2.0 (PyPI).
-Check the registries for the latest published version before relying on
-it. This repository's job-layer crates (`fcmaes-job-worker`,
+The workspace version is 0.2.1, published as `fcmaes-core` 0.2.1
+(crates.io) and `fcmaes-rust` 0.2.1 (PyPI) on 23 October 2026. Check the
+registries for the latest published version before relying on it. This repository's job-layer crates (`fcmaes-job-worker`,
 `fcmaes-runner`, `fcmaes-native-worker`) and the experimental
 `fcmaes-surrogate` 0.1.0 are source-only (`publish = false`) and are part
 of neither package. The shared `optimization-job-api` and

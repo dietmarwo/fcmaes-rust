@@ -21,6 +21,11 @@ phase, with breaking changes called out explicitly.
   - CI runs clippy and the tests of these four tutorials with the feature too,
     and the guide is in the documentation book.
 
+### Changed
+
+- `ai-context.md` records 0.2.1 as published on crates.io and PyPI
+  (23 October 2026), after installing it from both registries.
+
 ### Fixed
 
 - Nine tutorials that build `fcmaes-core` from the checkout still recorded it
