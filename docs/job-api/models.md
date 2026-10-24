@@ -15,7 +15,7 @@ optimizer and check of the stock worker.
 fcmaes-job-worker = { git = "https://github.com/dietmarwo/fcmaes-rust" }
 # The same revision as fcmaes-rust's root Cargo.toml pins; another source or
 # revision would be a second, incompatible copy of the crate.
-optimization-job-api = { git = "https://github.com/dietmarwo/optimization-jobs", rev = "70e210fbf562900c1be8f278e2ab2852ef5934e3" }
+optimization-job-api = { git = "https://github.com/dietmarwo/optimization-jobs", rev = "2351e40842d228d98880282a7788eb195c74d718" }
 serde_json = "1"
 ```
 

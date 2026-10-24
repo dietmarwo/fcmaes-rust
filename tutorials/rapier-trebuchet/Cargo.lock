@@ -612,7 +612,7 @@ checksum = "384b8ab6d37215f3c5301a95a4accb5d64aa607f1fcb26a11b5303878451b4fe"
 [[package]]
 name = "optimization-job-api"
 version = "0.3.0"
-source = "git+https://github.com/dietmarwo/optimization-jobs?rev=70e210fbf562900c1be8f278e2ab2852ef5934e3#70e210fbf562900c1be8f278e2ab2852ef5934e3"
+source = "git+https://github.com/dietmarwo/optimization-jobs?rev=2351e40842d228d98880282a7788eb195c74d718#2351e40842d228d98880282a7788eb195c74d718"
 dependencies = [
  "fs2",
  "libc",
@@ -624,7 +624,7 @@ dependencies = [
 [[package]]
 name = "optimization-runner"
 version = "0.3.0"
-source = "git+https://github.com/dietmarwo/optimization-jobs?rev=70e210fbf562900c1be8f278e2ab2852ef5934e3#70e210fbf562900c1be8f278e2ab2852ef5934e3"
+source = "git+https://github.com/dietmarwo/optimization-jobs?rev=2351e40842d228d98880282a7788eb195c74d718#2351e40842d228d98880282a7788eb195c74d718"
 dependencies = [
  "clap",
  "fs2",
@@ -632,6 +632,7 @@ dependencies = [
  "optimization-job-api",
  "serde",
  "serde_json",
+ "sha2",
  "tempfile",
 ]
 

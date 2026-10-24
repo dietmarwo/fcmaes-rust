@@ -30,10 +30,11 @@ phase, with breaking changes called out explicitly.
 
 ### Changed
 
-- optimization-jobs pin `70e210f` (after tag `v0.3.0`; the crates are still
+- optimization-jobs pin `2351e40` (after tag `v0.3.0`; the crates are still
   0.3.0) in every manifest and lockfile, including the four tutorials with a
-  job worker. The runner gains `node capabilities` and `jobs execution
-  JOB_ID`, an execution record of how each job's worker process ended.
+  job worker. The runner gains `node capabilities`, `jobs execution JOB_ID`
+  (an execution record of how each job's worker process ended) and opt-in
+  trusted command jobs with verified binary file transfer through the CLI.
   Envelope, result contract, worker protocol and solver behavior are
   unchanged.
 - `ai-context.md` records 0.2.1 as published on crates.io and PyPI
