@@ -30,6 +30,11 @@ phase, with breaking changes called out explicitly.
 
 ### Changed
 
+- Move the optimization-jobs pin to `466a373` (source after 0.3.0):
+  opt-in trusted command jobs and verified binary staging/collection in the
+  shared runner. Command/file operations use the CLI; the optimization SDK,
+  numerical algorithms, envelopes, worker protocols and result claims are unchanged.
+
 - optimization-jobs pin `70e210f` (after tag `v0.3.0`; the crates are still
   0.3.0) in every manifest and lockfile, including the four tutorials with a
   job worker. The runner gains `node capabilities` and `jobs execution
