@@ -10,7 +10,7 @@ Since `67bd698`, the job crates `optimization-job-api` and
 `optimization-runner` (0.3.0 since the pin move after their first crates.io
 release) come from
 [optimization-jobs](https://github.com/dietmarwo/optimization-jobs) (#11; the
-in-repo `fcmaes-job-api` crate is gone), now at the pinned revision `466a373` (after tag `v0.3.0`), which adds
+in-repo `fcmaes-job-api` crate is gone), now at the pinned revision `2351e40` (after tag `v0.3.0`), which adds
 opt-in trusted local command jobs and verified binary file operations through
 the CLI, plus `node capabilities` and `jobs execution JOB_ID`. The pins up to `v0.3.0`
 added worker-declared artifacts (#14), streaming artifact pages, the MCP

@@ -11,7 +11,7 @@ description = "Experimental fcmaes-rust MODE optimization of a NeXosim productio
 [workspace]
 
 [dependencies]
-optimization-job-api = { git = "https://github.com/dietmarwo/optimization-jobs", rev = "466a373ff81815493451063a9885db28c1946504", optional = true }
+optimization-job-api = { git = "https://github.com/dietmarwo/optimization-jobs", rev = "2351e40842d228d98880282a7788eb195c74d718", optional = true }
 fcmaes-job-worker = { path = "../../crates/fcmaes-job-worker", optional = true }
 fcmaes-core = { path = "../../crates/fcmaes-core" }
 nexosim = "1.0.0"
