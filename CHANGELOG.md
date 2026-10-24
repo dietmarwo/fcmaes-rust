@@ -6,16 +6,6 @@ phase, with breaking changes called out explicitly.
 
 ## [Unreleased]
 
-### Shared runtime P1
-
-- Move every optimization-jobs dependency and lockfile to `4f93d75ba9dc0ca40d6de455261b7a753f130976`.
-  The shared runner extracts private execution/admission/supervision modules,
-  adds `execution.record/0.1` and capability discovery, and preserves native
-  optimization results. No solver algorithms, tolerances or public worker
-  schemas change. The new runner passed mixed-node tests with both existing
-  pinned SDK workers and checkout-SDK workers before this pin move.
-
-
 ### Added
 
 - A [fluid dynamics prompt workshop](tutorials/cfd-room-ventilation/agentic/README.md) over the existing room-ventilation CLI, with fixed-budget MODE/MAP-Elites runs, held-out and grid/setup checks, artifact auditing and a CI pilot. No numerical code or dependency pin changes.
@@ -40,6 +30,12 @@ phase, with breaking changes called out explicitly.
 
 ### Changed
 
+- optimization-jobs pin `70e210f` (after tag `v0.3.0`; the crates are still
+  0.3.0) in every manifest and lockfile, including the four tutorials with a
+  job worker. The runner gains `node capabilities` and `jobs execution
+  JOB_ID`, an execution record of how each job's worker process ended.
+  Envelope, result contract, worker protocol and solver behavior are
+  unchanged.
 - `ai-context.md` records 0.2.1 as published on crates.io and PyPI
   (23 October 2026), after installing it from both registries.
 - Clippy 1.88, the minimum supported Rust, is clean on the workspace too:
