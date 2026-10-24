@@ -488,8 +488,8 @@ impl<'a, O: Objective> Da<'a, O> {
             for i in (0..kh).rev() {
                 let a = rho[i] * dot(&s_hist[i], &q);
                 alpha[i] = a;
-                for j in 0..self.dim {
-                    q[j] -= a * y_hist[i][j];
+                for (qj, yj) in q.iter_mut().zip(&y_hist[i]) {
+                    *qj -= a * yj;
                 }
             }
             let gamma = if kh > 0 {
@@ -503,8 +503,8 @@ impl<'a, O: Objective> Da<'a, O> {
             }
             for i in 0..kh {
                 let beta = rho[i] * dot(&y_hist[i], &q);
-                for j in 0..self.dim {
-                    q[j] += (alpha[i] - beta) * s_hist[i][j];
+                for (qj, sj) in q.iter_mut().zip(&s_hist[i]) {
+                    *qj += (alpha[i] - beta) * sj;
                 }
             }
             let d: Vec<f64> = q.iter().map(|v| -v).collect();
