@@ -765,7 +765,7 @@ mod tests {
             .map(|s| run("rosen", rosen as fn(&[f64]) -> f64, 5, -5.0, 5.0, s))
             .collect();
         vals.sort_by(|a, b| a.partial_cmp(b).unwrap());
-        assert!(vals[2] < 1.0, "rosenbrock median too large: {:?}", vals);
+        assert!(vals[2] < 1.0, "rosenbrock median too large: {vals:?}");
     }
 
     #[test]

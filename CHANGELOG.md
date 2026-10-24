@@ -32,6 +32,10 @@ phase, with breaking changes called out explicitly.
 
 - `ai-context.md` records 0.2.1 as published on crates.io and PyPI
   (23 October 2026), after installing it from both registries.
+- Clippy 1.88, the minimum supported Rust, is clean on the workspace too:
+  the L-BFGS two-loop updates of Dual Annealing iterate with `zip`, and
+  three format strings inline their arguments. Results and output are
+  unchanged.
 
 ### Fixed
 
