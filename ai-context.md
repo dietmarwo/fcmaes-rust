@@ -1,5 +1,13 @@
 # AI context for solving user optimization problems with fcmaes-rust
 
+P1 pin update (2026-10-24): the shared runner now exposes
+`node capabilities` and `jobs execution ID`, with a neutral terminal record
+referencing the native result. The existing optimization envelope, worker
+protocol, numerical behavior and solver claims are unchanged. Command and
+fleet execution are not enabled. All tracked tutorial/subcrate manifests
+and lockfiles move with the workspace pin.
+
+
 Last reviewed 2026-10-20 against `main` at `5a4eff2`. That state has the
 exact two-objective `ParetoArchive2D` in `fcmaes-core`; the fcmaes job
 worker's retry (BiteOpt, DE, CMA-ES with IPOP/BIPOP restarts, CR-FM-NES,
@@ -10,7 +18,7 @@ Since `67bd698`, the job crates `optimization-job-api` and
 `optimization-runner` (0.3.0 since the pin move after their first crates.io
 release) come from
 [optimization-jobs](https://github.com/dietmarwo/optimization-jobs) (#11; the
-in-repo `fcmaes-job-api` crate is gone), now at the pinned revision `37b30e4` (tag `v0.3.0`),
+in-repo `fcmaes-job-api` crate is gone), now at the pinned revision `4f93d75` (P1 source candidate after `v0.3.0`),
 which adds worker-declared artifacts (#14), streaming artifact pages, the MCP
 tools `put_input` and `get_guide`, a host report in `node doctor`, a 1 MiB
 limit for `describe` output, and the corrected Pareto guidance that
