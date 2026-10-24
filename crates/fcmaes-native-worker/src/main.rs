@@ -197,7 +197,7 @@ fn benchmark(path: &Path, dir: &Path, mode: &str) -> Result<()> {
     }
     let report = serde_json::json!({"measurement":"fixed-work telemetry diagnostic","mode":mode,"workers":spec.execution.workers,"requested_evaluations":spec.requested()?,"actual_evaluations":evaluations,"wall_seconds":elapsed,"evaluations_per_second":evaluations as f64/elapsed,"shared_counter":count.load(std::sync::atomic::Ordering::Relaxed),"spec":spec,"note":"shared_atomic measures a counter only, not the complete examples ProgressState incumbent CAS path"});
     write_atomic_json(&dir.join("benchmark.json"), &report)?;
-    println!("{}", report);
+    println!("{report}");
     Ok(())
 }
 
@@ -210,7 +210,7 @@ fn main() {
         Some("describe") => {
             let mut d = discovery();
             d["build"] = serde_json::json!({"source_base_commit":env!("FCMAES_SOURCE_COMMIT"),"rustc":env!("FCMAES_RUSTC"),"target":env!("FCMAES_TARGET"),"source_note":"base commit plus experiment-runner patch; binary digest is authoritative"});
-            println!("{}", d);
+            println!("{d}");
             Ok(())
         }
         Some("execute") if args.len() == 3 => execute(Path::new(&args[2])),
