@@ -30,14 +30,14 @@ phase, with breaking changes called out explicitly.
 
 ### Changed
 
-- optimization-jobs pin `fcc4d5f` (source after tag `v0.3.0`; the shared
-  crates remain 0.3.0) in every shared manifest/lockfile, including optional
-  tutorial workers where present. The runner adds explicitly placed SSH jobs,
-  pinned node identities, checked remote file transfers and persisted
-  dispatch/reconciliation. Local command opt-in, terminal execution records
-  and the MCP refusal of commands are retained. This is a runtime pin update;
-  numerical algorithms and optimization worker/result contracts are unchanged.
-
+- optimization-jobs pin `8b4489d` (after tag `v0.3.0`; the crates are still
+  0.3.0) in every manifest and lockfile, including the four tutorials with a
+  job worker. The runner gains `node capabilities`, `jobs execution JOB_ID`
+  (an execution record of how each job's worker process ended), opt-in trusted
+  command jobs with verified binary file transfer, and explicitly placed jobs
+  on SSH nodes with persisted dispatch and reconciliation, all through the
+  CLI. Envelope, result contract, worker protocol and solver behavior are
+  unchanged.
 - `ai-context.md` records 0.2.1 as published on crates.io and PyPI
   (23 October 2026), after installing it from both registries.
 - Clippy 1.88, the minimum supported Rust, is clean on the workspace too:
