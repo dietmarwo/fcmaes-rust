@@ -17,7 +17,7 @@ name = "gtoc1_pykep"
 fcmaes-job-worker = { path = "../../crates/fcmaes-job-worker", optional = true }
 # Durable JSONL, snapshot, checksum and subprocess helpers; the same
 # revision as the repository's root Cargo.toml.
-optimization-job-api = { git = "https://github.com/dietmarwo/optimization-jobs", rev = "2351e40842d228d98880282a7788eb195c74d718", version = "0.3" }
+optimization-job-api = { git = "https://github.com/dietmarwo/optimization-jobs", rev = "fcc4d5fb313e98da2dd2fe9e182b03e44ea6332c", version = "0.3" }
 fcmaes-core = "=0.1.3"
 # Repository development alternative:
 # fcmaes-core = { path = "../../crates/fcmaes-core" }
