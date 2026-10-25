@@ -58,6 +58,8 @@ The [fluid dynamics prompt workshop](tutorials/cfd-room-ventilation/agentic/READ
 
 The [prompt-driven surrogate tutorial](https://github.com/dietmarwo/optimization-jobs/tree/main/tutorials/agentic/surrogate) adds a checked agent workflow over the existing `fcmaes-job-worker`.
 
+[experiment-craft](https://github.com/dietmarwo/experiment-craft) runs reproducible campaigns of these jobs through `optimization-run`: parameter sweeps, dependent steps, budgets, deadlines and reports that keep each job's claim and evidence. Its baseline rebuilds and tests `fcmaes-job-worker` at a pinned revision together with the runner and the other workers. It is in early development.
+
 ## Experimental surrogate optimization
 
 The new source-only `fcmaes-surrogate` crate and `fcmaes.surrogate/1` job
