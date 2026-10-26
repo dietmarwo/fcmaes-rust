@@ -182,10 +182,12 @@ Add `--runner /absolute/optimization-run --experiment-craft-source /absolute/exp
 to test both generated campaigns against the real foreground backend. The CI
 workflow (`.github/workflows/cap-reference.yml`) runs the reference and search
 checks on every change to this directory. Tests cover exact
-work caps, grid completeness, seeded trajectory reproduction, immutable Julia
-model data, honest score rechecks, oversized/truncated responses, child failure,
-wall timeout, SIGTERM cleanup, candidate digests, independent proof replay and
-exact rational recomputation of the selected bounds.
+work caps per arm, grid completeness, seeded trajectory reproduction, immutable
+Julia model data, honest score rechecks, oversized/truncated responses, child
+failure, wall timeout, SIGTERM and process-group Ctrl-C cleanup, cancellation
+between calls, candidate digests, independent proof replay and exact rational
+recomputation of the selected bounds. The fault-injection servers outlive their
+closed input, so a passing cleanup check shows that the search killed them.
 
 The workflow also checks the committed search evidence: every digest link
 between study, ledger, candidate bundle, selected candidate and certificates;

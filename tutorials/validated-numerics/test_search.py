@@ -75,6 +75,13 @@ def check_study(folder, spec, protocol, search_schema, artifact_schema, binary=N
     finishes = [e for e in events if e["event"] == "evaluation_finished"]
     assert len(starts) == len(finishes) == expected_search + len(spec["arms"])
     assert [(e["arm"], e["phase"], e["parameters"]) for e in starts] == [(e["arm"], e["phase"], e["parameters"]) for e in finishes]
+    # Per arm, not only in total: one arm overspending while another underspends must fail.
+    assert [arm["id"] for arm in record["arms"]] == [arm["id"] for arm in spec["arms"]]
+    for arm, item in zip(spec["arms"], record["arms"]):
+        budget = 1 if arm["method"] == "reference" else spec["evaluation_budget"]
+        assert item["best"]["evaluations"] == budget, item["id"]
+        assert sum(e["arm"] == arm["id"] and e["phase"] == "search" for e in finishes) == budget, item["id"]
+        assert sum(e["arm"] == arm["id"] and e["phase"] == "recheck" for e in finishes) == 1, item["id"]
     return record, finishes
 
 
@@ -87,14 +94,9 @@ def check_retained_proofs(folder, artifact_schema):
         assert value["outcome"] == "verified" and value["candidate_sha256"] == candidate, name
 
 
-def fault_checks(binary, depot, directory):
-    """Fault injection against the real release CLI; these scripts are not verifiers."""
-    directory.mkdir(parents=True, exist_ok=False)
-    env = os.environ.copy()
-    env["JULIA_DEPOT_PATH"] = str(Path(depot).resolve())
-    # Deliberately lie about a floating estimate to exercise rejection branches.
-    code = '''#!/usr/bin/env python3
-import hashlib,json,os,pathlib,signal,sys
+FAKE_SERVER = '''#!/usr/bin/env python3
+import hashlib,json,os,pathlib,signal,sys,time
+MODE=pathlib.Path(sys.argv[0]).stem
 project=pathlib.Path(sys.argv[3].split('=',1)[1]);server=pathlib.Path(sys.argv[4]);problem=pathlib.Path(sys.argv[5])
 sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest()
 environment=json.loads((project.parent/'evidence/scalar-cuberoot/candidate.json').read_text())['environment']
@@ -110,45 +112,52 @@ for line in sys.stdin:
   # Interrupt the search before it receives this answer, so the cancellation
   # is recorded before its next call.
   if n==1:os.kill(os.getppid(),signal.SIGINT)
- if MODE=='nonfinite':value['score']=float('nan')
+ if MODE=='nan-literal':value['score']=float('nan')
+ if MODE=='string-score':value['score']='NaN'
  if MODE=='missing':del value['estimated_Z2']
  print(json.dumps(dict(schema_version='cap.search.response/0.1',request_id=r['request_id'],status='estimated',parameters=r['parameters'],estimate=value)),flush=True)
+# Outlive the closed input, so a passing cleanup check shows that the search killed this process.
+time.sleep(30)
 '''
+
+
+def fault_checks(binary, depot, directory):
+    """Fault injection against the real release CLI; these scripts are not verifiers."""
+    directory.mkdir(parents=True, exist_ok=False)
+    env = os.environ.copy()
+    env["JULIA_DEPOT_PATH"] = str(Path(depot).resolve())
     results = []
-    for mode, expected in [("mismatch", "objective_mismatch"), ("nonfinite", "protocol_error"), ("missing", "protocol_error")]:
+    # Each fake server lies about a floating estimate in one way (or interrupts the
+    # search) to exercise one rejection branch; the error message names the branch.
+    for mode, returncode, outcome, message in [
+            ("mismatch", 2, "objective_mismatch", "same point did not reproduce its floating score"),
+            ("nan-literal", 2, "protocol_error", "expected value"),  # not JSON: rejected by the parser
+            ("string-score", 2, "protocol_error", "incomplete or nonfinite estimate"),
+            ("missing", 2, "protocol_error", "incomplete or nonfinite estimate"),
+            ("interrupt", 130, "cancelled", "search cancelled")]:
         script = directory / (mode + ".py")
-        script.write_text(code.replace("import hashlib,json,os,pathlib,signal,sys", "import hashlib,json,os,pathlib,signal,sys\nMODE=" + repr(mode)))
+        script.write_text(FAKE_SERVER)
         script.chmod(0o755)
         output = directory / (mode + "-result")
         result = subprocess.run([str(Path(binary).resolve()), "--julia", str(script.resolve()),
                     "--project", str(ROOT / "julia"), "--server", str(ROOT / "julia/bin/search_server.jl"),
                     "--problem", str(ROOT / "problems/scalar-cuberoot.json"),
                     "--protocol", str(ROOT / "search-protocol.json"), "--output", str(output),
-                    "--wall-seconds", "5"], capture_output=True, text=True, env=env, timeout=10)
+                    "--wall-seconds", "5"], capture_output=True, text=True, env=env, timeout=20)
         record = json.loads((output / "study.json").read_text())
-        assert result.returncode == 2 and record["outcome"] == expected, (result.stderr, record)
+        assert result.returncode == returncode and record["outcome"] == outcome, (mode, result.stderr, record)
+        assert message in record["error"]["message"], (mode, record["error"])
         assert not (output / "candidate.json").exists()
         assert_gone(record["server_pid"])
-        results.append({"fault": mode, "outcome": expected, "child_reaped": True})
-    # A cancellation between two calls must not leave an attempt that was never sent.
-    script = directory / "interrupt.py"
-    script.write_text(code.replace("import hashlib,json,os,pathlib,signal,sys", "import hashlib,json,os,pathlib,signal,sys\nMODE='interrupt'"))
-    script.chmod(0o755)
-    output = directory / "interrupt-result"
-    result = subprocess.run([str(Path(binary).resolve()), "--julia", str(script.resolve()),
-                "--project", str(ROOT / "julia"), "--server", str(ROOT / "julia/bin/search_server.jl"),
-                "--problem", str(ROOT / "problems/scalar-cuberoot.json"),
-                "--protocol", str(ROOT / "search-protocol.json"), "--output", str(output),
-                "--wall-seconds", "5"], capture_output=True, text=True, env=env, timeout=10)
-    record = json.loads((output / "study.json").read_text())
-    assert result.returncode == 130 and record["outcome"] == "cancelled", (result.stderr, record)
-    sent = Path(str(script) + ".requests").read_text().split().count("evaluate")
-    events = [json.loads(line) for line in (output / "evaluations.jsonl").read_text().splitlines()]
-    started = sum(e["event"] == "evaluation_started" for e in events)
-    attempted = record["counts"]["search_attempted"] + record["counts"]["rechecks_attempted"]
-    assert started == attempted == sent, (started, attempted, sent)
-    assert_gone(record["server_pid"])
-    results.append({"fault": "interrupt-between-calls", "outcome": "cancelled", "attempted_equals_sent": True})
+        # Attempts are exactly the evaluation requests the server received; a
+        # cancellation between two calls leaves no attempt that was never sent.
+        sent = Path(str(script) + ".requests").read_text().split().count("evaluate")
+        events = [json.loads(line) for line in (output / "evaluations.jsonl").read_text().splitlines()]
+        started = sum(e["event"] == "evaluation_started" for e in events)
+        attempted = record["counts"]["search_attempted"] + record["counts"]["rechecks_attempted"]
+        assert started == attempted == sent, (mode, started, attempted, sent)
+        results.append({"fault": mode, "outcome": outcome, "message": record["error"]["message"],
+                        "attempted_equals_sent": True, "child_killed_and_reaped": True})
     protected = directory / "protected-output"
     protected.mkdir()
     sentinel = protected / "candidate.json"
