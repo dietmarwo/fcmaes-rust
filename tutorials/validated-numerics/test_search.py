@@ -83,7 +83,7 @@ def fault_checks(binary, depot, directory):
     env["JULIA_DEPOT_PATH"] = str(Path(depot).resolve())
     # Deliberately lie about a floating estimate to exercise rejection branches.
     code = '''#!/usr/bin/env python3
-import hashlib,json,pathlib,sys
+import hashlib,json,os,pathlib,signal,sys
 project=pathlib.Path(sys.argv[3].split('=',1)[1]);server=pathlib.Path(sys.argv[4]);problem=pathlib.Path(sys.argv[5])
 sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest()
 environment=json.loads((project.parent/'evidence/scalar-cuberoot/candidate.json').read_text())['environment']
@@ -92,7 +92,13 @@ print(json.dumps(dict(schema_version='cap.search.response/0.1',request_id=0,stat
 n=0
 for line in sys.stdin:
  r=json.loads(line);n+=1
+ with open(sys.argv[0]+'.requests','a') as log:log.write(r['op']+'\\n')
  value=estimate.copy();value['score']=float(n)
+ if MODE=='interrupt':
+  value['score']=0.0
+  # Interrupt the search before it receives this answer, so the cancellation
+  # is recorded before its next call.
+  if n==1:os.kill(os.getppid(),signal.SIGINT)
  if MODE=='nonfinite':value['score']=float('nan')
  if MODE=='missing':del value['estimated_Z2']
  print(json.dumps(dict(schema_version='cap.search.response/0.1',request_id=r['request_id'],status='estimated',parameters=r['parameters'],estimate=value)),flush=True)
@@ -100,7 +106,7 @@ for line in sys.stdin:
     results = []
     for mode, expected in [("mismatch", "objective_mismatch"), ("nonfinite", "protocol_error"), ("missing", "protocol_error")]:
         script = directory / (mode + ".py")
-        script.write_text(code.replace("import hashlib,json,pathlib,sys", "import hashlib,json,pathlib,sys\nMODE=" + repr(mode)))
+        script.write_text(code.replace("import hashlib,json,os,pathlib,signal,sys", "import hashlib,json,os,pathlib,signal,sys\nMODE=" + repr(mode)))
         script.chmod(0o755)
         output = directory / (mode + "-result")
         result = subprocess.run([str(Path(binary).resolve()), "--julia", str(script.resolve()),
@@ -113,6 +119,25 @@ for line in sys.stdin:
         assert not (output / "candidate.json").exists()
         assert_gone(record["server_pid"])
         results.append({"fault": mode, "outcome": expected, "child_reaped": True})
+    # A cancellation between two calls must not leave an attempt that was never sent.
+    script = directory / "interrupt.py"
+    script.write_text(code.replace("import hashlib,json,os,pathlib,signal,sys", "import hashlib,json,os,pathlib,signal,sys\nMODE='interrupt'"))
+    script.chmod(0o755)
+    output = directory / "interrupt-result"
+    result = subprocess.run([str(Path(binary).resolve()), "--julia", str(script.resolve()),
+                "--project", str(ROOT / "julia"), "--server", str(ROOT / "julia/bin/search_server.jl"),
+                "--problem", str(ROOT / "problems/scalar-cuberoot.json"),
+                "--protocol", str(ROOT / "search-protocol.json"), "--output", str(output),
+                "--wall-seconds", "5"], capture_output=True, text=True, env=env, timeout=10)
+    record = json.loads((output / "study.json").read_text())
+    assert result.returncode == 130 and record["outcome"] == "cancelled", (result.stderr, record)
+    sent = Path(str(script) + ".requests").read_text().split().count("evaluate")
+    events = [json.loads(line) for line in (output / "evaluations.jsonl").read_text().splitlines()]
+    started = sum(e["event"] == "evaluation_started" for e in events)
+    attempted = record["counts"]["search_attempted"] + record["counts"]["rechecks_attempted"]
+    assert started == attempted == sent, (started, attempted, sent)
+    assert_gone(record["server_pid"])
+    results.append({"fault": "interrupt-between-calls", "outcome": "cancelled", "attempted_equals_sent": True})
     protected = directory / "protected-output"
     protected.mkdir()
     sentinel = protected / "candidate.json"

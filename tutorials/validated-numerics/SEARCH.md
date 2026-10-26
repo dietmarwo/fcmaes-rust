@@ -158,9 +158,9 @@ a completed numerical study, 124 for timeout, 130 for cancellation and 2 for
 input/protocol/operational errors. All expected failures retain the partial
 ledger and terminal study record once the output directory has been initialized.
 
-Startup failure has explicitly incomplete work accounting. A call started
-without a response remains an attempted call, with no invented completion or
-score. Wall costs include those failures. Startup and warm per-arm times are
+Startup failure has explicitly incomplete work accounting. An evaluation is
+attempted once its request has been sent to Julia; one sent without a response
+remains attempted, with no invented completion or score. Wall costs include those failures. Startup and warm per-arm times are
 observations; aggregate CPU and peak memory are not currently measured. Node
 slot reservation is cooperative accounting rather than CPU affinity.
 

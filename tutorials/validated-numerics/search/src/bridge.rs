@@ -194,6 +194,13 @@ impl Bridge {
     }
 
     pub fn request(&mut self, op: &str, parameters: Option<&[f64]>, status: &str) -> Result<Value> {
+        let id = self.send(op, parameters)?;
+        self.response(id, status)
+    }
+
+    /// Send one request and return its ID; nothing is sent once the search
+    /// has been cancelled or has reached its deadline.
+    pub fn send(&mut self, op: &str, parameters: Option<&[f64]>) -> Result<u64> {
         self.checkpoint()?;
         self.sequence += 1;
         let mut value =
@@ -213,7 +220,12 @@ impl Bridge {
         if let Err(error) = input.write_all(&bytes).and_then(|()| input.flush()) {
             return Err(self.attribute(Failure::io(error)));
         }
-        self.response(self.sequence, status)
+        Ok(self.sequence)
+    }
+
+    /// Wait for the response to a request returned by [`Bridge::send`].
+    pub fn receive(&self, id: u64, status: &str) -> Result<Value> {
+        self.response(id, status)
     }
 
     pub fn finish(&mut self) -> Result<()> {

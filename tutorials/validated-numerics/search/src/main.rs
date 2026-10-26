@@ -93,6 +93,10 @@ impl Ledger {
         self.file.flush().map_err(Failure::io)
     }
     fn evaluate(&mut self, bridge: &mut Bridge, arm: &Arm, phase: &str, x: &[f64]) -> Result<f64> {
+        // An attempt is a request Julia was sent: a cancellation or deadline
+        // that stops the search before sending leaves no attempt behind.
+        let started = Instant::now();
+        let id = bridge.send("evaluate", Some(x))?;
         if phase == "search" {
             self.search_attempted += 1;
         } else {
@@ -102,8 +106,7 @@ impl Ledger {
             json!({"schema_version":"cap.search.event/0.1","event":"evaluation_started",
             "arm":arm.id,"phase":phase,"parameters":x}),
         )?;
-        let started = Instant::now();
-        let response = bridge.request("evaluate", Some(x), "estimated")?;
+        let response = bridge.receive(id, "estimated")?;
         let estimate = response["estimate"]
             .as_object()
             .ok_or_else(|| Failure::new("protocol_error", "missing estimate object"))?;
