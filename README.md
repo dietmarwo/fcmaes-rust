@@ -415,6 +415,9 @@ python examples/python/test_cma.py
 - [Water-network pump-scheduling tutorial](tutorials/water-network-scheduling/README.md)
 - [Truss topology and catalogue-section sizing tutorial](tutorials/truss-sizing/README.md)
 - [Weighted network-coverage tutorial](tutorials/network-coverage/README.md)
+- [Validated-numerics reference verifier](tutorials/validated-numerics/): a
+  separate Julia environment with scalar and PDE certificates, independent
+  replay and command-job campaigns; not one of the Cargo tutorials
 - [Optional PyO3 bindings](docs/python-bindings.md)
 - [Release history](CHANGELOG.md)
 - [Publishing checklist](RELEASING.md)

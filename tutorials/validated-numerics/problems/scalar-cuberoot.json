@@ -1,0 +1,1 @@
+{"parameters":{"constant":"2/1"},"branch":"positive-root","domain":"real","target_epsilon":"1/10000000000","id":"scalar-cuberoot","equation":"u^3 - 2 = 0","theorem":"radii-first-order-scalar/1","schema_version":"cap.problem/0.1","representation":{"order":0,"basis":"scalar","norm":"absolute"}}

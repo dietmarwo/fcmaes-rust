@@ -1,0 +1,98 @@
+[
+  {
+    "label": "scalar-cuberoot-candidate",
+    "returncode": 0,
+    "expected": 0,
+    "wall_seconds": 7.107112340999976
+  },
+  {
+    "label": "scalar-cuberoot-verify",
+    "returncode": 0,
+    "expected": 0,
+    "wall_seconds": 8.10772652899999
+  },
+  {
+    "label": "scalar-cuberoot-replay",
+    "returncode": 0,
+    "expected": 0,
+    "wall_seconds": 8.330970695000019
+  },
+  {
+    "label": "forged-replay",
+    "returncode": 3,
+    "expected": 3,
+    "wall_seconds": 8.444224081000016
+  },
+  {
+    "label": "refuse-overwrite",
+    "returncode": 2,
+    "expected": 2,
+    "wall_seconds": 8.137793004999992
+  },
+  {
+    "label": "cahn-hilliard-candidate",
+    "returncode": 0,
+    "expected": 0,
+    "wall_seconds": 15.592801603999987
+  },
+  {
+    "label": "cahn-hilliard-verify",
+    "returncode": 0,
+    "expected": 0,
+    "wall_seconds": 17.667248385000022
+  },
+  {
+    "label": "cahn-hilliard-replay",
+    "returncode": 0,
+    "expected": 0,
+    "wall_seconds": 17.73756859200003
+  },
+  {
+    "label": "scalar-cuberoot-node-init",
+    "returncode": 0,
+    "expected": 0,
+    "wall_seconds": 0.0032672180000190565
+  },
+  {
+    "label": "scalar-cuberoot-campaign-compile",
+    "returncode": 0,
+    "expected": 0,
+    "wall_seconds": 0.17295208600000933
+  },
+  {
+    "label": "scalar-cuberoot-campaign-run",
+    "returncode": 0,
+    "expected": 0,
+    "wall_seconds": 28.32176861800002
+  },
+  {
+    "label": "scalar-cuberoot-campaign-continue",
+    "returncode": 0,
+    "expected": 0,
+    "wall_seconds": 0.13806373299996721
+  },
+  {
+    "label": "cahn-hilliard-node-init",
+    "returncode": 0,
+    "expected": 0,
+    "wall_seconds": 0.0030090750000226762
+  },
+  {
+    "label": "cahn-hilliard-campaign-compile",
+    "returncode": 0,
+    "expected": 0,
+    "wall_seconds": 0.14237012600000298
+  },
+  {
+    "label": "cahn-hilliard-campaign-run",
+    "returncode": 0,
+    "expected": 0,
+    "wall_seconds": 54.398934329999975
+  },
+  {
+    "label": "cahn-hilliard-campaign-continue",
+    "returncode": 0,
+    "expected": 0,
+    "wall_seconds": 0.1373718639999879
+  }
+]
