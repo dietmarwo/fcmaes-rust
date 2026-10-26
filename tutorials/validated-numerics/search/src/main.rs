@@ -20,7 +20,9 @@ use std::{
 };
 
 #[derive(Parser)]
-#[command(about = "Bounded floating-point proof-parameter search; certification is a separate command")]
+#[command(
+    about = "Bounded floating-point proof-parameter search; certification is a separate command"
+)]
 struct Args {
     #[arg(long)]
     julia: PathBuf,
