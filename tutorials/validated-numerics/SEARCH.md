@@ -148,7 +148,12 @@ helpers inherit the command runtime's process group.
 
 The wall deadline covers startup, all methods, rechecks and exports. SIGINT,
 SIGTERM and SIGHUP request cancellation; polling notices it while waiting for
-Julia. Both normal shutdown and failure reap the child. Exit codes are 0 for
+Julia. A Ctrl-C to the whole process group also ends Julia; that is reported
+as a cancellation, not a server failure. Both normal shutdown and failure kill
+and reap the Julia child. Cleanup waits at most one second for its pipes to
+close: descendants that inherit them, such as Julia precompilation workers, are
+not the bridge's to kill. They stay in the process group, which the command
+runtime ends with the attempt; a standalone run leaves them to finish. Exit codes are 0 for
 a completed numerical study, 124 for timeout, 130 for cancellation and 2 for
 input/protocol/operational errors. All expected failures retain the partial
 ledger and terminal study record once the output directory has been initialized.

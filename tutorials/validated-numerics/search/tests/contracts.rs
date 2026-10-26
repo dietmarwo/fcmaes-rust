@@ -224,6 +224,34 @@ fn a_server_ended_by_a_group_signal_reports_the_cancellation() {
 }
 
 #[test]
+fn cleanup_does_not_wait_for_descendants_holding_the_pipes() {
+    // Like a Julia precompilation worker, the grandchild inherits stdout/stderr.
+    let directory = tempfile::tempdir().unwrap();
+    let file = directory.path().join("grandchild.pid");
+    let code = format!(
+        "import subprocess,time\np=subprocess.Popen(['sleep','30'])\nopen({file:?},'w').write(str(p.pid))\ntime.sleep(30)\n"
+    );
+    let b = bridge(&code, Duration::from_secs(2));
+    let pid = b.pid();
+    let waiting = Instant::now();
+    while !file.exists() && waiting.elapsed() < Duration::from_secs(2) {
+        std::thread::sleep(Duration::from_millis(10));
+    }
+    assert_eq!(b.ready().unwrap_err().code, "timed_out");
+    let started = Instant::now();
+    drop(b);
+    let cleanup = started.elapsed();
+    reaped(pid);
+    if let Ok(text) = std::fs::read_to_string(&file) {
+        let _ = nix::sys::signal::kill(
+            nix::unistd::Pid::from_raw(text.trim().parse().unwrap()),
+            nix::sys::signal::Signal::SIGKILL,
+        );
+    }
+    assert!(cleanup < Duration::from_secs(5), "cleanup took {cleanup:?}");
+}
+
+#[test]
 fn wrong_reply_identity_is_rejected() {
     let code = format!(
         "{READY}r=json.loads(sys.stdin.readline())\nprint(json.dumps(dict(schema_version='cap.search.response/0.1',request_id=99,status='estimated')),flush=True)\n"

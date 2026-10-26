@@ -19,6 +19,9 @@ pub const FRAME_LIMIT: usize = 1 << 20;
 /// How long a failed server may take to be explained by a pending cancellation.
 const CANCEL_GRACE: Duration = Duration::from_millis(200);
 
+/// How long cleanup waits for the server's pipes to close after it has exited.
+const PIPE_GRACE: Duration = Duration::from_secs(1);
+
 #[derive(Debug, Clone)]
 pub struct Failure {
     pub code: &'static str,
@@ -238,14 +241,32 @@ impl Drop for Bridge {
         let _ = self.child.wait();
         // Release the bounded sender before joining the stdout reader.
         drop(self.responses.take());
-        if let Some(reader) = self.reader.take() {
+        // Descendants of the server, such as Julia precompilation workers,
+        // inherit its pipes and can keep them open after it has gone. Do not
+        // wait for them beyond a short grace: they remain in this process
+        // group, which the command runtime ends together with the attempt.
+        let until = Instant::now() + PIPE_GRACE;
+        while Instant::now() < until
+            && (self.reader.as_ref().is_some_and(|h| !h.is_finished())
+                || self.stderr.as_ref().is_some_and(|h| !h.is_finished()))
+        {
+            thread::sleep(Duration::from_millis(5));
+        }
+        if let Some(reader) = self.reader.take()
+            && reader.is_finished()
+        {
             let _ = reader.join();
         }
-        if let Some(stderr) = self.stderr.take()
-            && let Ok(log) = stderr.join()
-            && !log.is_empty()
-        {
-            eprintln!("Julia server stderr (first 64 KiB):\n{log}");
+        match self.stderr.take() {
+            Some(stderr) if stderr.is_finished() => {
+                if let Ok(log) = stderr.join()
+                    && !log.is_empty()
+                {
+                    eprintln!("Julia server stderr (first 64 KiB):\n{log}");
+                }
+            }
+            Some(_) => eprintln!("Julia server stderr not shown: a descendant still holds it open"),
+            None => {}
         }
     }
 }
