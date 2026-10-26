@@ -1,0 +1,32 @@
+[package]
+name = "cap-search"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.88"
+license = "MIT"
+publish = false
+description = "Bounded proof-parameter search over a persistent Julia reference model"
+
+[workspace]
+
+[[bin]]
+name = "cap-search"
+path = "src/main.rs"
+# CLI behavior is exercised by test_search.py against the release executable.
+test = false
+
+[dependencies]
+fcmaes-core = { path = "../../../crates/fcmaes-core" }
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1", features = ["float_roundtrip"] }
+sha2 = "0.10"
+clap = { version = "4", features = ["derive"] }
+ctrlc = { version = "3.5", features = ["termination"] }
+
+[dev-dependencies]
+tempfile = "3"
+nix = { version = "0.31", features = ["process", "signal"] }
+
+[profile.release]
+codegen-units = 1
+lto = "thin"

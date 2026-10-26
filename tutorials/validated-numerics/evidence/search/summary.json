@@ -1,0 +1,54 @@
+[
+  {
+    "problem": "scalar-cuberoot",
+    "retained_evidence": "verified"
+  },
+  {
+    "problem": "cahn-hilliard",
+    "retained_evidence": "verified"
+  },
+  {
+    "problem": "scalar-cuberoot",
+    "arm_count": 9,
+    "counts": {
+      "rechecks_attempted": 9,
+      "rechecks_completed": 9,
+      "search_attempted": 201,
+      "search_completed": 201,
+      "startup_accounting_complete": true,
+      "total_attempted_including_warmup": 211,
+      "warmup_evaluations": 1
+    },
+    "selected_arm": "reference",
+    "verification": "verified",
+    "replay": "verified"
+  },
+  {
+    "problem": "cahn-hilliard",
+    "arm_count": 9,
+    "counts": {
+      "rechecks_attempted": 9,
+      "rechecks_completed": 9,
+      "search_attempted": 201,
+      "search_completed": 201,
+      "startup_accounting_complete": true,
+      "total_attempted_including_warmup": 211,
+      "warmup_evaluations": 1
+    },
+    "selected_arm": "local",
+    "verification": "verified",
+    "replay": "verified"
+  },
+  {
+    "problem": "scalar-cuberoot",
+    "campaign": "completed",
+    "runtime_attempts": 3,
+    "continued_without_duplicates": true
+  },
+  {
+    "problem": "cahn-hilliard",
+    "campaign": "completed",
+    "runtime_attempts": 3,
+    "continued_without_duplicates": true
+  }
+]

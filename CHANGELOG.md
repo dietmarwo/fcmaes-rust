@@ -8,6 +8,12 @@ phase, with breaking changes called out explicitly.
 
 ### Added
 
+- A [bounded proof-parameter search application](tutorials/validated-numerics/SEARCH.md)
+  with a persistent Julia evaluation lane, reference/grid/random/local/CMA-ES/BiteOpt
+  comparisons, a frozen protocol, complete evaluation accounting, cancellation
+  and deadline cleanup, and search → verification → replay command campaigns.
+  It reuses the reference verifier and preserves the existing certificates.
+
 - A [validated-numerics reference verifier](tutorials/validated-numerics/) with a
   pinned Julia environment, scalar and Cahn–Hilliard certificates, independent
   replay, corruption regressions and existing command-job campaigns. It prepares

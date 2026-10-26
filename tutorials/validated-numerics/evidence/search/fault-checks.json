@@ -1,0 +1,42 @@
+[
+  {
+    "fault": "mismatch",
+    "outcome": "objective_mismatch",
+    "message": "same point did not reproduce its floating score",
+    "attempted_equals_sent": true,
+    "child_killed_and_reaped": true
+  },
+  {
+    "fault": "nan-literal",
+    "outcome": "protocol_error",
+    "message": "expected value at line 1 column 130",
+    "attempted_equals_sent": true,
+    "child_killed_and_reaped": true
+  },
+  {
+    "fault": "string-score",
+    "outcome": "protocol_error",
+    "message": "incomplete or nonfinite estimate",
+    "attempted_equals_sent": true,
+    "child_killed_and_reaped": true
+  },
+  {
+    "fault": "missing",
+    "outcome": "protocol_error",
+    "message": "incomplete or nonfinite estimate",
+    "attempted_equals_sent": true,
+    "child_killed_and_reaped": true
+  },
+  {
+    "fault": "interrupt",
+    "outcome": "cancelled",
+    "message": "search cancelled",
+    "attempted_equals_sent": true,
+    "child_killed_and_reaped": true
+  },
+  {
+    "fault": "nonempty-output",
+    "outcome": "refused",
+    "existing_artifact_unchanged": true
+  }
+]

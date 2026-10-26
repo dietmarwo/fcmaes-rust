@@ -38,9 +38,43 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+      # Lint with current stable like the other nested workspaces; build and
+      # test with the minimum supported Rust version (the default toolchain).
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
       - uses: dtolnay/rust-toolchain@1.88.0
+      - name: Format check of the search application (stable)
+        shell: bash
+        run: |
+          if ! cargo +stable fmt --manifest-path tutorials/validated-numerics/search/Cargo.toml -- --check > "$RUNNER_TEMP/rustfmt.log" 2>&1; then
+            cat "$RUNNER_TEMP/rustfmt.log"
+            text=$(head -c 3000 "$RUNNER_TEMP/rustfmt.log" | sed 's/%/%25/g' | sed ':a;N;$!ba;s/\n/%0A/g')
+            echo "::error title=rustfmt::$text"
+            exit 1
+          fi
+      - name: Lint the search application (stable Clippy)
+        env:
+          CARGO_TERM_COLOR: never  # plain output, so the matcher can parse it
+        run: |
+          echo "::add-matcher::.github/rust-problem-matcher.json"
+          cargo +stable clippy --locked --manifest-path tutorials/validated-numerics/search/Cargo.toml --all-targets -- -D warnings
+      - name: Test and build the search application (Rust 1.88)
+        env:
+          CARGO_TERM_COLOR: never
+        shell: bash
+        run: |
+          echo "::add-matcher::.github/rust-problem-matcher.json"
+          if ! cargo test --release --locked --manifest-path tutorials/validated-numerics/search/Cargo.toml 2>&1 | tee "$RUNNER_TEMP/rust-tests.log"; then
+            text=$(grep -v '^\s*Compiling ' "$RUNNER_TEMP/rust-tests.log" | tail -c 3000 | sed 's/%/%25/g' | sed ':a;N;$!ba;s/\n/%0A/g')
+            echo "::error title=cargo test::$text"
+            exit 1
+          fi
+          cargo build --release --locked --manifest-path tutorials/validated-numerics/search/Cargo.toml
       - name: Recheck the retained certificates in exact rational arithmetic
-        run: python tutorials/validated-numerics/exact_check.py
+        run: |
+          python tutorials/validated-numerics/exact_check.py
+          python tutorials/validated-numerics/exact_check.py tutorials/validated-numerics/evidence/search
       - name: Instantiate exact Julia environment and run proof regressions
         shell: bash
         run: |
@@ -55,7 +89,7 @@ jobs:
           git -C "$RUNNER_TEMP/optimization-jobs" checkout --detach 051435c325a51cc89be4ae26645d6937eed6f5e5
           cargo build --release --locked --manifest-path "$RUNNER_TEMP/optimization-jobs/Cargo.toml" -p optimization-runner --bin optimization-run
           git clone https://github.com/dietmarwo/experiment-craft "$RUNNER_TEMP/experiment-craft"
-          git -C "$RUNNER_TEMP/experiment-craft" checkout --detach 2f5846e4eb18008d960c30301a54395d58bdb32d
+          git -C "$RUNNER_TEMP/experiment-craft" checkout --detach 013077b37e917d994d3346aa0c1a36c5dfe6fec2
       - name: Fresh-process replay, retained evidence and real foreground command campaigns
         run: |
           python tutorials/validated-numerics/test_workflow.py \
@@ -63,11 +97,21 @@ jobs:
             --runner "$RUNNER_TEMP/optimization-jobs/target/release/optimization-run" \
             --experiment-craft-source "$RUNNER_TEMP/experiment-craft" \
             --output "$RUNNER_TEMP/cap-evidence"
+      - name: Frozen search comparisons, fresh proof replay and lifecycle regressions
+        run: |
+          python tutorials/validated-numerics/test_search.py \
+            --binary tutorials/validated-numerics/search/target/release/cap-search \
+            --julia "$(command -v julia)" --depot "$JULIA_DEPOT_PATH" \
+            --runner "$RUNNER_TEMP/optimization-jobs/target/release/optimization-run" \
+            --experiment-craft-source "$RUNNER_TEMP/experiment-craft" \
+            --output "$RUNNER_TEMP/cap-search-evidence"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: cap-reference-evidence
           path: |
+            ${{ runner.temp }}/cap-search-evidence
             ${{ runner.temp }}/cap-evidence
             ${{ runner.temp }}/julia-tests.log
+            ${{ runner.temp }}/rust-tests.log
           if-no-files-found: ignore

@@ -1,0 +1,132 @@
+[
+  {
+    "check": "scalar-cuberoot-retained-replay",
+    "returncode": 0,
+    "expected": 0,
+    "wall_seconds": 7.84893418300004
+  },
+  {
+    "check": "cahn-hilliard-retained-replay",
+    "returncode": 0,
+    "expected": 0,
+    "wall_seconds": 16.401938505000032
+  },
+  {
+    "check": "scalar-cuberoot-search",
+    "returncode": 0,
+    "expected": 0,
+    "wall_seconds": 13.89965448099997
+  },
+  {
+    "check": "scalar-cuberoot-verify",
+    "returncode": 0,
+    "expected": 0,
+    "wall_seconds": 7.676622659999964
+  },
+  {
+    "check": "scalar-cuberoot-replay",
+    "returncode": 0,
+    "expected": 0,
+    "wall_seconds": 7.665767364999965
+  },
+  {
+    "check": "cahn-hilliard-search",
+    "returncode": 0,
+    "expected": 0,
+    "wall_seconds": 24.16732423000002
+  },
+  {
+    "check": "cahn-hilliard-verify",
+    "returncode": 0,
+    "expected": 0,
+    "wall_seconds": 15.883613405000006
+  },
+  {
+    "check": "cahn-hilliard-replay",
+    "returncode": 0,
+    "expected": 0,
+    "wall_seconds": 15.735891583000011
+  },
+  {
+    "check": "independent-exact-bounds",
+    "returncode": 0,
+    "expected": 0,
+    "wall_seconds": 0.674797892000015
+  },
+  {
+    "check": "seeded-search-repeat",
+    "returncode": 0,
+    "expected": 0,
+    "wall_seconds": 13.516308369999933
+  },
+  {
+    "check": "unknown-protocol-field",
+    "returncode": 2,
+    "expected": 2,
+    "wall_seconds": 0.001916337000011481
+  },
+  {
+    "check": "wall-timeout",
+    "returncode": 124,
+    "expected": 124,
+    "wall_seconds": 0.058505806000084704
+  },
+  {
+    "check": "sigterm-cleanup",
+    "returncode": 130,
+    "expected": 130
+  },
+  {
+    "check": "group-interrupt",
+    "returncode": 130,
+    "expected": 130
+  },
+  {
+    "check": "scalar-cuberoot-node",
+    "returncode": 0,
+    "expected": 0,
+    "wall_seconds": 0.0025933059999942998
+  },
+  {
+    "check": "scalar-cuberoot-compile",
+    "returncode": 0,
+    "expected": 0,
+    "wall_seconds": 0.12605037699995592
+  },
+  {
+    "check": "scalar-cuberoot-campaign",
+    "returncode": 0,
+    "expected": 0,
+    "wall_seconds": 32.298318128999995
+  },
+  {
+    "check": "scalar-cuberoot-continue",
+    "returncode": 0,
+    "expected": 0,
+    "wall_seconds": 0.12283546300000125
+  },
+  {
+    "check": "cahn-hilliard-node",
+    "returncode": 0,
+    "expected": 0,
+    "wall_seconds": 0.002838357999962682
+  },
+  {
+    "check": "cahn-hilliard-compile",
+    "returncode": 0,
+    "expected": 0,
+    "wall_seconds": 0.12701211399996737
+  },
+  {
+    "check": "cahn-hilliard-campaign",
+    "returncode": 0,
+    "expected": 0,
+    "wall_seconds": 60.148604044999956
+  },
+  {
+    "check": "cahn-hilliard-continue",
+    "returncode": 0,
+    "expected": 0,
+    "wall_seconds": 0.12602430300000833
+  }
+]

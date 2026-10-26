@@ -1,0 +1,15 @@
+{
+  "schema_version": "cap.search.protocol/0.1",
+  "evaluation_budget": 25,
+  "arms": [
+    {"id": "reference", "method": "reference", "seed": 0},
+    {"id": "grid", "method": "grid", "seed": 0},
+    {"id": "local", "method": "local", "seed": 0},
+    {"id": "random-17", "method": "random", "seed": 17},
+    {"id": "random-29", "method": "random", "seed": 29},
+    {"id": "cmaes-17", "method": "cmaes", "seed": 17},
+    {"id": "cmaes-29", "method": "cmaes", "seed": 29},
+    {"id": "biteopt-17", "method": "biteopt", "seed": 17},
+    {"id": "biteopt-29", "method": "biteopt", "seed": 29}
+  ]
+}
