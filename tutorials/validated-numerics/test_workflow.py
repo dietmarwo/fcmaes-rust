@@ -34,6 +34,8 @@ def main():
     parser.add_argument("--output", type=Path, required=True, help="new evidence directory")
     parser.add_argument("--runner", type=Path)
     parser.add_argument("--experiment-craft-source", type=Path)
+    parser.add_argument("--skip-retained", action="store_true",
+                        help="do not replay evidence/; only to regenerate it after a verifier change")
     args = parser.parse_args()
     if bool(args.runner) != bool(args.experiment_craft_source):
         parser.error("--runner and --experiment-craft-source must be supplied together")
@@ -112,7 +114,7 @@ def main():
             assert not validator.is_valid(missing)
 
     # The committed evidence must still replay with this verifier, as its README says.
-    for problem in ("scalar-cuberoot", "cahn-hilliard"):
+    for problem in () if args.skip_retained else ("scalar-cuberoot", "cahn-hilliard"):
         retained = ROOT / "evidence" / problem
         replayed = args.output / (problem + "-retained-replay.json")
         run(problem + "-retained-replay", [*julia, "replay", ROOT / "problems" / (problem + ".json"),
