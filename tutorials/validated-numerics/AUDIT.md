@@ -1,8 +1,8 @@
 # Certify every final search candidate
 
 The [bounded search](SEARCH.md) exports one candidate per predeclared arm.
-`audit.py` now checks every one with the unchanged rigorous verifier and a
-fresh replay. Its collector records unsuccessful attempts; a separate strict
+`audit.py` checks every one with the unchanged rigorous verifier and a fresh
+replay. Its collector records unsuccessful attempts; a separate strict
 acceptance command requires every arm to pass. The exact equations, physical
 target, theorem, Julia environment and search protocol are unchanged.
 
@@ -156,12 +156,11 @@ Its one-slot reservation includes the five-second grace: 2,225 reserved-slot
 seconds, not measured CPU consumption. Python must provide jsonschema; the
 generator uses its interpreter unless `--python` supplies another executable.
 
-The original reference and selected-candidate campaign generators remain
-available. The new generator neither launches work nor moves baseline pins.
+The reference and selected-candidate campaign generators remain available. The new generator neither launches work nor moves baseline pins.
 Calling campaign `continue` observes the three recorded attempts without
 resubmission. The tests use optimization-jobs `051435c` and experiment-craft
-`d4db33d`, in local foreground mode with capacity one. No remote routing or
-January hardware commissioning is established by these results.
+`d4db33d`, in local foreground mode with capacity one. They establish no
+remote routing or multi-machine operation.
 
 ## Checks and next work
 
@@ -184,5 +183,5 @@ Next scientific work is harder frozen/held-out cases, more independent
 repetitions and an anytime certification policy. Native verification
 attachments/acceptance in the shared platform, proof-aware comparisons/UI,
 semantic cross-environment replay, exact region coverage and multi-node
-commissioning remain separate increments. This audit supplies concrete
-application records and failure cases for that platform design.
+operation remain future work; this audit provides concrete application records
+and failure cases for their design.

@@ -18,9 +18,6 @@ in each problem's audit files; no speed ranking is inferred.
 The [workflow checks](checks.json) and [summary](summary.json) record both
 real three-job campaigns and continuation without duplicate attempts.
 [Contract regressions](contract-tests.txt) record 22 passing tests.
-`pre-fix-regressions.txt` intentionally records assertion failures from
-temporary predecessor copies, confirming that the three fixes have effective
-regression tests; it is not a failing result for the delivered code.
 
 The [source snapshot](source-snapshot.json) identifies the checked repository
 bases, application source, protocols, tested binary and environment. Each

@@ -106,7 +106,7 @@ Outputs:
 All arm proposals use the reference Newton coefficient vector; the explicit
 approximate inverse may differ. The candidate's approximation tag describes
 that coefficient construction. The search study records the inverse scaling
-and selection method. The original three-job example below verifies the selected
+and selection method. The three-job example below verifies the selected
 proposal. The [all-arm certificate audit](AUDIT.md) verifies and replays every
 exported proposal, retaining failures and final-candidate timing observations.
 
@@ -205,10 +205,10 @@ that invalidates it needs new evidence: run `test_search.py` once with
 `--skip-retained` and replace the files from its output.
 
 [Search evidence](evidence/search/README.md) records measured outcomes and scope.
-The previous reference evidence is preserved. The next scientific increment
-needs harder frozen/held-out cases, more repetitions and an anytime
-certification policy. [Per-arm independent certification](AUDIT.md) is now
-available, with explicitly scoped final-candidate timing and censored records.
-Native proof-aware comparisons,
-generic verification-result contracts, adaptive region coverage and remote
-campaign routing remain separate platform/research increments.
+The previous reference evidence is preserved. [Per-arm independent
+certification](AUDIT.md), with explicitly scoped final-candidate timing and
+censored records, is a separate audit. Further scientific work needs harder
+frozen/held-out cases, more repetitions and an anytime certification policy.
+Native proof-aware comparisons, generic verification-result contracts, adaptive
+region coverage and remote campaign routing remain future platform and research
+work.
