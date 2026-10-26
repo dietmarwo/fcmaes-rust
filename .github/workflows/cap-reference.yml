@@ -38,13 +38,16 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - uses: dtolnay/rust-toolchain@1.88.0
+      # Lint with current stable like the other nested workspaces; build and
+      # test with the minimum supported Rust version (the default toolchain).
+      - uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt, clippy
+      - uses: dtolnay/rust-toolchain@1.88.0
       - name: Check and build the bounded Rust search application
         run: |
-          cargo fmt --manifest-path tutorials/validated-numerics/search/Cargo.toml -- --check
-          cargo clippy --locked --manifest-path tutorials/validated-numerics/search/Cargo.toml --all-targets -- -D warnings
+          cargo +stable fmt --manifest-path tutorials/validated-numerics/search/Cargo.toml -- --check
+          cargo +stable clippy --locked --manifest-path tutorials/validated-numerics/search/Cargo.toml --all-targets -- -D warnings
           cargo test --release --locked --manifest-path tutorials/validated-numerics/search/Cargo.toml
           cargo build --release --locked --manifest-path tutorials/validated-numerics/search/Cargo.toml
       - name: Recheck the retained certificates in exact rational arithmetic

@@ -215,12 +215,11 @@ impl Drop for Bridge {
         if let Some(reader) = self.reader.take() {
             let _ = reader.join();
         }
-        if let Some(stderr) = self.stderr.take() {
-            if let Ok(log) = stderr.join() {
-                if !log.is_empty() {
-                    eprintln!("Julia server stderr (first 64 KiB):\n{log}");
-                }
-            }
+        if let Some(stderr) = self.stderr.take()
+            && let Ok(log) = stderr.join()
+            && !log.is_empty()
+        {
+            eprintln!("Julia server stderr (first 64 KiB):\n{log}");
         }
     }
 }
