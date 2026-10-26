@@ -23,6 +23,14 @@ infinite inverse-Laplacian tail is preserved. Multiplying rows produces a
 new approximate inverse; its exact binary64 entries are recorded and its
 injectivity/defect must still pass the rigorous verifier.
 
+The Julia server computes the reference coefficients and inverse afresh with
+a floating-point Newton solve and LAPACK, whose last bits can differ between
+machines; the estimated scores follow them. Seeded trajectories and the
+selected candidate repeat exactly on the same machine and environment, which
+the workflow checks, but can differ slightly on another one. The proofs are
+unaffected: the verifier checks whichever candidate was selected, and replay
+checks the recorded certificate byte for byte.
+
 This is a small calibration study of structured preconditioner tuning. It
 establishes the search/verification interface and measurement rules. These
 easy reference cases and two stochastic seeds do not establish a held-out
