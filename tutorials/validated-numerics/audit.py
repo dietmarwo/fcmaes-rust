@@ -280,9 +280,10 @@ def run_stage(argv, directory, output, limit, cancelled, validate, event):
         except Exception as error:
             result.update(status="process_failed", document=None, error=(str(error) or type(error).__name__)[:2000])
         finally:
-            if child is not None and child.poll() is None:
-                child.kill()
-                child.wait()
+            if child is not None:
+                if child.poll() is None:
+                    child.kill()
+                result["returncode"] = child.wait()
             result["wall_seconds"] = time.monotonic() - started
             if result["status"] == "completed" and result["wall_seconds"] > limit:
                 result.update(status="timed_out", document=None, error="stage wall deadline exceeded during output validation")
@@ -367,10 +368,24 @@ def validate_audit(record, context, protocol, protocol_sha, events):
                 if result["status"] == "not_run":
                     require(result["pid"] is None and result["returncode"] is None and result["wall_seconds"] == 0,
                             "unattempted stage carries work")
+                # A launched process was reaped and has an exit status. Only a
+                # cancellation before launch or a failed launch has neither.
+                require((result["pid"] is None) == (result["returncode"] is None), "stage process without exit status")
+                require(result["pid"] is not None or result["status"] in ("not_run", "cancelled", "process_failed"),
+                        "stage outcome needs a launched process")
+                require(result["status"] != "timed_out" or result["wall_seconds"] >= result["wall_limit_seconds"],
+                        "timed-out stage ended before its deadline")
+        # Replay runs only after a completed verification; a complete audit
+        # replays exactly those.
+        require(row["replay"]["status"] == "not_run" or row["verification"]["status"] == "completed",
+                "replay attempted without a completed verification")
+        require(not record["complete"] or row["verification"]["status"] not in ("not_run", "cancelled")
+                and row["replay"]["status"] != "cancelled"
+                and (row["replay"]["status"] == "not_run") == (row["verification"]["status"] != "completed"),
+                "audit completion mismatch: " + row["id"])
     require(ledger == expected_events, "audit stage ledger/accounting mismatch")
-    require(not record["complete"] or all(r["verification"]["status"] != "not_run" and
-            r["verification"]["status"] != "cancelled" and r["replay"]["status"] != "cancelled" for r in record["arms"]),
-            "audit completion mismatch")
+    stages = sum(row[stage]["wall_seconds"] for row in record["arms"] for stage in ("verification", "replay"))
+    require(record["total_wall_seconds"] >= stages, "audit wall time shorter than its stages")
 
 
 def empty_directory(path):

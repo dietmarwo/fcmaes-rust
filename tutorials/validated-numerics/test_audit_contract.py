@@ -156,11 +156,49 @@ class Contract(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "accounting"):
             self.validate(record, shortened)
 
+    def relinked(self, record):
+        """The ledger and digest a collector would have written for this record."""
+        events = []
+        for row in record["arms"]:
+            for stage in ("verification", "replay"):
+                if row[stage]["pid"] is not None:
+                    events.append({"event": "stage_started", "arm": row["id"], "stage": stage, "pid": row[stage]["pid"]})
+                if row[stage]["status"] != "not_run":
+                    events.append({"event": "stage_finished", "arm": row["id"], "stage": stage, "status": row[stage]["status"]})
+        ledger = b"".join(audit.encoded(e) for e in events)
+        record["events_sha256"] = audit.sha(ledger)
+        return ledger
+
+    def test_inconsistent_failure_records_are_malformed_not_rejected(self):
+        # Each record is internally linked; only its claimed work is impossible.
+        def timed_out_without_process(row):
+            row["verification"] = {**audit.not_run(120, "deadline"), "status": "timed_out"}
+            row["replay"] = audit.not_run(120, "verification unavailable")
+        def replay_after_failed_verification(row):
+            row["verification"] = {**audit.not_run(120, "failed"), "status": "process_failed", "pid": 200, "returncode": 1, "wall_seconds": 3.0}
+            row["replay"] = {**audit.not_run(120, "failed"), "status": "process_failed", "pid": 201, "returncode": 0, "wall_seconds": 3.0}
+        def complete_without_replay(row):
+            row["replay"] = audit.not_run(120, "not reached")
+        for mutation, message in ((timed_out_without_process, "needs a launched process"),
+                                  (replay_after_failed_verification, "without a completed verification"),
+                                  (complete_without_replay, "completion mismatch")):
+            with self.subTest(mutation=mutation.__name__):
+                record = copy.deepcopy(self.record)
+                mutation(record["arms"][0])
+                ledger = self.relinked(record)
+                with self.assertRaisesRegex(ValueError, message):
+                    self.validate(record, ledger)
+        record = copy.deepcopy(self.record)
+        record["total_wall_seconds"] = 0.0
+        with self.assertRaisesRegex(ValueError, "wall time"):
+            self.validate(record)
+
     def test_timeout_kept_in_denominator_and_censored(self):
         row = self.record["arms"][0]
         row["verification"] = {**audit.not_run(120, "deadline"), "status": "timed_out", "pid": 100,
                                "returncode": -9, "wall_seconds": 120.02}
         row["replay"] = audit.not_run(120, "verification unavailable")
+        self.record["total_wall_seconds"] += 120.02
         events = [audit.parse(line) for line in self.ledger.splitlines()]
         events[1]["status"] = "timed_out"
         events = events[:2] + events[4:]
