@@ -39,6 +39,14 @@ jobs:
         with:
           python-version: '3.12'
       - uses: dtolnay/rust-toolchain@1.88.0
+        with:
+          components: rustfmt, clippy
+      - name: Check and build the bounded Rust search application
+        run: |
+          cargo fmt --manifest-path tutorials/validated-numerics/search/Cargo.toml -- --check
+          cargo clippy --locked --manifest-path tutorials/validated-numerics/search/Cargo.toml --all-targets -- -D warnings
+          cargo test --release --locked --manifest-path tutorials/validated-numerics/search/Cargo.toml
+          cargo build --release --locked --manifest-path tutorials/validated-numerics/search/Cargo.toml
       - name: Recheck the retained certificates in exact rational arithmetic
         run: python tutorials/validated-numerics/exact_check.py
       - name: Instantiate exact Julia environment and run proof regressions
@@ -55,7 +63,7 @@ jobs:
           git -C "$RUNNER_TEMP/optimization-jobs" checkout --detach 051435c325a51cc89be4ae26645d6937eed6f5e5
           cargo build --release --locked --manifest-path "$RUNNER_TEMP/optimization-jobs/Cargo.toml" -p optimization-runner --bin optimization-run
           git clone https://github.com/dietmarwo/experiment-craft "$RUNNER_TEMP/experiment-craft"
-          git -C "$RUNNER_TEMP/experiment-craft" checkout --detach 2f5846e4eb18008d960c30301a54395d58bdb32d
+          git -C "$RUNNER_TEMP/experiment-craft" checkout --detach 013077b37e917d994d3346aa0c1a36c5dfe6fec2
       - name: Fresh-process replay, retained evidence and real foreground command campaigns
         run: |
           python tutorials/validated-numerics/test_workflow.py \
@@ -63,11 +71,20 @@ jobs:
             --runner "$RUNNER_TEMP/optimization-jobs/target/release/optimization-run" \
             --experiment-craft-source "$RUNNER_TEMP/experiment-craft" \
             --output "$RUNNER_TEMP/cap-evidence"
+      - name: Frozen search comparisons, fresh proof replay and lifecycle regressions
+        run: |
+          python tutorials/validated-numerics/test_search.py \
+            --binary tutorials/validated-numerics/search/target/release/cap-search \
+            --julia "$(command -v julia)" --depot "$JULIA_DEPOT_PATH" \
+            --runner "$RUNNER_TEMP/optimization-jobs/target/release/optimization-run" \
+            --experiment-craft-source "$RUNNER_TEMP/experiment-craft" \
+            --output "$RUNNER_TEMP/cap-search-evidence"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: cap-reference-evidence
           path: |
+            ${{ runner.temp }}/cap-search-evidence
             ${{ runner.temp }}/cap-evidence
             ${{ runner.temp }}/julia-tests.log
           if-no-files-found: ignore

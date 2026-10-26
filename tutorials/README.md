@@ -1,9 +1,9 @@
 # Optimizing native Rust applications with fcmaes-rust
 
-The [validated-numerics reference verifier](validated-numerics/) is a
-separate Julia environment for scalar/PDE certificates and independent replay.
-It prepares proof-parameter optimization; it is not one of the Cargo application
-tutorials counted in the inventory below.
+The [validated-numerics pilot](validated-numerics/) combines a pinned Julia
+verifier with [bounded Rust–Julia proof-parameter search](validated-numerics/SEARCH.md).
+Its Rust search workspace is nested under the pilot; it is separate from the
+Cargo application tutorials counted in the inventory below.
 
 ## 1. Introduction
 

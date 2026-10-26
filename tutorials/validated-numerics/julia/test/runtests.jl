@@ -156,3 +156,5 @@ end
         end
     end
 end
+
+include("searchtests.jl")

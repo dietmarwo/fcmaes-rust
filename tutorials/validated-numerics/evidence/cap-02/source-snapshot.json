@@ -1,0 +1,14 @@
+[
+  {
+    "repository": "fcmaes-rust",
+    "commit": "46a6a48e6e3980f6c4319a2c3b18f2bce2876099"
+  },
+  {
+    "repository": "optimization-jobs",
+    "commit": "051435c325a51cc89be4ae26645d6937eed6f5e5"
+  },
+  {
+    "repository": "experiment-craft",
+    "commit": "013077b37e917d994d3346aa0c1a36c5dfe6fec2"
+  }
+]

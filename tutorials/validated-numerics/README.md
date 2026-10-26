@@ -3,9 +3,9 @@
 This pilot reproduces two RadiiPolynomial.jl reference validations: the real
 root of `u^3 - 2 = 0`, and a nonconstant Neumann steady state of the
 Cahn–Hilliard equation. It separates numerical approximation, rigorous
-verification and a fresh replay. It prepares a study of whether fcmaes can
-tune proof parameters; **it contains no optimizer and no Rust–Julia search
-bridge yet**.
+verification and a fresh replay. The [CAP-02 search stage](SEARCH.md) adds a
+bounded Rust–Julia bridge and frozen comparisons for proof-parameter tuning.
+This page describes the independent reference verifier.
 
 The implementation is a standalone Julia environment. It adds no dependency
 to `fcmaes-core`, changes no shared job API and needs no access to a cluster.
@@ -194,11 +194,11 @@ proof from a different platform or changed implementation. Portable semantic
 replay is later work. Hashes detect changed inputs; they are not signatures or
 proof-assistant certificates. The trusted components are documented separately.
 
-A next step can add a bounded, persistent Rust–Julia search bridge,
-deterministic search scores and grid/random/local/CMA-ES/BiteOpt baselines. The
-candidate and verification separation remains. Generic verification result
-contracts, scientific comparisons, parameter-region coverage and multi-node
-experiments come after that.
+[CAP-02](SEARCH.md) supplies a persistent Rust–Julia search bridge,
+deterministic estimated scores and grid/random/local/CMA-ES/BiteOpt baselines.
+The candidate and verification separation remains. Later work covers generic
+verification result contracts, certification-time comparisons, parameter-region
+coverage and multi-node experiments.
 
 The reference formulas and pseudo-inverse operator are adapted from
 [RadiiPolynomial's scalar example](https://github.com/OlivierHnt/RadiiPolynomial.jl/blob/704009d7aa2e621c0900c9c158e853cb84c0c253/docs/src/getting_started/first_validation.md)

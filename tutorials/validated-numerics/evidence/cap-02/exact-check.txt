@@ -1,0 +1,26 @@
+scalar cube root
+Y                            recorded [0, 9.3252890586879242e-17] exact ≈ 2.5899333753005066e-17
+Z1 over the ball             recorded [0, 6.6613381477509392e-16] exact ≈ 4.1062744848711032e-16
+P(R)                         recorded [-1.8650578117375848e-16, -9.3252890586879094e-17] exact ≈ -1.6060644742075334e-16
+R = 2 sup(Y)                 holds
+P(R) <= 0                    holds
+Z1 < 1                       holds
+A != 0                       holds
+ball is positive             holds
+0 < R <= 1e-10               holds
+Cahn-Hilliard steady state
+Y                            recorded [4.8986745264406106e-16, 7.3433086633012064e-14] exact ≈ 7.081654802147058e-16
+Z1 finite part               recorded [0.015624999999494215, 0.01562500000155688] exact ≈ 0.015625000000019852
+Z1 tail                      recorded [0.017757501550377003, 0.01775750155037711] exact ≈ 0.017757501550377065
+Z1                           recorded [0.017757501550377003, 0.01775750155037711] exact ≈ 0.017757501550377065
+norm of A                    recorded [2.9870391591100316, 2.9870391591100383] exact ≈ 2.9870391591100347
+Z2                           recorded [835.71773184408448, 835.71773184408903] exact ≈ 835.71773184408676
+P(R)                         recorded [-7.2080111715480295e-13, -6.4785789797443454e-13] exact ≈ -7.2058281912723208e-13
+Z1 + Z2 R                    recorded [0.017757502164070328, 0.017757502164070439] exact ≈ 0.017757502164070391
+R = 10 sup(Y)                holds
+P(R) <= 0                    holds
+Z1 + Z2 R < 1                holds
+Z1 finite part < 1           holds
+first mode a1 - R/2 > 0      holds
+0 < R <= 1e-10               holds
+all recorded intervals enclose the exact values, and every condition holds exactly

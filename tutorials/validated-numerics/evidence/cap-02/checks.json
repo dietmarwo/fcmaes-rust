@@ -1,0 +1,115 @@
+[
+  {
+    "check": "scalar-cuberoot-search",
+    "returncode": 0,
+    "expected": 0,
+    "wall_seconds": 15.642130498999904
+  },
+  {
+    "check": "scalar-cuberoot-verify",
+    "returncode": 0,
+    "expected": 0,
+    "wall_seconds": 8.250178079000761
+  },
+  {
+    "check": "scalar-cuberoot-replay",
+    "returncode": 0,
+    "expected": 0,
+    "wall_seconds": 8.03157561700209
+  },
+  {
+    "check": "cahn-hilliard-search",
+    "returncode": 0,
+    "expected": 0,
+    "wall_seconds": 27.951203796998016
+  },
+  {
+    "check": "cahn-hilliard-verify",
+    "returncode": 0,
+    "expected": 0,
+    "wall_seconds": 17.133668868002133
+  },
+  {
+    "check": "cahn-hilliard-replay",
+    "returncode": 0,
+    "expected": 0,
+    "wall_seconds": 17.14322233799976
+  },
+  {
+    "check": "independent-exact-bounds",
+    "returncode": 0,
+    "expected": 0,
+    "wall_seconds": 0.4319311299987021
+  },
+  {
+    "check": "seeded-search-repeat",
+    "returncode": 0,
+    "expected": 0,
+    "wall_seconds": 15.167846806998568
+  },
+  {
+    "check": "unknown-protocol-field",
+    "returncode": 2,
+    "expected": 2,
+    "wall_seconds": 0.0024598599993623793
+  },
+  {
+    "check": "wall-timeout",
+    "returncode": 124,
+    "expected": 124,
+    "wall_seconds": 0.054711174001568
+  },
+  {
+    "check": "sigterm-cleanup",
+    "returncode": 130,
+    "expected": 130
+  },
+  {
+    "check": "scalar-cuberoot-node",
+    "returncode": 0,
+    "expected": 0,
+    "wall_seconds": 0.00599149700065027
+  },
+  {
+    "check": "scalar-cuberoot-compile",
+    "returncode": 0,
+    "expected": 0,
+    "wall_seconds": 0.0907682860015484
+  },
+  {
+    "check": "scalar-cuberoot-campaign",
+    "returncode": 0,
+    "expected": 0,
+    "wall_seconds": 36.221714295999845
+  },
+  {
+    "check": "scalar-cuberoot-continue",
+    "returncode": 0,
+    "expected": 0,
+    "wall_seconds": 0.10324027300157468
+  },
+  {
+    "check": "cahn-hilliard-node",
+    "returncode": 0,
+    "expected": 0,
+    "wall_seconds": 0.004173994999291608
+  },
+  {
+    "check": "cahn-hilliard-compile",
+    "returncode": 0,
+    "expected": 0,
+    "wall_seconds": 0.11280889399859007
+  },
+  {
+    "check": "cahn-hilliard-campaign",
+    "returncode": 0,
+    "expected": 0,
+    "wall_seconds": 64.85702174999824
+  },
+  {
+    "check": "cahn-hilliard-continue",
+    "returncode": 0,
+    "expected": 0,
+    "wall_seconds": 0.09856027199930395
+  }
+]

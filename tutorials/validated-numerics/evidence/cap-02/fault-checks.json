@@ -1,0 +1,22 @@
+[
+  {
+    "fault": "mismatch",
+    "outcome": "objective_mismatch",
+    "child_reaped": true
+  },
+  {
+    "fault": "nonfinite",
+    "outcome": "protocol_error",
+    "child_reaped": true
+  },
+  {
+    "fault": "missing",
+    "outcome": "protocol_error",
+    "child_reaped": true
+  },
+  {
+    "fault": "nonempty-output",
+    "outcome": "refused",
+    "existing_artifact_unchanged": true
+  }
+]

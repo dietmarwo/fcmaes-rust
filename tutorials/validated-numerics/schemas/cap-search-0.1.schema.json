@@ -1,0 +1,755 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:fcmaes-rust:cap-search:0.1",
+  "title": "CAP-02 estimated search contracts; no proof claims",
+  "oneOf": [
+    {
+      "$ref": "#/$defs/protocol"
+    },
+    {
+      "$ref": "#/$defs/study"
+    },
+    {
+      "$ref": "#/$defs/event"
+    },
+    {
+      "$ref": "#/$defs/bundle"
+    }
+  ],
+  "$defs": {
+    "protocol": {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "const": "cap.search.protocol/0.1"
+        },
+        "evaluation_budget": {
+          "type": "integer",
+          "minimum": 9,
+          "maximum": 256
+        },
+        "arms": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9_-]{1,64}$"
+              },
+              "method": {
+                "enum": [
+                  "reference",
+                  "grid",
+                  "random",
+                  "local",
+                  "cmaes",
+                  "biteopt"
+                ]
+              },
+              "seed": {
+                "type": "integer",
+                "minimum": 0
+              }
+            },
+            "required": [
+              "id",
+              "method",
+              "seed"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 6,
+          "maxItems": 16
+        }
+      },
+      "required": [
+        "schema_version",
+        "evaluation_budget",
+        "arms"
+      ],
+      "additionalProperties": false
+    },
+    "ready": {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "const": "cap.search.response/0.1"
+        },
+        "request_id": {
+          "const": 0
+        },
+        "status": {
+          "const": "ready"
+        },
+        "dimension": {
+          "enum": [
+            1,
+            2
+          ]
+        },
+        "problem_id": {
+          "enum": [
+            "scalar-cuberoot",
+            "cahn-hilliard"
+          ]
+        },
+        "problem_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "reference": {
+          "type": "object",
+          "properties": {
+            "score": {
+              "type": "number"
+            },
+            "estimated_Y": {
+              "type": "number"
+            },
+            "estimated_Z1": {
+              "type": "number"
+            },
+            "estimated_Z2": {
+              "type": "number"
+            },
+            "estimated_polynomial_normalized": {
+              "type": "number"
+            },
+            "estimated_contraction_minus_one": {
+              "type": "number"
+            },
+            "physical_epsilon": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "score",
+            "estimated_Y",
+            "estimated_Z1",
+            "estimated_Z2",
+            "estimated_polynomial_normalized",
+            "estimated_contraction_minus_one",
+            "physical_epsilon"
+          ],
+          "additionalProperties": false
+        },
+        "environment": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "julia": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256
+            },
+            "radii_polynomial": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256
+            },
+            "interval_arithmetic": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256
+            },
+            "radii_commit": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{40}$"
+            },
+            "interval_commit": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{40}$"
+            },
+            "project_sha256": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            "manifest_sha256": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            "verifier_sha256": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            "cli_sha256": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            "julia_threads": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1024
+            },
+            "blas_threads": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1024
+            },
+            "arithmetic": {
+              "const": "Float64 set_based correct-rounding fast-power slow-matmul loop-convolution"
+            }
+          },
+          "required": [
+            "julia",
+            "radii_polynomial",
+            "interval_arithmetic",
+            "radii_commit",
+            "interval_commit",
+            "project_sha256",
+            "manifest_sha256",
+            "verifier_sha256",
+            "cli_sha256",
+            "julia_threads",
+            "blas_threads",
+            "arithmetic"
+          ]
+        },
+        "server_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "search_module_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "construction_seconds": {
+          "type": "number",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "schema_version",
+        "request_id",
+        "status",
+        "dimension",
+        "problem_id",
+        "problem_sha256",
+        "reference",
+        "environment",
+        "server_sha256",
+        "search_module_sha256",
+        "construction_seconds"
+      ],
+      "additionalProperties": false
+    },
+    "study": {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "const": "cap.search.study/0.1"
+        },
+        "outcome": {
+          "enum": [
+            "completed",
+            "timed_out",
+            "cancelled",
+            "protocol_error",
+            "objective_mismatch",
+            "server_failed",
+            "io_error",
+            "optimizer_error",
+            "invalid_protocol"
+          ]
+        },
+        "certification_performed": {
+          "const": false
+        },
+        "problem_id": {
+          "enum": [
+            "scalar-cuberoot",
+            "cahn-hilliard"
+          ]
+        },
+        "problem_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "protocol_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "search_binary_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "evaluation_log_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "protocol": {
+          "$ref": "#/$defs/protocol"
+        },
+        "fcmaes_core_version": {
+          "type": "string"
+        },
+        "parameterization": {
+          "const": "finite-inverse-row-scales/1"
+        },
+        "parameter_bounds": {
+          "const": [
+            0.5,
+            1.5
+          ]
+        },
+        "nominal_parameters": {
+          "type": "array",
+          "items": {
+            "type": "number",
+            "minimum": 0.5,
+            "maximum": 1.5
+          },
+          "minItems": 1,
+          "maxItems": 2
+        },
+        "method_settings": {
+          "type": "object"
+        },
+        "estimated_score_definition": {
+          "type": "string"
+        },
+        "scheduling": {
+          "type": "string"
+        },
+        "arms": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "method": {
+                "enum": [
+                  "reference",
+                  "grid",
+                  "random",
+                  "local",
+                  "cmaes",
+                  "biteopt"
+                ]
+              },
+              "seed": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "best": {
+                "type": "object",
+                "properties": {
+                  "parameters": {
+                    "type": "array",
+                    "items": {
+                      "type": "number",
+                      "minimum": 0.5,
+                      "maximum": 1.5
+                    },
+                    "minItems": 1,
+                    "maxItems": 2
+                  },
+                  "score": {
+                    "type": "number"
+                  },
+                  "evaluations": {
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                },
+                "required": [
+                  "parameters",
+                  "score",
+                  "evaluations"
+                ],
+                "additionalProperties": false
+              },
+              "recheck_evaluations": {
+                "const": 1
+              },
+              "rechecked_score": {
+                "type": "number"
+              },
+              "candidate_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "warm_wall_seconds": {
+                "type": "number",
+                "minimum": 0
+              }
+            },
+            "required": [
+              "id",
+              "method",
+              "seed",
+              "best",
+              "recheck_evaluations",
+              "rechecked_score",
+              "candidate_sha256",
+              "warm_wall_seconds"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "selection": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "arm": {
+                  "type": "string"
+                },
+                "parameters": {
+                  "type": "array",
+                  "items": {
+                    "type": "number",
+                    "minimum": 0.5,
+                    "maximum": 1.5
+                  },
+                  "minItems": 1,
+                  "maxItems": 2
+                },
+                "estimated_score": {
+                  "type": "number"
+                },
+                "candidate_sha256": {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{64}$"
+                }
+              },
+              "required": [
+                "arm",
+                "parameters",
+                "estimated_score",
+                "candidate_sha256"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "server_pid": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "server": {
+          "$ref": "#/$defs/ready"
+        },
+        "startup_wall_seconds": {
+          "type": "number",
+          "minimum": 0
+        },
+        "counts": {
+          "type": "object",
+          "properties": {
+            "warmup_evaluations": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "search_attempted": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "search_completed": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "rechecks_attempted": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "rechecks_completed": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "total_attempted_including_warmup": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "startup_accounting_complete": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "warmup_evaluations",
+            "search_attempted",
+            "search_completed",
+            "rechecks_attempted",
+            "rechecks_completed",
+            "total_attempted_including_warmup",
+            "startup_accounting_complete"
+          ],
+          "additionalProperties": false
+        },
+        "total_wall_seconds": {
+          "type": "number",
+          "minimum": 0
+        },
+        "error": {
+          "type": "object",
+          "properties": {
+            "code": {
+              "type": "string"
+            },
+            "message": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "code",
+            "message"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "schema_version",
+        "outcome",
+        "certification_performed",
+        "problem_id",
+        "problem_sha256",
+        "protocol_sha256",
+        "search_binary_sha256",
+        "evaluation_log_sha256",
+        "protocol",
+        "fcmaes_core_version",
+        "parameterization",
+        "parameter_bounds",
+        "nominal_parameters",
+        "method_settings",
+        "estimated_score_definition",
+        "scheduling",
+        "arms",
+        "selection",
+        "counts",
+        "total_wall_seconds"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "outcome": {
+                "const": "completed"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "server_pid",
+              "server",
+              "startup_wall_seconds"
+            ],
+            "properties": {
+              "selection": {
+                "type": "object",
+                "properties": {
+                  "arm": {
+                    "type": "string"
+                  },
+                  "parameters": {
+                    "type": "array",
+                    "items": {
+                      "type": "number",
+                      "minimum": 0.5,
+                      "maximum": 1.5
+                    },
+                    "minItems": 1,
+                    "maxItems": 2
+                  },
+                  "estimated_score": {
+                    "type": "number"
+                  },
+                  "candidate_sha256": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{64}$"
+                  }
+                },
+                "required": [
+                  "arm",
+                  "parameters",
+                  "estimated_score",
+                  "candidate_sha256"
+                ],
+                "additionalProperties": false
+              },
+              "arms": {
+                "minItems": 6
+              }
+            }
+          }
+        }
+      ]
+    },
+    "event": {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "const": "cap.search.event/0.1"
+        },
+        "event": {
+          "enum": [
+            "server_started",
+            "server_ready",
+            "evaluation_started",
+            "evaluation_finished",
+            "study_finished"
+          ]
+        },
+        "pid": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "warmup_evaluations": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "arm": {
+          "type": "string"
+        },
+        "phase": {
+          "enum": [
+            "search",
+            "recheck"
+          ]
+        },
+        "parameters": {
+          "type": "array",
+          "items": {
+            "type": "number",
+            "minimum": 0.5,
+            "maximum": 1.5
+          },
+          "minItems": 1,
+          "maxItems": 2
+        },
+        "estimate": {
+          "type": "object",
+          "properties": {
+            "score": {
+              "type": "number"
+            },
+            "estimated_Y": {
+              "type": "number"
+            },
+            "estimated_Z1": {
+              "type": "number"
+            },
+            "estimated_Z2": {
+              "type": "number"
+            },
+            "estimated_polynomial_normalized": {
+              "type": "number"
+            },
+            "estimated_contraction_minus_one": {
+              "type": "number"
+            },
+            "physical_epsilon": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "score",
+            "estimated_Y",
+            "estimated_Z1",
+            "estimated_Z2",
+            "estimated_polynomial_normalized",
+            "estimated_contraction_minus_one",
+            "physical_epsilon"
+          ],
+          "additionalProperties": false
+        },
+        "wall_seconds": {
+          "type": "number",
+          "minimum": 0
+        },
+        "outcome": {
+          "type": "string"
+        },
+        "counts": {
+          "type": "object",
+          "properties": {
+            "warmup_evaluations": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "search_attempted": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "search_completed": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "rechecks_attempted": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "rechecks_completed": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "total_attempted_including_warmup": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "startup_accounting_complete": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "warmup_evaluations",
+            "search_attempted",
+            "search_completed",
+            "rechecks_attempted",
+            "rechecks_completed",
+            "total_attempted_including_warmup",
+            "startup_accounting_complete"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "schema_version",
+        "event"
+      ],
+      "additionalProperties": false
+    },
+    "bundle": {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "const": "cap.search.candidates/0.1"
+        },
+        "arms": {
+          "type": "object",
+          "minProperties": 6,
+          "maxProperties": 16,
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "candidate_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "candidate_json": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "candidate_sha256",
+              "candidate_json"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "schema_version",
+        "arms"
+      ],
+      "additionalProperties": false
+    }
+  }
+}
