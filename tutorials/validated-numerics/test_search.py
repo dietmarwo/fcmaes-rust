@@ -50,6 +50,10 @@ def check_study(folder, spec, protocol, search_schema, artifact_schema, binary=N
     assert record["protocol_sha256"] == digest(protocol)
     if binary is not None:
         assert record["search_binary_sha256"] == digest(binary)
+    # Produced by the Julia search sources and verifier in this directory.
+    assert record["server"]["server_sha256"] == digest(ROOT / "julia/bin/search_server.jl")
+    assert record["server"]["search_module_sha256"] == digest(ROOT / "julia/src/CAPSearch.jl")
+    assert record["server"]["environment"]["verifier_sha256"] == digest(ROOT / "julia/src/CAPReference.jl")
     expected_search = sum(1 if arm["method"] == "reference" else spec["evaluation_budget"] for arm in spec["arms"])
     assert record["counts"]["search_attempted"] == record["counts"]["search_completed"] == expected_search
     assert record["counts"]["rechecks_attempted"] == record["counts"]["rechecks_completed"] == len(spec["arms"])
