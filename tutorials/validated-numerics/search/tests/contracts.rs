@@ -66,6 +66,31 @@ fn seeded_methods_reproduce_the_whole_trajectory() {
 }
 
 #[test]
+fn no_arm_spends_its_second_evaluation_on_the_nominal_start_again() {
+    // BiteOpt starts from the nominal point: its first proposal is told the
+    // score already known instead of being evaluated a second time.
+    for dim in [1, 2] {
+        for method in [
+            Method::Random,
+            Method::Local,
+            Method::Cmaes,
+            Method::Biteopt,
+        ] {
+            for seed in [17, 29] {
+                let mut points = Vec::new();
+                algorithms::run(method, dim, 25, seed, |x| {
+                    points.push(x.to_vec());
+                    Ok(x.iter().map(|x| (x - 0.8).powi(2)).sum())
+                })
+                .unwrap();
+                assert_eq!(points.len(), 25);
+                assert_ne!(points[1], vec![1.0; dim], "{method:?} in {dim} dimensions");
+            }
+        }
+    }
+}
+
+#[test]
 fn grid_is_complete_and_has_no_duplicated_nominal_point() {
     let mut points = Vec::new();
     let best = algorithms::run(Method::Grid, 2, 25, 0, |x| {

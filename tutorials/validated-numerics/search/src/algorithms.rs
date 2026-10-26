@@ -144,19 +144,31 @@ pub fn run(
             }
         }
         Method::Biteopt => {
+            // BiteOpt's internal count includes the nominal start told below.
             let params = BiteParams {
-                max_evaluations: (budget - 1) as u64,
+                max_evaluations: budget as u64,
                 popsize: 8,
                 seed,
                 ..Default::default()
             };
             let mut opt = BiteOpt::new(&vec![0.5; dim], &vec![1.5; dim], Some(&nominal), &params);
-            for _ in 1..budget {
+            let mut spent = 1;
+            let mut first = true;
+            while spent < budget {
                 let points = opt.ask(1);
                 let point = points.first().ok_or_else(|| {
                     Failure::new("optimizer_error", "BiteOpt stopped before budget")
                 })?;
-                let value = call(point)?;
+                // Its first proposal is the starting point, the nominal point
+                // already evaluated: tell it that score instead of spending
+                // an evaluation on the same point again.
+                let value = if first && *point == nominal {
+                    initial_score
+                } else {
+                    spent += 1;
+                    call(point)?
+                };
+                first = false;
                 opt.tell(&[value]);
             }
         }

@@ -57,7 +57,10 @@ warms the Julia model is counted too. For the default protocol this gives
 The Newton construction cost is a separate shared startup cost, recorded once.
 
 CMA-ES uses population four and sigma 0.2; BiteOpt uses population eight and
-serial ask/tell batches. CMA-ES never evaluates beyond the hard cap; a final
+serial ask/tell batches. BiteOpt starts from the nominal point, so its first
+proposal is that point: it is told the known score instead of spending a second
+evaluation on it. A later proposal that repeats a point, for example one CMA-ES
+clips to a bound, is evaluated and counted like any other. CMA-ES never evaluates beyond the hard cap; a final
 partial population is recorded without padding it with invented values.
 The CMA-ES arm uses fixed-work ask/tell: tolerance flags do not truncate its
 externally declared evaluation count. This is part of the calibration policy.

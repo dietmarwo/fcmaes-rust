@@ -270,7 +270,7 @@ fn study(args: &Args, cancelled: Arc<AtomicBool>) -> Result<()> {
         "search_binary_sha256":digest(&fs::read(std::env::current_exe().map_err(Failure::io)?).map_err(Failure::io)?),
         "fcmaes_core_version":fcmaes_core::CORE_VERSION,"parameterization":"finite-inverse-row-scales/1",
         "parameter_bounds":[0.5,1.5],"nominal_parameters":vec![1.0;dim],
-        "method_settings":{"cmaes":{"population":4,"sigma":0.2},"biteopt":{"population":8,"batch":1},
+        "method_settings":{"cmaes":{"population":4,"sigma":0.2},"biteopt":{"population":8,"batch":1,"start":"nominal point, told its known score"},
             "local":{"initial_step":0.25,"rule":"coordinate pattern; halve after a non-improving cycle"},
             "grid":{"levels_per_axis":levels,"complete_cartesian":true}},
         "estimated_score_definition":"max(P(epsilon)/epsilon,Z1+Z2*epsilon-1); floating estimates only",
