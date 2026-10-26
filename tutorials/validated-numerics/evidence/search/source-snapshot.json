@@ -1,7 +1,8 @@
 [
   {
     "repository": "fcmaes-rust",
-    "commit": "46a6a48e6e3980f6c4319a2c3b18f2bce2876099"
+    "commit": "180aaf8dc403898a620173a95afc810f0568820f",
+    "workflow_run": "https://github.com/dietmarwo/fcmaes-rust/actions/runs/40394278516"
   },
   {
     "repository": "optimization-jobs",
