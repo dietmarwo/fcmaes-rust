@@ -5,6 +5,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import re
 import signal
 import shutil
 import subprocess
@@ -29,6 +30,16 @@ def assert_gone(pid):
     except ProcessLookupError:
         return
     raise AssertionError(f"child {pid} still exists")
+
+
+def check_outcome_codes(schema):
+    """Every failure code the search can raise must be a study outcome the schema accepts."""
+    codes = {"io_error"}  # Failure::io
+    for source in sorted((ROOT / "search/src").glob("*.rs")):
+        codes.update(re.findall(r'Failure::new\(\s*"([a-z_]+)"', source.read_text()))
+    accepted = set(schema["$defs"]["study"]["properties"]["outcome"]["enum"])
+    assert codes <= accepted, f"study outcomes missing from the schema: {sorted(codes - accepted)}"
+    return codes
 
 
 def check_study(folder, spec, protocol, search_schema, artifact_schema, binary=None):
@@ -180,6 +191,7 @@ def main():
                        OPENBLAS_NUM_THREADS="1", OMP_NUM_THREADS="1", MKL_NUM_THREADS="1")
     schema = json.loads((ROOT / "schemas/cap-search-0.1.schema.json").read_text())
     jsonschema.Draft202012Validator.check_schema(schema)
+    check_outcome_codes(schema)
     search_schema = jsonschema.Draft202012Validator(schema)
     artifact_schema = jsonschema.Draft202012Validator(json.loads((ROOT / "schemas/cap-artifacts-0.1.schema.json").read_text()))
     protocol = ROOT / "search-protocol.json"

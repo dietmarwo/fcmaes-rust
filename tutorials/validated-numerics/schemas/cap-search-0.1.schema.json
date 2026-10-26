@@ -250,7 +250,8 @@
             "server_failed",
             "io_error",
             "optimizer_error",
-            "invalid_protocol"
+            "invalid_protocol",
+            "invalid_input"
           ]
         },
         "certification_performed": {
