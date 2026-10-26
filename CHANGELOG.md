@@ -8,10 +8,10 @@ phase, with breaking changes called out explicitly.
 
 ### Added
 
-- A [validated-numerics reference pilot](tutorials/validated-numerics/) with a
+- A [validated-numerics reference verifier](tutorials/validated-numerics/) with a
   pinned Julia environment, scalar and Cahn–Hilliard certificates, independent
-  replay, corruption regressions and existing command-job campaigns. This is
-  CAP-01 preparation for proof-parameter search; no optimizer/core or SDK changes.
+  replay, corruption regressions and existing command-job campaigns. It prepares
+  proof-parameter search; no optimizer, core or SDK code changes.
 
 - A [fluid dynamics prompt workshop](tutorials/cfd-room-ventilation/agentic/README.md) over the existing room-ventilation CLI, with fixed-budget MODE/MAP-Elites runs, held-out and grid/setup checks, artifact auditing and a CI pilot. No numerical code or dependency pin changes.
 

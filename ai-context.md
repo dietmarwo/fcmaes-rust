@@ -48,7 +48,7 @@ server. In this file:
 | Threads and cores | [Parallelism rules](#parallelism-rules) |
 | CFD experiment through prompts | [Room-ventilation workshop](tutorials/cfd-room-ventilation/agentic/README.md): direct native CLI, fixed budgets, held-out replay and grid/setup sensitivity; no registered CFD job profile |
 | Checking a solution | [Validation checklist](#validation-and-reporting-checklist), [failure diagnosis](#failure-diagnosis) |
-| Validated numerics / CAP reference | [CAP-01](tutorials/validated-numerics/README.md): pinned Julia scalar and full-tail PDE verification, independent replay and three command jobs; no optimizer bridge yet |
+| Validated numerics / computer-assisted proofs | [Reference verifier and replay](tutorials/validated-numerics/README.md): pinned Julia scalar and full-tail PDE verification, independent replay and three command jobs; no optimizer bridge yet |
 
 ## Experimental surrogate chooser rule
 

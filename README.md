@@ -376,9 +376,6 @@ python examples/python/test_cma.py
 
 ## Documentation
 
-- [Validated-numerics reference pilot](tutorials/validated-numerics/): pinned
-  Julia scalar/PDE verification, independent replay and command-job campaigns.
-
 - [Rendered user guide and tutorial book](https://dietmarwo.github.io/fcmaes-rust/)
 - [Generated `fcmaes-core` API reference](https://docs.rs/fcmaes-core)
 - [AI problem-solving context](ai-context.md), with its task index
@@ -418,6 +415,9 @@ python examples/python/test_cma.py
 - [Water-network pump-scheduling tutorial](tutorials/water-network-scheduling/README.md)
 - [Truss topology and catalogue-section sizing tutorial](tutorials/truss-sizing/README.md)
 - [Weighted network-coverage tutorial](tutorials/network-coverage/README.md)
+- [Validated-numerics reference verifier](tutorials/validated-numerics/): a
+  separate Julia environment with scalar and PDE certificates, independent
+  replay and command-job campaigns; not one of the Cargo tutorials
 - [Optional PyO3 bindings](docs/python-bindings.md)
 - [Release history](CHANGELOG.md)
 - [Publishing checklist](RELEASING.md)

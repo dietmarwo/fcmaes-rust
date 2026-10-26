@@ -49,7 +49,7 @@ def generate(destination, julia, depot, problem, wall_seconds=600):
 
     candidate = binding("candidate", "candidate", "candidate.json")
     verification = binding("verify", "verification", "verification.json")
-    campaign = {"schema_version": "experiment.campaign/0.1", "name": "CAP-01 " + problem,
+    campaign = {"schema_version": "experiment.campaign/0.1", "name": "Validated numerics: " + problem,
                 "allow_commands": True,
                 "budget": {"max_jobs": 3, "max_wall_seconds": 3 * wall_seconds + 300,
                            "max_reserved_slot_seconds": 3 * (wall_seconds + 5)},
