@@ -44,7 +44,11 @@ The [audit protocol](audit-protocol.json) fixes arm order, acceptance, timing
 and separate 120-second verification/replay limits. A changed budget is a new
 hashed protocol input, not a silent adjustment to a recorded study. Each arm
 starts two fresh Julia processes, including when its candidate matches
-another arm's. No certificate cache substitutes for that work.
+another arm's. No certificate cache substitutes for that work: each process
+records its own elapsed time, so a stage document that repeats another
+stage's bytes, or a replay whose recomputed certificate repeats the one it
+replays, is recorded as invalid output, and `accept` refuses such records as
+well as verification and replay sharing a process ID.
 
 | Output | Meaning |
 | --- | --- |

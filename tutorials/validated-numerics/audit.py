@@ -194,6 +194,8 @@ def check_replay(value, verification, certificate_sha, context, candidate_sha):
             and value["problem_sha256"] == context["inputs"]["problem"], "replay artifact identity mismatch")
     fresh = value["recomputed"]
     check_verification(fresh, context, candidate_sha)
+    # A fresh process records its own elapsed time; an exact copy was not recomputed.
+    require(encoded(fresh) != encoded(verification), "replay repeats the certificate instead of recomputing it")
     expected = {"problem_identity": verification["problem_sha256"] == fresh["problem_sha256"] and verification["problem_id"] == fresh["problem_id"],
                 "candidate_identity": verification["candidate_sha256"] == fresh["candidate_sha256"],
                 "environment_identity": verification["environment"] == fresh["environment"],
@@ -318,7 +320,12 @@ def validate_audit(record, context, protocol, protocol_sha, events):
     require([r["id"] for r in record["arms"]] == [a["id"] for a in context["study"]["arms"]], "audit arm set/order mismatch")
     ledger = [parse(line) for line in events.splitlines()]
     expected_events = []
+    documents = [row[stage]["document"]["sha256"] for row in record["arms"]
+                 for stage in ("verification", "replay") if row[stage]["document"] is not None]
+    require(len(set(documents)) == len(documents), "a stage document repeats another stage's document")
     for row in record["arms"]:
+        require(None in (row["verification"]["pid"], row["replay"]["pid"])
+                or row["verification"]["pid"] != row["replay"]["pid"], "verification and replay share a process")
         item = context["bundle"]["arms"][row["id"]]
         require(row["candidate_sha256"] == item["candidate_sha256"], "audit candidate identity mismatch")
         for stage, limit_key in (("verification", "verification_wall_seconds"), ("replay", "replay_wall_seconds")):
@@ -375,6 +382,7 @@ def run(args):
             "replay": not_run(protocol["replay_wall_seconds"], "not reached")})
     cancelled = [False]
     handlers = {}
+    documents = set()
 
     def cancel(signum, frame):
         cancelled[0] = True
@@ -421,6 +429,13 @@ def run(args):
                             argv.append(work / "verification.json")
                             validate = lambda v: check_replay(v, unblob(certificate), certificate["sha256"], context, row["candidate_sha256"])
                         result = run_stage([*argv, target], stage_dir, target, protocol[limit_key], lambda: cancelled[0], validate, event)
+                        if result["document"] is not None and result["document"]["sha256"] in documents:
+                            # Each stage is a separate process; a byte-identical
+                            # document is a cached or copied result, not new work.
+                            result.update(status="invalid_output", document=None,
+                                          error="document repeats an earlier stage's document")
+                        elif result["document"] is not None:
+                            documents.add(result["document"]["sha256"])
                         row[current_stage] = result
                         event("stage_finished", status=result["status"])
                         snapshot()

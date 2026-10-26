@@ -24,18 +24,32 @@ def fixture_args(folder=None):
         search_protocol=root / "search-protocol.json", project=root / "julia", protocol=root / "audit-protocol.json")
 
 
-def fixture_record(context, protocol, protocol_sha):
-    """Repeat the scalar fixture's identical candidate; no fake proof engine is used."""
+def fixture_documents(index):
+    """The retained scalar certificate and replay, as separate processes would
+    write them: each with its own elapsed time, the replay bound to its
+    certificate. They are not new scientific executions."""
     folder = audit.ROOT / "evidence/search/scalar-cuberoot"
-    documents = {s: audit.blob((folder / f"{s}.json").read_bytes()) for s in ("verification", "replay")}
+    verification = audit.parse((folder / "verification.json").read_bytes())
+    verification["elapsed_seconds"] = 1.0 + index / 64
+    certificate = audit.encoded(verification)
+    replay = audit.parse((folder / "replay.json").read_bytes())
+    replay.update(certificate_sha256=audit.sha(certificate), elapsed_seconds=3.0 + index / 64,
+                  recomputed={**verification, "elapsed_seconds": 2.0 + index / 64})
+    return {"verification": audit.blob(certificate), "replay": audit.blob(audit.encoded(replay))}
+
+
+def fixture_record(context, protocol, protocol_sha):
+    """All arms share the scalar fixture's identical candidate."""
     rows, events = [], []
-    for arm in context["study"]["arms"]:
+    for index, arm in enumerate(context["study"]["arms"]):
+        documents = fixture_documents(index)
         row = {"id": arm["id"], "candidate_sha256": arm["candidate_sha256"]}
         for i, stage in enumerate(("verification", "replay")):
-            row[stage] = {"status": "completed", "pid": 100 + i, "returncode": 0, "wall_seconds": 2.0,
-                "wall_limit_seconds": protocol[stage + "_wall_seconds"], "document": copy.deepcopy(documents[stage]),
+            pid = 100 + 2 * index + i
+            row[stage] = {"status": "completed", "pid": pid, "returncode": 0, "wall_seconds": 2.0,
+                "wall_limit_seconds": protocol[stage + "_wall_seconds"], "document": documents[stage],
                 "error": None, "stdout": "", "stderr": ""}
-            events += [{"event": "stage_started", "arm": arm["id"], "stage": stage, "pid": 100 + i},
+            events += [{"event": "stage_started", "arm": arm["id"], "stage": stage, "pid": pid},
                        {"event": "stage_finished", "arm": arm["id"], "stage": stage, "status": "completed"}]
         rows.append(row)
     ledger = b"".join(audit.encoded(e) for e in events)
@@ -105,6 +119,29 @@ class Contract(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "contradicts"):
             self.validate(record)
 
+    def test_copied_certificates_are_not_accepted(self):
+        # Separate processes write distinct documents; a copy is no new work.
+        record = copy.deepcopy(self.record)
+        for stage in ("verification", "replay"):
+            record["arms"][1][stage]["document"] = copy.deepcopy(record["arms"][0][stage]["document"])
+        with self.assertRaisesRegex(ValueError, "repeats another stage"):
+            self.validate(record)
+        record = copy.deepcopy(self.record)
+        row = record["arms"][0]
+        replay = audit.unblob(row["replay"]["document"])
+        replay["recomputed"] = audit.unblob(row["verification"]["document"])
+        row["replay"]["document"] = audit.blob(audit.encoded(replay))
+        with self.assertRaisesRegex(ValueError, "instead of recomputing"):
+            self.validate(record)
+        record = copy.deepcopy(self.record)
+        record["arms"][0]["replay"]["pid"] = record["arms"][0]["verification"]["pid"]
+        events = [audit.parse(line) for line in self.ledger.splitlines()]
+        events[2]["pid"] = events[0]["pid"]
+        ledger = b"".join(audit.encoded(e) for e in events)
+        record["events_sha256"] = audit.sha(ledger)
+        with self.assertRaisesRegex(ValueError, "share a process"):
+            self.validate(record, ledger)
+
     def test_budget_exit_and_ledger_mismatches(self):
         for key, value in (("returncode", 3), ("wall_limit_seconds", 1), ("wall_seconds", 1000)):
             record = copy.deepcopy(self.record)
@@ -144,7 +181,7 @@ class Contract(unittest.TestCase):
         verification.update(outcome="inconclusive", reasons=["physical_accuracy"])
         row["verification"]["document"] = audit.blob(audit.encoded(verification))
         replay = audit.unblob(row["replay"]["document"])
-        replay["recomputed"] = copy.deepcopy(verification)
+        replay["recomputed"] = {**verification, "elapsed_seconds": verification["elapsed_seconds"] + 1}
         replay["checks"].update(original_verified=False, fresh_verified=False)
         replay.update(outcome="rejected", certificate_sha256=row["verification"]["document"]["sha256"])
         row["replay"]["document"] = audit.blob(audit.encoded(replay))
@@ -317,6 +354,19 @@ class Runs(unittest.TestCase):
         code, args = self.run_audit()
         self.assertEqual(code, 0)
         self.assertEqual(self.accept(args), 0)
+
+    def test_a_cached_proof_engine_is_recorded_as_invalid_output(self):
+        # A CLI that returns the same bytes for every arm did no new work.
+        self.julia.write_text("#!" + sys.executable + "\n" + FAKE_JULIA.replace("unique = lambda: time.time_ns() % 10**12 / 1e9 + os.getpid() / 1e3", "unique = lambda: 1.5"))
+        code, args = self.run_audit()
+        self.assertEqual(code, 0)
+        record = audit.parse((args.output / "audit.json").read_bytes())
+        statuses = [(row["verification"]["status"], row["replay"]["status"]) for row in record["arms"]]
+        # The first certificate is new; its replay merely repeats it, and every
+        # later arm's certificate repeats the first.
+        self.assertEqual(statuses[0], ("completed", "invalid_output"))
+        self.assertTrue(all(s[0] == "invalid_output" for s in statuses[1:]), statuses)
+        self.assertEqual(self.accept(args), 3)
 
     def test_a_signal_after_completion_does_not_contradict_the_record(self):
         # A SIGTERM arriving after the last stage, while the finished record is
