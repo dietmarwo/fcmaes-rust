@@ -8,7 +8,7 @@
   {
     "problem": "cahn-hilliard",
     "outcome": "verified",
-    "existence_radius": 7.343308663301207e-13,
+    "existence_radius": 7.34330866335485e-13,
     "proof_scope": "full_neumann_steady_state"
   },
   {

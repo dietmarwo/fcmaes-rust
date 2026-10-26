@@ -172,7 +172,10 @@ campaigns plus continuation without duplicate attempts.
 The CI workflow (`.github/workflows/cap-reference.yml` at the repository root)
 runs these checks with pinned commits on every change to this directory.
 [Retained evidence](evidence/README.md) records the run that produced the
-committed certificates.
+committed certificates. A change to the verifier, its command line, project or
+manifest changes the recorded digests, so the retained certificates no longer
+replay: run `test_workflow.py` once with `--skip-retained` and replace them
+with the new outputs.
 
 ## Replay boundaries and next steps
 

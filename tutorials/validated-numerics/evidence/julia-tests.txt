@@ -1,7 +1,11 @@
+Test Summary:                                | Pass  Total  Time
+Arithmetic configuration and provenance gate |    5      5  0.4s
+Test Summary:                        | Pass  Total   Time
+Library behavior the proof relies on |    4      4  13.1s
 Test Summary:                     | Pass  Total  Time
 Lossless data and exact constants |   16     16  0.0s
 Test Summary:                       | Pass  Total  Time
-Theorem gate, not a success Boolean |   12     12  0.4s
+Theorem gate, not a success Boolean |   13     13  0.4s
 Test Summary:                                  | Pass  Total   Time
-Reference verification, replay and refutations |   40     40  35.9s
-CAPReference tests passed: 68 assertions, 0 failures, 0 errors.
+Reference verification, replay and refutations |   43     43  16.5s
+Testing CAPReference tests passed
