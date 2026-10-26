@@ -121,7 +121,39 @@ jobs:
             --julia "$(command -v julia)" --depot "$JULIA_DEPOT_PATH" \
             --runner "$RUNNER_TEMP/optimization-jobs/target/release/optimization-run" \
             --experiment-craft-source "$RUNNER_TEMP/experiment-craft" \
-            --output "$RUNNER_TEMP/cap-audit-evidence"
+            --output "$RUNNER_TEMP/cap-audit-evidence" --skip-retained
+      - name: Export the regenerated audit evidence as annotations (temporary, 1 of 3)
+        if: always()
+        shell: bash
+        run: |
+          cd "$RUNNER_TEMP"
+          files=""
+          for p in scalar-cuberoot cahn-hilliard; do
+            files="$files cap-search-evidence/$p/study.json cap-search-evidence/$p/candidates.json cap-search-evidence/$p/evaluations.jsonl cap-search-evidence/$p/candidate.json"
+            files="$files cap-audit-evidence/$p/audit.json cap-audit-evidence/$p/events.jsonl cap-audit-evidence/$p/report.md cap-audit-evidence/$p-acceptance.json cap-audit-evidence/$p-exact/exact-check.txt"
+          done
+          files="$files cap-audit-evidence/checks.json cap-audit-evidence/summary.json cap-audit-evidence/negative-checks.json cap-audit-evidence/scientific-summary.json"
+          files="$files audit-contract-tests.log julia-tests.log rust-tests.log"
+          tar cJf audit-evidence.txz --ignore-failed-read $files
+          echo "::notice title=evidence-sha256::$(sha256sum audit-evidence.txz | cut -c1-64)"
+          base64 -w0 audit-evidence.txz | fold -w 4000 > chunks.txt
+          echo >> chunks.txt  # fold leaves the last line without a newline, which read would skip
+          total=$(grep -c . chunks.txt)
+          echo "$total" > total.txt
+          test "$total" -le 29
+          n=0; grep . chunks.txt | while read -r chunk; do n=$((n+1)); if [ "$n" -le 9 ]; then echo "::notice title=evidence-$n-of-$total::$chunk"; fi; done
+      - name: Export the regenerated audit evidence as annotations (temporary, 2 of 3)
+        if: always()
+        shell: bash
+        run: |
+          cd "$RUNNER_TEMP"; total=$(cat total.txt)
+          n=0; grep . chunks.txt | while read -r chunk; do n=$((n+1)); if [ "$n" -ge 10 ] && [ "$n" -le 19 ]; then echo "::notice title=evidence-$n-of-$total::$chunk"; fi; done
+      - name: Export the regenerated audit evidence as annotations (temporary, 3 of 3)
+        if: always()
+        shell: bash
+        run: |
+          cd "$RUNNER_TEMP"; total=$(cat total.txt)
+          n=0; grep . chunks.txt | while read -r chunk; do n=$((n+1)); if [ "$n" -ge 20 ]; then echo "::notice title=evidence-$n-of-$total::$chunk"; fi; done
       - uses: actions/upload-artifact@v4
         if: always()
         with:
