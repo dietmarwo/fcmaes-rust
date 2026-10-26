@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""CAP-02 real search/replay, reproducibility, fault and optional runtime checks."""
+"""Real search, verification and replay; reproducibility, fault and optional runtime checks."""
 import argparse
 import hashlib
 import json

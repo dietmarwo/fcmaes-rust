@@ -1,7 +1,7 @@
-# CAP-02 bounded search validation
+# Bounded search validation evidence
 
-Date: 26 October 2026. Base fcmaes-rust commit:
-`46a6a48e6e3980f6c4319a2c3b18f2bce2876099` (merged CAP-01 with review fixes).
+Produced on 26 October 2026 on a Linux x86-64 machine by the search code as
+first committed (`bd469c5`, on top of `46a6a48e6e3980f6c4319a2c3b18f2bce2876099`).
 
 Nine arms were run against each frozen problem: reference, complete grid,
 local pattern search, and random/CMA-ES/BiteOpt at seeds 17 and 29. Each study
@@ -31,7 +31,6 @@ search/verification pipeline works, not a held-out performance result.
 - [Independent exact-rational bound audit](exact-check.txt): selected scalar
   and PDE intervals enclosed the recomputed rational bounds and met every
   checked theorem condition.
-- [Implementation log](IMPLEMENTATION_LOG.md).
 
 The [scalar study](scalar-cuberoot/study.json) and
 [PDE study](cahn-hilliard/study.json) each retain `evaluations.jsonl`, the
@@ -74,9 +73,9 @@ times are observations, not controlled comparative timing measurements.
 Actual aggregate CPU use and peak memory were not measured.
 
 The backend was foreground execution on one node. Systemd, disconnect/reboot,
-remote placement and multi-node throughput were not tested. The expanded CI
-workflow is included for execution after applying the patch; it was not run
-on GitHub before delivery. Only selected candidates were independently
+remote placement and multi-node throughput were not tested. These files were
+not produced by the CI workflow; it reruns the same checks on every change to
+this directory. Only selected candidates were independently
 certified; a future scientific comparison must certify every arm's candidate,
 retain failures and measure time to an accepted certificate on harder held-out
 cases.

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Freeze a CAP-02 search -> rigorous verification -> replay command campaign."""
+"""Freeze a search -> rigorous verification -> replay command campaign; never launch work."""
 import argparse
 import hashlib
 import json
@@ -41,7 +41,7 @@ def generate(destination, julia, depot, binary, problem, protocol=None, wall_sec
         for item in step["job"]["inputs"]:
             if item.get("from", {}).get("step") == "candidate":
                 item["from"]["step"] = "search"
-    plan["name"] = "Validated numerics CAP-02 " + problem
+    plan["name"] = "Validated numerics search " + problem
     path.write_text(json.dumps(plan, indent=2) + "\n")
     return path
 

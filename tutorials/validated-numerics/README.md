@@ -3,8 +3,8 @@
 This pilot reproduces two RadiiPolynomial.jl reference validations: the real
 root of `u^3 - 2 = 0`, and a nonconstant Neumann steady state of the
 Cahn–Hilliard equation. It separates numerical approximation, rigorous
-verification and a fresh replay. The [CAP-02 search stage](SEARCH.md) adds a
-bounded Rust–Julia bridge and frozen comparisons for proof-parameter tuning.
+verification and a fresh replay. The [bounded search](SEARCH.md) adds a
+Rust–Julia bridge and frozen comparisons for proof-parameter tuning.
 This page describes the independent reference verifier.
 
 The implementation is a standalone Julia environment. It adds no dependency
@@ -194,7 +194,7 @@ proof from a different platform or changed implementation. Portable semantic
 replay is later work. Hashes detect changed inputs; they are not signatures or
 proof-assistant certificates. The trusted components are documented separately.
 
-[CAP-02](SEARCH.md) supplies a persistent Rust–Julia search bridge,
+[The bounded search](SEARCH.md) supplies a persistent Rust–Julia bridge,
 deterministic estimated scores and grid/random/local/CMA-ES/BiteOpt baselines.
 The candidate and verification separation remains. Later work covers generic
 verification result contracts, certification-time comparisons, parameter-region

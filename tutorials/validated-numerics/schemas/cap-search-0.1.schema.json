@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "urn:fcmaes-rust:cap-search:0.1",
-  "title": "CAP-02 estimated search contracts; no proof claims",
+  "title": "Bounded proof-parameter search contracts: estimated scores, no proof claims",
   "oneOf": [
     {
       "$ref": "#/$defs/protocol"

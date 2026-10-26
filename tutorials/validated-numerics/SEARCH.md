@@ -1,6 +1,6 @@
-# CAP-02: bounded proof-parameter search
+# Bounded proof-parameter search
 
-CAP-02 connects fcmaes-core to a persistent Julia evaluator. It compares a
+This application connects fcmaes-core to a persistent Julia evaluator. It compares a
 frozen set of search methods, exports the selected numerical candidate and
 runs the existing rigorous verifier and replay in separate processes. The
 two exact equations, accuracy target and verifier remain those of the
@@ -133,7 +133,7 @@ attempts. The runtime owns the node slot and the process group; the bridge
 owns its single Julia child inside the search attempt. Calling campaign
 `continue` observes existing attempts and does not rerun search or replay.
 
-The real runtime/client validation uses optimization-jobs commit
+The workflow tests the generated campaigns with optimization-jobs commit
 `051435c325a51cc89be4ae26645d6937eed6f5e5` and experiment-craft
 `013077b37e917d994d3346aa0c1a36c5dfe6fec2`.
 
@@ -171,14 +171,15 @@ python3 test_search.py --binary search/target/release/cap-search \
 ```
 
 Add `--runner /absolute/optimization-run --experiment-craft-source /absolute/experiment-craft`
-to test both generated campaigns against the real foreground backend. The
-dedicated CI workflow runs both CAP-01 and CAP-02 checks. Tests cover exact
+to test both generated campaigns against the real foreground backend. The CI
+workflow (`.github/workflows/cap-reference.yml`) runs the reference and search
+checks on every change to this directory. Tests cover exact
 work caps, grid completeness, seeded trajectory reproduction, immutable Julia
 model data, honest score rechecks, oversized/truncated responses, child failure,
 wall timeout, SIGTERM cleanup, candidate digests, independent proof replay and
 exact rational recomputation of the selected bounds.
 
-[CAP-02 evidence](evidence/cap-02/README.md) records measured outcomes and scope.
+[Search evidence](evidence/search/README.md) records measured outcomes and scope.
 The previous reference evidence is preserved. The next scientific increment
 needs harder frozen/held-out cases, more repetitions and per-arm independent
 certification/time-to-certificate analysis. Native proof-aware comparisons,
