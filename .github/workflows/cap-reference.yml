@@ -44,11 +44,32 @@ jobs:
         with:
           components: rustfmt, clippy
       - uses: dtolnay/rust-toolchain@1.88.0
-      - name: Check and build the bounded Rust search application
+      - name: Format check of the search application (stable)
+        shell: bash
         run: |
-          cargo +stable fmt --manifest-path tutorials/validated-numerics/search/Cargo.toml -- --check
+          if ! cargo +stable fmt --manifest-path tutorials/validated-numerics/search/Cargo.toml -- --check > "$RUNNER_TEMP/rustfmt.log" 2>&1; then
+            cat "$RUNNER_TEMP/rustfmt.log"
+            text=$(head -c 3000 "$RUNNER_TEMP/rustfmt.log" | sed 's/%/%25/g' | sed ':a;N;$!ba;s/\n/%0A/g')
+            echo "::error title=rustfmt::$text"
+            exit 1
+          fi
+      - name: Lint the search application (stable Clippy)
+        env:
+          CARGO_TERM_COLOR: never  # plain output, so the matcher can parse it
+        run: |
+          echo "::add-matcher::.github/rust-problem-matcher.json"
           cargo +stable clippy --locked --manifest-path tutorials/validated-numerics/search/Cargo.toml --all-targets -- -D warnings
-          cargo test --release --locked --manifest-path tutorials/validated-numerics/search/Cargo.toml
+      - name: Test and build the search application (Rust 1.88)
+        env:
+          CARGO_TERM_COLOR: never
+        shell: bash
+        run: |
+          echo "::add-matcher::.github/rust-problem-matcher.json"
+          if ! cargo test --release --locked --manifest-path tutorials/validated-numerics/search/Cargo.toml 2>&1 | tee "$RUNNER_TEMP/rust-tests.log"; then
+            text=$(grep -v '^\s*Compiling ' "$RUNNER_TEMP/rust-tests.log" | tail -c 3000 | sed 's/%/%25/g' | sed ':a;N;$!ba;s/\n/%0A/g')
+            echo "::error title=cargo test::$text"
+            exit 1
+          fi
           cargo build --release --locked --manifest-path tutorials/validated-numerics/search/Cargo.toml
       - name: Recheck the retained certificates in exact rational arithmetic
         run: |
@@ -92,4 +113,5 @@ jobs:
             ${{ runner.temp }}/cap-search-evidence
             ${{ runner.temp }}/cap-evidence
             ${{ runner.temp }}/julia-tests.log
+            ${{ runner.temp }}/rust-tests.log
           if-no-files-found: ignore
