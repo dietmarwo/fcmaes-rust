@@ -190,6 +190,40 @@ fn the_frame_limit_counts_json_bytes_like_the_server() {
 }
 
 #[test]
+fn a_server_ended_by_a_group_signal_reports_the_cancellation() {
+    // A Ctrl-C reaches the server too; it may exit before this process's
+    // handler has recorded the cancellation.
+    let token = Arc::new(AtomicBool::new(false));
+    let mut command = Command::new("python3");
+    command.args([
+        "-u",
+        "-c",
+        &format!("{READY}sys.stdin.readline()\nimport os\nos._exit(1)\n"),
+    ]);
+    let mut b = Bridge::spawn(
+        command,
+        Instant::now() + Duration::from_secs(5),
+        token.clone(),
+    )
+    .unwrap();
+    let pid = b.pid();
+    b.ready().unwrap();
+    let signal = std::thread::spawn(move || {
+        std::thread::sleep(Duration::from_millis(40));
+        token.store(true, std::sync::atomic::Ordering::Release);
+    });
+    assert_eq!(
+        b.request("evaluate", Some(&[1.0]), "estimated")
+            .unwrap_err()
+            .code,
+        "cancelled"
+    );
+    signal.join().unwrap();
+    drop(b);
+    reaped(pid);
+}
+
+#[test]
 fn wrong_reply_identity_is_rejected() {
     let code = format!(
         "{READY}r=json.loads(sys.stdin.readline())\nprint(json.dumps(dict(schema_version='cap.search.response/0.1',request_id=99,status='estimated')),flush=True)\n"

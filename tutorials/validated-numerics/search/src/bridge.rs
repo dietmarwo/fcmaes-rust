@@ -16,6 +16,9 @@ use std::{
 /// the Julia server applies the same limit to the frames it emits.
 pub const FRAME_LIMIT: usize = 1 << 20;
 
+/// How long a failed server may take to be explained by a pending cancellation.
+const CANCEL_GRACE: Duration = Duration::from_millis(200);
+
 #[derive(Debug, Clone)]
 pub struct Failure {
     pub code: &'static str,
@@ -126,6 +129,26 @@ impl Bridge {
         }
     }
 
+    /// Report a server failure as the cancellation or timeout that caused it.
+    ///
+    /// A signal sent to the whole process group (a terminal Ctrl-C, or a
+    /// runtime stopping the attempt) also ends the server, and its closed pipe
+    /// can arrive before this process's own handler has recorded the
+    /// cancellation. Such a failure is a cancellation, not a protocol error.
+    fn attribute(&self, failure: Failure) -> Failure {
+        if let Err(termination) = self.checkpoint() {
+            return termination;
+        }
+        let until = Instant::now() + CANCEL_GRACE;
+        while Instant::now() < until {
+            thread::sleep(Duration::from_millis(5));
+            if self.cancelled.load(Ordering::Acquire) {
+                return Failure::new("cancelled", "search cancelled");
+            }
+        }
+        failure
+    }
+
     fn response(&self, id: u64, status: &str) -> Result<Value> {
         loop {
             self.checkpoint()?;
@@ -140,7 +163,7 @@ impl Bridge {
                 .recv_timeout(wait)
             {
                 Ok(value) => {
-                    let value = value?;
+                    let value = value.map_err(|failure| self.attribute(failure))?;
                     if value["schema_version"] != "cap.search.response/0.1"
                         || value["request_id"].as_u64() != Some(id)
                         || value["status"] != status
@@ -154,10 +177,10 @@ impl Bridge {
                 }
                 Err(RecvTimeoutError::Timeout) => {}
                 Err(RecvTimeoutError::Disconnected) => {
-                    return Err(Failure::new(
+                    return Err(self.attribute(Failure::new(
                         "protocol_error",
                         "server response channel closed",
-                    ));
+                    )));
                 }
             }
         }
@@ -184,8 +207,9 @@ impl Bridge {
         }
         bytes.push(b'\n');
         let input = self.input.as_mut().expect("open bridge stdin");
-        input.write_all(&bytes).map_err(Failure::io)?;
-        input.flush().map_err(Failure::io)?;
+        if let Err(error) = input.write_all(&bytes).and_then(|()| input.flush()) {
+            return Err(self.attribute(Failure::io(error)));
+        }
         self.response(self.sequence, status)
     }
 
@@ -197,7 +221,7 @@ impl Bridge {
                 return if status.success() {
                     Ok(())
                 } else {
-                    Err(Failure::new("server_failed", status))
+                    Err(self.attribute(Failure::new("server_failed", status)))
                 };
             }
             thread::sleep(Duration::from_millis(5));

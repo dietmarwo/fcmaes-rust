@@ -240,31 +240,41 @@ def main():
     assert_gone(timed_out["server_pid"])
     assert not (timeout / "candidate.json").exists()
 
-    interrupted = args.output / "cancelled"
-    process = subprocess.Popen(list(map(str, command("scalar-cuberoot", interrupted))),
-                               stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, env=environment)
-    try:
-        end = time.monotonic() + 10
-        while time.monotonic() < end:
-            if (interrupted / "evaluations.jsonl").is_file() and (interrupted / "evaluations.jsonl").stat().st_size:
-                break
-            time.sleep(0.01)
-        else:
-            raise AssertionError("server did not start before cancellation test")
-        process.send_signal(signal.SIGTERM)
-        stdout, stderr = process.communicate(timeout=10)
-        assert process.returncode == 130, (process.returncode, stderr)
-    finally:
-        if process.poll() is None:
-            process.kill()
-            process.communicate()
-    cancelled = json.loads((interrupted / "study.json").read_text())
-    search_schema.validate(cancelled)
-    assert cancelled["outcome"] == "cancelled"
-    assert_gone(cancelled["server_pid"])
-    observations.append({"check": "sigterm-cleanup", "returncode": process.returncode, "expected": 130})
-    (args.output / "checks.json").write_text(json.dumps(observations, indent=2) + "\n")
-    print("sigterm-cleanup: passed", flush=True)
+    def interrupt(label, folder, marker, send, group):
+        """Signal a running real study once `marker` is in its ledger; it must end as cancelled."""
+        process = subprocess.Popen(list(map(str, command("scalar-cuberoot", folder))), stdout=subprocess.PIPE,
+                                   stderr=subprocess.PIPE, text=True, env=environment, start_new_session=group)
+        try:
+            ledger = folder / "evaluations.jsonl"
+            end = time.monotonic() + 60
+            while time.monotonic() < end:
+                if ledger.is_file() and marker in ledger.read_text():
+                    break
+                time.sleep(0.01)
+            else:
+                raise AssertionError(f"{label}: {marker} not reached before the signal")
+            send(process)
+            stdout, stderr = process.communicate(timeout=30)
+            assert process.returncode == 130, (label, process.returncode, stderr[-2000:])
+        finally:
+            if process.poll() is None:
+                os.killpg(process.pid, signal.SIGKILL) if group else process.kill()
+                process.communicate()
+        cancelled = json.loads((folder / "study.json").read_text())
+        search_schema.validate(cancelled)
+        assert cancelled["outcome"] == "cancelled", (label, cancelled.get("error"))
+        assert_gone(cancelled["server_pid"])
+        observations.append({"check": label, "returncode": process.returncode, "expected": 130})
+        (args.output / "checks.json").write_text(json.dumps(observations, indent=2) + "\n")
+        print(label + ": passed", flush=True)
+
+    # SIGTERM to the search process alone, while Julia starts.
+    interrupt("sigterm-cleanup", args.output / "cancelled", "server_started",
+              lambda process: process.send_signal(signal.SIGTERM), group=False)
+    # A terminal Ctrl-C reaches Julia too, which then exits on its own; that is
+    # still a cancellation, not a server failure.
+    interrupt("group-interrupt", args.output / "group-interrupt", "evaluation_started",
+              lambda process: os.killpg(process.pid, signal.SIGINT), group=True)
     fault_checks(args.binary, args.depot, args.output / "fault-injection")
 
     if args.runner:
