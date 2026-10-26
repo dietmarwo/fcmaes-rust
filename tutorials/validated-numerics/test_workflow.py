@@ -14,9 +14,17 @@ import struct
 import subprocess
 import sys
 import time
+import traceback
 
 import jsonschema
 from make_campaign import ROOT, generate
+
+
+def annotate(title, message):
+    """Surface a failure as a GitHub Actions error annotation, readable without the log."""
+    if os.environ.get("GITHUB_ACTIONS") == "true":
+        text = message[-4000:].replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+        print(f"::error title={title}::{text}", flush=True)
 
 
 def main():
@@ -48,7 +56,16 @@ def main():
                          "expected": expected, "wall_seconds": time.monotonic() - started})
         (args.output / "commands.json").write_text(json.dumps(commands, indent=2) + "\n")
         if result.returncode != expected:
-            raise AssertionError(f"{label}: expected {expected}, got {result.returncode}: {result.stderr[-3000:]}")
+            detail = result.stderr[-3000:]
+            written = Path(str(argv[-1]))
+            if written.suffix == ".json" and written.is_file():
+                # A rejected replay says which of its checks failed.
+                try:
+                    detail += "\nchecks: " + json.dumps(json.loads(written.read_text()).get("checks"))
+                except (ValueError, AttributeError):
+                    pass
+            annotate(label, f"expected exit {expected}, got {result.returncode}: {detail}")
+            raise AssertionError(f"{label}: expected {expected}, got {result.returncode}: {detail}")
         print(label + ": passed", flush=True)
         return result.stdout
 
@@ -131,4 +148,8 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except Exception:
+        annotate("test_workflow.py", traceback.format_exc())
+        raise
