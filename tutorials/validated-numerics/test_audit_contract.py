@@ -4,6 +4,7 @@ import copy
 import json
 import os
 from pathlib import Path
+import signal
 import subprocess
 import sys
 import tempfile
@@ -259,6 +260,79 @@ class Contract(unittest.TestCase):
                         data = (path.parent / item["file"]).read_bytes()
                         self.assertEqual(audit.sha(data), item["sha256"])
                         self.assertEqual(len(data), item["bytes"])
+
+
+# A stand-in for `julia ... cap.jl verify|replay` in collector tests: it writes
+# the retained scalar documents with this process's own elapsed time, so each
+# document is distinct, and binds each replay to the certificate it was given.
+FAKE_JULIA = """
+import hashlib, json, os, sys, time
+from pathlib import Path
+evidence = Path(os.environ["FAKE_EVIDENCE"])
+operation, output = sys.argv[5], Path(sys.argv[-1])
+for stream in (sys.stdout, sys.stderr):
+    stream.buffer.write(b"\\xff" * int(os.environ.get("FAKE_LOG_BYTES", "0")))
+    stream.flush()
+unique = lambda: time.time_ns() % 10**12 / 1e9 + os.getpid() / 1e3
+if operation == "verify":
+    value = json.loads((evidence / "verification.json").read_text())
+    value.update(candidate_sha256=hashlib.sha256(Path(sys.argv[7]).read_bytes()).hexdigest(), elapsed_seconds=unique())
+else:
+    certificate = Path(sys.argv[8]).read_bytes()
+    value = json.loads((evidence / "replay.json").read_text())
+    value.update(certificate_sha256=hashlib.sha256(certificate).hexdigest(), elapsed_seconds=unique(),
+                 recomputed=dict(json.loads(certificate), elapsed_seconds=unique()))
+output.write_text(json.dumps(value))
+"""
+
+
+class Runs(unittest.TestCase):
+    """The collector end to end, with a stand-in for the Julia CLI."""
+
+    def setUp(self):
+        self.directory = tempfile.TemporaryDirectory()
+        self.addCleanup(self.directory.cleanup)
+        self.folder = Path(self.directory.name)
+        self.julia = self.folder / "julia"
+        self.julia.write_text("#!" + sys.executable + "\n" + FAKE_JULIA)
+        self.julia.chmod(0o755)
+        self.environment = {"FAKE_EVIDENCE": str(audit.ROOT / "evidence/search/scalar-cuberoot")}
+
+    def run_audit(self, name="out", **environment):
+        args = SimpleNamespace(**vars(fixture_args()), julia=self.julia, output=self.folder / name)
+        saved = os.environ.copy()
+        os.environ.update(self.environment, **environment)
+        try:
+            return audit.run(args), args
+        finally:
+            os.environ.clear()
+            os.environ.update(saved)
+
+    def accept(self, args, name="acceptance.json"):
+        args = SimpleNamespace(**{**vars(args), "output": self.folder / name},
+                               audit=args.output / "audit.json", events=args.output / "events.jsonl")
+        return audit.accept(args)
+
+    def test_stand_in_collection_is_accepted(self):
+        code, args = self.run_audit()
+        self.assertEqual(code, 0)
+        self.assertEqual(self.accept(args), 0)
+
+    def test_a_signal_after_completion_does_not_contradict_the_record(self):
+        # A SIGTERM arriving after the last stage, while the finished record is
+        # being validated, must not turn a complete audit into exit 130.
+        original = audit.validate_audit
+        def late_signal(*arguments):
+            os.kill(os.getpid(), signal.SIGTERM)
+            return original(*arguments)
+        audit.validate_audit = late_signal
+        try:
+            code, args = self.run_audit()
+        finally:
+            audit.validate_audit = original
+        record = audit.parse((args.output / "audit.json").read_bytes())
+        self.assertTrue(record["complete"])
+        self.assertEqual(code, 0)
 
 
 class Processes(unittest.TestCase):

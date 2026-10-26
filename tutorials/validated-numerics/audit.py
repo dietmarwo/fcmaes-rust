@@ -431,7 +431,8 @@ def run(args):
             record["complete"] = not cancelled[0]
             snapshot()
         validate_audit(record, context, protocol, protocol_sha, read(output / "events.jsonl", MIB))
-        return 130 if cancelled[0] else 0
+        # The written record decides: a signal after completion changes nothing.
+        return 0 if record["complete"] else 130
     finally:
         for signum, handler in handlers.items():
             signal.signal(signum, handler)
