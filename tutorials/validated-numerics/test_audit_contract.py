@@ -368,6 +368,36 @@ class Runs(unittest.TestCase):
         self.assertTrue(all(s[0] == "invalid_output" for s in statuses[1:]), statuses)
         self.assertEqual(self.accept(args), 3)
 
+    def test_undecodable_logs_keep_the_audit_acceptable(self):
+        # 64 KiB of invalid UTF-8 per log became 6-byte \ufffd escapes: a 14 MB
+        # audit.json that accept and the campaign output limit refused.
+        code, args = self.run_audit(FAKE_LOG_BYTES=str(65536))
+        self.assertEqual(code, 0)
+        self.assertLessEqual((args.output / "audit.json").stat().st_size, audit.AUDIT_LIMIT)
+        self.assertEqual(self.accept(args), 0)
+
+    def test_the_audit_limit_holds_the_largest_possible_record(self):
+        # 16 arms, each stage with a maximal document of the worst-escaping
+        # characters and maximal undecodable logs.
+        text = "\U0001F600" * (audit.DOCUMENT_LIMIT // 4)
+        document = {"sha256": "0" * 64, "json": text}
+        log = (b"\x01" * audit.LOG_TAIL).decode("utf-8")
+        stage = {"status": "completed", "pid": 2 ** 22, "returncode": 0, "wall_seconds": 1e9, "wall_limit_seconds": 600,
+                 "document": document, "error": None, "stdout": log, "stderr": log}
+        arm = {"id": "a" * 64, "candidate_sha256": "0" * 64, "verification": stage, "replay": stage}
+        record = {**self.record_fields(), "arms": [arm] * audit.MAX_ARMS}
+        self.assertLessEqual(len(audit.encoded(record)), audit.AUDIT_LIMIT)
+        plan = generate(self.folder / "spec", sys.executable, self.folder, sys.executable, "scalar-cuberoot")
+        outputs = audit.parse(plan.read_bytes())["steps"][1]["job"]["outputs"]
+        self.assertEqual(next(o["max_bytes"] for o in outputs if o["name"] == "audit"), audit.AUDIT_LIMIT)
+
+    def record_fields(self):
+        context = audit.load_inputs(fixture_args())
+        protocol, protocol_sha = audit.load_protocol(fixture_args().protocol)
+        return {"schema_version": "cap.audit/0.1", "inputs": context["inputs"], "protocol": protocol,
+                "protocol_sha256": protocol_sha, "implementation": audit.implementation(), "complete": True,
+                "total_wall_seconds": 1e9, "events_sha256": "0" * 64}
+
     def test_a_signal_after_completion_does_not_contradict_the_record(self):
         # A SIGTERM arriving after the last stage, while the finished record is
         # being validated, must not turn a complete audit into exit 130.
@@ -432,7 +462,7 @@ class Processes(unittest.TestCase):
     def test_large_output_is_bounded(self):
         record, _ = self.stage("import time; print('a'*1100000,flush=True); time.sleep(30)")
         self.assertEqual(record["status"], "invalid_output")
-        self.assertEqual(len(record["stdout"]), 65536)
+        self.assertEqual(len(record["stdout"]), audit.LOG_TAIL)
 
     def test_fast_large_output_is_rejected_after_process_exit(self):
         record, _ = self.stage("print('a'*1100000,flush=True)")

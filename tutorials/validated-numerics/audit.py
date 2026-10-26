@@ -23,6 +23,13 @@ import jsonschema
 
 ROOT = Path(__file__).resolve().parent
 MIB = 1024 * 1024
+MAX_ARMS = 16  # the search protocol's limit
+DOCUMENT_LIMIT = 256 * 1024  # one stage document; real ones are a few KiB
+LOG_TAIL = 16 * 1024  # retained end of each stage's stdout and stderr
+# Embedded in audit.json, a document grows at most 3x (escaped quotes, \u
+# escapes of non-ASCII text) and a log byte at most 6x (U+FFFD or a control
+# character as a \u escape). Everything the collector can write fits.
+AUDIT_LIMIT = MAX_ARMS * 2 * (3 * DOCUMENT_LIMIT + 2 * 6 * LOG_TAIL + 4096) + 65536
 
 
 def require(ok, message):
@@ -75,7 +82,7 @@ def blob(data):
 
 def unblob(value):
     data = value["json"].encode("utf-8")
-    require(len(data) <= MIB and sha(data) == value["sha256"], "embedded document digest mismatch")
+    require(len(data) <= DOCUMENT_LIMIT and sha(data) == value["sha256"], "embedded document digest mismatch")
     return parse(data)
 
 
@@ -124,6 +131,7 @@ def load_inputs(args):
     for key, file in (("server_sha256", "bin/search_server.jl"), ("search_module_sha256", "src/CAPSearch.jl")):
         require(study["server"][key] == sha(read(project / file)), "current search source mismatch: " + file)
     ids = [a["id"] for a in protocol["arms"]]
+    require(len(ids) <= MAX_ARMS, "more search arms than an audit can record")
     require(len(set(ids)) == len(ids) and [a["id"] for a in study["arms"]] == ids
             and set(bundle["arms"]) == set(ids), "missing, duplicate or reordered arm")
     events = [parse(line) for line in raw["evaluations"].splitlines()]
@@ -211,6 +219,12 @@ def not_run(limit, reason):
             "wall_limit_seconds": limit, "document": None, "error": reason, "stdout": "", "stderr": ""}
 
 
+def oversized(output, directory):
+    """A runaway stage: a document or a log larger than the audit may hold."""
+    limits = ((output, DOCUMENT_LIMIT), (directory / "stdout.log", MIB), (directory / "stderr.log", MIB))
+    return any(path.exists() and path.stat().st_size > limit for path, limit in limits)
+
+
 def run_stage(argv, directory, output, limit, cancelled, validate, event):
     """One child, inherited runtime process group, bounded output; no pipe-reader threads."""
     result = not_run(limit, None)
@@ -234,7 +248,7 @@ def run_stage(argv, directory, output, limit, cancelled, validate, event):
                 if time.monotonic() - started >= limit:
                     result.update(status="timed_out", error="stage wall deadline exceeded")
                     break
-                if any(p.exists() and p.stat().st_size > MIB for p in (output, directory / "stdout.log", directory / "stderr.log")):
+                if oversized(output, directory):
                     result.update(status="invalid_output", error="stage output exceeds byte limit")
                     break
                 time.sleep(0.02)
@@ -248,15 +262,14 @@ def run_stage(argv, directory, output, limit, cancelled, validate, event):
                 result.update(status="cancelled", error="audit cancelled")
             elif result["status"] == "completed" and time.monotonic() - started > limit:
                 result.update(status="timed_out", error="stage wall deadline exceeded")
-            if result["status"] == "completed" and any(
-                    p.exists() and p.stat().st_size > MIB for p in (output, directory / "stdout.log", directory / "stderr.log")):
+            if result["status"] == "completed" and oversized(output, directory):
                 result.update(status="invalid_output", error="stage output exceeds byte limit")
             if result["status"] == "completed":
                 if child.returncode not in (0, 3):
                     result.update(status="process_failed", error="Julia command failed")
                 else:
                     try:
-                        data = read(output)
+                        data = read(output, DOCUMENT_LIMIT)
                         value = parse(data)
                         validate(value)
                         expected = 3 if value.get("outcome") == "rejected" else 0
@@ -274,8 +287,10 @@ def run_stage(argv, directory, output, limit, cancelled, validate, event):
             if result["status"] == "completed" and result["wall_seconds"] > limit:
                 result.update(status="timed_out", document=None, error="stage wall deadline exceeded during output validation")
     for name in ("stdout", "stderr"):
+        # The end of a log says why a process failed; its size is bounded.
         with (directory / (name + ".log")).open("rb") as stream:
-            result[name] = stream.read(65536).decode("utf-8", errors="replace")
+            stream.seek(max(0, (directory / (name + ".log")).stat().st_size - LOG_TAIL))
+            result[name] = stream.read(LOG_TAIL).decode("utf-8", errors="replace")
     return result
 
 
@@ -390,8 +405,10 @@ def run(args):
     def snapshot():
         record["total_wall_seconds"] = time.monotonic() - started
         record["events_sha256"] = sha(read(output / "events.jsonl", MIB))
+        data = encoded(record)
+        require(len(data) <= AUDIT_LIMIT, "audit record exceeds its byte limit")
         temporary = output / "audit.tmp"
-        temporary.write_bytes(encoded(record))
+        temporary.write_bytes(data)
         temporary.replace(output / "audit.json")
         (output / "report.md").write_bytes(markdown(record, context))
 
@@ -456,7 +473,7 @@ def run(args):
 def accept(args):
     context = load_inputs(args)
     protocol, protocol_sha = load_protocol(args.protocol)
-    data, events = read(args.audit, 8 * MIB), read(args.events, MIB)
+    data, events = read(args.audit, AUDIT_LIMIT), read(args.events, MIB)
     record = parse(data)
     validate_audit(record, context, protocol, protocol_sha, events)
     observations = [{"arm": row["id"], **observation(row, context["study"])} for row in record["arms"]]

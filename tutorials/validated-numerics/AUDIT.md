@@ -101,8 +101,10 @@ The collector owns at most one Julia child. Its child inherits the command
 runtime's process group and one-slot reservation. SIGINT, SIGTERM and SIGHUP
 stop collection, kill/reap that child and retain all unattempted arms. Logs go
 to regular temporary files, avoiding a wait for pipe-reader threads after a
-descendant inherits stdout. Retained stdout/stderr are capped at 64 KiB each;
-individual scientific documents are capped at 1 MiB. Temporary files are
+descendant inherits stdout. A stage may write at most a 256 KiB document and
+1 MiB of each log; the last 16 KiB of each log are retained. With those
+bounds, the largest record the collector can write for 16 arms fits the
+`audit.json` limit of about 30 MiB that `accept` and the campaign apply. Temporary files are
 removed after each arm. The runtime owns whole-process-group cleanup,
 admission, staging, collection and recovery. Standalone Julia startup helpers
 can outlive the direct child until they finish; the application does not own a

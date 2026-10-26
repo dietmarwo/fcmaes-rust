@@ -126,7 +126,7 @@
         },
         "json": {
           "type": "string",
-          "maxLength": 1048576,
+          "maxLength": 262144,
           "minLength": 1
         }
       },
@@ -190,11 +190,11 @@
         },
         "stdout": {
           "type": "string",
-          "maxLength": 65536
+          "maxLength": 16384
         },
         "stderr": {
           "type": "string",
-          "maxLength": 65536
+          "maxLength": 16384
         }
       },
       "required": [

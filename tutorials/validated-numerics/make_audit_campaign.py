@@ -8,7 +8,7 @@ from pathlib import Path
 import shutil
 import sys
 
-from audit import load_protocol, parse, read
+from audit import AUDIT_LIMIT, load_protocol, parse, read
 from make_campaign import ROOT
 from make_search_campaign import generate as search_campaign
 
@@ -62,7 +62,7 @@ def generate(destination, julia, depot, binary, problem, protocol=None, audit_pr
                 for key, file, maximum in outputs]}}
 
     collect = step("audit", "run", ["--julia", str(Path(julia).resolve()), "--output", "out"], [
-        ("audit", "audit.json", 8 * 1048576), ("events", "events.jsonl", 1048576),
+        ("audit", "audit.json", AUDIT_LIMIT), ("events", "events.jsonl", 1048576),
         ("report", "report.md", 65536)], audit_wall)
     acceptance = step("accept", "accept", ["--audit", "audit.json", "--events", "events.jsonl",
                                             "--output", "out/acceptance.json"],
