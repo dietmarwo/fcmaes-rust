@@ -6,6 +6,7 @@ import json
 import os
 from pathlib import Path
 import signal
+import struct
 import subprocess
 import sys
 import time
@@ -65,7 +66,7 @@ def main():
     env = os.environ.copy()
     env.update(JULIA_DEPOT_PATH=str(args.depot.resolve()), JULIA_NUM_THREADS="1", OPENBLAS_NUM_THREADS="1",
                OMP_NUM_THREADS="1", MKL_NUM_THREADS="1")
-    checks, summary = [], []
+    checks, summary, scientific, negative = [], [], [], []
 
     def run(label, argv, expected=0, environment=env):
         started = time.monotonic()
@@ -109,6 +110,12 @@ def main():
             recheck_exact(search, record, output / (problem + "-exact"))
             summary.append({"problem": problem, "accepted_arms": 9, "total_arms": 9,
                             "fresh_julia_processes": 18, "exact_rational_checks": 9})
+            radii = [struct.unpack(">d", bytes.fromhex(audit.unblob(row["verification"]["document"])["proof"]["existence_radius"]))[0]
+                     for row in record["arms"]]
+            scientific.append({"problem": problem, "accepted_arms": value["accepted_arms"], "total_arms": value["total_arms"],
+                               "fresh_julia_processes": 18, "existence_radius_min": min(radii),
+                               "existence_radius_max": max(radii), "exact_rational_checks": 9,
+                               "collection_wall_seconds": record["total_wall_seconds"]})
             if not args.skip_retained:
                 retained = ROOT / "evidence/audit" / problem
                 run(problem + "-retained-accept", [sys.executable, ROOT / "audit.py", "accept",
@@ -130,6 +137,7 @@ def main():
         value = audit.parse((output / "failed-acceptance.json").read_bytes())
         assert value["accepted_arms"] == 0 and value["total_arms"] == 9
         assert all(item["right_censored"] and not item["event"] for item in value["observations"])
+        negative.append({"case": "failed-audit", **{k: value[k] for k in ("outcome", "complete", "accepted_arms", "total_arms", "observations")}})
 
         # A real verifier must classify a numerically bad proposal as inconclusive;
         # its real fresh replay rejects it. Exit zero from verification is not acceptance.
@@ -150,6 +158,7 @@ def main():
         audit.check_verification(verification, context, audit.sha(candidate.read_bytes()))
         audit.check_replay(replayed, verification, audit.sha(certificate.read_bytes()), context, audit.sha(candidate.read_bytes()))
         assert verification["outcome"] == "inconclusive" and replayed["outcome"] == "rejected"
+        negative.append({"case": "real-inconclusive", "verification": verification["outcome"], "replay": replayed["outcome"]})
 
         # Cancellation of the collector alone, and of its whole process group,
         # must retain all arms and kill/reap its one active Julia child.
@@ -186,6 +195,10 @@ def main():
                 raise AssertionError("cancelled Julia child remains alive")
             run("cancelled-group-rejected" if group else "cancelled-rejected", [sys.executable, ROOT / "audit.py", "accept", *common,
                 "--audit", folder / "audit.json", "--events", folder / "events.jsonl", "--output", folder / "acceptance.json"], expected=3)
+            value = audit.parse((folder / "acceptance.json").read_bytes())
+            negative.append({"case": folder.name, **{k: value[k] for k in ("outcome", "complete", "accepted_arms", "total_arms", "observations")}})
+        (output / "negative-checks.json").write_bytes(audit.encoded(negative))
+        (output / "scientific-summary.json").write_bytes(audit.encoded(scientific))
 
     if args.runner:
         craft_env = env.copy()
