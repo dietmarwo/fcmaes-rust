@@ -196,6 +196,32 @@ class Contract(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "bundle digest"):
                 audit.load_inputs(args)
 
+    def test_malformed_evidence_is_exit_two_not_a_traceback(self):
+        # Deep nesting (RecursionError) and an integer too large for binary64
+        # (OverflowError) are malformed evidence, reported with exit 2.
+        with tempfile.TemporaryDirectory() as directory:
+            folder = Path(directory)
+            for name in ("study.json", "candidates.json", "evaluations.jsonl"):
+                (folder / name).write_bytes((self.args.study.parent / name).read_bytes())
+            args = fixture_args(folder)
+            nested = folder / "audit.json"
+            nested.write_text("[" * 200000 + "]" * 200000)
+            (folder / "events.jsonl").write_bytes(self.ledger)
+            common = ["--problem", args.problem, "--study", args.study, "--candidates", args.candidates,
+                      "--evaluations", args.evaluations, "--search-protocol", args.search_protocol,
+                      "--project", args.project, "--protocol", args.protocol,
+                      "--audit", nested, "--events", folder / "events.jsonl"]
+            command = [sys.executable, audit.ROOT / "audit.py", "accept", *common]
+            result = subprocess.run(list(map(str, command + ["--output", folder / "a.json"])), capture_output=True, text=True)
+            self.assertEqual((result.returncode, result.stdout), (2, ""), result.stderr[-500:])
+            self.assertIn("invalid_audit", result.stderr)
+            study = audit.parse(args.study.read_bytes())
+            study["arms"][0]["best"]["score"] = 10 ** 400
+            args.study.write_bytes(audit.encoded(study))
+            result = subprocess.run(list(map(str, command + ["--output", folder / "b.json"])), capture_output=True, text=True)
+            self.assertEqual(result.returncode, 2, result.stderr[-500:])
+            self.assertIn("invalid_audit", result.stderr)
+
     def test_nonfinite_duplicate_and_oversize_inputs(self):
         for text in ('{"a":1,"a":2}', '[NaN]', '[Infinity]', '[1e999]'):
             with self.subTest(text=text), self.assertRaises(ValueError):
@@ -296,6 +322,11 @@ class Processes(unittest.TestCase):
         self.assertEqual(record["status"], "timed_out")
         self.assertIsNone(record["document"])
         self.assertIn("during output validation", record["error"])
+
+    def test_deeply_nested_output_is_invalid_not_a_crash(self):
+        record, _ = self.stage("from pathlib import Path; Path(OUTPUT).write_text('['*200000+']'*200000)")
+        self.assertEqual(record["status"], "invalid_output")
+        self.assertIsNone(record["document"])
 
     def test_inherited_pipes_do_not_delay_cleanup(self):
         # Regular log files, not pipes: a descendant retaining stdout cannot

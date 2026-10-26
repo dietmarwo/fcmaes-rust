@@ -240,7 +240,8 @@ def run_stage(argv, directory, output, limit, cancelled, validate, event):
                 result["status"] = "completed"
             if child.poll() is None:
                 child.kill()
-            result["returncode"] = child.wait(timeout=1)
+            # No timeout: a killed child is always reaped before the next stage.
+            result["returncode"] = child.wait()
             if cancelled():
                 result.update(status="cancelled", error="audit cancelled")
             elif result["status"] == "completed" and time.monotonic() - started > limit:
@@ -259,14 +260,14 @@ def run_stage(argv, directory, output, limit, cancelled, validate, event):
                         expected = 3 if value.get("outcome") == "rejected" else 0
                         require(child.returncode == expected, "exit code contradicts document outcome")
                         result["document"] = blob(data)
-                    except (OSError, ValueError, KeyError, TypeError, jsonschema.ValidationError) as error:
-                        result.update(status="invalid_output", error=str(error)[:2000])
-        except OSError as error:
-            result.update(status="process_failed", error=str(error)[:2000])
+                    except Exception as error:  # any defect of the untrusted output, e.g. RecursionError
+                        result.update(status="invalid_output", document=None, error=(str(error) or type(error).__name__)[:2000])
+        except Exception as error:
+            result.update(status="process_failed", document=None, error=(str(error) or type(error).__name__)[:2000])
         finally:
             if child is not None and child.poll() is None:
                 child.kill()
-                child.wait(timeout=1)
+                child.wait()
             result["wall_seconds"] = time.monotonic() - started
             if result["status"] == "completed" and result["wall_seconds"] > limit:
                 result.update(status="timed_out", document=None, error="stage wall deadline exceeded during output validation")
@@ -473,8 +474,9 @@ def main():
     args = parser.parse_args()
     try:
         return run(args) if args.command == "run" else accept(args)
-    except (OSError, ValueError, KeyError, TypeError, IndexError, jsonschema.ValidationError) as error:
-        print(json.dumps({"error": {"code": "invalid_audit", "message": str(error)[:2000]}}), file=sys.stderr)
+    except Exception as error:  # every failure is exit 2, never a traceback with exit 1
+        message = str(error) or type(error).__name__
+        print(json.dumps({"error": {"code": "invalid_audit", "message": message[:2000]}}), file=sys.stderr)
         return 2
 
 
