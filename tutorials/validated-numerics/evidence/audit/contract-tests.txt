@@ -1,9 +1,12 @@
 test_budget_exit_and_ledger_mismatches (__main__.Contract.test_budget_exit_and_ledger_mismatches) ... ok
 test_changed_input_or_protocol_or_implementation (__main__.Contract.test_changed_input_or_protocol_or_implementation) ... ok
+test_copied_certificates_are_not_accepted (__main__.Contract.test_copied_certificates_are_not_accepted) ... ok
 test_document_digest_and_stale_certificate (__main__.Contract.test_document_digest_and_stale_certificate) ... ok
 test_fixture_links_and_all_arm_acceptance (__main__.Contract.test_fixture_links_and_all_arm_acceptance) ... ok
 test_forged_verified_flag_is_rejected (__main__.Contract.test_forged_verified_flag_is_rejected) ... ok
 test_generated_campaign_keeps_three_admitted_jobs_and_hashed_sources (__main__.Contract.test_generated_campaign_keeps_three_admitted_jobs_and_hashed_sources) ... ok
+test_inconsistent_failure_records_are_malformed_not_rejected (__main__.Contract.test_inconsistent_failure_records_are_malformed_not_rejected) ... ok
+test_malformed_evidence_is_exit_two_not_a_traceback (__main__.Contract.test_malformed_evidence_is_exit_two_not_a_traceback) ... ok
 test_missing_duplicate_reordered_or_foreign_arm (__main__.Contract.test_missing_duplicate_reordered_or_foreign_arm) ... ok
 test_nonfinite_duplicate_and_oversize_inputs (__main__.Contract.test_nonfinite_duplicate_and_oversize_inputs) ... ok
 test_output_directory_refuses_nonempty_and_symlink (__main__.Contract.test_output_directory_refuses_nonempty_and_symlink) ... ok
@@ -14,15 +17,26 @@ test_timeout_kept_in_denominator_and_censored (__main__.Contract.test_timeout_ke
 test_valid_inconclusive_and_rejected_replay_are_not_accepted (__main__.Contract.test_valid_inconclusive_and_rejected_replay_are_not_accepted) ... ok
 test_cancellation_kills_and_reaps_child (__main__.Processes.test_cancellation_kills_and_reaps_child) ... ok
 test_deadline_includes_output_validation (__main__.Processes.test_deadline_includes_output_validation) ... ok
+test_deeply_nested_output_is_invalid_not_a_crash (__main__.Processes.test_deeply_nested_output_is_invalid_not_a_crash) ... ok
 test_fast_large_output_is_rejected_after_process_exit (__main__.Processes.test_fast_large_output_is_rejected_after_process_exit) ... ok
 test_inherited_pipes_do_not_delay_cleanup (__main__.Processes.test_inherited_pipes_do_not_delay_cleanup) ... ok
 test_large_output_is_bounded (__main__.Processes.test_large_output_is_bounded) ... ok
 test_missing_output_after_exit_zero_is_invalid (__main__.Processes.test_missing_output_after_exit_zero_is_invalid) ... ok
 test_process_failure_is_not_a_proof (__main__.Processes.test_process_failure_is_not_a_proof) ... ok
 test_timeout_kills_and_reaps_child (__main__.Processes.test_timeout_kills_and_reaps_child) ... ok
+test_a_cached_proof_engine_is_recorded_as_invalid_output (__main__.Runs.test_a_cached_proof_engine_is_recorded_as_invalid_output) ... ok
+test_a_signal_after_completion_does_not_contradict_the_record (__main__.Runs.test_a_signal_after_completion_does_not_contradict_the_record) ... ok
+test_a_signal_while_inputs_are_checked_is_a_cancellation (__main__.Runs.test_a_signal_while_inputs_are_checked_is_a_cancellation) ... ok
+test_stand_in_collection_is_accepted (__main__.Runs.test_stand_in_collection_is_accepted) ... ok
+test_the_audit_limit_holds_the_largest_possible_record (__main__.Runs.test_the_audit_limit_holds_the_largest_possible_record) ... ok
+test_undecodable_logs_keep_the_audit_acceptable (__main__.Runs.test_undecodable_logs_keep_the_audit_acceptable) ... ok
 
 ----------------------------------------------------------------------
-Ran 22 tests in 3.421s
+Ran 32 tests in 11.337s
 
 OK
 {"outcome": "rejected", "accepted_arms": 9, "total_arms": 9}
+{"outcome": "rejected", "accepted_arms": 0, "total_arms": 9}
+{"outcome": "rejected", "accepted_arms": 0, "total_arms": 9}
+{"outcome": "accepted", "accepted_arms": 9, "total_arms": 9}
+{"outcome": "accepted", "accepted_arms": 9, "total_arms": 9}

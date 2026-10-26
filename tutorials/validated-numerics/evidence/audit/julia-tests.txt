@@ -1,93 +1,16 @@
-Precompiling packages...
-   1412.2 ms  ✓ CAPReference
-  1 dependency successfully precompiled in 2 seconds. 21 already precompiled.
-     Testing CAPReference
-      Status `/tmp/jl_1fsnGo/Project.toml`
-  [8d4c860b] CAPReference v0.1.0 `/workspace/scratch/e38cc5b491fa/cap-03/repos/fcmaes-rust/tutorials/validated-numerics/julia`
-  [d1acc4aa] IntervalArithmetic v1.0.12 `https://github.com/JuliaIntervals/IntervalArithmetic.jl#56701d7`
-  [0f8b85d8] JSON3 v1.14.3
-  [f2081a94] RadiiPolynomial v0.11.10 `https://github.com/OlivierHnt/RadiiPolynomial.jl#704009d`
-  [37e2e46d] LinearAlgebra
-  [ea8e919c] SHA v0.7.0
-  [fa267f1f] TOML v1.0.3
-  [8dfed614] Test
-      Status `/tmp/jl_1fsnGo/Manifest.toml`
-  [8d4c860b] CAPReference v0.1.0 `/workspace/scratch/e38cc5b491fa/cap-03/repos/fcmaes-rust/tutorials/validated-numerics/julia`
-  [96374032] CRlibm v1.0.2
-  [b7a15901] CoreMath v0.1.0
-  [d1acc4aa] IntervalArithmetic v1.0.12 `https://github.com/JuliaIntervals/IntervalArithmetic.jl#56701d7`
-  [692b3bcd] JLLWrappers v1.8.0
-  [0f8b85d8] JSON3 v1.14.3
-  [1914dd2f] MacroTools v0.5.16
-⌅ [69de0a69] Parsers v2.8.8
-⌅ [aea7be01] PrecompileTools v1.2.1
-  [21216c6a] Preferences v1.6.1
-  [f2081a94] RadiiPolynomial v0.11.10 `https://github.com/OlivierHnt/RadiiPolynomial.jl#704009d`
-  [189a3867] Reexport v1.2.2
-  [5eaf0fd0] RoundingEmulator v0.2.1
-  [90137ffa] StaticArrays v1.9.24
-  [1e83bf80] StaticArraysCore v1.4.4
-  [856f2bd8] StructTypes v1.11.1
-  [4e9b3aee] CRlibm_jll v1.0.1+0
-  [a38c48d9] CoreMath_jll v0.1.0+0
-⌅ [6cdc7f73] OpenBLASConsistentFPCSR_jll v0.3.29+0
-  [0dad84c5] ArgTools v1.1.1
-  [56f22d72] Artifacts
-  [2a0f44e3] Base64
-  [ade2ca70] Dates
-  [f43a241f] Downloads v1.6.0
-  [7b1f6079] FileWatching
-  [b77e0a4c] InteractiveUtils
-  [b27032c2] LibCURL v0.6.4
-  [76f85450] LibGit2
-  [8f399da3] Libdl
-  [37e2e46d] LinearAlgebra
-  [56ddb016] Logging
-  [d6f4376e] Markdown
-  [a63ad114] Mmap
-  [ca575930] NetworkOptions v1.2.0
-  [44cfe95a] Pkg v1.10.0
-  [de0858da] Printf
-  [3fa0cd96] REPL
-  [9a3f8284] Random
-  [ea8e919c] SHA v0.7.0
-  [9e88b42a] Serialization
-  [6462fe0b] Sockets
-  [fa267f1f] TOML v1.0.3
-  [a4e569a6] Tar v1.10.0
-  [8dfed614] Test
-  [cf7118a7] UUIDs
-  [4ec0a83e] Unicode
-  [e66e0078] CompilerSupportLibraries_jll v1.1.1+0
-  [deac9b47] LibCURL_jll v8.4.0+0
-  [e37daf67] LibGit2_jll v1.6.4+0
-  [29816b5a] LibSSH2_jll v1.11.0+1
-  [c8ffd9c3] MbedTLS_jll v2.28.2+1
-  [14a3606d] MozillaCACerts_jll v2023.1.10
-  [4536629a] OpenBLAS_jll v0.3.23+4
-  [83775a58] Zlib_jll v1.2.13+1
-  [8e850b90] libblastrampoline_jll v5.11.0+0
-  [8e850ede] nghttp2_jll v1.52.0+1
-  [3f19e933] p7zip_jll v17.4.0+2
-        Info Packages marked with ⌅ have new versions available but compatibility constraints restrict them from upgrading.
-     Testing Running tests...
-WARNING: Method definition default_matmul() in module IntervalArithmetic at /workspace/scratch/e38cc5b491fa/cap-02/julia-depot/packages/IntervalArithmetic/AOkiQ/src/IntervalArithmetic.jl:139 overwritten on the same line (check for duplicate calls to `include`).
-WARNING: Method definition default_rounding() in module IntervalArithmetic at /workspace/scratch/e38cc5b491fa/cap-02/julia-depot/packages/IntervalArithmetic/AOkiQ/src/IntervalArithmetic.jl:115 overwritten on the same line (check for duplicate calls to `include`).
-WARNING: Method definition default_rounding() in module IntervalArithmetic at /workspace/scratch/e38cc5b491fa/cap-02/julia-depot/packages/IntervalArithmetic/AOkiQ/src/IntervalArithmetic.jl:115 overwritten on the same line (check for duplicate calls to `include`).
-┌ Warning: invalid interval, NaI is returned
-└ @ IntervalArithmetic /workspace/scratch/e38cc5b491fa/cap-02/julia-depot/packages/IntervalArithmetic/AOkiQ/src/intervals/construction.jl:481
 Test Summary:                                | Pass  Total  Time
-Arithmetic configuration and provenance gate |    5      5  0.6s
+Arithmetic configuration and provenance gate |    5      5  0.4s
 Test Summary:                        | Pass  Total   Time
-Library behavior the proof relies on |    4      4  17.4s
+Library behavior the proof relies on |    4      4  12.2s
 Test Summary:                     | Pass  Total  Time
 Lossless data and exact constants |   16     16  0.0s
 Test Summary:                       | Pass  Total  Time
-Theorem gate, not a success Boolean |   13     13  0.3s
+Theorem gate, not a success Boolean |   13     13  0.4s
 Test Summary:                                  | Pass  Total   Time
-Reference verification, replay and refutations |   43     43  16.8s
+Reference verification, replay and refutations |   43     43  15.3s
 Test Summary:                                      | Pass  Total  Time
-Persistent search model preserves the fixed target |   22     22  8.5s
+Persistent search model preserves the fixed target |   22     22  7.7s
 Test Summary:               | Pass  Total  Time
 Bounded framed server input |    5      5  0.0s
-     Testing CAPReference tests passed
+Testing CAPReference tests passed
+108 assertions passed.

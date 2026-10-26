@@ -1,29 +1,39 @@
 {
-  "base_repositories": {
-    "fcmaes-rust": "53aa074cfb3ae6fea7105adf57d9eee8f61a3237",
-    "experiment-craft": "d4db33d794acd77004058381959060b59c625d01",
-    "optimization-jobs": "051435c325a51cc89be4ae26645d6937eed6f5e5"
+  "repositories": {
+    "fcmaes-rust": {
+      "commit": "1c0b977a72ec79dc87112cc56428ce884796a084",
+      "workflow_run": "https://github.com/dietmarwo/fcmaes-rust/actions/runs/40417534368"
+    },
+    "optimization-jobs": {
+      "commit": "051435c325a51cc89be4ae26645d6937eed6f5e5"
+    },
+    "experiment-craft": {
+      "commit": "d4db33d794acd77004058381959060b59c625d01"
+    }
   },
   "environment": {
-    "platform": "Linux-6.18.55-x86_64-with-glibc2.39",
-    "architecture": "x86_64",
-    "python": "3.12.14",
+    "runner": "GitHub-hosted ubuntu-latest, Linux x86-64",
     "julia": "1.10.10",
-    "rust": "1.88.0",
+    "search_build_rust": "1.88.0",
+    "python": "3.12",
     "julia_compute_threads": 1,
     "blas_threads": 1,
-    "local_command_node_capacity": 1
+    "command_node_capacity": 1
   },
   "sources_sha256": {
-    "audit.py": "9144b10f2ac179145b1e8991601b2bf84984a3c4960a21c886f47e416feb011b",
+    "audit.py": "a4a32af08933a060b2bc20012904a33bebad94c831f96e7b3b3732984f260630",
     "audit-protocol.json": "980a576e3150a046ccc48eefb8ee80c09b365eaa011c790327dc71f238a9f726",
-    "make_audit_campaign.py": "47dcb8ee42504ad11a486f3b82d601fa2a531b0a47ac451407773d059ff81992",
+    "make_audit_campaign.py": "4b10c4fe0b9e2d6b4a129f04ed1fcaf44579a6b82f1b8da1ecb3305cc242e71e",
+    "test_audit.py": "55f4a5060805d22eea56de08dba61432683244be64d9f3e7f799b02fdcce8590",
+    "test_audit_contract.py": "5decf5449cb210d5fae15e3f130489ef0734d62ba41a0ec3bb58226ee3378eb6",
+    "schemas/cap-audit-0.1.schema.json": "b6c62273867638f8c2abc0fc5512bce0f97d1f81c89c12ad585fd685497cf299",
+    "schemas/cap-artifacts-0.1.schema.json": "cd52593597acea0006d8b8ded599d45cb18d8e3a6eb3f383e48a3f83793c8486",
+    "schemas/cap-search-0.1.schema.json": "94c91659c6b507584e92c42629620a620ea2281dea1f0e0813f1e75f8a6c2199",
     "search-protocol.json": "d37e076aa4feb5543fbd4cf98c4bfa62fac4ce0a397d5ba1d545da8cc46df394",
     "julia/src/CAPReference.jl": "4a796c469ef307af9ea854b4e7cf1b1a8994c657911a0188b57fbb4af513cfb7",
     "julia/bin/cap.jl": "2eff8185c473a5a24b779bdbdd64b4b2e8850a46c69f5dbe6946bcdcab35329c",
     "julia/Project.toml": "9b850566bf4fafd72ebf778031760b5362075952106f95fdd412738a2cbcc7e8",
     "julia/Manifest.toml": "43478bc4ef6491c074c5294247c155f8d3d30e3296f0494780d6349eaf976607"
   },
-  "tested_search_binary_sha256": "c5e941f0b0b56f0ee42056b0242adcab10857bd68dcb69e0f73b0fee59098334",
-  "scope": "one local Linux environment, foreground commands; no remote commissioning or optimizer advantage claim"
+  "search_binary_sha256": "9f1c166afe9a2a2c36b0603240b9fb9b386aed37e2d0b7f2ae6b423971cfb4bc"
 }

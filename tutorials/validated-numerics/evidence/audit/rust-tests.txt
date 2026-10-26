@@ -1,102 +1,18 @@
-   Compiling autocfg v1.5.1
-   Compiling libc v0.2.191
-   Compiling cfg-if v1.0.5
-   Compiling proc-macro2 v1.0.107
-   Compiling unicode-ident v1.0.27
-   Compiling libm v0.2.16
-   Compiling quote v1.0.47
-   Compiling crossbeam-utils v0.8.23
-   Compiling zerocopy v0.8.63
-   Compiling version_check v0.9.5
-   Compiling typenum v1.20.1
-   Compiling crossbeam-epoch v0.9.21
-   Compiling num-traits v0.2.19
-   Compiling generic-array v0.14.7
-   Compiling bytemuck v1.25.2
-   Compiling paste v1.0.15
-   Compiling crossbeam-deque v0.8.8
-   Compiling syn v3.0.9
-   Compiling safe_arch v0.7.4
-   Compiling matrixmultiply v0.3.11
-   Compiling cfg_aliases v0.2.2
-   Compiling bitflags v2.13.2
-   Compiling utf8parse v0.2.2
-   Compiling serde_core v1.0.229
-   Compiling rayon-core v1.13.0
-   Compiling anstyle-parse v1.0.0
-   Compiling nix v0.31.3
-   Compiling wide v0.7.33
-   Compiling syn v2.0.119
-   Compiling anstyle v1.0.14
-   Compiling rawpointer v0.2.1
-   Compiling is_terminal_polyfill v1.70.2
-   Compiling approx v0.5.1
-   Compiling num-complex v0.4.6
-   Compiling num-integer v0.1.47
-   Compiling colorchoice v1.0.5
-   Compiling getrandom v0.2.17
-   Compiling anstyle-query v1.1.5
-   Compiling zmij v1.0.23
-   Compiling rand_core v0.6.4
-   Compiling num-rational v0.4.2
-   Compiling anstream v1.0.0
-   Compiling simba v0.9.1
-   Compiling crypto-common v0.1.7
-   Compiling block-buffer v0.10.4
-   Compiling either v1.19.0
-   Compiling strsim v0.11.1
-   Compiling heck v0.5.0
-   Compiling serde v1.0.229
-   Compiling serde_json v1.0.154
-   Compiling clap_lex v1.1.1
-   Compiling rayon v1.12.0
-   Compiling clap_builder v4.6.7
-   Compiling digest v0.10.7
-   Compiling serde_derive v1.0.229
-   Compiling ppv-lite86 v0.2.21
-   Compiling clap_derive v4.6.7
-   Compiling rand_chacha v0.3.1
-   Compiling rand_pcg v0.3.1
-   Compiling nalgebra-macros v0.2.2
-   Compiling rand v0.8.8
-   Compiling itoa v1.0.18
-   Compiling memchr v2.8.3
-   Compiling cpufeatures v0.2.17
-   Compiling rustix v1.1.5
-   Compiling getrandom v0.4.3
-   Compiling rand_distr v0.4.3
-   Compiling sha2 v0.10.9
-   Compiling ctrlc v3.5.2
-   Compiling linux-raw-sys v0.12.1
-   Compiling fastrand v2.5.0
-   Compiling clap v4.6.7
-   Compiling once_cell v1.21.4
-   Compiling nalgebra v0.33.3
-   Compiling tempfile v3.27.0
-   Compiling fcmaes-core v0.2.1 (/workspace/scratch/e38cc5b491fa/cap-03/repos/fcmaes-rust/crates/fcmaes-core)
-   Compiling cap-search v0.1.0 (/workspace/scratch/e38cc5b491fa/cap-03/repos/fcmaes-rust/tutorials/validated-numerics/search)
-    Finished `release` profile [optimized] target(s) in 32.35s
-     Running unittests src/lib.rs (/workspace/scratch/e38cc5b491fa/cap-03/search-target/release/deps/cap_search-6792e6c13b54acd8)
-
-running 0 tests
-
-test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
-
-     Running tests/contracts.rs (/workspace/scratch/e38cc5b491fa/cap-03/search-target/release/deps/contracts-535457c2eff41eab)
+Running tests/contracts.rs (tutorials/validated-numerics/search/target/release/deps/contracts-4b5edc3aa4854773)
 
 running 15 tests
-test bad_budget_and_nonfinite_scores_are_explicit_errors ... ok
 test all_methods_obey_the_work_cap_and_bounds ... ok
-test grid_is_complete_and_has_no_duplicated_nominal_point ... ok
-test no_arm_spends_its_second_evaluation_on_the_nominal_start_again ... ok
+test bad_budget_and_nonfinite_scores_are_explicit_errors ... ok
 test cancellation_reaps_a_live_child ... ok
-test local_pattern_moves_only_to_an_improving_centre ... ok
-test seeded_methods_reproduce_the_whole_trajectory ... ok
-test graceful_shutdown_drains_stderr_and_reaps_child ... ok
-test wrong_reply_identity_is_rejected ... ok
 test a_server_ended_by_a_group_signal_reports_the_cancellation ... ok
 test a_silent_child_times_out_and_is_reaped ... ok
+test grid_is_complete_and_has_no_duplicated_nominal_point ... ok
+test local_pattern_moves_only_to_an_improving_centre ... ok
+test no_arm_spends_its_second_evaluation_on_the_nominal_start_again ... ok
+test graceful_shutdown_drains_stderr_and_reaps_child ... ok
+test seeded_methods_reproduce_the_whole_trajectory ... ok
 test a_child_exit_is_observed_without_waiting_for_the_deadline ... ok
+test wrong_reply_identity_is_rejected ... ok
 test the_frame_limit_counts_json_bytes_like_the_server ... ok
 test oversized_and_truncated_frames_are_rejected ... ok
 test cleanup_does_not_wait_for_descendants_holding_the_pipes ... ok
