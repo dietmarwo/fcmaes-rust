@@ -1,0 +1,44 @@
+test_fast_large_output_is_rejected_after_process_exit (test_audit_contract.Processes.test_fast_large_output_is_rejected_after_process_exit) ... FAIL
+test_deadline_includes_output_validation (test_audit_contract.Processes.test_deadline_includes_output_validation) ... FAIL
+
+======================================================================
+FAIL: test_fast_large_output_is_rejected_after_process_exit (test_audit_contract.Processes.test_fast_large_output_is_rejected_after_process_exit)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/e38cc5b491fa/cap-03/repos/fcmaes-rust/tutorials/validated-numerics/test_audit_contract.py", line 290, in test_fast_large_output_is_rejected_after_process_exit
+    self.assertIn("exceeds byte limit", record["error"])
+AssertionError: 'exceeds byte limit' not found in "[Errno 2] No such file or directory: '/tmp/tmpul3lw_an/result.json'"
+
+======================================================================
+FAIL: test_deadline_includes_output_validation (test_audit_contract.Processes.test_deadline_includes_output_validation)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/e38cc5b491fa/cap-03/repos/fcmaes-rust/tutorials/validated-numerics/test_audit_contract.py", line 296, in test_deadline_includes_output_validation
+    self.assertEqual(record["status"], "timed_out")
+AssertionError: 'completed' != 'timed_out'
+- completed
++ timed_out
+
+
+----------------------------------------------------------------------
+Ran 2 tests in 0.644s
+
+FAILED (failures=2)
+Both regressions fail before their fixes, as expected.
+test_generated_campaign_keeps_three_admitted_jobs_and_hashed_sources (test_audit_contract.Contract.test_generated_campaign_keeps_three_admitted_jobs_and_hashed_sources) ... FAIL
+
+======================================================================
+FAIL: test_generated_campaign_keeps_three_admitted_jobs_and_hashed_sources (test_audit_contract.Contract.test_generated_campaign_keeps_three_admitted_jobs_and_hashed_sources)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/e38cc5b491fa/cap-03/repos/fcmaes-rust/tutorials/validated-numerics/test_audit_contract.py", line 228, in test_generated_campaign_keeps_three_admitted_jobs_and_hashed_sources
+    self.assertEqual(plan["steps"][1]["job"]["argv"][0], str(Path(sys.executable).absolute()))
+AssertionError: '/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3.12' != '/workspace/scratch/e38cc5b491fa/cap-02/venv/bin/python'
+- /opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3.12
++ /workspace/scratch/e38cc5b491fa/cap-02/venv/bin/python
+
+
+----------------------------------------------------------------------
+Ran 1 test in 0.121s
+
+FAILED (failures=1)

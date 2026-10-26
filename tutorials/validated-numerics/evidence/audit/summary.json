@@ -1,0 +1,28 @@
+[
+  {
+    "accepted_arms": 9,
+    "exact_rational_checks": 9,
+    "fresh_julia_processes": 18,
+    "problem": "scalar-cuberoot",
+    "total_arms": 9
+  },
+  {
+    "accepted_arms": 9,
+    "exact_rational_checks": 9,
+    "fresh_julia_processes": 18,
+    "problem": "cahn-hilliard",
+    "total_arms": 9
+  },
+  {
+    "campaign": "completed",
+    "continued_without_duplicates": true,
+    "problem": "scalar-cuberoot",
+    "runtime_attempts": 3
+  },
+  {
+    "campaign": "completed",
+    "continued_without_duplicates": true,
+    "problem": "cahn-hilliard",
+    "runtime_attempts": 3
+  }
+]

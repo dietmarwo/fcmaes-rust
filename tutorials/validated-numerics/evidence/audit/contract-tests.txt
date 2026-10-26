@@ -1,0 +1,28 @@
+test_budget_exit_and_ledger_mismatches (__main__.Contract.test_budget_exit_and_ledger_mismatches) ... ok
+test_changed_input_or_protocol_or_implementation (__main__.Contract.test_changed_input_or_protocol_or_implementation) ... ok
+test_document_digest_and_stale_certificate (__main__.Contract.test_document_digest_and_stale_certificate) ... ok
+test_fixture_links_and_all_arm_acceptance (__main__.Contract.test_fixture_links_and_all_arm_acceptance) ... ok
+test_forged_verified_flag_is_rejected (__main__.Contract.test_forged_verified_flag_is_rejected) ... ok
+test_generated_campaign_keeps_three_admitted_jobs_and_hashed_sources (__main__.Contract.test_generated_campaign_keeps_three_admitted_jobs_and_hashed_sources) ... ok
+test_missing_duplicate_reordered_or_foreign_arm (__main__.Contract.test_missing_duplicate_reordered_or_foreign_arm) ... ok
+test_nonfinite_duplicate_and_oversize_inputs (__main__.Contract.test_nonfinite_duplicate_and_oversize_inputs) ... ok
+test_output_directory_refuses_nonempty_and_symlink (__main__.Contract.test_output_directory_refuses_nonempty_and_symlink) ... ok
+test_search_candidate_swap_is_rejected (__main__.Contract.test_search_candidate_swap_is_rejected) ... ok
+test_search_ledger_and_per_arm_counts_are_checked (__main__.Contract.test_search_ledger_and_per_arm_counts_are_checked) ... ok
+test_strict_acceptance_cli_rejects_partial_and_preserves_output (__main__.Contract.test_strict_acceptance_cli_rejects_partial_and_preserves_output) ... ok
+test_timeout_kept_in_denominator_and_censored (__main__.Contract.test_timeout_kept_in_denominator_and_censored) ... ok
+test_valid_inconclusive_and_rejected_replay_are_not_accepted (__main__.Contract.test_valid_inconclusive_and_rejected_replay_are_not_accepted) ... ok
+test_cancellation_kills_and_reaps_child (__main__.Processes.test_cancellation_kills_and_reaps_child) ... ok
+test_deadline_includes_output_validation (__main__.Processes.test_deadline_includes_output_validation) ... ok
+test_fast_large_output_is_rejected_after_process_exit (__main__.Processes.test_fast_large_output_is_rejected_after_process_exit) ... ok
+test_inherited_pipes_do_not_delay_cleanup (__main__.Processes.test_inherited_pipes_do_not_delay_cleanup) ... ok
+test_large_output_is_bounded (__main__.Processes.test_large_output_is_bounded) ... ok
+test_missing_output_after_exit_zero_is_invalid (__main__.Processes.test_missing_output_after_exit_zero_is_invalid) ... ok
+test_process_failure_is_not_a_proof (__main__.Processes.test_process_failure_is_not_a_proof) ... ok
+test_timeout_kills_and_reaps_child (__main__.Processes.test_timeout_kills_and_reaps_child) ... ok
+
+----------------------------------------------------------------------
+Ran 22 tests in 3.421s
+
+OK
+{"outcome": "rejected", "accepted_arms": 9, "total_arms": 9}

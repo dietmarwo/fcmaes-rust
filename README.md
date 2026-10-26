@@ -416,8 +416,9 @@ python examples/python/test_cma.py
 - [Truss topology and catalogue-section sizing tutorial](tutorials/truss-sizing/README.md)
 - [Weighted network-coverage tutorial](tutorials/network-coverage/README.md)
 - [Validated-numerics pilot](tutorials/validated-numerics/): scalar/PDE
-  certificates, independent replay, bounded Rust–Julia search and command-job
-  campaigns in a separate application workspace
+  certificates, independent replay, bounded Rust–Julia search,
+  [all-arm certificate audits](tutorials/validated-numerics/AUDIT.md) and
+  command-job campaigns in a separate application workspace
 - [Optional PyO3 bindings](docs/python-bindings.md)
 - [Release history](CHANGELOG.md)
 - [Publishing checklist](RELEASING.md)

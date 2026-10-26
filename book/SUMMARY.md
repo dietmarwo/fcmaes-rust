@@ -101,6 +101,8 @@
 - [Validated numerics: reference verifier and replay](tutorials/validated-numerics/README.md)
   - [Bounded proof-parameter search](tutorials/validated-numerics/SEARCH.md)
     - [Search validation evidence](tutorials/validated-numerics/evidence/search/README.md)
+  - [All-arm certificate audit](tutorials/validated-numerics/AUDIT.md)
+    - [Audit validation evidence](tutorials/validated-numerics/evidence/audit/README.md)
   - [Mathematical contract](tutorials/validated-numerics/THEOREM.md)
   - [Reference validation evidence](tutorials/validated-numerics/evidence/README.md)
 - [Result artifact schema](tutorials/RESULT_SCHEMA.md)

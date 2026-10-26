@@ -1,0 +1,29 @@
+{
+  "base_repositories": {
+    "fcmaes-rust": "53aa074cfb3ae6fea7105adf57d9eee8f61a3237",
+    "experiment-craft": "d4db33d794acd77004058381959060b59c625d01",
+    "optimization-jobs": "051435c325a51cc89be4ae26645d6937eed6f5e5"
+  },
+  "environment": {
+    "platform": "Linux-6.18.55-x86_64-with-glibc2.39",
+    "architecture": "x86_64",
+    "python": "3.12.14",
+    "julia": "1.10.10",
+    "rust": "1.88.0",
+    "julia_compute_threads": 1,
+    "blas_threads": 1,
+    "local_command_node_capacity": 1
+  },
+  "sources_sha256": {
+    "audit.py": "9144b10f2ac179145b1e8991601b2bf84984a3c4960a21c886f47e416feb011b",
+    "audit-protocol.json": "980a576e3150a046ccc48eefb8ee80c09b365eaa011c790327dc71f238a9f726",
+    "make_audit_campaign.py": "47dcb8ee42504ad11a486f3b82d601fa2a531b0a47ac451407773d059ff81992",
+    "search-protocol.json": "d37e076aa4feb5543fbd4cf98c4bfa62fac4ce0a397d5ba1d545da8cc46df394",
+    "julia/src/CAPReference.jl": "4a796c469ef307af9ea854b4e7cf1b1a8994c657911a0188b57fbb4af513cfb7",
+    "julia/bin/cap.jl": "2eff8185c473a5a24b779bdbdd64b4b2e8850a46c69f5dbe6946bcdcab35329c",
+    "julia/Project.toml": "9b850566bf4fafd72ebf778031760b5362075952106f95fdd412738a2cbcc7e8",
+    "julia/Manifest.toml": "43478bc4ef6491c074c5294247c155f8d3d30e3296f0494780d6349eaf976607"
+  },
+  "tested_search_binary_sha256": "c5e941f0b0b56f0ee42056b0242adcab10857bd68dcb69e0f73b0fee59098334",
+  "scope": "one local Linux environment, foreground commands; no remote commissioning or optimizer advantage claim"
+}

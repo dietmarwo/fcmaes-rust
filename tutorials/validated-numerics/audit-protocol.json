@@ -1,0 +1,9 @@
+{
+  "schema_version": "cap.audit.protocol/0.1",
+  "verification_wall_seconds": 120,
+  "replay_wall_seconds": 120,
+  "order": "search-protocol",
+  "acceptance": "all-arms-verified-and-replayed",
+  "timing": "shared-search-startup-plus-arm-work-plus-fresh-verification-and-replay",
+  "scope": "final-candidates-only"
+}

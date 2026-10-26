@@ -1,0 +1,99 @@
+ARM reference
+scalar cube root
+Y                            recorded [0, 9.3252890586879242e-17] exact ≈ 2.5899333753005066e-17
+Z1 over the ball             recorded [0, 6.6613381477509392e-16] exact ≈ 4.1062744848711032e-16
+P(R)                         recorded [-1.8650578117375848e-16, -9.3252890586879094e-17] exact ≈ -1.6060644742075334e-16
+R = 2 sup(Y)                 holds
+P(R) <= 0                    holds
+Z1 < 1                       holds
+A != 0                       holds
+ball is positive             holds
+0 < R <= 1e-10               holds
+ARM grid
+scalar cube root
+Y                            recorded [0, 9.3252890586879242e-17] exact ≈ 2.5899333753005066e-17
+Z1 over the ball             recorded [0, 6.6613381477509392e-16] exact ≈ 4.1062744848711032e-16
+P(R)                         recorded [-1.8650578117375848e-16, -9.3252890586879094e-17] exact ≈ -1.6060644742075334e-16
+R = 2 sup(Y)                 holds
+P(R) <= 0                    holds
+Z1 < 1                       holds
+A != 0                       holds
+ball is positive             holds
+0 < R <= 1e-10               holds
+ARM local
+scalar cube root
+Y                            recorded [0, 9.3252890586879242e-17] exact ≈ 2.5899333753005066e-17
+Z1 over the ball             recorded [0, 6.6613381477509392e-16] exact ≈ 4.1062744848711032e-16
+P(R)                         recorded [-1.8650578117375848e-16, -9.3252890586879094e-17] exact ≈ -1.6060644742075334e-16
+R = 2 sup(Y)                 holds
+P(R) <= 0                    holds
+Z1 < 1                       holds
+A != 0                       holds
+ball is positive             holds
+0 < R <= 1e-10               holds
+ARM random-17
+scalar cube root
+Y                            recorded [0, 9.3252890586879242e-17] exact ≈ 2.5899333753005066e-17
+Z1 over the ball             recorded [0, 6.6613381477509392e-16] exact ≈ 4.1062744848711032e-16
+P(R)                         recorded [-1.8650578117375848e-16, -9.3252890586879094e-17] exact ≈ -1.6060644742075334e-16
+R = 2 sup(Y)                 holds
+P(R) <= 0                    holds
+Z1 < 1                       holds
+A != 0                       holds
+ball is positive             holds
+0 < R <= 1e-10               holds
+ARM random-29
+scalar cube root
+Y                            recorded [0, 9.3252890586879242e-17] exact ≈ 2.5899333753005066e-17
+Z1 over the ball             recorded [0, 6.6613381477509392e-16] exact ≈ 4.1062744848711032e-16
+P(R)                         recorded [-1.8650578117375848e-16, -9.3252890586879094e-17] exact ≈ -1.6060644742075334e-16
+R = 2 sup(Y)                 holds
+P(R) <= 0                    holds
+Z1 < 1                       holds
+A != 0                       holds
+ball is positive             holds
+0 < R <= 1e-10               holds
+ARM cmaes-17
+scalar cube root
+Y                            recorded [0, 9.3252890586879242e-17] exact ≈ 2.5899333753005066e-17
+Z1 over the ball             recorded [0, 6.6613381477509392e-16] exact ≈ 4.1062744848711032e-16
+P(R)                         recorded [-1.8650578117375848e-16, -9.3252890586879094e-17] exact ≈ -1.6060644742075334e-16
+R = 2 sup(Y)                 holds
+P(R) <= 0                    holds
+Z1 < 1                       holds
+A != 0                       holds
+ball is positive             holds
+0 < R <= 1e-10               holds
+ARM cmaes-29
+scalar cube root
+Y                            recorded [0, 9.3252890586879242e-17] exact ≈ 2.5899333753005066e-17
+Z1 over the ball             recorded [0, 6.6613381477509392e-16] exact ≈ 4.1062744848711032e-16
+P(R)                         recorded [-1.8650578117375848e-16, -9.3252890586879094e-17] exact ≈ -1.6060644742075334e-16
+R = 2 sup(Y)                 holds
+P(R) <= 0                    holds
+Z1 < 1                       holds
+A != 0                       holds
+ball is positive             holds
+0 < R <= 1e-10               holds
+ARM biteopt-17
+scalar cube root
+Y                            recorded [0, 9.3252890586879242e-17] exact ≈ 2.5899333753005066e-17
+Z1 over the ball             recorded [0, 6.6613381477509392e-16] exact ≈ 4.1062744848711032e-16
+P(R)                         recorded [-1.8650578117375848e-16, -9.3252890586879094e-17] exact ≈ -1.6060644742075334e-16
+R = 2 sup(Y)                 holds
+P(R) <= 0                    holds
+Z1 < 1                       holds
+A != 0                       holds
+ball is positive             holds
+0 < R <= 1e-10               holds
+ARM biteopt-29
+scalar cube root
+Y                            recorded [0, 9.3252890586879242e-17] exact ≈ 2.5899333753005066e-17
+Z1 over the ball             recorded [0, 6.6613381477509392e-16] exact ≈ 4.1062744848711032e-16
+P(R)                         recorded [-1.8650578117375848e-16, -9.3252890586879094e-17] exact ≈ -1.6060644742075334e-16
+R = 2 sup(Y)                 holds
+P(R) <= 0                    holds
+Z1 < 1                       holds
+A != 0                       holds
+ball is positive             holds
+0 < R <= 1e-10               holds

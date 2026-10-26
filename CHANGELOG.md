@@ -8,6 +8,12 @@ phase, with breaking changes called out explicitly.
 
 ### Added
 
+- An [all-arm certificate audit](tutorials/validated-numerics/AUDIT.md) for the
+  bounded search: fresh verification/replay for every final candidate, retained
+  failures and censored final-candidate timing, hash-bound strict acceptance,
+  and a three-command campaign using the existing runtime. No verifier, core,
+  shared API or published package changes.
+
 - A [bounded proof-parameter search application](tutorials/validated-numerics/SEARCH.md)
   with a persistent Julia evaluation lane, reference/grid/random/local/CMA-ES/BiteOpt
   comparisons, a frozen protocol, complete evaluation accounting, cancellation

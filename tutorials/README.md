@@ -2,6 +2,8 @@
 
 The [validated-numerics pilot](validated-numerics/) combines a pinned Julia
 verifier with [bounded Rust–Julia proof-parameter search](validated-numerics/SEARCH.md).
+Its [all-arm audit](validated-numerics/AUDIT.md) independently certifies every
+final proposal and retains unsuccessful observations.
 Its Rust search workspace is nested under the pilot; it is separate from the
 Cargo application tutorials counted in the inventory below.
 
