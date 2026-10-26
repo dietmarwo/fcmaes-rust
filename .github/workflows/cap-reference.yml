@@ -51,7 +51,9 @@ jobs:
           cargo test --release --locked --manifest-path tutorials/validated-numerics/search/Cargo.toml
           cargo build --release --locked --manifest-path tutorials/validated-numerics/search/Cargo.toml
       - name: Recheck the retained certificates in exact rational arithmetic
-        run: python tutorials/validated-numerics/exact_check.py
+        run: |
+          python tutorials/validated-numerics/exact_check.py
+          python tutorials/validated-numerics/exact_check.py tutorials/validated-numerics/evidence/search
       - name: Instantiate exact Julia environment and run proof regressions
         shell: bash
         run: |

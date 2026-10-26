@@ -10,10 +10,12 @@ import shutil
 import subprocess
 import sys
 import time
+import traceback
 
 import jsonschema
 from make_campaign import ROOT
 from make_search_campaign import generate
+from test_workflow import annotate
 
 
 def digest(path):
@@ -27,6 +29,51 @@ def assert_gone(pid):
     except ProcessLookupError:
         return
     raise AssertionError(f"child {pid} still exists")
+
+
+def check_study(folder, spec, protocol, search_schema, artifact_schema, binary=None):
+    """Check a completed study against the files it names; return it and its finished evaluations."""
+    record = json.loads((folder / "study.json").read_text())
+    search_schema.validate(record)
+    assert record["outcome"] == "completed" and record["certification_performed"] is False
+    assert record["protocol_sha256"] == digest(protocol)
+    if binary is not None:
+        assert record["search_binary_sha256"] == digest(binary)
+    expected_search = sum(1 if arm["method"] == "reference" else spec["evaluation_budget"] for arm in spec["arms"])
+    assert record["counts"]["search_attempted"] == record["counts"]["search_completed"] == expected_search
+    assert record["counts"]["rechecks_attempted"] == record["counts"]["rechecks_completed"] == len(spec["arms"])
+    assert record["counts"]["total_attempted_including_warmup"] == expected_search + len(spec["arms"]) + 1
+    assert record["counts"]["startup_accounting_complete"]
+    assert record["selection"]["candidate_sha256"] == digest(folder / "candidate.json")
+    assert record["evaluation_log_sha256"] == digest(folder / "evaluations.jsonl")
+    candidate = json.loads((folder / "candidate.json").read_text())
+    artifact_schema.validate(candidate)
+    bundle = json.loads((folder / "candidates.json").read_text())
+    search_schema.validate(bundle)
+    assert set(bundle["arms"]) == {arm["id"] for arm in spec["arms"]}
+    assert bundle["arms"][record["selection"]["arm"]]["candidate_json"].encode() == (folder / "candidate.json").read_bytes()
+    for arm in record["arms"]:
+        item = bundle["arms"][arm["id"]]
+        assert hashlib.sha256(item["candidate_json"].encode()).hexdigest() == item["candidate_sha256"] == arm["candidate_sha256"]
+        artifact_schema.validate(json.loads(item["candidate_json"]))
+        assert arm["rechecked_score"] == arm["best"]["score"]
+    events = [json.loads(line) for line in (folder / "evaluations.jsonl").read_text().splitlines()]
+    for event in events:
+        search_schema.validate(event)
+    starts = [e for e in events if e["event"] == "evaluation_started"]
+    finishes = [e for e in events if e["event"] == "evaluation_finished"]
+    assert len(starts) == len(finishes) == expected_search + len(spec["arms"])
+    assert [(e["arm"], e["phase"], e["parameters"]) for e in starts] == [(e["arm"], e["phase"], e["parameters"]) for e in finishes]
+    return record, finishes
+
+
+def check_retained_proofs(folder, artifact_schema):
+    """The retained verification and replay must certify exactly the retained selected candidate."""
+    candidate = digest(folder / "candidate.json")
+    for name in ("verification.json", "replay.json"):
+        value = json.loads((folder / name).read_text())
+        artifact_schema.validate(value)
+        assert value["outcome"] == "verified" and value["candidate_sha256"] == candidate, name
 
 
 def fault_checks(binary, depot, directory):
@@ -89,6 +136,8 @@ def main():
         parser.add_argument("--" + option, type=Path, required=True)
     parser.add_argument("--runner", type=Path)
     parser.add_argument("--experiment-craft-source", type=Path)
+    parser.add_argument("--skip-retained", action="store_true",
+                        help="do not check evidence/search; only to regenerate it after a change")
     args = parser.parse_args()
     if bool(args.runner) != bool(args.experiment_craft_source):
         parser.error("supply both runtime integration arguments")
@@ -122,7 +171,15 @@ def main():
                              "expected": expected, "wall_seconds": time.monotonic() - started})
         (args.output / "checks.json").write_text(json.dumps(observations, indent=2) + "\n")
         if result.returncode != expected:
-            raise AssertionError(f"{label}: exit {result.returncode}, expected {expected}: {result.stderr[-2000:]}")
+            detail = result.stderr[-2000:]
+            written = Path(str(argv[-1]))
+            if written.suffix == ".json" and written.is_file():
+                # A rejected replay says which of its checks failed.
+                try:
+                    detail += "\nchecks: " + json.dumps(json.loads(written.read_text()).get("checks"))
+                except (ValueError, AttributeError):
+                    pass
+            raise AssertionError(f"{label}: exit {result.returncode}, expected {expected}: {detail}")
         print(label + ": passed", flush=True)
         return result.stdout
 
@@ -133,40 +190,24 @@ def main():
                 "--output", output, "--wall-seconds", str(seconds)]
 
     def study(folder):
-        record = json.loads((folder / "study.json").read_text())
-        search_schema.validate(record)
-        assert record["outcome"] == "completed" and record["certification_performed"] is False
-        assert record["protocol_sha256"] == digest(protocol)
-        assert record["search_binary_sha256"] == digest(args.binary.resolve())
-        expected_search = sum(1 if arm["method"] == "reference" else spec["evaluation_budget"] for arm in spec["arms"])
-        assert record["counts"]["search_attempted"] == record["counts"]["search_completed"] == expected_search
-        assert record["counts"]["rechecks_attempted"] == record["counts"]["rechecks_completed"] == len(spec["arms"])
-        assert record["counts"]["total_attempted_including_warmup"] == expected_search + len(spec["arms"]) + 1
-        assert record["counts"]["startup_accounting_complete"]
-        assert record["selection"]["candidate_sha256"] == digest(folder / "candidate.json")
-        assert record["evaluation_log_sha256"] == digest(folder / "evaluations.jsonl")
-        candidate = json.loads((folder / "candidate.json").read_text())
-        artifact_schema.validate(candidate)
-        bundle = json.loads((folder / "candidates.json").read_text())
-        search_schema.validate(bundle)
-        assert set(bundle["arms"]) == {arm["id"] for arm in spec["arms"]}
-        for arm in record["arms"]:
-            item = bundle["arms"][arm["id"]]
-            assert hashlib.sha256(item["candidate_json"].encode()).hexdigest() == item["candidate_sha256"] == arm["candidate_sha256"]
-            artifact_schema.validate(json.loads(item["candidate_json"]))
-            assert arm["rechecked_score"] == arm["best"]["score"]
-        events = [json.loads(line) for line in (folder / "evaluations.jsonl").read_text().splitlines()]
-        for event in events:
-            search_schema.validate(event)
-        starts = [e for e in events if e["event"] == "evaluation_started"]
-        finishes = [e for e in events if e["event"] == "evaluation_finished"]
-        assert len(starts) == len(finishes) == expected_search + len(spec["arms"])
-        assert [(e["arm"], e["phase"], e["parameters"]) for e in starts] == [(e["arm"], e["phase"], e["parameters"]) for e in finishes]
-        return record, finishes
+        return check_study(folder, spec, protocol, search_schema, artifact_schema, args.binary.resolve())
 
     julia = [args.julia.resolve(), "--startup-file=no", "--history-file=no",
              "--project=" + str(ROOT / "julia"), ROOT / "julia/bin/cap.jl"]
     summaries = []
+    for problem in () if args.skip_retained else ("scalar-cuberoot", "cahn-hilliard"):
+        # The committed evidence must still be the files it names, use the current
+        # protocol, and replay byte-identically in a fresh process.
+        retained = ROOT / "evidence/search" / problem
+        check_study(retained, spec, protocol, search_schema, artifact_schema)
+        check_retained_proofs(retained, artifact_schema)
+        replayed = args.output / (problem + "-retained-replay.json")
+        run(problem + "-retained-replay", [*julia, "replay", ROOT / "problems" / (problem + ".json"),
+                                           retained / "candidate.json", retained / "verification.json", replayed])
+        value = json.loads(replayed.read_text())
+        artifact_schema.validate(value)
+        assert value["outcome"] == "verified"
+        summaries.append({"problem": problem, "retained_evidence": "verified"})
     for problem in ("scalar-cuberoot", "cahn-hilliard"):
         folder = args.output / problem
         run(problem + "-search", command(problem, folder))
@@ -174,10 +215,7 @@ def main():
         problem_file = ROOT / "problems" / (problem + ".json")
         run(problem + "-verify", [*julia, "verify", problem_file, folder / "candidate.json", folder / "verification.json"])
         run(problem + "-replay", [*julia, "replay", problem_file, folder / "candidate.json", folder / "verification.json", folder / "replay.json"])
-        for file in ["verification.json", "replay.json"]:
-            value = json.loads((folder / file).read_text())
-            artifact_schema.validate(value)
-            assert value["outcome"] == "verified"
+        check_retained_proofs(folder, artifact_schema)
         summaries.append({"problem": problem, "arm_count": len(record["arms"]), "counts": record["counts"],
                           "selected_arm": record["selection"]["arm"], "verification": "verified", "replay": "verified"})
 
@@ -252,4 +290,8 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except Exception:
+        annotate("test_search.py", traceback.format_exc())
+        raise

@@ -179,6 +179,13 @@ model data, honest score rechecks, oversized/truncated responses, child failure,
 wall timeout, SIGTERM cleanup, candidate digests, independent proof replay and
 exact rational recomputation of the selected bounds.
 
+The workflow also checks the committed search evidence: every digest link
+between study, ledger, candidate bundle, selected candidate and certificates;
+that it used the current protocol; an exact rational recheck of both selected
+certificates (`exact_check.py evidence/search`); and a fresh replay. A change
+that invalidates it needs new evidence: run `test_search.py` once with
+`--skip-retained` and replace the files from its output.
+
 [Search evidence](evidence/search/README.md) records measured outcomes and scope.
 The previous reference evidence is preserved. The next scientific increment
 needs harder frozen/held-out cases, more repetitions and per-arm independent
