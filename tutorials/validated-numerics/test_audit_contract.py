@@ -436,6 +436,22 @@ class Runs(unittest.TestCase):
                 "protocol_sha256": protocol_sha, "implementation": audit.implementation(), "complete": True,
                 "total_wall_seconds": 1e9, "events_sha256": "0" * 64}
 
+    def test_a_signal_while_inputs_are_checked_is_a_cancellation(self):
+        original = audit.load_inputs
+        def early_signal(args):
+            os.kill(os.getpid(), signal.SIGINT)
+            return original(args)
+        audit.load_inputs = early_signal
+        try:
+            code, args = self.run_audit()
+        finally:
+            audit.load_inputs = original
+        self.assertEqual(code, 130)
+        record = audit.parse((args.output / "audit.json").read_bytes())
+        self.assertFalse(record["complete"])
+        self.assertTrue(all(row[s]["status"] == "not_run" for row in record["arms"] for s in ("verification", "replay")))
+        self.assertEqual(self.accept(args), 3)
+
     def test_a_signal_after_completion_does_not_contradict_the_record(self):
         # A SIGTERM arriving after the last stage, while the finished record is
         # being validated, must not turn a complete audit into exit 130.

@@ -400,6 +400,22 @@ def empty_directory(path):
 
 def run(args):
     started = time.monotonic()
+    cancelled = [False]
+
+    def cancel(signum, frame):
+        cancelled[0] = True
+
+    # Installed before anything else: a signal while the inputs are checked
+    # is a cancellation too, not a KeyboardInterrupt or an abrupt exit.
+    handlers = {signum: signal.signal(signum, cancel) for signum in (signal.SIGINT, signal.SIGTERM, signal.SIGHUP)}
+    try:
+        return collect(args, started, cancelled)
+    finally:
+        for signum, handler in handlers.items():
+            signal.signal(signum, handler)
+
+
+def collect(args, started, cancelled):
     context = load_inputs(args)
     protocol, protocol_sha = load_protocol(args.protocol)
     output = empty_directory(args.output)
@@ -410,12 +426,7 @@ def run(args):
         record["arms"].append({"id": arm["id"], "candidate_sha256": arm["candidate_sha256"],
             "verification": not_run(protocol["verification_wall_seconds"], "not reached"),
             "replay": not_run(protocol["replay_wall_seconds"], "not reached")})
-    cancelled = [False]
-    handlers = {}
     documents = set()
-
-    def cancel(signum, frame):
-        cancelled[0] = True
 
     def snapshot():
         record["total_wall_seconds"] = time.monotonic() - started
@@ -427,62 +438,56 @@ def run(args):
         temporary.replace(output / "audit.json")
         (output / "report.md").write_bytes(markdown(record, context))
 
-    for signum in (signal.SIGINT, signal.SIGTERM, signal.SIGHUP):
-        handlers[signum] = signal.signal(signum, cancel)
-    try:
-        with (output / "events.jsonl").open("xb") as ledger:
-            snapshot()
-            for row in record["arms"]:
-                if cancelled[0]:
-                    break
-                def event(kind, **values):
-                    ledger.write(encoded({"event": kind, "arm": row["id"], "stage": current_stage, **values}))
-                    ledger.flush()
-                candidate = context["bundle"]["arms"][row["id"]]["candidate_json"].encode("utf-8")
-                with tempfile.TemporaryDirectory(prefix="stage-", dir=output) as work:
-                    work = Path(work)
-                    (work / "candidate.json").write_bytes(candidate)
-                    julia = [Path(args.julia).resolve(), "--startup-file=no", "--history-file=no",
-                             "--project=" + str(Path(args.project).resolve()), Path(args.project).resolve() / "bin/cap.jl"]
-                    for current_stage, opcode, limit_key in (("verification", "verify", "verification_wall_seconds"),
-                                                             ("replay", "replay", "replay_wall_seconds")):
-                        if current_stage == "replay" and row["verification"]["status"] != "completed":
-                            row["replay"] = not_run(protocol[limit_key], "verification unavailable")
-                            break
-                        stage_dir = work / current_stage
-                        stage_dir.mkdir()
-                        target = stage_dir / "result.json"
-                        argv = [*julia, opcode, Path(args.problem).resolve(), work / "candidate.json"]
-                        if current_stage == "verification":
-                            validate = lambda v: check_verification(v, context, row["candidate_sha256"])
-                        else:
-                            certificate = row["verification"]["document"]
-                            (work / "verification.json").write_bytes(certificate["json"].encode("utf-8"))
-                            argv.append(work / "verification.json")
-                            validate = lambda v: check_replay(v, unblob(certificate), certificate["sha256"], context, row["candidate_sha256"])
-                        result = run_stage([*argv, target], stage_dir, target, protocol[limit_key], lambda: cancelled[0], validate, event)
-                        if result["document"] is not None and result["document"]["sha256"] in documents:
-                            # Each stage is a separate process; a byte-identical
-                            # document is a cached or copied result, not new work.
-                            result.update(status="invalid_output", document=None,
-                                          error="document repeats an earlier stage's document")
-                        elif result["document"] is not None:
-                            documents.add(result["document"]["sha256"])
-                        row[current_stage] = result
-                        event("stage_finished", status=result["status"])
-                        snapshot()
-                        if cancelled[0]:
-                            break
-                if cancelled[0]:
-                    break
-            record["complete"] = not cancelled[0]
-            snapshot()
-        validate_audit(record, context, protocol, protocol_sha, read(output / "events.jsonl", MIB))
-        # The written record decides: a signal after completion changes nothing.
-        return 0 if record["complete"] else 130
-    finally:
-        for signum, handler in handlers.items():
-            signal.signal(signum, handler)
+    with (output / "events.jsonl").open("xb") as ledger:
+        snapshot()
+        for row in record["arms"]:
+            if cancelled[0]:
+                break
+            def event(kind, **values):
+                ledger.write(encoded({"event": kind, "arm": row["id"], "stage": current_stage, **values}))
+                ledger.flush()
+            candidate = context["bundle"]["arms"][row["id"]]["candidate_json"].encode("utf-8")
+            with tempfile.TemporaryDirectory(prefix="stage-", dir=output) as work:
+                work = Path(work)
+                (work / "candidate.json").write_bytes(candidate)
+                julia = [Path(args.julia).resolve(), "--startup-file=no", "--history-file=no",
+                         "--project=" + str(Path(args.project).resolve()), Path(args.project).resolve() / "bin/cap.jl"]
+                for current_stage, opcode, limit_key in (("verification", "verify", "verification_wall_seconds"),
+                                                         ("replay", "replay", "replay_wall_seconds")):
+                    if current_stage == "replay" and row["verification"]["status"] != "completed":
+                        row["replay"] = not_run(protocol[limit_key], "verification unavailable")
+                        break
+                    stage_dir = work / current_stage
+                    stage_dir.mkdir()
+                    target = stage_dir / "result.json"
+                    argv = [*julia, opcode, Path(args.problem).resolve(), work / "candidate.json"]
+                    if current_stage == "verification":
+                        validate = lambda v: check_verification(v, context, row["candidate_sha256"])
+                    else:
+                        certificate = row["verification"]["document"]
+                        (work / "verification.json").write_bytes(certificate["json"].encode("utf-8"))
+                        argv.append(work / "verification.json")
+                        validate = lambda v: check_replay(v, unblob(certificate), certificate["sha256"], context, row["candidate_sha256"])
+                    result = run_stage([*argv, target], stage_dir, target, protocol[limit_key], lambda: cancelled[0], validate, event)
+                    if result["document"] is not None and result["document"]["sha256"] in documents:
+                        # Each stage is a separate process; a byte-identical
+                        # document is a cached or copied result, not new work.
+                        result.update(status="invalid_output", document=None,
+                                      error="document repeats an earlier stage's document")
+                    elif result["document"] is not None:
+                        documents.add(result["document"]["sha256"])
+                    row[current_stage] = result
+                    event("stage_finished", status=result["status"])
+                    snapshot()
+                    if cancelled[0]:
+                        break
+            if cancelled[0]:
+                break
+        record["complete"] = not cancelled[0]
+        snapshot()
+    validate_audit(record, context, protocol, protocol_sha, read(output / "events.jsonl", MIB))
+    # The written record decides: a signal after completion changes nothing.
+    return 0 if record["complete"] else 130
 
 
 def accept(args):
