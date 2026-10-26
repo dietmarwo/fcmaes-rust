@@ -1,11 +1,11 @@
-# Validated numerics: CAP-01 reference verifier and replay
+# Validated numerics: reference verifier and replay
 
 This pilot reproduces two RadiiPolynomial.jl reference validations: the real
 root of `u^3 - 2 = 0`, and a nonconstant Neumann steady state of the
 Cahn–Hilliard equation. It separates numerical approximation, rigorous
-verification and a fresh replay. It is the first increment toward studying
-whether fcmaes can tune proof parameters; **no optimizer or Rust–Julia search
-bridge is implemented in CAP-01**.
+verification and a fresh replay. It prepares a study of whether fcmaes can
+tune proof parameters; **it contains no optimizer and no Rust–Julia search
+bridge yet**.
 
 The implementation is a standalone Julia environment. It adds no dependency
 to `fcmaes-core`, changes no shared job API and needs no access to a cluster.
@@ -28,7 +28,7 @@ parameter-region coverage, global uniqueness or blowup.
 Read [THEOREM.md](THEOREM.md) for the hypotheses, tail argument, norm conversion
 and trusted components. The two problem JSON files are frozen specifications;
 editing an equation, constant, representation or target is rejected. General
-problem loading and tuning are subsequent increments.
+problem loading and tuning are later work.
 
 ## Install the pinned environment
 
@@ -162,27 +162,28 @@ case, uncertain and strict-boundary inequalities, zero second-order constant,
 invalid intervals, wrong precision, both reference proofs, corrupt coefficients,
 zero inverses, missing tails, altered bounds, provenance mismatch and overwrite
 refusal. The Python harness validates the JSON schemas, runs fresh processes,
-checks the strict replay exit code and optionally runs both real three-job
+checks the strict replay exit code, replays the two retained certificates in
+[`evidence/`](evidence/README.md), and optionally runs both real three-job
 campaigns plus continuation without duplicate attempts.
 
-The dedicated CI workflow (`.github/workflows/cap-reference.yml` at the repository
-root) runs these checks with pinned commits. [Retained evidence](evidence/README.md)
-records the local validation of this increment; CI on GitHub runs after applying
-and pushing the patch.
+The CI workflow (`.github/workflows/cap-reference.yml` at the repository root)
+runs these checks with pinned commits on every change to this directory.
+[Retained evidence](evidence/README.md) records the run that produced the
+committed certificates.
 
-## Replay boundaries and next increment
+## Replay boundaries and next steps
 
-CAP-01 conservatively requires the same recorded verifier/environment hashes
+Replay conservatively requires the same recorded verifier/environment hashes
 and identical recomputed bound records. It may reject a mathematically valid
 proof from a different platform or changed implementation. Portable semantic
 replay is later work. Hashes detect changed inputs; they are not signatures or
 proof-assistant certificates. The trusted components are documented separately.
 
-CAP-02 can add a bounded, persistent Rust–Julia search bridge, deterministic
-search scores and grid/random/local/CMA-ES/BiteOpt baselines. The candidate and
-verification separation remains. Generic verification result contracts,
-scientific comparisons, parameter-region coverage and multi-node experiments
-belong to subsequent increments.
+A next step can add a bounded, persistent Rust–Julia search bridge,
+deterministic search scores and grid/random/local/CMA-ES/BiteOpt baselines. The
+candidate and verification separation remains. Generic verification result
+contracts, scientific comparisons, parameter-region coverage and multi-node
+experiments come after that.
 
 The reference formulas and pseudo-inverse operator are adapted from
 [RadiiPolynomial's scalar example](https://github.com/OlivierHnt/RadiiPolynomial.jl/blob/704009d7aa2e621c0900c9c158e853cb84c0c253/docs/src/getting_started/first_validation.md)

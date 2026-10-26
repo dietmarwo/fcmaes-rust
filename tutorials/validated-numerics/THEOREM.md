@@ -1,7 +1,8 @@
 # Mathematical contract and trusted components
 
-This document describes the two fixed CAP-01 verifiers. It does not establish
-a new theorem about fluid singularities. The implementation follows the
+This document describes the two fixed verifiers. They reproduce two known
+reference validations; they establish no new mathematics. The implementation
+follows the
 [pinned RadiiPolynomial theorem](https://github.com/OlivierHnt/RadiiPolynomial.jl/blob/704009d7aa2e621c0900c9c158e853cb84c0c253/docs/src/radii_polynomial_approach.md)
 and its worked scalar and Cahn–Hilliard examples.
 
@@ -123,7 +124,7 @@ used as proof evidence.
 Replay reparses the exact problem and candidate, reconstructs the finite/tail
 operator and every bound, and compares the complete proof record. Deleting a
 tail estimate, changing coefficients, setting a success flag or editing a
-bound cannot create an accepted replay. CAP-01 uses identical recorded
+bound cannot create an accepted replay. Replay requires identical recorded
 environments and exact record equality; cross-platform enclosure variation
 can cause conservative rejection.
 

@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "urn:fcmaes-rust:cap-artifacts:0.1",
-  "title": "CAP-01 frozen reference artifacts",
+  "title": "Validated-numerics reference artifacts",
   "description": "Structural validation only; the Julia replay must recompute the proof. Hex words encode binary64 bits, not rounded decimal displays.",
   "oneOf": [
     {
