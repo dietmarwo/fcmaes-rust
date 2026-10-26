@@ -1,0 +1,7 @@
+Test Summary:                     | Pass  Total  Time
+Lossless data and exact constants |   16     16  0.0s
+Test Summary:                       | Pass  Total  Time
+Theorem gate, not a success Boolean |   12     12  0.4s
+Test Summary:                                  | Pass  Total   Time
+Reference verification, replay and refutations |   40     40  35.9s
+CAPReference tests passed: 68 assertions, 0 failures, 0 errors.

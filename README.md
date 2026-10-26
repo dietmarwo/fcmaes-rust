@@ -376,6 +376,9 @@ python examples/python/test_cma.py
 
 ## Documentation
 
+- [Validated-numerics reference pilot](tutorials/validated-numerics/): pinned
+  Julia scalar/PDE verification, independent replay and command-job campaigns.
+
 - [Rendered user guide and tutorial book](https://dietmarwo.github.io/fcmaes-rust/)
 - [Generated `fcmaes-core` API reference](https://docs.rs/fcmaes-core)
 - [AI problem-solving context](ai-context.md), with its task index

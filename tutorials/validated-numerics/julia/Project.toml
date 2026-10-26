@@ -1,0 +1,23 @@
+name = "CAPReference"
+uuid = "8d4c860b-8ef7-4cad-8390-204e67ed639e"
+version = "0.1.0"
+
+[deps]
+IntervalArithmetic = "d1acc4aa-44c8-5952-acd4-ba5d80a2a253"
+JSON3 = "0f8b85d8-7281-11e9-16c2-39a750bddbf1"
+LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+RadiiPolynomial = "f2081a94-c849-46b6-8dc9-07bb90ed72a9"
+SHA = "ea8e919c-243c-51af-8825-aaa63cd721ce"
+TOML = "fa267f1f-6049-4f14-aa54-33bafae1ed76"
+
+[compat]
+IntervalArithmetic = "=1.0.12"
+JSON3 = "=1.14.3"
+RadiiPolynomial = "=0.11.10"
+julia = "=1.10.10"
+
+[extras]
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["Test"]

@@ -1,0 +1,26 @@
+[
+  {
+    "problem": "scalar-cuberoot",
+    "outcome": "verified",
+    "existence_radius": 1.8650578117375848e-16,
+    "proof_scope": "real_equation"
+  },
+  {
+    "problem": "cahn-hilliard",
+    "outcome": "verified",
+    "existence_radius": 7.343308663301207e-13,
+    "proof_scope": "full_neumann_steady_state"
+  },
+  {
+    "problem": "scalar-cuberoot",
+    "campaign": "completed",
+    "attempts": 3,
+    "continue_created_attempts": 0
+  },
+  {
+    "problem": "cahn-hilliard",
+    "campaign": "completed",
+    "attempts": 3,
+    "continue_created_attempts": 0
+  }
+]

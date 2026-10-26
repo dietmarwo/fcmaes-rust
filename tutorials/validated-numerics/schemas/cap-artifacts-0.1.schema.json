@@ -1,0 +1,725 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:fcmaes-rust:cap-artifacts:0.1",
+  "title": "CAP-01 frozen reference artifacts",
+  "description": "Structural validation only; the Julia replay must recompute the proof. Hex words encode binary64 bits, not rounded decimal displays.",
+  "oneOf": [
+    {
+      "$ref": "#/$defs/problem"
+    },
+    {
+      "$ref": "#/$defs/candidate"
+    },
+    {
+      "$ref": "#/$defs/verification"
+    },
+    {
+      "$ref": "#/$defs/replay"
+    }
+  ],
+  "$defs": {
+    "problem": {
+      "enum": [
+        {
+          "parameters": {
+            "constant": "2/1"
+          },
+          "branch": "positive-root",
+          "domain": "real",
+          "target_epsilon": "1/10000000000",
+          "id": "scalar-cuberoot",
+          "equation": "u^3 - 2 = 0",
+          "theorem": "radii-first-order-scalar/1",
+          "schema_version": "cap.problem/0.1",
+          "representation": {
+            "order": 0,
+            "basis": "scalar",
+            "norm": "absolute"
+          }
+        },
+        {
+          "parameters": {
+            "c": "0/1",
+            "frequency": "pi",
+            "beta": "1285/32"
+          },
+          "branch": "positive-first-cosine-mode",
+          "domain": "[0,1]; u'(0)=u'(1)=0; even 2-periodic extension",
+          "target_epsilon": "1/10000000000",
+          "id": "cahn-hilliard",
+          "equation": "u'' + beta*(u-u^3-c) = 0",
+          "theorem": "radii-second-order-cahn-hilliard/1",
+          "schema_version": "cap.problem/0.1",
+          "representation": {
+            "order": 32,
+            "basis": "even-fourier",
+            "norm": "abs(a0)+2*sum(abs(ak),k>=1)"
+          }
+        }
+      ]
+    },
+    "environment": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "julia": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "radii_polynomial": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "interval_arithmetic": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "radii_commit": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{40}$"
+        },
+        "interval_commit": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{40}$"
+        },
+        "project_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "manifest_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "verifier_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "cli_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "julia_threads": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1024
+        },
+        "blas_threads": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1024
+        }
+      },
+      "required": [
+        "julia",
+        "radii_polynomial",
+        "interval_arithmetic",
+        "radii_commit",
+        "interval_commit",
+        "project_sha256",
+        "manifest_sha256",
+        "verifier_sha256",
+        "cli_sha256",
+        "julia_threads",
+        "blas_threads"
+      ]
+    },
+    "interval": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "encoding": {
+          "const": "ieee754-binary64-hex"
+        },
+        "lo": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[0-9a-f]{16}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "hi": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[0-9a-f]{16}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "bounded_nonempty": {
+          "type": "boolean"
+        },
+        "guaranteed": {
+          "type": "boolean"
+        },
+        "decoration": {
+          "enum": [
+            "com",
+            "dac",
+            "def",
+            "trv",
+            "ill"
+          ]
+        }
+      },
+      "required": [
+        "encoding",
+        "lo",
+        "hi",
+        "bounded_nonempty",
+        "guaranteed",
+        "decoration"
+      ],
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "bounded_nonempty": {
+                "const": true
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "lo": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{16}$"
+              },
+              "hi": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{16}$"
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "lo": {
+                "type": "null"
+              },
+              "hi": {
+                "type": "null"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "proof": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "theorem": {
+          "enum": [
+            "radii-first-order-scalar/1",
+            "radii-second-order-cahn-hilliard/1"
+          ]
+        },
+        "scope": {
+          "enum": [
+            "real_equation",
+            "full_neumann_steady_state"
+          ]
+        },
+        "norm": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "bounds": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "Y": {
+              "$ref": "#/$defs/interval"
+            },
+            "Z1": {
+              "$ref": "#/$defs/interval"
+            },
+            "Z2": {
+              "$ref": "#/$defs/interval"
+            },
+            "Z1_finite": {
+              "$ref": "#/$defs/interval"
+            },
+            "Z1_tail": {
+              "$ref": "#/$defs/interval"
+            },
+            "norm_A": {
+              "$ref": "#/$defs/interval"
+            }
+          },
+          "required": [
+            "Y",
+            "Z1",
+            "Z2"
+          ]
+        },
+        "radius_cap": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{16}$"
+        },
+        "existence_radius": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{16}$"
+        },
+        "uniqueness_radius": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{16}$"
+        },
+        "polynomial_at_radius": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/interval"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "contraction_at_radius": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/interval"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "library_radius_interval": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/interval"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "checks": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "guaranteed_bounds": {
+              "type": "boolean"
+            },
+            "admissible_bounds": {
+              "type": "boolean"
+            },
+            "positive_radius": {
+              "type": "boolean"
+            },
+            "library_success": {
+              "type": "boolean"
+            },
+            "guaranteed_radius_interval": {
+              "type": "boolean"
+            },
+            "self_mapping": {
+              "type": "boolean"
+            },
+            "strict_contraction": {
+              "type": "boolean"
+            },
+            "physical_accuracy": {
+              "type": "boolean"
+            },
+            "injective_inverse": {
+              "type": "boolean"
+            },
+            "branch_condition": {
+              "type": "boolean"
+            },
+            "analytic_tail": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "guaranteed_bounds",
+            "admissible_bounds",
+            "positive_radius",
+            "library_success",
+            "guaranteed_radius_interval",
+            "self_mapping",
+            "strict_contraction",
+            "physical_accuracy",
+            "injective_inverse",
+            "branch_condition"
+          ]
+        },
+        "tail": {
+          "enum": [
+            "not_applicable",
+            "analytic_unresolved_fourier_modes"
+          ]
+        }
+      },
+      "required": [
+        "theorem",
+        "scope",
+        "norm",
+        "bounds",
+        "radius_cap",
+        "existence_radius",
+        "uniqueness_radius",
+        "polynomial_at_radius",
+        "contraction_at_radius",
+        "library_radius_interval",
+        "checks",
+        "tail"
+      ],
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "scope": {
+                "const": "full_neumann_steady_state"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "theorem": {
+                "const": "radii-second-order-cahn-hilliard/1"
+              },
+              "bounds": {
+                "required": [
+                  "Y",
+                  "Z1",
+                  "Z2",
+                  "Z1_finite",
+                  "Z1_tail",
+                  "norm_A"
+                ]
+              },
+              "checks": {
+                "required": [
+                  "guaranteed_bounds",
+                  "admissible_bounds",
+                  "positive_radius",
+                  "library_success",
+                  "guaranteed_radius_interval",
+                  "self_mapping",
+                  "strict_contraction",
+                  "physical_accuracy",
+                  "injective_inverse",
+                  "branch_condition",
+                  "analytic_tail"
+                ]
+              },
+              "tail": {
+                "const": "analytic_unresolved_fourier_modes"
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "theorem": {
+                "const": "radii-first-order-scalar/1"
+              },
+              "tail": {
+                "const": "not_applicable"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "candidate": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "const": "cap.candidate/0.1"
+        },
+        "problem_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "problem_id": {
+          "enum": [
+            "scalar-cuberoot",
+            "cahn-hilliard"
+          ]
+        },
+        "elapsed_seconds": {
+          "type": "number",
+          "minimum": 0
+        },
+        "encoding": {
+          "const": "ieee754-binary64-hex"
+        },
+        "coefficients": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{16}$"
+          },
+          "minItems": 1,
+          "maxItems": 33
+        },
+        "inverse_rows": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{16}$"
+            },
+            "minItems": 1,
+            "maxItems": 33
+          },
+          "minItems": 1,
+          "maxItems": 33
+        },
+        "approximation": {
+          "const": "reference-newton/1"
+        },
+        "newton_converged": {
+          "type": "boolean"
+        },
+        "environment": {
+          "$ref": "#/$defs/environment"
+        }
+      },
+      "required": [
+        "schema_version",
+        "problem_sha256",
+        "problem_id",
+        "elapsed_seconds",
+        "encoding",
+        "coefficients",
+        "inverse_rows",
+        "approximation",
+        "newton_converged",
+        "environment"
+      ],
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "problem_id": {
+                "const": "scalar-cuberoot"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "coefficients": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{16}$"
+                },
+                "minItems": 1,
+                "maxItems": 1
+              },
+              "inverse_rows": {
+                "type": "array",
+                "items": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{16}$"
+                  },
+                  "minItems": 1,
+                  "maxItems": 1
+                },
+                "minItems": 1,
+                "maxItems": 1
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "problem_id": {
+                "const": "cahn-hilliard"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "coefficients": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{16}$"
+                },
+                "minItems": 33,
+                "maxItems": 33
+              },
+              "inverse_rows": {
+                "type": "array",
+                "items": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{16}$"
+                  },
+                  "minItems": 33,
+                  "maxItems": 33
+                },
+                "minItems": 33,
+                "maxItems": 33
+              }
+            }
+          }
+        }
+      ]
+    },
+    "verification": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "const": "cap.verification/0.1"
+        },
+        "problem_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "problem_id": {
+          "enum": [
+            "scalar-cuberoot",
+            "cahn-hilliard"
+          ]
+        },
+        "elapsed_seconds": {
+          "type": "number",
+          "minimum": 0
+        },
+        "candidate_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "outcome": {
+          "enum": [
+            "verified",
+            "inconclusive"
+          ]
+        },
+        "reasons": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256
+          },
+          "minItems": 0,
+          "maxItems": 100
+        },
+        "proof": {
+          "$ref": "#/$defs/proof"
+        },
+        "environment": {
+          "$ref": "#/$defs/environment"
+        }
+      },
+      "required": [
+        "schema_version",
+        "problem_sha256",
+        "problem_id",
+        "elapsed_seconds",
+        "candidate_sha256",
+        "outcome",
+        "reasons",
+        "proof",
+        "environment"
+      ]
+    },
+    "replay": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "const": "cap.replay/0.1"
+        },
+        "problem_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "problem_id": {
+          "enum": [
+            "scalar-cuberoot",
+            "cahn-hilliard"
+          ]
+        },
+        "elapsed_seconds": {
+          "type": "number",
+          "minimum": 0
+        },
+        "candidate_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "certificate_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "outcome": {
+          "enum": [
+            "verified",
+            "rejected"
+          ]
+        },
+        "checks": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "problem_identity": {
+              "type": "boolean"
+            },
+            "candidate_identity": {
+              "type": "boolean"
+            },
+            "environment_identity": {
+              "type": "boolean"
+            },
+            "original_verified": {
+              "type": "boolean"
+            },
+            "fresh_verified": {
+              "type": "boolean"
+            },
+            "recomputed_proof_matches": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "problem_identity",
+            "candidate_identity",
+            "environment_identity",
+            "original_verified",
+            "fresh_verified",
+            "recomputed_proof_matches"
+          ]
+        },
+        "recomputed": {
+          "$ref": "#/$defs/verification"
+        }
+      },
+      "required": [
+        "schema_version",
+        "problem_sha256",
+        "problem_id",
+        "elapsed_seconds",
+        "candidate_sha256",
+        "certificate_sha256",
+        "outcome",
+        "checks",
+        "recomputed"
+      ]
+    }
+  }
+}

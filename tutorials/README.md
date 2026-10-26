@@ -1,5 +1,10 @@
 # Optimizing native Rust applications with fcmaes-rust
 
+The [CAP-01 validated-numerics reference pilot](validated-numerics/) is a
+separate Julia environment for scalar/PDE certificates and independent replay.
+It prepares proof-parameter optimization; it is not one of the Cargo application
+tutorials counted in the inventory below.
+
 ## 1. Introduction
 
 These tutorials show how to put a native Rust simulation or model-fitting
