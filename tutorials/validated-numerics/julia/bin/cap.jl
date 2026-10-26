@@ -2,6 +2,9 @@
 using CAPReference
 
 function main(args)
+    # A startup file can change the interval arithmetic or anything else the
+    # verifier relies on before it runs.
+    Base.JLOptions().startupfile == 2 || throw(ArgumentError("run cap.jl with julia --startup-file=no"))
     isempty(args) && throw(ArgumentError("usage: cap.jl candidate PROBLEM OUT | verify PROBLEM CANDIDATE OUT | replay PROBLEM CANDIDATE CERTIFICATE OUT"))
     command = first(args)
     if command == "candidate" && length(args) == 3
@@ -21,7 +24,10 @@ function main(args)
 end
 
 try
-    exit(main(ARGS))
+    # The arithmetic setting replaces a method, which code already running
+    # would not see, so `main` is entered through `invokelatest`.
+    CAPReference.configure_arithmetic()
+    exit(Base.invokelatest(main, ARGS))
 catch exception
     showerror(stderr, exception)
     println(stderr)

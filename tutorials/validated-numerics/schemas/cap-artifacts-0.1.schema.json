@@ -110,6 +110,9 @@
           "type": "integer",
           "minimum": 1,
           "maximum": 1024
+        },
+        "arithmetic": {
+          "const": "Float64 set_based correct-rounding fast-power slow-matmul loop-convolution"
         }
       },
       "required": [
@@ -123,7 +126,8 @@
         "verifier_sha256",
         "cli_sha256",
         "julia_threads",
-        "blas_threads"
+        "blas_threads",
+        "arithmetic"
       ]
     },
     "interval": {

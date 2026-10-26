@@ -121,6 +121,16 @@ be enclosures of a true solution or inverse. Exact pi and rational equation
 constants are enclosed independently. Floating approximation success is never
 used as proof evidence.
 
+The verifier runs only in one recorded arithmetic configuration:
+IntervalArithmetic's correct rounding, `Float64` bounds, set-based flavor and
+fast power, its generic interval matrix product, and RadiiPolynomial's loop
+convolution. A startup file or a caller could otherwise switch to
+round-to-nearest, and every result would still report itself as guaranteed;
+`cap.jl` therefore also requires `--startup-file=no`. The generic matrix product
+does not use OpenBLAS, so enclosures do not depend on the CPU's BLAS kernels.
+The loaded RadiiPolynomial and IntervalArithmetic must be the source trees
+whose hashes the manifest pins, not merely packages of the same version.
+
 Replay reparses the exact problem and candidate, reconstructs the finite/tail
 operator and every bound, and compares the complete proof record. Deleting a
 tail estimate, changing coefficients, setting a success flag or editing a

@@ -16,6 +16,12 @@ const ENV_VERSIONS = ["julia", "radii_polynomial", "interval_arithmetic"]
 const ENV_COMMITS = ["radii_commit", "interval_commit"]
 const ENV_HASHES = ["project_sha256", "manifest_sha256", "verifier_sha256", "cli_sha256"]
 const ENV_THREADS = ["julia_threads", "blas_threads"]
+# Interval and convolution settings the verifier runs with. A startup file or a
+# caller can change them, for example to round-to-nearest, while every result
+# still reports itself as guaranteed; the generic interval matrix product keeps
+# enclosures independent of the CPU's BLAS kernels.
+const ARITHMETIC = "Float64 set_based correct-rounding fast-power slow-matmul loop-convolution"
+const IA = IntervalArithmetic
 
 require(ok, message) = ok ? nothing : throw(ArgumentError(message))
 digest(bytes) = bytes2hex(sha256(bytes))
@@ -30,7 +36,8 @@ end
 function metadata(doc)
     value = doc["elapsed_seconds"]
     require(value isa Real && !(value isa Bool) && isfinite(value) && value >= 0, "invalid elapsed time")
-    env = fields(doc["environment"], [ENV_VERSIONS; ENV_COMMITS; ENV_HASHES; ENV_THREADS])
+    env = fields(doc["environment"], [ENV_VERSIONS; ENV_COMMITS; ENV_HASHES; ENV_THREADS; "arithmetic"])
+    require(env["arithmetic"] == ARITHMETIC, "invalid arithmetic metadata")
     for key in ENV_VERSIONS
         require(env[key] isa String && occursin(r"^[0-9]+\.[0-9]+\.[0-9]+$", env[key]), "invalid version metadata")
     end
@@ -58,6 +65,7 @@ function write_document(path, value)
         JSON3.write(io, value)
         write(io, '\n')
         close(io)
+        chmod(temp, 0o644)
         mv(temp, path; force=false)
     finally
         isopen(io) && close(io)
@@ -80,7 +88,7 @@ function rational(value)
     return parse(BigInt, n) // parse(BigInt, d)
 end
 
-"""These two frozen problems are the whole CAP-01 input language; no eval or expressions."""
+"""These two frozen problems are the whole input language; no eval or expressions."""
 function problem_definition(id)
     common = Dict{String,Any}("schema_version" => "cap.problem/0.1", "id" => id,
         "target_epsilon" => "1/10000000000")
@@ -102,27 +110,52 @@ function problem_definition(id)
     return common
 end
 
+# Equal values of equal JSON types: `32.0` is not the frozen order `32`.
+same(a::AbstractDict, b::AbstractDict) = Set(keys(a)) == Set(keys(b)) && all(k -> same(a[k], b[k]), keys(a))
+same(a, b) = typeof(a) == typeof(b) && a == b
+
 function load_problem(path)
     problem, sha = read_document(path)
-    require(haskey(problem, "id") && problem == problem_definition(problem["id"]),
-        "problem differs from the frozen CAP-01 theorem specification")
+    require(haskey(problem, "id") && problem["id"] isa String && same(problem, problem_definition(problem["id"])),
+        "problem differs from the frozen theorem specification")
     return problem, sha
 end
 
+"""Select the generic interval matrix product. Call at top level, before verifying:
+the setting replaces a method, which code already running does not see."""
+configure_arithmetic() = (IA.configure(matmul=:slow); nothing)
+
+function check_arithmetic()
+    require(IA.default_numtype() === Float64 && IA.default_flavor() === IA.Flavor{:set_based}() &&
+        IA.default_rounding() === IA.IntervalRounding{:correct}() && IA.default_power() === IA.PowerMode{:fast}() &&
+        IA.default_matmul() === IA.MatMulMode{:slow}() && RadiiPolynomial.CONV_ALGORITHM[] === :loop,
+        "interval arithmetic must be configured as: " * ARITHMETIC * "; call configure_arithmetic() first")
+end
+
 function environment()
-    require(VERSION == v"1.10.10", "CAP-01 requires Julia 1.10.10")
+    require(VERSION == v"1.10.10", "the verifier requires Julia 1.10.10")
     require(Base.pkgversion(RadiiPolynomial) == v"0.11.10" &&
         Base.pkgversion(IntervalArithmetic) == v"1.0.12", "unexpected validation library version")
-    require(Threads.nthreads() == 1, "CAP-01 requires JULIA_NUM_THREADS=1")
+    require(Threads.nthreads() == 1, "the verifier requires JULIA_NUM_THREADS=1")
+    check_arithmetic()
     BLAS.set_num_threads(1)
     lock = TOML.parsefile(joinpath(ROOT, "Manifest.toml"))
     require(lock["deps"]["RadiiPolynomial"][1]["repo-rev"] == RP_COMMIT &&
         lock["deps"]["IntervalArithmetic"][1]["repo-rev"] == IA_COMMIT,
         "validation dependency revision changed")
+    # The loaded code must be the source tree this manifest pins, not merely a
+    # package reporting the same version.
+    for (mod, name) in ((RadiiPolynomial, "RadiiPolynomial"), (IntervalArithmetic, "IntervalArithmetic"))
+        entry = lock["deps"][name][1]
+        slug = Base.version_slug(Base.UUID(entry["uuid"]), Base.SHA1(entry["git-tree-sha1"]))
+        require(occursin(joinpath("packages", name, slug, "src"), something(pathof(mod), "")),
+            "loaded $name is not the source tree pinned by the manifest")
+    end
     return Dict("julia" => string(VERSION), "radii_polynomial" => string(Base.pkgversion(RadiiPolynomial)),
         "interval_arithmetic" => string(Base.pkgversion(IntervalArithmetic)),
         "radii_commit" => RP_COMMIT, "interval_commit" => IA_COMMIT,
         "julia_threads" => Threads.nthreads(), "blas_threads" => BLAS.get_num_threads(),
+        "arithmetic" => ARITHMETIC,
         "project_sha256" => file_digest(joinpath(ROOT, "Project.toml")),
         "manifest_sha256" => file_digest(joinpath(ROOT, "Manifest.toml")),
         "verifier_sha256" => file_digest(@__FILE__),
@@ -190,7 +223,7 @@ function interval_record(x)
     x === nothing && return nothing
     valid = isbounded(x) && !isempty_interval(x) && !isnai(x)
     require(inf(x) isa Float64 && sup(x) isa Float64,
-        "CAP-01 interval artifacts require binary64 endpoints; never round a bound during serialization")
+        "interval artifacts require binary64 endpoints; never round a bound during serialization")
     return Dict("encoding" => ENCODING, "lo" => valid ? hexfloat(Float64(inf(x))) : nothing,
         "hi" => valid ? hexfloat(Float64(sup(x))) : nothing, "bounded_nonempty" => valid,
         "guaranteed" => isguaranteed(x), "decoration" => string(decoration(x)))
@@ -300,7 +333,7 @@ end
 
 """Fresh rigorous computation. Never trust the saved Boolean, bounds or Newton flag.
 
-CAP-01 requires the same recorded verifier environment and exact bound records.
+Replay requires the same recorded verifier environment and exact bound records.
 Cross-platform semantic replay with different enclosures is deliberately deferred.
 """
 function replay_files(problem_path, candidate_path, certificate_path)

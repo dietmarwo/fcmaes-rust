@@ -96,7 +96,10 @@ their endpoints. All proof inequalities use guaranteed interval arithmetic.
 The verifier checks both the radii routine's Boolean and guarantee flag,
 interval admissibility, an explicit self-mapping inequality, strict contraction,
 the physical error target, inverse injectivity and the branch condition. The
-PDE additionally retains its finite defect and analytic tail bound.
+PDE additionally retains its finite defect and analytic tail bound. It refuses
+to run unless the interval arithmetic is in the configuration it records and
+the loaded libraries are the source trees the manifest pins; `cap.jl` also
+requires `--startup-file=no` (see [THEOREM.md](THEOREM.md#arithmetic-and-replay)).
 
 `elapsed_seconds` is measured inside the operation and is not whole-process
 startup time or CPU use. The workflow harness separately records process wall

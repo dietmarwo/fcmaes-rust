@@ -6,6 +6,40 @@ using LinearAlgebra
 
 const C = CAPReference
 const PROBLEMS = normpath(joinpath(@__DIR__, "..", "..", "problems"))
+C.configure_arithmetic()  # at top level, as cap.jl does; later testsets see it
+
+@testset "Arithmetic configuration and provenance gate" begin
+    @test C.environment()["arithmetic"] == C.ARITHMETIC
+    # Round-to-nearest still reports guaranteed intervals; the gate must refuse it.
+    IntervalArithmetic.configure(rounding=:none)
+    try
+        @test isguaranteed(Base.invokelatest(() -> interval(1.0) + interval(1e-30)))
+        @test_throws ArgumentError Base.invokelatest(C.environment)
+    finally
+        IntervalArithmetic.configure(rounding=:correct)
+    end
+    @test Base.invokelatest(C.environment)["arithmetic"] == C.ARITHMETIC
+    @test in_interval(big(π), interval(π))
+end
+
+@testset "Library behavior the proof relies on" begin
+    s = evensym(Fourier(1, 1.0))
+    # Ell1 weighs mode 0 by 1 and modes >= 1 by 2, in operator norms too.
+    @test opnorm(LinearOperator(s, s, [0.0 0.0; 1.0 0.0]), Ell1()) == 2
+    @test opnorm(LinearOperator(s, s, [0.0 1.0; 0.0 0.0]), Ell1()) == 0.5
+    # A finite operator truncates a longer input to its domain: A_finite ∘ Π_K.
+    b = Sequence(evensym(Fourier(3, 1.0)), [1.0, 2.0, 3.0, 4.0])
+    @test coefficients(LinearOperator(s, s, [1.0 0.0; 0.0 1.0]) * b) == [1.0, 2.0]
+    # The finite defect keeps every output row of DF on input modes up to 3K+1.
+    K = 2
+    sK = evensym(Fourier(K, interval(π)))
+    u = Sequence(sK, interval.([0.1, 0.2, 0.3]))
+    finite = LinearOperator(sK, sK, interval.(Matrix{Float64}(I, K+1, K+1)))
+    A = finite + C.PseudoInverseLaplacian()*(interval(I) - Projection(sK, Interval{Float64}))
+    projection3 = Projection(evensym(Fourier(3K+1, interval(π))), Interval{Float64})
+    defect = projection3 - A*(C.ch_df(u, interval(0.0), interval(1.0))*projection3)
+    @test size(coefficients(defect)) == (5K+2, 3K+2)
+end
 
 @testset "Lossless data and exact constants" begin
     for x in [0.0, -0.0, nextfloat(0.0), 0.1, -3.5, floatmax(Float64)]
@@ -47,6 +81,10 @@ end
     @test all(values(checks))
     checks, _, _, _ = C.assess(interval(1e-12),interval(0.1),interval(0),1e-10,1//10^12; second_order=true)
     @test !checks["physical_accuracy"]
+    # Self-mapping holds at R but contraction fails there, although the library
+    # finds a smaller radius: R itself must satisfy both conditions.
+    checks, _, _, _ = C.assess(interval(1e-20),interval(0.5),interval(9e9),1e-10,1//100; second_order=true)
+    @test checks["self_mapping"] && !checks["strict_contraction"]
 end
 
 @testset "Reference verification, replay and refutations" begin
@@ -98,7 +136,14 @@ end
                 path = tempname(directory); C.write_document(path,modified)
                 @test_throws ArgumentError C.verify_files(problem,path)
             end
+            wrong = C.problem_definition(id); wrong["representation"]["order"] = float(wrong["representation"]["order"])
+            path = tempname(directory); C.write_document(path,wrong)
+            @test_throws ArgumentError C.verify_files(path,candidate) # 32.0 is not the frozen order 32
             if id == "cahn-hilliard"
+                # With c = 0, -ū is a solution too; only the branch condition tells them apart.
+                negated = deepcopy(doc); negated["coefficients"] = [C.hexfloat(-C.unhexfloat(x)) for x in doc["coefficients"]]
+                path = tempname(directory); C.write_document(path,negated)
+                @test C.verify_files(problem,path)["reasons"] == ["branch_condition"]
                 @test C.unhexfloat(verified["proof"]["bounds"]["Z1_tail"]["hi"]) > 0
                 missing_tail = deepcopy(verified); delete!(missing_tail["proof"]["bounds"],"Z1_tail")
                 path = tempname(directory); C.write_document(path,missing_tail)
