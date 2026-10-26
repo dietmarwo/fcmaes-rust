@@ -39,6 +39,8 @@ jobs:
         with:
           python-version: '3.12'
       - uses: dtolnay/rust-toolchain@1.88.0
+      - name: Recheck the retained certificates in exact rational arithmetic
+        run: python tutorials/validated-numerics/exact_check.py
       - name: Instantiate exact Julia environment and run proof regressions
         shell: bash
         run: |

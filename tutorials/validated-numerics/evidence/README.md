@@ -63,7 +63,12 @@ real foreground backend on one machine; they do not establish systemd,
 remote-host, disconnect/reboot or multi-node readiness.
 
 The workflow replays these two certificates on every change to this
-directory. To replay one yourself from the tutorial directory, in the pinned
+directory, and [`exact_check.py`](../exact_check.py) recomputes their bounds
+in exact rational arithmetic: every recorded interval encloses the exact value,
+and every theorem condition holds exactly. For the Cahn–Hilliard case, the
+exact Y is about 7.1e-16, so its recorded upper bound of 7.3e-14 is about 100
+times wider, from interval cancellation in the residual; the radius
+`R = 10 sup(Y)` is correspondingly conservative. To replay one yourself from the tutorial directory, in the pinned
 environment, use a new output path:
 
 ```bash

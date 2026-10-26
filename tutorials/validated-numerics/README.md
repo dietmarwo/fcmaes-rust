@@ -151,6 +151,15 @@ python3 test_workflow.py --julia "$(command -v julia)" \
   --depot "$JULIA_DEPOT_PATH" --output /tmp/cap-direct-evidence
 ```
 
+`exact_check.py` needs only Python. It recomputes every bound of the two
+retained certificates in exact rational arithmetic, independently of the Julia
+interval libraries, and requires each recorded interval to enclose the exact
+value and each theorem condition to hold exactly:
+
+```bash
+python3 exact_check.py
+```
+
 To exercise the actual command runtime and campaign client too:
 
 ```bash

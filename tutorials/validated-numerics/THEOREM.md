@@ -144,4 +144,7 @@ dependencies, and their arithmetic/platform assumptions. Package/source hashes
 record identity; a writable depot or compromised machine is outside this
 trusted local research model. This is an independently rerun numerical
 certificate, not a proof checked by a formal proof assistant or by a second
-independent interval implementation.
+independent interval implementation. `exact_check.py` adds an independent
+check of the arithmetic only: it recomputes the retained certificates' bounds
+from the same formulas in exact rational arithmetic, with pi enclosed to
+`1e-60`, and requires every recorded interval to enclose the exact value.
