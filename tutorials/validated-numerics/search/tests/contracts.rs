@@ -167,6 +167,28 @@ fn oversized_and_truncated_frames_are_rejected() {
     }
 }
 
+/// A server frame of `size` JSON bytes plus the newline terminator.
+fn padded_ready(size: usize) -> String {
+    format!(
+        "import json,sys\nbase=json.dumps(dict(schema_version='cap.search.response/0.1',request_id=0,status='ready'))\nframe=base[:-1]+' '*({size}-len(base))+'}}'\nassert len(frame)=={size}\nsys.stdout.write(frame+'\\n');sys.stdout.flush()\nsys.stdin.read()\n"
+    )
+}
+
+#[test]
+fn the_frame_limit_counts_json_bytes_like_the_server() {
+    // The Julia server accepts and emits FRAME_LIMIT JSON bytes plus a newline.
+    let b = bridge(&padded_ready(FRAME_LIMIT), Duration::from_secs(5));
+    let pid = b.pid();
+    b.ready().unwrap();
+    drop(b);
+    reaped(pid);
+    let b = bridge(&padded_ready(FRAME_LIMIT + 1), Duration::from_secs(5));
+    let pid = b.pid();
+    assert_eq!(b.ready().unwrap_err().code, "protocol_error");
+    drop(b);
+    reaped(pid);
+}
+
 #[test]
 fn wrong_reply_identity_is_rejected() {
     let code = format!(

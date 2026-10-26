@@ -12,6 +12,8 @@ use std::{
     time::{Duration, Instant},
 };
 
+/// Largest response frame in JSON bytes, excluding the newline terminator;
+/// the Julia server applies the same limit to the frames it emits.
 pub const FRAME_LIMIT: usize = 1 << 20;
 
 #[derive(Debug, Clone)]
@@ -70,16 +72,16 @@ impl Bridge {
                     .by_ref()
                     .take((FRAME_LIMIT + 2) as u64)
                     .read_until(b'\n', &mut line);
-                let value =
-                    match read {
-                        Ok(0) => Err(Failure::new("protocol_error", "server stdout closed")),
-                        Ok(n) if n > FRAME_LIMIT || line.last() != Some(&b'\n') => Err(
-                            Failure::new("protocol_error", "oversized or truncated response frame"),
-                        ),
-                        Ok(_) => serde_json::from_slice(&line)
-                            .map_err(|e| Failure::new("protocol_error", e)),
-                        Err(e) => Err(Failure::io(e)),
-                    };
+                let value = match read {
+                    Ok(0) => Err(Failure::new("protocol_error", "server stdout closed")),
+                    Ok(n) if n > FRAME_LIMIT + 1 || line.last() != Some(&b'\n') => Err(
+                        Failure::new("protocol_error", "oversized or truncated response frame"),
+                    ),
+                    Ok(_) => {
+                        serde_json::from_slice(&line).map_err(|e| Failure::new("protocol_error", e))
+                    }
+                    Err(e) => Err(Failure::io(e)),
+                };
                 let failed = value.is_err();
                 if sender.send(value).is_err() || failed {
                     break;
