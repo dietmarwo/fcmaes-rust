@@ -7,9 +7,17 @@ on:
       - 'tutorials/validated-numerics/**'
       - '.github/workflows/cap-reference.yml'
   push:
+    branches: [main]
     paths:
       - 'tutorials/validated-numerics/**'
       - '.github/workflows/cap-reference.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cap-reference-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   reference:
@@ -35,7 +43,7 @@ jobs:
           export JULIA_DEPOT_PATH="$RUNNER_TEMP/cap-depot"
           echo "JULIA_DEPOT_PATH=$JULIA_DEPOT_PATH" >> "$GITHUB_ENV"
           julia --startup-file=no --project=tutorials/validated-numerics/julia -e 'using Pkg; Pkg.instantiate(); Pkg.test(;allow_reresolve=false)'
-      - name: Build the inspected command runtime and campaign client
+      - name: Build the command runtime and fetch the campaign client
         run: |
           python -m pip install 'jsonschema>=4.18,<5'
           git clone https://github.com/dietmarwo/optimization-jobs "$RUNNER_TEMP/optimization-jobs"
@@ -43,7 +51,7 @@ jobs:
           cargo build --release --locked --manifest-path "$RUNNER_TEMP/optimization-jobs/Cargo.toml" -p optimization-runner --bin optimization-run
           git clone https://github.com/dietmarwo/experiment-craft "$RUNNER_TEMP/experiment-craft"
           git -C "$RUNNER_TEMP/experiment-craft" checkout --detach 2f5846e4eb18008d960c30301a54395d58bdb32d
-      - name: Fresh-process replay and real foreground command campaigns
+      - name: Fresh-process replay, retained evidence and real foreground command campaigns
         run: |
           python tutorials/validated-numerics/test_workflow.py \
             --julia "$(command -v julia)" --depot "$JULIA_DEPOT_PATH" \

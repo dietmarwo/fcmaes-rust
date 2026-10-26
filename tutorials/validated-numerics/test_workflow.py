@@ -94,6 +94,15 @@ def main():
             del missing["proof"]["bounds"]["Z1_tail"]
             assert not validator.is_valid(missing)
 
+    # The committed evidence must still replay with this verifier, as its README says.
+    for problem in ("scalar-cuberoot", "cahn-hilliard"):
+        retained = ROOT / "evidence" / problem
+        replayed = args.output / (problem + "-retained-replay.json")
+        run(problem + "-retained-replay", [*julia, "replay", ROOT / "problems" / (problem + ".json"),
+                                           retained / "candidate.json", retained / "verification.json", replayed])
+        assert artifact(replayed)["outcome"] == "verified"
+        results.append({"problem": problem, "retained_evidence": "verified"})
+
     if args.runner:
         source = args.experiment_craft_source.resolve()
         env = environment.copy()
