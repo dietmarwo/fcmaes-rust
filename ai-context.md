@@ -48,7 +48,7 @@ server. In this file:
 | Threads and cores | [Parallelism rules](#parallelism-rules) |
 | CFD experiment through prompts | [Room-ventilation workshop](tutorials/cfd-room-ventilation/agentic/README.md): direct native CLI, fixed budgets, held-out replay and grid/setup sensitivity; no registered CFD job profile |
 | Checking a solution | [Validation checklist](#validation-and-reporting-checklist), [failure diagnosis](#failure-diagnosis) |
-| Validated numerics / computer-assisted proofs | [Reference verifier and replay](tutorials/validated-numerics/README.md); [bounded Rust–Julia search](tutorials/validated-numerics/SEARCH.md): fixed-target inverse tuning, frozen baselines and independent certification |
+| Validated numerics / computer-assisted proofs | [Reference verifier and replay](tutorials/validated-numerics/README.md); [bounded Rust–Julia search](tutorials/validated-numerics/SEARCH.md); [all-arm certificate audit](tutorials/validated-numerics/AUDIT.md): fixed-target inverse tuning, frozen baselines, independent certification and strict artifact acceptance |
 
 ## Experimental surrogate chooser rule
 

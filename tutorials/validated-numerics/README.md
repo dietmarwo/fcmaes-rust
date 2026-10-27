@@ -5,6 +5,8 @@ root of `u^3 - 2 = 0`, and a nonconstant Neumann steady state of the
 Cahn–Hilliard equation. It separates numerical approximation, rigorous
 verification and a fresh replay. The [bounded search](SEARCH.md) adds a
 Rust–Julia bridge and frozen comparisons for proof-parameter tuning.
+The [all-arm certificate audit](AUDIT.md) verifies every final proposal and
+retains unsuccessful observations behind a separate strict acceptance gate.
 This page describes the independent reference verifier.
 
 The implementation is a standalone Julia environment. It adds no dependency

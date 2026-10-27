@@ -1,0 +1,26 @@
+Running tests/contracts.rs (tutorials/validated-numerics/search/target/release/deps/contracts-4b5edc3aa4854773)
+
+running 15 tests
+test all_methods_obey_the_work_cap_and_bounds ... ok
+test bad_budget_and_nonfinite_scores_are_explicit_errors ... ok
+test cancellation_reaps_a_live_child ... ok
+test a_server_ended_by_a_group_signal_reports_the_cancellation ... ok
+test a_silent_child_times_out_and_is_reaped ... ok
+test grid_is_complete_and_has_no_duplicated_nominal_point ... ok
+test local_pattern_moves_only_to_an_improving_centre ... ok
+test no_arm_spends_its_second_evaluation_on_the_nominal_start_again ... ok
+test graceful_shutdown_drains_stderr_and_reaps_child ... ok
+test seeded_methods_reproduce_the_whole_trajectory ... ok
+test a_child_exit_is_observed_without_waiting_for_the_deadline ... ok
+test wrong_reply_identity_is_rejected ... ok
+test the_frame_limit_counts_json_bytes_like_the_server ... ok
+test oversized_and_truncated_frames_are_rejected ... ok
+test cleanup_does_not_wait_for_descendants_holding_the_pipes ... ok
+
+test result: ok. 15 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.00s
+
+   Doc-tests cap_search
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s

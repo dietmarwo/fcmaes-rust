@@ -1,0 +1,380 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:fcmaes-rust:cap-audit:0.1",
+  "title": "Final-candidate certificate audit",
+  "description": "Application records, not native execution results. Structural validation does not establish a proof. audit.py accept checks all identities and the independently recomputed verification/replay records.",
+  "oneOf": [
+    {
+      "$ref": "#/$defs/protocol"
+    },
+    {
+      "$ref": "#/$defs/audit"
+    },
+    {
+      "$ref": "#/$defs/acceptance"
+    }
+  ],
+  "$defs": {
+    "protocol": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "const": "cap.audit.protocol/0.1"
+        },
+        "verification_wall_seconds": {
+          "type": "number",
+          "minimum": 0.05,
+          "maximum": 600
+        },
+        "replay_wall_seconds": {
+          "type": "number",
+          "minimum": 0.05,
+          "maximum": 600
+        },
+        "order": {
+          "const": "search-protocol"
+        },
+        "acceptance": {
+          "const": "all-arms-verified-and-replayed"
+        },
+        "timing": {
+          "const": "shared-search-startup-plus-arm-work-plus-fresh-verification-and-replay"
+        },
+        "scope": {
+          "const": "final-candidates-only"
+        }
+      },
+      "required": [
+        "schema_version",
+        "verification_wall_seconds",
+        "replay_wall_seconds",
+        "order",
+        "acceptance",
+        "timing",
+        "scope"
+      ]
+    },
+    "inputs": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "problem": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "study": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "candidates": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "evaluations": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "search_protocol": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      },
+      "required": [
+        "problem",
+        "study",
+        "candidates",
+        "evaluations",
+        "search_protocol"
+      ]
+    },
+    "implementation": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "audit.py": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "schemas/cap-audit-0.1.schema.json": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "schemas/cap-artifacts-0.1.schema.json": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "schemas/cap-search-0.1.schema.json": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      },
+      "required": [
+        "audit.py",
+        "schemas/cap-audit-0.1.schema.json",
+        "schemas/cap-artifacts-0.1.schema.json",
+        "schemas/cap-search-0.1.schema.json"
+      ]
+    },
+    "blob": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "json": {
+          "type": "string",
+          "maxLength": 262144,
+          "minLength": 1
+        }
+      },
+      "required": [
+        "sha256",
+        "json"
+      ]
+    },
+    "stage": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "status": {
+          "enum": [
+            "not_run",
+            "completed",
+            "cancelled",
+            "timed_out",
+            "process_failed",
+            "invalid_output"
+          ]
+        },
+        "pid": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1
+        },
+        "returncode": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "wall_seconds": {
+          "type": "number",
+          "minimum": 0
+        },
+        "wall_limit_seconds": {
+          "type": "number",
+          "minimum": 0.05,
+          "maximum": 600
+        },
+        "document": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/blob"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "error": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 2000
+        },
+        "stdout": {
+          "type": "string",
+          "maxLength": 16384
+        },
+        "stderr": {
+          "type": "string",
+          "maxLength": 16384
+        }
+      },
+      "required": [
+        "status",
+        "pid",
+        "returncode",
+        "wall_seconds",
+        "wall_limit_seconds",
+        "document",
+        "error",
+        "stdout",
+        "stderr"
+      ]
+    },
+    "arm": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_-]{1,64}$"
+        },
+        "candidate_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "verification": {
+          "$ref": "#/$defs/stage"
+        },
+        "replay": {
+          "$ref": "#/$defs/stage"
+        }
+      },
+      "required": [
+        "id",
+        "candidate_sha256",
+        "verification",
+        "replay"
+      ]
+    },
+    "observation": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "arm": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_-]{1,64}$"
+        },
+        "event": {
+          "type": "boolean"
+        },
+        "right_censored": {
+          "type": "boolean"
+        },
+        "observed_seconds": {
+          "type": "number",
+          "minimum": 0
+        },
+        "reason": {
+          "type": "string",
+          "maxLength": 256
+        }
+      },
+      "required": [
+        "arm",
+        "event",
+        "right_censored",
+        "observed_seconds",
+        "reason"
+      ]
+    },
+    "audit": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "const": "cap.audit/0.1"
+        },
+        "inputs": {
+          "$ref": "#/$defs/inputs"
+        },
+        "protocol": {
+          "$ref": "#/$defs/protocol"
+        },
+        "protocol_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "implementation": {
+          "$ref": "#/$defs/implementation"
+        },
+        "complete": {
+          "type": "boolean"
+        },
+        "total_wall_seconds": {
+          "type": "number",
+          "minimum": 0
+        },
+        "events_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "arms": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/arm"
+          },
+          "minItems": 6,
+          "maxItems": 16
+        }
+      },
+      "required": [
+        "schema_version",
+        "inputs",
+        "protocol",
+        "protocol_sha256",
+        "implementation",
+        "complete",
+        "total_wall_seconds",
+        "events_sha256",
+        "arms"
+      ]
+    },
+    "acceptance": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "const": "cap.audit.acceptance/0.1"
+        },
+        "audit_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "protocol_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "inputs": {
+          "$ref": "#/$defs/inputs"
+        },
+        "outcome": {
+          "enum": [
+            "accepted",
+            "rejected"
+          ]
+        },
+        "complete": {
+          "type": "boolean"
+        },
+        "accepted_arms": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 16
+        },
+        "total_arms": {
+          "type": "integer",
+          "minimum": 6,
+          "maximum": 16
+        },
+        "observations": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/observation"
+          },
+          "minItems": 6,
+          "maxItems": 16
+        }
+      },
+      "required": [
+        "schema_version",
+        "audit_sha256",
+        "protocol_sha256",
+        "inputs",
+        "outcome",
+        "complete",
+        "accepted_arms",
+        "total_arms",
+        "observations"
+      ]
+    }
+  }
+}

@@ -23,7 +23,7 @@ jobs:
   reference:
     name: Validated numerics reference
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 60
     env:
       JULIA_NUM_THREADS: '1'
       OPENBLAS_NUM_THREADS: '1'
@@ -89,7 +89,15 @@ jobs:
           git -C "$RUNNER_TEMP/optimization-jobs" checkout --detach 051435c325a51cc89be4ae26645d6937eed6f5e5
           cargo build --release --locked --manifest-path "$RUNNER_TEMP/optimization-jobs/Cargo.toml" -p optimization-runner --bin optimization-run
           git clone https://github.com/dietmarwo/experiment-craft "$RUNNER_TEMP/experiment-craft"
-          git -C "$RUNNER_TEMP/experiment-craft" checkout --detach 013077b37e917d994d3346aa0c1a36c5dfe6fec2
+          git -C "$RUNNER_TEMP/experiment-craft" checkout --detach d4db33d794acd77004058381959060b59c625d01
+      - name: Audit contracts, artifact rejection and process cleanup
+        shell: bash
+        run: |
+          if ! python tutorials/validated-numerics/test_audit_contract.py 2>&1 | tee "$RUNNER_TEMP/audit-contract-tests.log"; then
+            text=$(tail -c 3000 "$RUNNER_TEMP/audit-contract-tests.log" | sed 's/%/%25/g' | sed ':a;N;$!ba;s/\n/%0A/g')
+            echo "::error title=certificate audit contracts::$text"
+            exit 1
+          fi
       - name: Fresh-process replay, retained evidence and real foreground command campaigns
         run: |
           python tutorials/validated-numerics/test_workflow.py \
@@ -105,6 +113,15 @@ jobs:
             --runner "$RUNNER_TEMP/optimization-jobs/target/release/optimization-run" \
             --experiment-craft-source "$RUNNER_TEMP/experiment-craft" \
             --output "$RUNNER_TEMP/cap-search-evidence"
+      - name: All-arm independent certificates, exact arithmetic and strict command acceptance
+        run: |
+          python tutorials/validated-numerics/test_audit.py \
+            --search-evidence "$RUNNER_TEMP/cap-search-evidence" \
+            --binary "$RUNNER_TEMP/cap-search-evidence/bin/cap-search" \
+            --julia "$(command -v julia)" --depot "$JULIA_DEPOT_PATH" \
+            --runner "$RUNNER_TEMP/optimization-jobs/target/release/optimization-run" \
+            --experiment-craft-source "$RUNNER_TEMP/experiment-craft" \
+            --output "$RUNNER_TEMP/cap-audit-evidence"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -112,6 +129,8 @@ jobs:
           path: |
             ${{ runner.temp }}/cap-search-evidence
             ${{ runner.temp }}/cap-evidence
+            ${{ runner.temp }}/cap-audit-evidence
+            ${{ runner.temp }}/audit-contract-tests.log
             ${{ runner.temp }}/julia-tests.log
             ${{ runner.temp }}/rust-tests.log
           if-no-files-found: ignore
