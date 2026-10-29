@@ -56,6 +56,8 @@ Compare callback caps with actual consumed pair work. Examine the rotational zer
 
 The checked-in `results/` record one run of each preset. The shared driver writes source and package identities to `environment.json` for the runs it makes. These are reproducible teaching experiments, not industrial or hardware performance certifications. Tables that compare formulations or solvers are descriptive.
 
+On another processor, NumPy selects other vectorized kernels. The smoke preset still agrees to about 1e-6. In the study preset, the SQP starts follow those last-digit differences: their callback counts change slightly, and the first start can stop at the evaluation limit instead of with a line-search failure. The checked energies still agree to about 1e-6.
+
 ## Recorded example
 
 ![Recorded X4 smoke result](results/smoke/figure.png)
