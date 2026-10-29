@@ -1,7 +1,7 @@
 {
   "chapter": "X3",
   "preset": "study",
-  "seconds": 0.7259423732757568,
+  "seconds": 0.5604000091552734,
   "result": {
     "nominal_nodes": [
       [
@@ -1948,10 +1948,10 @@
               "diagnostics.objective_lattice": "false",
               "numeric_threads": "1"
             },
-            "total_seconds": 0.004906435,
-            "conversion_seconds": 6.8834e-05,
-            "solve_seconds": 0.004668397,
-            "check_seconds": 4.7892e-05,
+            "total_seconds": 0.004544286,
+            "conversion_seconds": 6.2882e-05,
+            "solve_seconds": 0.004282688,
+            "check_seconds": 4.7666e-05,
             "time_budget_exceeded": false
           },
           "independent": {
@@ -3683,10 +3683,10 @@
               "diagnostics.objective_lattice": "false",
               "numeric_threads": "1"
             },
-            "total_seconds": 0.007861587,
-            "conversion_seconds": 6.9895e-05,
-            "solve_seconds": 0.00754407,
-            "check_seconds": 4.5498e-05,
+            "total_seconds": 0.006769062,
+            "conversion_seconds": 5.9464e-05,
+            "solve_seconds": 0.006537165,
+            "check_seconds": 4.9623e-05,
             "time_budget_exceeded": false
           },
           "independent": {
@@ -4153,6 +4153,7 @@
           -0.0010123482082926199
         ]
       ],
+      "feasible": true,
       "forces": [
         -180510.96532545652,
         117481.51294728096,
@@ -4191,6 +4192,7 @@
         -179999.99999999916,
         7.300204137736308e-11
       ],
+      "mass_kg": 1789.319411003595,
       "status": "checked",
       "stress": 0.904074634372027
     },
@@ -4275,6 +4277,7 @@
           -0.0014729129850335242
         ]
       ],
+      "feasible": true,
       "forces": [
         -180510.96532545652,
         117481.51294728319,
@@ -4313,6 +4316,7 @@
         -179999.9999999998,
         -1.735139643084532e-11
       ],
+      "mass_kg": 812.0807659944777,
       "status": "checked",
       "stress": 0.9519082957008623
     },
@@ -11539,19 +11543,19 @@
             "fixed_step_corrections": 0,
             "bound_step_corrections": 41,
             "step_norm": 0.0032159350807083875,
-            "total_seconds": 0.100740957,
-            "callback_seconds": 0.095259928,
-            "qp_seconds": 0.0023051540000000002,
+            "total_seconds": 0.08712573,
+            "callback_seconds": 0.08150589700000002,
+            "qp_seconds": 0.0023493379999999994,
             "qp_setups": 37,
             "qp_updates": 0,
             "qp_cold_retries": 2,
             "qp_retry_reason": "active-set solution failed the independent check (scale 1.607e2): KktResiduals { primal: 1.175212673842907e-6, stationarity: 4.182976654111e-16, complementarity: 2.596283639282735e-22, dual_sign: 0.0 }",
-            "qp_conversion_seconds": 0.00017154999999999994,
-            "qp_setup_seconds": 0.000134425,
+            "qp_conversion_seconds": 0.000155917,
+            "qp_setup_seconds": 0.00019601500000000004,
             "qp_update_seconds": 0.0,
-            "qp_solve_seconds": 0.0010659309999999998,
-            "qp_check_seconds": 0.0005650199999999998,
-            "bfgs_seconds": 0.00022849399999999996,
+            "qp_solve_seconds": 0.001158886,
+            "qp_check_seconds": 0.0004956519999999999,
+            "bfgs_seconds": 0.0002459940000000001,
             "qp_trace": [],
             "history": [
               {
@@ -19094,19 +19098,19 @@
             "fixed_step_corrections": 0,
             "bound_step_corrections": 0,
             "step_norm": 1.1640640291965543e-07,
-            "total_seconds": 0.531858488,
-            "callback_seconds": 0.13247263900000006,
-            "qp_seconds": 0.3939720149999999,
+            "total_seconds": 0.387476378,
+            "callback_seconds": 0.10787232599999998,
+            "qp_seconds": 0.27548546000000007,
             "qp_setups": 44,
             "qp_updates": 0,
             "qp_cold_retries": 0,
             "qp_retry_reason": null,
-            "qp_conversion_seconds": 0.0014012279999999998,
-            "qp_setup_seconds": 0.034810009999999995,
+            "qp_conversion_seconds": 0.0014656760000000002,
+            "qp_setup_seconds": 0.019480095000000003,
             "qp_update_seconds": 0.0,
-            "qp_solve_seconds": 0.35161392499999994,
-            "qp_check_seconds": 0.0011332180000000003,
-            "bfgs_seconds": 0.00019356999999999995,
+            "qp_solve_seconds": 0.2524129870000001,
+            "qp_check_seconds": 0.000997272,
+            "bfgs_seconds": 0.000162464,
             "qp_trace": [],
             "history": [
               {
@@ -26762,19 +26766,19 @@
           "fixed_step_corrections": 0,
           "bound_step_corrections": 0,
           "step_norm": 1.1640640291965543e-07,
-          "total_seconds": 0.531858488,
-          "callback_seconds": 0.13247263900000006,
-          "qp_seconds": 0.3939720149999999,
+          "total_seconds": 0.387476378,
+          "callback_seconds": 0.10787232599999998,
+          "qp_seconds": 0.27548546000000007,
           "qp_setups": 44,
           "qp_updates": 0,
           "qp_cold_retries": 0,
           "qp_retry_reason": null,
-          "qp_conversion_seconds": 0.0014012279999999998,
-          "qp_setup_seconds": 0.034810009999999995,
+          "qp_conversion_seconds": 0.0014656760000000002,
+          "qp_setup_seconds": 0.019480095000000003,
           "qp_update_seconds": 0.0,
-          "qp_solve_seconds": 0.35161392499999994,
-          "qp_check_seconds": 0.0011332180000000003,
-          "bfgs_seconds": 0.00019356999999999995,
+          "qp_solve_seconds": 0.2524129870000001,
+          "qp_check_seconds": 0.000997272,
+          "bfgs_seconds": 0.000162464,
           "qp_trace": [],
           "history": [
             {
@@ -27430,7 +27434,8 @@
       "mass_kg": 812.0807659944778,
       "stress_ratio": 0.9519082957008461,
       "buckling_ratio": 0.3616085030563323,
-      "displacement": 0.02182711549923501
+      "displacement": 0.02182711549923501,
+      "feasible": true
     },
     "bound_scope": "Yield only, fixed geometry, areas capped by largest catalogue section and forces by its yield load; nominal and moved-geometry bounds kept separate. Safe binary64 dual bounds apply to these bounded models."
   }
