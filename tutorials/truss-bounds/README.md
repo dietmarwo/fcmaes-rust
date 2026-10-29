@@ -11,7 +11,7 @@ Reuse the original 18-node/75-member ground geometry, loads and published moved 
 Use shared cross-sectional areas and separate member forces for both load cases in the yield-only LP. Force equilibrium is linear and $|f_{m\ell}|\le\sigma A_m$. Minimize $\rho\sum_mL_mA_m$.
 
 1. Solve the nominal 18-node/75-member ground structure: yield-only bound 249.169953 kg. Repeat at the published moved geometry: 237.404401 kg. Each bound applies only to its own geometry and physics.
-2. On the fixed published topology and moved geometry, size continuous hollow sections with inner/outer diameter ratio 0.8. Analytic FEM sensitivities are checked against finite differences. Keep the feasible active-set QP failure; the declared Clarabel attempt (also without internal Jacobian scaling) converges near 637.321752 kg.
+2. On the fixed published topology and moved geometry, size continuous hollow sections with inner/outer diameter ratio 0.8. Analytic FEM sensitivities are checked against finite differences. Keep the active-set attempt whatever it ends with. The recorded run stops with a QP failure at a feasible point, but its path follows the last digits of the FEM, so another processor's NumPy and OpenBLAS kernels can end it at the restoration limit at an infeasible point. The declared Clarabel attempt (also without internal Jacobian scaling) converges near 637.321752 kg on either path.
 3. Round up to catalogue sections and recompute all responses. Rounding up redistributes forces in an indeterminate truss, so the chapter checks the rounded design against the stress, buckling and displacement limits again (`catalogue_rounding.feasible`) and fails if it does not pass. The retained 812.080766 kg design passes in the Python model, and the original Rust FEM replay accepts it under the tutorial's scalar constraint contract.
 4. Recheck the original 1,789.319 kg published design with the original FEM too; the replay must report it feasible, with the same mass. These masses describe distinct geometry, section and physical scopes; the picture is not a certified decomposition of a single optimization gap. Both bounded LPs also run `safe_dual_bound`: the recorded statuses are `finite`, with bounds about 249.169953488352 and 237.404400836811 kg. The area cap is the largest catalogue section; the force cap is its yield load. These binary64 certificates apply to those bounded models. Plotting the virtual-displacement dual field remains an exercise.
 
@@ -35,7 +35,7 @@ Every run keeps the native status, points and available diagnostics. Application
 
 Read `summary.json` before interpreting `figure.png`. The report records the actual result; expected reference values are not substituted for missing numerical outcomes. A completed command job means that the chapter's executable checks completed, while individual solver attempts can still be nonconvergent where the lesson explicitly retains them.
 
-Every bound has a geometry/physics scope. The continuous section family fixes inner/outer diameter ratio to 0.8, a distinct model. Feasible QP failures and the successful backend attempt are retained.
+Every bound has a geometry/physics scope. The continuous section family fixes inner/outer diameter ratio to 0.8, a distinct model. The active-set attempt is retained whatever it ends with, and so is the successful Clarabel attempt.
 
 ## Agent prompt
 
@@ -50,6 +50,8 @@ Change the geometry and explain why the old bound no longer applies. Inspect how
 ## Provenance and limits
 
 The checked-in `results/` record one run of each preset. The shared driver writes source and package identities to `environment.json` for the runs it makes. These are reproducible teaching experiments, not industrial or hardware performance certifications. Tables that compare formulations or solvers are descriptive.
+
+On another processor, NumPy and OpenBLAS select other vectorized kernels, so the FEM and the LP data change in their last digits. The bounds, the Clarabel sizing, the catalogue rounding and both replays still agree to about 1e-6. The active-set attempt can differ, and so can the LPs' duals and simplex work counters (the LPs are degenerate).
 
 Build the original-FEM replay helper first and set its path:
 
