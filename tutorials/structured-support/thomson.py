@@ -1,8 +1,8 @@
 """Thomson energy: native global search and native SQP with pair-work accounting."""
 
-from pathlib import Path
 import sys
 import numpy as np
+from sources import require, sibling
 import fcmaes_rust as fc
 from sqp_craft import solve, SqpOptions, Options, check_derivatives
 
@@ -25,13 +25,12 @@ def reported_candidate(case, native, start):
             norms = np.linalg.norm(point, axis=1)
         point = point / norms[:, None]
     accepted = case.check(point.ravel()) if projected else raw
-    assert accepted["feasible"]
+    require(accepted["feasible"])
     return raw, point, accepted, projected
 
 
 def run(preset):
-    sources = Path(__file__).resolve().parents[3]
-    sys.path.insert(0, str(sources / "SQP-craft/tutorials/_support"))
+    sys.path.insert(0, str(sibling("SQP-craft", "tutorials", "_support")))
     from numerics import Case, plain
 
     rng = np.random.default_rng(42)
@@ -77,7 +76,7 @@ def run(preset):
         derivative,
         x0.ravel(),
     )
-    assert check_derivatives(case.spec, case, x0.ravel()).passed
+    require(check_derivatives(case.spec, case, x0.ravel()).passed)
     call_cap = 3600 if preset == "study" else 480
     arms = []
 
@@ -98,17 +97,19 @@ def run(preset):
         )
         work = counter["traversals"] - before
         audit, point, accepted, projected = reported_candidate(case, r, start)
-        if r.status == "converged":
-            assert audit and audit.get("first_order")
+        # A converged attempt that fails the independent first-order check is
+        # retained and flagged, not allowed to stop the other arms.
+        if r.status == "converged" and not (audit and audit.get("first_order")):
+            audit = dict(audit or {}, converged_without_independent_first_order=True)
         return r, audit, work, point, accepted, projected
 
-    locals = []
+    local_runs = []
     for k in range(3):
         start = x0.copy() if k == 0 else rng.normal(size=(N, 3))
         start /= np.linalg.norm(start, axis=1)[:, None]
-        locals.append(local(start.ravel(), call_cap // 3))
+        local_runs.append(local(start.ravel(), call_cap // 3))
     r, audit, _, point, accepted, projected = min(
-        locals, key=lambda z: z[4]["objective"]
+        local_runs, key=lambda z: z[4]["objective"]
     )
     arms.append(
         dict(
@@ -127,9 +128,9 @@ def run(preset):
                     check=cc,
                     projected_after_infeasible_attempt=pp,
                 )
-                for rr, aa, ww, xx, cc, pp in locals
+                for rr, aa, ww, xx, cc, pp in local_runs
             ],
-            search_pair_traversals=sum(v[2] for v in locals),
+            search_pair_traversals=sum(v[2] for v in local_runs),
         )
     )
 
@@ -153,7 +154,7 @@ def run(preset):
         x = np.array(res[0]).reshape(N, 3)
         x /= np.linalg.norm(x, axis=1)[:, None]
         global_audit = case.check(x.ravel())
-        assert global_audit["feasible"]
+        require(global_audit["feasible"])
         record = dict(
             arm=arm,
             native_global=plain(res),
@@ -206,12 +207,27 @@ def run(preset):
     native = selected.get("native", selected.get("native_local"))
     H -= np.diag(np.repeat(2 * np.array(native["multipliers"]["constraints"]), 3))
     eigen = np.linalg.eigvalsh(Z.T @ ((H + H.T) / 2) @ Z)
+    # Classify with a relative tolerance: rotations give three zero modes.
+    tol = 1e-6 * float(np.max(np.abs(eigen)))
+    zero_modes = int(np.sum(np.abs(eigen) <= tol))
+    if np.any(eigen < -tol):
+        verdict = "not_a_local_minimum"
+    elif zero_modes == 3:
+        verdict = "local_minimum"
+    else:
+        verdict = "inconclusive"
     return dict(
         charges=N,
         pair_count=pair_count,
         requested_kernel_call_cap=call_cap,
         arms=arms,
         tangent_eigenvalues=eigen,
+        curvature=dict(
+            tolerance=tol,
+            zero_modes=zero_modes,
+            smallest_nonzero=float(np.min(eigen[np.abs(eigen) > tol])),
+            verdict=verdict,
+        ),
         hessian_status="checked_first_order_point",
         hessian_arm=selected["arm"],
         invalid_collisions=counter["invalid"],

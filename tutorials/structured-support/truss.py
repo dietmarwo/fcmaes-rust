@@ -7,6 +7,7 @@ from pathlib import Path
 import subprocess
 import sys
 import numpy as np
+from sources import require, sibling
 
 
 def geometry():
@@ -40,10 +41,9 @@ def matrices(nodes, members, free):
 
 
 def run(preset):
-    sources = Path(__file__).resolve().parents[3]
-    root = sources / "fcmaes-rust/tutorials/truss-sizing"
-    sys.path.insert(0, str(sources / "LP-IP-craft/tutorials/_support"))
-    sys.path.insert(0, str(sources / "SQP-craft/tutorials/_support"))
+    root = Path(__file__).resolve().parents[1] / "truss-sizing"
+    sys.path.insert(0, str(sibling("LP-IP-craft", "tutorials", "_support")))
+    sys.path.insert(0, str(sibling("SQP-craft", "tutorials", "_support")))
     from linear_model import LinearModel
     from numerics import Case, plain
     from lp_ip_craft import safe_dual_bound
@@ -91,10 +91,10 @@ def run(preset):
                 m.row(f"tension{load}.{k}", {f[k]: 1, areas[k]: -215e6}, upper=0)
                 m.row(f"compression{load}.{k}", {f[k]: -1, areas[k]: -215e6}, upper=0)
         r, rec = m.run()
-        assert r.status == "optimal", r.status
+        require(r.status == "optimal", r.status)
         cert = safe_dual_bound(m.model(), r.duals.row_duals)
         bounds.append(dict(result=rec, safe_dual_bound=plain(cert)))
-    assert abs(bounds[0]["result"]["evaluation"]["objective"] - 249.16995) < 0.001
+    require(abs(bounds[0]["result"]["evaluation"]["objective"] - 249.16995) < 0.001)
     topology = [members[i] for i in indices]
     L, B = matrices(nodes, topology, free)
     E = 210e9
@@ -122,8 +122,12 @@ def run(preset):
             check=True,
         )
         parity = json.loads(result.stdout)
-        assert parity["status"] == "checked", parity
-        assert np.max(np.abs(np.array(parity["displacements"])[:, free] - u0)) < 1e-9
+        require(parity["status"] == "checked", parity)
+        # The original scalar contract (stress, buckling, displacement and
+        # conditioning) must accept the published design it produced.
+        require(parity["feasible"], parity)
+        require(abs(parity["mass_kg"] - float(rho * L @ area0)) < 1e-6, parity)
+        require(np.max(np.abs(np.array(parity["displacements"])[:, free] - u0)) < 1e-9)
     beta = 0.8
     shape = (1 + beta**2) / (4 * np.pi * (1 - beta**2))
     count = len(L)
@@ -181,10 +185,10 @@ def run(preset):
     if r.status != "converged":
         r, rec = case.run(backend="clarabel", iterations=500, seconds=120)
         attempts.append(rec)
-    assert r.status == "converged", r.status
+    require(r.status == "converged", r.status)
     area = np.array(r.candidate) * 0.001
     rounded = np.array([int(np.searchsorted(catA, v - 1e-12)) for v in area])
-    assert np.all(rounded < len(catA))
+    require(np.all(rounded < len(catA)))
     ur, fr, _ = fem(catA[rounded])
     buck = -fr / (np.pi**2 * E * catI[rounded] / L**2)
     full = np.zeros((2, 36))
@@ -195,6 +199,14 @@ def run(preset):
         buckling_ratio=float(np.max(buck)),
         displacement=float(np.max(np.linalg.norm(full.reshape(2, 18, 2), axis=2))),
     )
+    # Rounding areas up redistributes forces in an indeterminate truss, so the
+    # rounded design is checked against the same limits as the continuous one.
+    rounded_check["feasible"] = bool(
+        rounded_check["stress_ratio"] <= 1
+        and rounded_check["buckling_ratio"] <= 1
+        and rounded_check["displacement"] <= 0.05
+    )
+    require(rounded_check["feasible"], rounded_check)
     rounded_native = None
     if native_bin:
         reply = subprocess.run(
@@ -207,10 +219,17 @@ def run(preset):
             check=True,
         )
         rounded_native = json.loads(reply.stdout)
-        assert rounded_native["status"] == "checked"
-        assert (
-            np.max(np.abs(np.array(rounded_native["displacements"])[:, free] - ur))
-            < 1e-9
+        require(rounded_native["status"] == "checked", rounded_native)
+        require(rounded_native["feasible"], rounded_native)
+        require(
+            abs(rounded_native["mass_kg"] - rounded_check["mass_kg"]) < 1e-6,
+            rounded_native,
+        )
+        require(
+            (
+                np.max(np.abs(np.array(rounded_native["displacements"])[:, free] - ur))
+                < 1e-9
+            )
         )
     return dict(
         nominal_nodes=nominal,

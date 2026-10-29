@@ -1,6 +1,6 @@
 # X3: Truss design: bound, continuous sizing and catalogue
 
-This executable chapter uses the existing native Rust solver through its Python API. The numerical definitions live with this chapter's owner; the shared driver supplies orchestration and figures.
+This chapter runs native Rust solvers through their Python APIs. Its model and independent checks live in this directory; the shared driver in optimization-jobs adds figures and command-job execution.
 
 ## Model and decision
 
@@ -11,25 +11,25 @@ Reuse the original 18-node/75-member ground geometry, loads and published moved 
 Use shared cross-sectional areas and separate member forces for both load cases in the yield-only LP. Force equilibrium is linear and $|f_{m\ell}|\le\sigma A_m$. Minimize $\rho\sum_mL_mA_m$.
 
 1. Solve the nominal 18-node/75-member ground structure: yield-only bound 249.169953 kg. Repeat at the published moved geometry: 237.404401 kg. Each bound applies only to its own geometry and physics.
-2. On the fixed published topology and moved geometry, size continuous hollow sections with inner/outer diameter ratio 0.8. Analytic FEM sensitivities are checked against finite differences. Keep the feasible active-set QP failure; the declared Clarabel attempt converges near 637.321752 kg.
-3. Round up to catalogue sections and recompute all responses. The retained 812.080766 kg design passes stress, buckling and displacement checks through both the Python model and original Rust FEM replay.
-4. Recheck the original 1,789.319 kg published design with the original FEM too. These masses describe distinct geometry, section and physical scopes; the picture is not a certified decomposition of a single optimization gap. Both bounded LPs also run `safe_dual_bound`: the recorded statuses are `finite`, with bounds about 249.169953488352 and 237.404400836811 kg. The area cap is the largest catalogue section; the force cap is its yield load. These binary64 certificates apply to those bounded models. Plotting the virtual-displacement dual field remains an exercise.
+2. On the fixed published topology and moved geometry, size continuous hollow sections with inner/outer diameter ratio 0.8. Analytic FEM sensitivities are checked against finite differences. Keep the feasible active-set QP failure; the declared Clarabel attempt (also without internal Jacobian scaling) converges near 637.321752 kg.
+3. Round up to catalogue sections and recompute all responses. Rounding up redistributes forces in an indeterminate truss, so the chapter checks the rounded design against the stress, buckling and displacement limits again (`catalogue_rounding.feasible`) and fails if it does not pass. The retained 812.080766 kg design passes in the Python model, and the original Rust FEM replay accepts it under the tutorial's scalar constraint contract.
+4. Recheck the original 1,789.319 kg published design with the original FEM too; the replay must report it feasible, with the same mass. These masses describe distinct geometry, section and physical scopes; the picture is not a certified decomposition of a single optimization gap. Both bounded LPs also run `safe_dual_bound`: the recorded statuses are `finite`, with bounds about 249.169953488352 and 237.404400836811 kg. The area cap is the largest catalogue section; the force cap is its yield load. These binary64 certificates apply to those bounded models. Plotting the virtual-displacement dual field remains an exercise.
 
 ## Run
 
-Install the pinned solver distributions and scientific dependencies using the [shared setup](https://github.com/dietmarwo/optimization-jobs/blob/main/tutorials/structured/README.md). Keep the patched repositories as sibling directories. From this repository's root:
+Install the pinned solver packages and scientific dependencies as described in the [shared setup](https://github.com/dietmarwo/optimization-jobs/blob/main/tutorials/structured/README.md), with the repositories it lists cloned side by side. From this repository's root:
 
 ```bash
 python ../optimization-jobs/tutorials/structured/run.py --chapter X3 --output /absolute/new/x3
 ```
 
-For the owner entry point, run `python tutorials/truss-bounds/run.py --preset smoke --output /absolute/new/x3-direct`. It produces JSON; the shared driver additionally renders PNG/SVG figures. `--preset study` selects the declared larger cases. Output may be new or empty, and an occupied directory is refused.
+To run the chapter on its own, use `python tutorials/truss-bounds/run.py --preset smoke --output /absolute/new/x3-direct`. It produces JSON; the shared driver additionally renders PNG/SVG figures. `--preset study` runs the larger declared cases; a chapter without them repeats the smoke case. Output may be new or empty, and an occupied directory is refused.
 
 ## Independent answer and validation
 
-The nominal yield-only bound is about 249.17 kg. Recompute a separate bound at the moved geometry. Continuous FEM sensitivities pass finite differences; both the published and rounded catalogue designs are replayed through the original Rust FEM helper.
+The nominal yield-only bound is about 249.17 kg. Recompute a separate bound at the moved geometry. Continuous FEM sensitivities pass finite differences; both the published and rounded catalogue designs are replayed through the original Rust FEM helper (`examples/structured_replay.rs`), which refuses designs the tutorial's decoder could not produce: moved supports or load nodes, offsets beyond the decoder's limits, repeated members, member counts outside 8–40 or unknown sections.
 
-Every run retains native status, points and available diagnostics. LP candidates are checked against row/bound/integrality requirements; SQP results retain derivative checks and independently reconstructed KKT residuals. Application-specific references are computed separately. All failures remain in the report.
+Every run keeps the native status, points and available diagnostics. Application-specific references are computed separately. All failures remain in the report.
 
 ## Read the result
 
@@ -49,7 +49,7 @@ Change the geometry and explain why the old bound no longer applies. Inspect how
 
 ## Provenance and limits
 
-The original plan's probes are historical planning evidence. The checked-in `results/smoke/summary.json` and figures record this implementation's executed case. Source and installed-package identities are also recorded by the shared driver. These are reproducible teaching experiments, not industrial or hardware performance certifications. Cross-formulation and cross-solver tables are descriptive.
+The checked-in `results/` record one run of each preset. The shared driver writes source and package identities to `environment.json` for the runs it makes. These are reproducible teaching experiments, not industrial or hardware performance certifications. Tables that compare formulations or solvers are descriptive.
 
 Build the original-FEM replay helper first and set its path:
 
@@ -58,7 +58,7 @@ cargo build --release --locked --manifest-path tutorials/truss-sizing/Cargo.toml
 export TRUSS_REPLAY_BIN="$PWD/tutorials/truss-sizing/target/release/examples/structured_replay"
 ```
 
-A run without that variable reports native FEM parity as unrun; the recorded acceptance run includes it.
+A run without that variable records native FEM parity as `null`; the recorded results include it.
 
 ## Recorded example
 
@@ -66,4 +66,4 @@ A run without that variable reports native FEM parity as unrun; the recorded acc
 
 Inspect the [complete smoke summary](results/smoke/summary.json) alongside the figure.
 
-The [study summary](results/study/summary.json) and [study figure](results/study/figure.png) retain the declared study preset separately.
+The [study summary](results/study/summary.json) and [study figure](results/study/figure.png) record the study preset.

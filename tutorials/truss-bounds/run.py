@@ -4,8 +4,10 @@ import argparse
 from pathlib import Path
 import sys
 import time
+import traceback
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "structured-support"))
+from sources import sibling
 from truss import run
 
 
@@ -14,14 +16,15 @@ def main():
     p.add_argument("--preset", choices=["smoke", "study"], default="smoke")
     p.add_argument("--output", type=Path, required=True)
     args = p.parse_args()
-    if args.output.exists() and any(args.output.iterdir()):
+    if args.output.exists() and (
+        not args.output.is_dir() or any(args.output.iterdir())
+    ):
         raise FileExistsError("use a new output directory")
     args.output.mkdir(parents=True, exist_ok=True)
     try:
         start = time.time()
         result = run(args.preset)
-        sources = Path(__file__).resolve().parents[3]
-        sys.path.insert(0, str(sources / "SQP-craft/tutorials/_support"))
+        sys.path.insert(0, str(sibling("SQP-craft", "tutorials", "_support")))
         from numerics import write
 
         write(
@@ -35,7 +38,9 @@ def main():
         )
         print('{"chapter":"X3","status":"passed"}')
     except Exception as e:
-        (args.output / "failure.txt").write_text(repr(e))
+        (args.output / "failure.txt").write_text(
+            repr(e) + "\n\n" + traceback.format_exc()
+        )
         raise
 
 

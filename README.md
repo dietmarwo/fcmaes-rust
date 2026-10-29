@@ -4,8 +4,6 @@
 
 # fcmaes-rust
 
-**Structured application workshops:** see the [new learning sequence](tutorials/README.md). The twenty-chapter series uses the native Rust solvers through Python, with independent checks, agent prompts and local campaign execution.
-
 **Choosing an optimization tool?** Start with the
 [shared solver-selection and agent guide](https://github.com/dietmarwo/optimization-jobs/blob/main/ai-context.md) or the
 [optimization ecosystem overview](https://dietmarwo.github.io/optimization-jobs/).

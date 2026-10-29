@@ -1046,4 +1046,4 @@ when the simulator happens to be written in Rust.
 
 ## Additional structured workshops through Python
 
-The [truss bounds workshop](truss-bounds/README.md) and [Thomson global/local workshop](thomson-refinement/README.md) complement the 22 standalone native application workspaces. They use the Python bindings for transparent model/diagnostic inspection; they are not additional Cargo tutorial workspaces. Python callback performance follows the existing library-selection guidance.
+The [truss bounds workshop](truss-bounds/README.md) and [Thomson global/local workshop](thomson-refinement/README.md) complement the 22 standalone native application workspaces. They belong to the twenty-chapter structured series run by the [optimization-jobs driver](https://github.com/dietmarwo/optimization-jobs/blob/main/tutorials/structured/README.md), use the Python bindings of fcmaes-rust, LP-IP-craft and SQP-craft, and need LP-IP-craft and SQP-craft checkouts next to this repository. They are not Cargo tutorial workspaces. Python callback performance follows the existing library-selection guidance.

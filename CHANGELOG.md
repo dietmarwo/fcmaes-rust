@@ -8,9 +8,7 @@ phase, with breaking changes called out explicitly.
 
 ### Added
 
-- Structured application workshops with executable native-solver examples, independent references, prompt exercises and retained smoke results; shared direct/command execution and a local campaign example.
-
-### Added
+- Two Python workshops of the structured-tutorial series, with recorded smoke and study results: [truss bounds](tutorials/truss-bounds/README.md) (X3: plastic-design LP bounds with `safe_dual_bound`, continuous SQP sizing, catalogue rounding) and [Thomson refinement](tutorials/thomson-refinement/README.md) (X4: SQP multistart, BiteOpt and a global-then-local split, with a tangent-space curvature verdict). They reuse support code from LP-IP-craft and SQP-craft checkouts next to this one (or `STRUCTURED_SOURCES`). The truss tutorial gains `examples/structured_replay.rs`, which checks a catalogue design with the original FEM and constraint contract and refuses designs the decoder could not produce; the truss tutorial's own code and results are unchanged. Both workshops are in the book.
 
 - An [all-arm certificate audit](tutorials/validated-numerics/AUDIT.md) for the
   bounded search: fresh verification/replay for every final candidate, retained
