@@ -7,10 +7,10 @@ PGPE), MODE, MAP-Elites (CVT, CMA-ME/CMA-MAE) and evaluation profiles under
 result contract 0.2; and the experimental `fcmaes-surrogate` crate with the
 `fcmaes.surrogate/1` profile and `benchmarks/surrogate-comparison` (#14).
 Since `67bd698`, the job crates `optimization-job-api` and
-`optimization-runner` (0.3.0 since the pin move after their first crates.io
-release) come from
+`optimization-runner` (0.4.0 since the pin move to their 0.4.0 release)
+come from
 [optimization-jobs](https://github.com/dietmarwo/optimization-jobs) (#11; the
-in-repo `fcmaes-job-api` crate is gone), now at the pinned revision `8b4489d` (after tag `v0.3.0`), which adds
+in-repo `fcmaes-job-api` crate is gone), now at the pinned revision `602d31a` (the optimization-jobs 0.4.0 release), which adds
 `node capabilities`, `jobs execution JOB_ID`, opt-in trusted local command
 jobs with verified binary file transfer, and explicitly placed jobs on SSH
 nodes, all through the CLI. The pins up to `v0.3.0`

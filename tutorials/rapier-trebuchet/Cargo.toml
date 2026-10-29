@@ -11,7 +11,7 @@ description = "Experimental fcmaes-rust optimization of a Rapier 2D trebuchet"
 [workspace]
 
 [dependencies]
-optimization-job-api = { git = "https://github.com/dietmarwo/optimization-jobs", rev = "8b4489d5df1340d0b991b11715eb07fbbe45274c", optional = true }
+optimization-job-api = { git = "https://github.com/dietmarwo/optimization-jobs", rev = "602d31afacf8bd2ecb0b0e941d18bd8e2821c1e3", optional = true }
 fcmaes-job-worker = { path = "../../crates/fcmaes-job-worker", optional = true }
 fcmaes-core = { path = "../../crates/fcmaes-core" }
 rapier2d-f64 = { version = "0.34.0", default-features = false, features = [
