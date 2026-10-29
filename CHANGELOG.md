@@ -8,6 +8,10 @@ phase, with breaking changes called out explicitly.
 
 ### Added
 
+- Structured application workshops with executable native-solver examples, independent references, prompt exercises and retained smoke results; shared direct/command execution and a local campaign example.
+
+### Added
+
 - An [all-arm certificate audit](tutorials/validated-numerics/AUDIT.md) for the
   bounded search: fresh verification/replay for every final candidate, retained
   failures and censored final-candidate timing, hash-bound strict acceptance,

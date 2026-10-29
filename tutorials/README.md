@@ -1043,3 +1043,7 @@ parameter estimation with one best fit is still a gradient-based problem, even
 when the simulator happens to be written in Rust.
 
 ![Diffsol optimizer selection based on sensitivity validity and the result the user needs](images/diffsol-selection.svg)
+
+## Additional structured workshops through Python
+
+The [truss bounds workshop](truss-bounds/README.md) and [Thomson global/local workshop](thomson-refinement/README.md) complement the 22 standalone native application workspaces. They use the Python bindings for transparent model/diagnostic inspection; they are not additional Cargo tutorial workspaces. Python callback performance follows the existing library-selection guidance.
