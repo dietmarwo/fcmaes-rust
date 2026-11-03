@@ -482,3 +482,7 @@ one arm.
 - T. S. Gardner, C. R. Cantor and J. J. Collins,
   [“Construction of a genetic toggle switch in Escherichia coli”](https://doi.org/10.1038/35002131),
   *Nature* 403, 339–342 (2000).
+
+## CRN generator and scoring companion
+
+[CRN C3](https://github.com/dietmarwo/CRN-craft/blob/main/tutorials/optimization/C3-oscillators.md) uses [examples/crn_reference.rs](examples/crn_reference.rs) as a bounded six-channel reference for its additive-Hill network. Build it with `cargo build --release --locked --example crn_reference`. It uses this workspace's local ReBop compatibility implementation and a shared Python trace score; its reduced common-parameter fixture is distinct from the topology-search protocol and published results above. CRN adds separate basal/Hill channels, so compare generators and distributions rather than seeded paths. The helper does not export event counts and is always run with an outer timeout by C3.

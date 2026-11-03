@@ -1047,3 +1047,7 @@ when the simulator happens to be written in Rust.
 ## Additional structured workshops through Python
 
 The [truss bounds workshop](truss-bounds/README.md) and [Thomson global/local workshop](thomson-refinement/README.md) complement the 22 standalone native application workspaces. They belong to the twenty-chapter structured series run by the [optimization-jobs driver](https://github.com/dietmarwo/optimization-jobs/blob/main/tutorials/structured/README.md), use the Python bindings of fcmaes-rust, LP-IP-craft and SQP-craft, and need LP-IP-craft and SQP-craft checkouts next to this repository. They are not Cargo tutorial workspaces. Python callback performance follows the existing library-selection guidance.
+
+## CRN and CFD simulator applications
+
+The [eight simulator lessons](https://github.com/dietmarwo/optimization-jobs/blob/main/tutorials/simulators/README.md) use native Python optimizers and existing command/scalar worker routes. [CRN C3](https://github.com/dietmarwo/CRN-craft/blob/main/tutorials/optimization/C3-oscillators.md) adds shared-scoring MODE/MAP-Elites searches, generator checks against the topology tutorial's local ReBop compatibility backend, and held-out grid-niche drift. These are separate simulator-owned lessons, not additional standalone Cargo tutorial workspaces.
