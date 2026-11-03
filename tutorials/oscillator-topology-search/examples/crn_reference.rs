@@ -7,6 +7,7 @@ use serde::Deserialize;
 use serde_json::json;
 
 #[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
 struct Request {
     basal: f64,
     vmax: f64,
@@ -17,6 +18,8 @@ struct Request {
     times: Vec<f64>,
     paths: usize,
     seed: u64,
+    /// Initial counts of X0, X1, X2, taken from the CRN model.
+    initial: [isize; 3],
     states: Vec<[isize; 3]>,
 }
 
@@ -54,7 +57,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         || r.times.len() < 2
         || r.times.len() > 1024
         || r.times[0] != 0.0
-        || r.times.last().is_none_or(|t| !t.is_finite() || *t > 100.0)
+        || r.times.last().is_none_or(|t| !t.is_finite() || *t > 1000.0)
         || r.times
             .windows(2)
             .any(|w| !w[0].is_finite() || w[0] >= w[1])
@@ -67,6 +70,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .any(|&(s, t, k)| s > 2 || t > 2 || ![-1, 1].contains(&k))
         || r.states.len() > 1024
         || r.states.iter().flatten().any(|x| *x < 0 || *x > 100000)
+        || r.initial.iter().any(|x| *x < 0 || *x > 100000)
     {
         return Err("request exceeds the bounded reference domain".into());
     }
@@ -78,7 +82,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .collect();
     let mut paths = Vec::new();
     for i in 0..r.paths {
-        let mut model = Gillespie::new_with_seed([6, 0, 0], true, r.seed.wrapping_add(i as u64));
+        let mut model = Gillespie::new_with_seed(r.initial, true, r.seed.wrapping_add(i as u64));
         for (j, expression) in expressions.iter().enumerate() {
             let mut jump = [0; 3];
             jump[j] = 1;
