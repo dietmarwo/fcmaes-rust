@@ -50,6 +50,8 @@ phase, with breaking changes called out explicitly.
 
 ### Changed
 
+- Upgraded the GTOC1 and GTOC1 route-search tutorials from `pykep-core` 0.1.4 to 0.1.5. Their tests pass, and the stored GTOC1 solution evaluates to the same score, mismatch and DOP853 validation. Route search takes the pykep-core and fcmaes-core versions in its cache identity from constants that a new test checks against the `Cargo.toml` pins; fcmaes-core stays at the registry pin 0.1.3.
+
 - The README points to [experiment-craft](https://github.com/dietmarwo/experiment-craft),
   which runs reproducible campaigns of `fcmaes-job-worker` jobs and rebuilds and
   tests this repository at a pinned revision.

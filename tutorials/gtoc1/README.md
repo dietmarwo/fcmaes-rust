@@ -14,9 +14,10 @@ equal-budget agent, random, and evolutionary proposal arms.
 The checked-in evidence separates three levels of fidelity:
 
 - The continuous-thrust solution scores **1,843,300.529365**, about 6,699.47
-  points below JPL's reported rounded score of 1,850,000. Its stored vector uses
-  the accelerated Taylor ZOH system in `pykep-core` 0.1.4 and is independently
-  repropagated with DOP853.
+  points below JPL's reported rounded score of 1,850,000. Its stored vector was
+  found with the accelerated Taylor ZOH system in `pykep-core` 0.1.4. With
+  `pykep-core` 0.1.5 it evaluates to the same score and mismatch, and it is
+  independently repropagated with DOP853.
 - An earlier 24-impulse Sims–Flanagan approximation scored 1,850,730.667522,
   but direct finite-thrust propagation exposed a canonical endpoint mismatch
   of `3.23e-2`. It is retained as a warning, not as a valid trajectory.
@@ -25,7 +26,7 @@ The checked-in evidence separates three levels of fidelity:
   tour instead of refining only the propelled Earth–Venus leg.
 
 > **Model score, not a new official competition result.** GTOC1 required
-> DE405-equivalent planetary states. `pykep-core` 0.1.4 supplies VSOP2013 and
+> DE405-equivalent planetary states. `pykep-core` supplies VSOP2013 and
 > represents Earth with the Earth-Moon barycentre. The score comparison is
 > therefore useful for reproducing the Rust optimization workflow, but an
 > official claim would require re-optimization and validation with the
