@@ -5,7 +5,7 @@ direct file-level copyleft dependency:
 
 | Crate | Version | License | Path |
 |---|---:|---|---|
-| `pykep-core` | 0.1.4 | MPL-2.0 | direct dependency |
+| `pykep-core` | 0.1.5 | MPL-2.0 | direct dependency |
 
 `pykep-core` is used unmodified through its public Rust API. Its source and
 MPL-2.0 license are distributed through the normal Cargo registry source

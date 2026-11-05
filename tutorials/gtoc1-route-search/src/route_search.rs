@@ -1010,6 +1010,11 @@ pub struct EvaluationContext {
     pub root_seed: u64,
 }
 
+/// Exact `pykep-core` version pinned in `Cargo.toml`; part of the cache identity.
+const PYKEP_CORE_VERSION: &str = "0.1.5";
+/// Exact `fcmaes-core` version pinned in `Cargo.toml`; part of the cache identity.
+const FCMAES_CORE_VERSION: &str = "0.1.3";
+
 impl EvaluationContext {
     /// Builds the default Phase-0 identity context for one route.
     #[must_use]
@@ -1020,8 +1025,8 @@ impl EvaluationContext {
             ephemeris_id: route.config.ephemeris_id.clone(),
             vsop_threshold: route.config.vsop_threshold,
             scout_formulation_version: route.config.scout_formulation_version.clone(),
-            pykep_core_version: "0.1.4".to_owned(),
-            fcmaes_core_version: "0.1.3".to_owned(),
+            pykep_core_version: PYKEP_CORE_VERSION.to_owned(),
+            fcmaes_core_version: FCMAES_CORE_VERSION.to_owned(),
             implementation_revision: env!("CARGO_PKG_VERSION").to_owned(),
             budget,
             root_seed,
@@ -1226,6 +1231,21 @@ pub fn write_atomic_json<T: Serialize>(path: &Path, value: &T) -> Result<(), Rou
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn identity_versions_match_the_cargo_pins() {
+        let manifest = include_str!("../Cargo.toml");
+        for (name, version) in [
+            ("pykep-core", PYKEP_CORE_VERSION),
+            ("fcmaes-core", FCMAES_CORE_VERSION),
+        ] {
+            let pin = format!("{name} = \"={version}\"");
+            assert!(
+                manifest.lines().any(|line| line.trim() == pin),
+                "Cargo.toml must pin `{pin}` so the cache identity names the linked version"
+            );
+        }
+    }
 
     fn runtime_case(case: SequenceCase) -> RouteCase {
         RouteCase::derive(
