@@ -8,6 +8,8 @@ phase, with breaking changes called out explicitly.
 
 ### Added
 
+- `docs/repositories.md`: an overview of the 18 related repositories (optimizers, job layer, split-brain research loops, simulators, astrodynamics, domain evaluators and budel-craft), what each does and how they depend on each other, with a Graphviz diagram in `docs/images/repositories.svg` and its source. The README, the documentation map and the book link to it.
+
 - A bounded `crn_reference` example (contributed by Astra) in the existing oscillator-topology-search workspace for the [CRN C3 companion](https://github.com/dietmarwo/CRN-craft/blob/main/tutorials/optimization/C3-oscillators.md), using the documented local ReBop compatibility backend; linked the simulator tutorial series. The request carries the initial state and unknown fields are rejected.
 - Two Python workshops of the structured-tutorial series, with recorded smoke and study results: [truss bounds](tutorials/truss-bounds/README.md) (X3: plastic-design LP bounds with `safe_dual_bound`, continuous SQP sizing, catalogue rounding) and [Thomson refinement](tutorials/thomson-refinement/README.md) (X4: SQP multistart, BiteOpt and a global-then-local split, with a tangent-space curvature verdict). They reuse support code from LP-IP-craft and SQP-craft checkouts next to this one (or `STRUCTURED_SOURCES`). The truss tutorial gains `examples/structured_replay.rs`, which checks a catalogue design with the original FEM and constraint contract and refuses designs the decoder could not produce; the truss tutorial's own code and results are unchanged. Both workshops are in the book.
 

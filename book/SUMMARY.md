@@ -6,6 +6,7 @@
 # User guides
 
 - [Documentation map](docs/README.md)
+- [Related repositories](docs/repositories.md)
 - [Getting started](docs/getting-started.md)
 - [Foundations: suites, indicators, and lessons](foundations/README.md)
   - [Frozen benchmark specification](foundations/BENCHMARK_SPEC.md)
