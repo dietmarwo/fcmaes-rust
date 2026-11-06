@@ -12,6 +12,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@1.88.0
+      # PyO3 0.23 builds against at most Python 3.13; newer runner images
+      # default to 3.14, so pin the interpreter as the workspace job does.
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
       - uses: Swatinem/rust-cache@v2
         with:
           shared-key: msrv
