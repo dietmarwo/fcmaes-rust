@@ -1,0 +1,69 @@
+digraph repos {
+  graph [rankdir=TB, nodesep=0.18, ranksep=0.45, pad=0.15, bgcolor="white", fontname="Helvetica", newrank=true];
+  node  [shape=box, style="rounded,filled", fontname="Helvetica", fontsize=15, color="#5b6677", penwidth=1, margin="0.13,0.06"];
+  edge  [fontname="Helvetica", fontsize=13.5, color="#5b6677", fontcolor="#2b2f36", arrowsize=0.7, penwidth=1.1];
+
+  // users and applications
+  EC   [fillcolor="#fde2c8", label=<<b>experiment-craft</b><br/><font point-size="11">campaigns</font>>];
+  BUD  [fillcolor="#f6d5d8", label=<<b>budel-craft</b><br/><font point-size="11">application</font>>];
+  PL   [fillcolor="#ece0f7", label=<<b>pykep-lambert</b><br/><font point-size="11">astrodynamics</font>>];
+  DOM  [shape=plain, style="", label=<
+    <table border="1" cellborder="0" cellspacing="0" cellpadding="2" bgcolor="#fff3bf" color="#5b6677" style="rounded">
+      <tr><td><b>thermo-craft</b></td></tr>
+      <tr><td><b>hydro-craft</b></td></tr>
+      <tr><td><b>robotics-control-craft</b></td></tr>
+      <tr><td><b>rail-craft</b></td></tr>
+      <tr><td port="pop"><b>population-epidemiology</b></td></tr>
+      <tr><td><font point-size="11">domain evaluators</font></td></tr>
+    </table>>];
+
+  ART  [fillcolor="#d3eef0", label=<<b>autoresearch-trading</b><br/><font point-size="11">split-brain research</font>>];
+  ARC  [fillcolor="#d3eef0", label=<<b>autoresearch-circuit</b><br/><font point-size="11">split-brain research</font>>];
+  CRN  [fillcolor="#d9f2e3", label=<<b>CRN-craft</b><br/><font point-size="11">simulator</font>>];
+  CFD  [fillcolor="#d9f2e3", label=<<b>CFD-craft</b><br/><font point-size="11">simulator</font>>];
+
+  PK   [fillcolor="#ece0f7", label=<<b>pykep-core-rust</b><br/><font point-size="11">astrodynamics</font>>];
+  SQP  [fillcolor="#dbe7ff", label=<<b>SQP-craft</b><br/><font point-size="11">optimizer</font>>];
+  LPIP [fillcolor="#dbe7ff", label=<<b>LP-IP-craft</b><br/><font point-size="11">optimizer</font>>];
+
+  FCR  [fillcolor="#dbe7ff", label=<<b>fcmaes-rust</b><br/><font point-size="11">optimizer (Rust)</font>>];
+
+  FCE  [fillcolor="#dbe7ff", label=<<b>fast-cma-es</b><br/><font point-size="11">optimizer (Python/C++)</font>>];
+  OJ   [fillcolor="#fde2c8", label=<<b>optimization-jobs</b><br/><font point-size="11">job layer and MCP server</font>>];
+
+  { rank=same; EC; BUD; PL; }
+  { rank=same; DOM; CFD; }
+  { rank=same; CRN; PK; }
+  { rank=same; SQP; LPIP; }
+  { rank=same; FCR; ART; ARC; }
+  { rank=same; OJ; FCE; }
+
+  // invisible spine that fixes the row order
+  EC -> DOM -> CRN -> SQP -> FCR -> OJ [style=invis, weight=4];
+  PL -> CFD [style=invis];
+
+  // code dependencies
+  ART -> FCE;
+  ARC -> FCE;
+  DOM -> FCE  [label=" examples"];
+  DOM:pop -> CRN [label=" vendored\n core"];
+  PL  -> PK   [label=" Rust\n consumer"];
+  PL  -> FCR  [label=" fcmaes-core"];
+  BUD -> FCR  [label=" optional\n tuner"];
+  CRN -> FCR  [label=" optional\n worker,\n fit extra"];
+  CRN -> SQP  [label=" optional\n fit extra"];
+  CFD -> FCR  [label=" optional\n worker"];
+  PK  -> FCR  [label=" gym\n benchmark"];
+  FCR -> PK   [label=" GTOC1\n tutorials"];
+  FCR -> OJ;
+  LPIP -> OJ;
+  SQP -> OJ;
+
+  // execution
+  EC  -> OJ   [color="#c2571a", penwidth=2.2, fontcolor="#c2571a", label=" runs campaigns"];
+  BUD -> OJ   [color="#c2571a", penwidth=2.2, fontcolor="#c2571a", label=" command jobs"];
+
+  // provenance
+  FCR -> FCE  [style=dotted, penwidth=1.6, label=" re-implements"];
+  FCR -> ARC  [style=dotted, penwidth=1.6, label=" tutorial\n port"];
+}
