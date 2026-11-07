@@ -191,8 +191,9 @@ quarter-hour replay. Holdouts change failure kind rather than only random
 seed. The quarter-hour case changes the discretization by four while retaining
 the LP balance invariants.
 
-The selected robust dispatch shows how renewable power, grid exchange, and
-battery state interact across the twelve independently cyclic days:
+The selected robust dispatch shows how renewable power and grid exchange
+interact across the twelve independently cyclic days. The selected design has
+no battery (see below), so the battery-state panel stays at zero:
 
 ![Proven-optimal inner dispatch for the selected scalar design](images/dispatch-stack.svg)
 

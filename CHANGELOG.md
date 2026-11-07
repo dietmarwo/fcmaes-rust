@@ -75,6 +75,7 @@ phase, with breaking changes called out explicitly.
 
 ### Fixed
 
+- [Energy-hub bilevel sizing](tutorials/energy-hub-bilevel/README.md): the dispatch figure's caption no longer says that battery state interacts with the dispatch. The selected DE design has no battery, so that panel stays at zero; the caption now says so.
 - Math on the documentation site rendered as raw TeX: mdBook had no MathJax and its Markdown parser removed backslashes (`\|` became `|`). `book/book.toml` enables MathJax, and `scripts/build_book.py` rewrites `$…$`, `$$…$$`, `\(…\)` and `\[…\]` in the staged sources only, outside code, so the canonical Markdown still renders on GitHub. This affects 10 pages (including X4, the validated-numerics theorem and search pages, Buckingham–Pi, oscillator topology search, optical lens design and GTOC1).
 - [Thomson refinement](tutorials/thomson-refinement/README.md) (X4): the figures plot the energy gap on a log scale with the first-order status and actual pair work. The old linear bars hid the agreement of SQP and hybrid in smoke and the study hybrid's different local minimum (+4.7e−3). The figures are re-rendered from the unchanged recorded summaries. The page shows both figures and a table of the recorded results, and explains why curvature is classified at the hybrid point in study.
 - Nine tutorials that build `fcmaes-core` from the checkout still recorded it
