@@ -75,6 +75,12 @@ phase, with breaking changes called out explicitly.
 
 ### Fixed
 
+- Figures and text in the tutorials that disagreed, from a review of every figure in the book:
+  - Truss sizing, sindr circuit design: one value on a linear axis hid the rest. The truss panel annotates the infeasible arm's +4e5 thousand kg penalty instead of drawing it to scale. The sindr replay errors (1e-4 % to 0.3 %) use a log axis.
+  - Energy hub QD archive, CFD verification: the legends no longer cover data (row 9 of the archive, the baseline held-out line).
+  - Workspace architecture diagram: the dependency note no longer covers the tutorials → fcmaes-core edge, and no box title overflows its box.
+  - Energy-hub budget wall times, water-network parallel throughput (6.7×, not 6.1×) and ML-tuning worker scaling now match their recorded run files.
+  - ML-tuning smoke MODE, NeXosim validation archive and dispersion convergence: the captions now say what those figures show.
 - The banner `docs/images/fcmaes-rust.png` (README and documentation site) had a black patch right of the title. The patch is filled with the surrounding background; the rest of the image is unchanged.
 - [Energy-hub bilevel sizing](tutorials/energy-hub-bilevel/README.md): the dispatch figure's caption no longer says that battery state interacts with the dispatch. The selected DE design has no battery, so that panel stays at zero; the caption now says so.
 - Math on the documentation site rendered as raw TeX: mdBook had no MathJax and its Markdown parser removed backslashes (`\|` became `|`). `book/book.toml` enables MathJax, and `scripts/build_book.py` rewrites `$…$`, `$$…$$`, `\(…\)` and `\[…\]` in the staged sources only, outside code, so the canonical Markdown still renders on GitHub. This affects 10 pages (including X4, the validated-numerics theorem and search pages, Buckingham–Pi, oscillator topology search, optical lens design and GTOC1).

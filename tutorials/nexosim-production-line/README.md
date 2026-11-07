@@ -196,7 +196,7 @@ are in
 
 ![Seed-42 throughput/WIP archive on training replications](images/publication-qd-seed-42/qd-archive.svg)
 
-![The same policies located using holdout replications](images/publication-qd-seed-42/qd-archive-validation.svg)
+![The same policies at their training cells, colored by holdout-replication quality; niche moves are not shown](images/publication-qd-seed-42/qd-archive-validation.svg)
 
 ![MAP-Elites convergence for the seed-42 run](images/publication-qd-seed-42/convergence.svg)
 

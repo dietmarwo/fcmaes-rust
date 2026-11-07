@@ -247,28 +247,43 @@ def so_figure(output: Path) -> None:
     q_error = [
         100.0 * abs(float(best[name]["q"]) / 5.0 - 1.0) for name in optimizers
     ]
+    # The errors span four decades (about 1e-4 % to 0.3 %); on a linear axis
+    # all but the largest would be invisible, so use log-scaled markers.
     locations = np.arange(len(optimizers))
-    width = 0.36
-    axes[1].bar(
-        locations - width / 2,
-        frequency_error,
-        width,
-        color="#56B4E9",
-        label="Centre-frequency error",
-    )
-    axes[1].bar(
-        locations + width / 2,
-        q_error,
-        width,
-        color="#CC79A7",
-        label="Q error",
-    )
+    offset = 0.12
+    for shift, errors, color, marker, label in (
+        (-offset, frequency_error, "#56B4E9", "o", "Centre-frequency error"),
+        (offset, q_error, "#CC79A7", "s", "Q error"),
+    ):
+        axes[1].scatter(
+            locations + shift,
+            errors,
+            color=color,
+            marker=marker,
+            s=42,
+            zorder=3,
+            label=label,
+        )
+        for x, error in zip(locations + shift, errors):
+            axes[1].annotate(
+                f"{error:.2g}",
+                (x, error),
+                xytext=(0, 6),
+                textcoords="offset points",
+                ha="center",
+                fontsize=8,
+            )
+    axes[1].set_yscale("log")
+    axes[1].set_xlim(-0.5, len(optimizers) - 0.5)
+    low = min(frequency_error + q_error)
+    high = max(frequency_error + q_error)
+    axes[1].set_ylim(low / 3.0, high * 6.0)
     axes[1].set_xticks(locations, [LABELS[name] for name in optimizers], rotation=12)
     axes[1].set(
         title="Replay of each retained design",
-        ylabel="Absolute target error (%)",
+        ylabel="Absolute target error (%, log scale)",
     )
-    axes[1].legend(loc="best")
+    axes[1].legend(loc="upper right")
     figure.suptitle("Equal requested budgets, independently replayed optima", fontsize=13)
     figure.tight_layout()
     save(figure, output)

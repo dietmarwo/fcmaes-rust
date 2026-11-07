@@ -184,7 +184,11 @@ for cores, cache, and turbo budget, turning system noise into an optimization
 target. `--mode benchmark` fits models first and times prediction with one
 candidate at a time.
 
-![The smoke MODE Pareto set exposes predictive and deployment trade-offs](images/quick-mo/pareto.svg)
+The smoke MODE run is too short to expose a trade-off: its archive holds one
+design twice ([`pareto.csv`](results/quick/mo/pareto.csv)), so every panel
+shows a single point. The figure checks the output path, not the trade-off.
+
+![The smoke MODE archive: one design, no visible trade-off](images/quick-mo/pareto.svg)
 
 ### MAP-Elites pilot
 
@@ -455,8 +459,8 @@ times ten repeated prediction batches. On this run:
 
 - Pearson correlation between structural work and latency was 0.990;
 - correlation between serialized size and latency was 0.781; and
-- candidate throughput increased from 24.6 evaluations/s at one worker to
-  85.5 evaluations/s at four workers.
+- candidate throughput increased from 24.5 evaluations/s at one worker to
+  87.3 evaluations/s at four workers.
 
 The sample is intentionally small. A publication report should repeat the
 benchmark with 24 configurations, 100 prediction repetitions, CPU-affinity

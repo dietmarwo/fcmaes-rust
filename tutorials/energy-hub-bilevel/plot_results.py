@@ -424,7 +424,15 @@ def qd_archive(output: Path) -> None:
         xlim=(-0.5, 11.5),
         ylim=(-0.5, 9.5),
     )
-    axes[0].legend(loc="upper right")
+    # Lower right is empty in this archive; upper right hid occupied cells.
+    axes[0].legend(
+        loc="lower right",
+        fontsize=7,
+        handlelength=1.0,
+        handletextpad=0.4,
+        borderpad=0.3,
+        borderaxespad=0.2,
+    )
     colorbar = figure.colorbar(image, ax=axes[0])
     colorbar.set_label("Robust mean LCOE")
 
