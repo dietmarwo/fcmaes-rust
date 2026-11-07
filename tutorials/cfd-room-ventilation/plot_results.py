@@ -464,7 +464,10 @@ def plot_verification(
     )
     axes[0].set_xticks([540, 960, 2160], ["30×18", "40×24", "60×36"])
     axes[0].grid(alpha=0.22)
-    axes[0].legend(ncol=2, fontsize=7, loc="best")
+    # Below the axes: inside, the legend hid the baseline held-out line.
+    axes[0].legend(
+        ncol=2, fontsize=7, loc="upper center", bbox_to_anchor=(0.5, -0.24), frameon=False
+    )
     axes[0].text(
         0.02,
         0.02,

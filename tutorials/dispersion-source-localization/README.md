@@ -191,7 +191,11 @@ cargo run --release -- \
   --output results/publication/mo-seed-42
 ```
 
-![BiteOpt coordinated advanced-retry convergence](images/publication-scalar-seed-42/convergence.svg)
+The convergence trace plots quality as the negated training score, so it
+rises toward `-0.0455`; it ends at the last improvement (212,610 evaluations)
+of the 420,000-evaluation run.
+
+![BiteOpt coordinated advanced-retry convergence (quality = negated training score)](images/publication-scalar-seed-42/convergence.svg)
 
 ![MODE reconstruction-error and emission trade-offs](images/publication-mo-seed-42/pareto.svg)
 

@@ -320,7 +320,35 @@ def so_comparison(output: Path) -> None:
         ha="right",
         va="top",
     )
-    axes[1].bar(labels[1:], np.array(delta[1:]) / 1000.0, color=colors[1:])
+    # An infeasible arm's penalized change (~+4e8 kg) would flatten the
+    # feasible arms' changes (about -2 thousand kg) to invisible bars, so it
+    # is annotated instead of drawn to scale.
+    change = [
+        value / 1000.0 if valid else 0.0
+        for value, valid in zip(delta[1:], feasible[1:])
+    ]
+    change_bars = axes[1].bar(labels[1:], change, color=colors[1:])
+    lowest = min(change)
+    axes[1].set_ylim(lowest * 1.15, -lowest * 0.75)
+    for bar, value, valid in zip(change_bars, delta[1:], feasible[1:]):
+        if valid:
+            axes[1].annotate(
+                f"{value / 1000.0:.2f}",
+                (bar.get_x() + bar.get_width() / 2, value / 1000.0),
+                xytext=(0, -3),
+                textcoords="offset points",
+                ha="center",
+                va="top",
+            )
+        else:
+            axes[1].annotate(
+                f"infeasible:\npenalty {value / 1000.0:+.1e}\nthousand kg,\nnot to scale",
+                (bar.get_x() + bar.get_width() / 2, 0.0),
+                xytext=(0, 4),
+                textcoords="offset points",
+                ha="center",
+                va="bottom",
+            )
     axes[1].axhline(0.0, color="#455A64", lw=0.9)
     axes[1].set(
         title="Change from explicit seed",

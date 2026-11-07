@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1040" height="500" viewBox="0 0 1040 500" role="img" aria-labelledby="title desc">
+<svg xmlns="http://www.w3.org/2000/svg" width="1040" height="560" viewBox="0 0 1040 560" role="img" aria-labelledby="title desc">
   <title id="title">fcmaes-rust workspace dependency flow</title>
   <desc id="desc">Rust applications and standalone tutorials depend directly on fcmaes-core. Native examples and benchmarks pass through fcmaes-examples. The embedding Python package passes through fcmaes-py and PyO3. Both adapters depend on fcmaes-core and the internal fcmaes-gtop objective library. fcmaes-core has no dependency on Python, GTOP, or the example crate.</desc>
   <defs>
@@ -7,7 +7,7 @@
     </marker>
   </defs>
 
-  <rect x="1" y="1" width="1038" height="498" rx="18" ry="18" fill="#fafbfc" stroke="#cfd8dc" stroke-width="2"/>
+  <rect x="1" y="1" width="1038" height="558" rx="18" ry="18" fill="#fafbfc" stroke="#cfd8dc" stroke-width="2"/>
   <text x="520" y="39" font-family="DejaVu Sans, sans-serif" font-size="22" font-weight="700" fill="#263238" text-anchor="middle">fcmaes-rust workspace and dependency boundaries</text>
 
   <g font-family="DejaVu Sans, sans-serif" fill="#263238" text-anchor="middle">
@@ -16,11 +16,11 @@
     <text x="140" y="126" font-size="13">direct reusable-core consumer</text>
 
     <rect x="28" y="177" width="225" height="74" rx="12" ry="12" fill="#eceff1" stroke="#607d8b" stroke-width="2"/>
-    <text x="140" y="207" font-size="16" font-weight="700">Examples and benchmarks</text>
+    <text x="140" y="207" font-size="14" font-weight="700">Examples and benchmarks</text>
     <text x="140" y="231" font-size="13">native binaries</text>
 
     <rect x="28" y="282" width="225" height="74" rx="12" ry="12" fill="#eceff1" stroke="#607d8b" stroke-width="2"/>
-    <text x="140" y="312" font-size="16" font-weight="700">Embedding Python package</text>
+    <text x="140" y="312" font-size="14" font-weight="700">Embedding Python package</text>
     <text x="140" y="336" font-size="13">optional Python entry point</text>
 
     <rect x="28" y="387" width="225" height="74" rx="12" ry="12" fill="#eceff1" stroke="#607d8b" stroke-width="2"/>
@@ -55,7 +55,7 @@
     <path d="M562 300 H650 Q690 300 730 184" fill="none" stroke="#455a64" stroke-width="2.5" marker-end="url(#arrow)"/>
     <path d="M562 337 H730" fill="none" stroke="#455a64" stroke-width="2.5" marker-end="url(#arrow)"/>
 
-    <rect x="342" y="411" width="658" height="50" rx="10" ry="10" fill="#f3e5f5" stroke="#7b1fa2" stroke-width="2"/>
-    <text x="671" y="441" font-size="14" font-weight="700" fill="#4a148c">fcmaes-core does not depend on Python, GTOP, examples, or tutorial simulators</text>
+    <rect x="342" y="488" width="658" height="50" rx="10" ry="10" fill="#f3e5f5" stroke="#7b1fa2" stroke-width="2"/>
+    <text x="671" y="518" font-size="14" font-weight="700" fill="#4a148c">fcmaes-core does not depend on Python, GTOP, examples, or tutorial simulators</text>
   </g>
 </svg>

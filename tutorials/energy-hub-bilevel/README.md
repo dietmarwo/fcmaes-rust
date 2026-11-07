@@ -365,15 +365,16 @@ Candidate count is not a sufficient work unit for an embedded solver:
 
 | Arm | Candidate calls | LP solves | Simplex pivots | Loaded-machine wall time |
 |---|---:|---:|---:|---:|
-| Landscape evidence | 501 | 703 | 779,375 | 3.66 s |
-| SO, three arms | 615 | 3,075 | 3,136,196 | 5.04 s |
-| MAP-Elites | 256 | 1,280 | 788,522 | 3.61 s |
-| MODE | 384 | 1,920 | 1,868,436 | 3.05 s |
-| Annual search + replay | 32 | 37 | 337,724 | 19.92 s |
+| Landscape evidence | 501 | 703 | 779,375 | 4.30 s |
+| SO, three arms | 615 | 3,075 | 3,136,196 | 7.27 s |
+| MAP-Elites | 256 | 1,280 | 788,522 | 3.92 s |
+| MODE | 384 | 1,920 | 1,868,436 | 3.27 s |
+| Annual search + replay | 32 | 37 | 337,724 | 21.78 s |
 
 The annual row separates 32 optimizer calls from four deterministic selection
 replays and the final hourly validation in its manifest. All values were
-recorded on a loaded machine.
+recorded on a loaded machine; wall times are the `elapsed_seconds` of each
+`results/publication/*/run.json`.
 
 ![Outer evaluations, inner solves, pivots, and wall time answer different budget questions](images/budget-accounting.svg)
 

@@ -43,7 +43,7 @@ cargo run --release --locked -- \
 | D1 coverage / holdout niche retention | `38.0%` / `5.34%` |
 | descriptor-gate decision | **rejected; QD skipped** |
 | constrained MODE nondominated points | `83` |
-| candidate/internal-EPS throughput ratio | about **`6.1×`** |
+| candidate/internal-EPS throughput ratio | about **`6.7×`** |
 
 The seed schedule and all three scalar finalists are feasible on the six DDA
 training scenarios. DE returned the seed cost rather than improving it; showing
@@ -286,12 +286,12 @@ tank-free, control-free network makes both arrangements legal for measurement:
 
 | Arrangement | Throughput |
 |---|---:|
-| candidate-parallel, sequential EPS | 73,319 candidates/s |
-| serial candidates, internal parallel EPS | 11,998 candidates/s |
+| candidate-parallel, sequential EPS | 67,338 candidates/s |
+| serial candidates, internal parallel EPS | 10,036 candidates/s |
 
 ![The small equal-work network favors parallel candidates on this machine](images/parallelism.svg)
 
-This approximately sixfold result is specific to the small benchmark and the
+This approximately sevenfold result is specific to the small benchmark and the
 publication machine; it is not a universal `epanet-rs` claim. The architectural
 rule for the real tank/PRV network is independent of the speed result.
 

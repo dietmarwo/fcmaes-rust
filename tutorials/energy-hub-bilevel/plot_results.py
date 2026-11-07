@@ -424,7 +424,8 @@ def qd_archive(output: Path) -> None:
         xlim=(-0.5, 11.5),
         ylim=(-0.5, 9.5),
     )
-    axes[0].legend(loc="upper right")
+    # Outside the grid: inside, the legend hid occupied cells in row 9.
+    axes[0].legend(loc="upper center", bbox_to_anchor=(0.5, -0.2), frameon=False)
     colorbar = figure.colorbar(image, ax=axes[0])
     colorbar.set_label("Robust mean LCOE")
 
