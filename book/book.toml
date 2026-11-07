@@ -12,6 +12,7 @@ create-missing = false
 [output.html]
 site-url = "/fcmaes-rust/"
 git-repository-url = "https://github.com/dietmarwo/fcmaes-rust"
+mathjax-support = true
 
 [output.html.fold]
 enable = true
