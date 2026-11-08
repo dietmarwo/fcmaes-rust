@@ -2,7 +2,8 @@
 
 This overview covers 18 public repositories (forks excluded): the 16 with
 default-branch commits since 1 August 2026 and two earlier split-brain
-research projects from April 2026. Status: 6 November 2026.
+research projects from April 2026. Status: 6 November 2026; the CRN-craft
+and population-epidemiology entries as of 8 November 2026.
 
 Together they connect Python and Rust optimizers, durable job execution,
 experiment campaigns, simulators and bounded domain models. Native
@@ -224,13 +225,14 @@ continuous variables through an approximate `hybrid` method with declared
 tolerances. Optional integrations add BDF integration with forward
 sensitivities, fcmaes job applications, global-to-SQP fitting and
 SBML/BioNetGen import subsets; the default Rust engine depends on none of
-them. Available as `crn-craft` on PyPI, with pandas results, and as the
-crates `crn-craft`, `crn-craft-rules` and `crn-craft-cli` (0.4.0). Four
+them. Available as `crn-craft` on PyPI, with pandas results and, since
+0.5.0, paths and event columns as xarray arrays, and as the crates
+`crn-craft`, `crn-craft-rules` and `crn-craft-cli` (0.5.0). Four
 optimization lessons cover stochastic calibration and inference.
 
 **Relations:** its optional job integration builds on fcmaes-rust's job
 worker, and the optional `fit` extra installs fcmaes-rust and sqp-craft.
-population-epidemiology vendors its core. Listed as a simulation model on
+population-epidemiology depends on the `crn-craft` crate. Listed as a simulation model on
 the optimization-jobs page.
 
 ### 10. CFD-craft
@@ -301,7 +303,8 @@ repository's `packages/` folder and are not on PyPI.
 
 **Relations:** their optimization examples use the Python `fcmaes` package
 from fast-cma-es. hydro-craft grew out of the fast-cma-es Water/HBV
-tutorial, and population-epidemiology vendors the CRN-craft core. They have
+tutorial, and population-epidemiology depends on the `crn-craft` crate (its
+0.3.0 packages carry a vendored copy of the core). They have
 no dedicated optimization-jobs workers.
 
 ## 7. Application

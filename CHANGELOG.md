@@ -52,6 +52,7 @@ phase, with breaking changes called out explicitly.
 
 ### Changed
 
+- `docs/repositories.md`: CRN-craft 0.5.0 (paths and event columns as xarray arrays), and population-epidemiology's dependency on the `crn-craft` crate instead of a vendored core.
 - Upgraded the GTOC1 and GTOC1 route-search tutorials from `pykep-core` 0.1.4 to 0.1.5. Their tests pass, and the stored GTOC1 solution evaluates to the same score, mismatch and DOP853 validation. Route search takes the pykep-core and fcmaes-core versions in its cache identity from constants that a new test checks against the `Cargo.toml` pins; fcmaes-core stays at the registry pin 0.1.3.
 
 - The README points to [experiment-craft](https://github.com/dietmarwo/experiment-craft),
@@ -80,7 +81,7 @@ phase, with breaking changes called out explicitly.
   - `benchmarks/optimizer-comparison/prepare_external.sh` copied `examples/src/gtop.rs`, which no longer exists; it copies `crates/fcmaes-gtop/src/lib.rs`, and the benchmark README, `docs/development.md` and the external harness's doc comment name that file; the benchmark's `SHA256SUMS` lists the changed files' new checksums.
   - `ai-context.md` lists all fifteen MCP tools, and its surrogate summary, like `benchmarks/surrogate-comparison/README.md`, says which method leads at half budget on each problem (fcmaes on Branin, noiseless BoTorch and Optuna's GP sampler on the oscillator, Optuna's GP sampler on Hartmann-3).
   - `tutorials/README.md` quotes the stored GTOC1 solution's score, mismatch and margins from its recorded files.
-  - `docs/python-bindings.md` lists the keys of the retry result dicts; `docs/repositories.md` lists the CRN-craft crates at 0.4.0; `tutorials/truss-bounds/README.md` names the replay example at its path.
+  - `docs/python-bindings.md` lists the keys of the retry result dicts; `docs/repositories.md` lists the released CRN-craft crate version; `tutorials/truss-bounds/README.md` names the replay example at its path.
 - Figures and text in the tutorials that disagreed, from a review of every figure in the book:
   - Truss sizing, sindr circuit design: one value on a linear axis hid the rest. The truss panel annotates the infeasible arm's +4e5 thousand kg penalty instead of drawing it to scale. The sindr replay errors (1e-4 % to 0.3 %) use a log axis.
   - Energy hub QD archive, CFD verification: the legends no longer cover data (row 9 of the archive, the baseline held-out line).
