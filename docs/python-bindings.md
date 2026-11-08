@@ -184,9 +184,11 @@ part of this binding crate.
 The extension exports `minimize_retry`, `minimize_advanced_retry`, and
 `minimize_moretry`. Returned dictionaries contain:
 
-- `x`, `fun`, `nfev`, `nit`, and `success`;
-- `retry_xs` and `retry_ys` for retained results;
-- `improvements` for completed-retry best-value samples.
+- `x`, `fun`, `nfev`, `runs`, and `success`;
+- `xs` and `ys` for retained results;
+- `improvements` for completed-retry best-value samples;
+- for `minimize_moretry` also `scalar_fun`, `weights`, and `scalar_ys`
+  (the weighted scalarization of each retained result).
 
 The advanced-retry optimizer callback receives local bounds, an optional
 guess, step-size information, its evaluation budget, and an independently

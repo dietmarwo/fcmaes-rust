@@ -66,10 +66,11 @@ BoTorch), median final regret:
 fcmaes-surrogate reaches the lowest median final regret of the GP methods on
 four of five problems and is within a factor of 25 of egobox on Branin, at
 1–3 orders of magnitude less proposal time than the other GP libraries. At
-half budget Optuna's GP sampler and noiseless BoTorch are ahead on the two-
-and three-variable problems (for example 1.2e-4 and 2.5e-4 against 4.0e-4 on
-the oscillator after 16 calls): two of three fcmaes proposals stay in the
-trust region, which pays off later. BoTorch's defaults infer an observation
+half budget fcmaes already leads on Branin, but noiseless BoTorch and Optuna's
+GP sampler are ahead on the two-variable oscillator (1.2e-4 and 2.5e-4 against
+4.0e-4 after 16 calls) and Optuna's GP sampler on Hartmann-3 (2.6e-4 against
+5.7e-4): two of three fcmaes proposals stay in the trust region, which pays
+off later. BoTorch's defaults infer an observation
 noise of at least 1e-4 (standardized), which limits precision on these
 deterministic problems; fixing the noise helps on Branin and Hartmann-6 but
 not on Hartmann-3, where most noiseless runs settle in the local minimum at

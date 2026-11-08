@@ -25,7 +25,7 @@ do
     cp "$sources/$package/src/"*.rs "$external_root/$package/src/"
 done
 
-cp "$public_root/examples/src/gtop.rs" "$external_root/common/src/gtop.rs"
+cp "$public_root/crates/fcmaes-gtop/src/lib.rs" "$external_root/common/src/gtop.rs"
 
 echo "$external_root"
 

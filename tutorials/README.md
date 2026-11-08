@@ -669,13 +669,17 @@ the `autoresearch-circuit` split-brain architecture onto this task: an AI agent
 selects discrete route structures while `fcmaes-core` optimizes their
 continuous timings under equal budgets.
 
-The stored solution scores `1,850,730.667522` inside the Rust model, versus
-JPL's reported `1,850,000`, with a `3.58e-9` normalized low-thrust mismatch
-and a sampled minimum solar distance of `0.671463 AU`. The chapter is explicit
-that this is not a new official competition result: pykep-core supplies
-VSOP2013 Earth-Moon-barycentre states rather than the required DE405-equivalent
-Earth-centre ephemeris. Its threshold-sensitivity table also shows the active
-Venus periapsis margin changing sign one truncation level away.
+The stored continuous-thrust solution scores `1,843,300.529365` inside the
+Rust model, about 6,699 points below JPL's reported `1,850,000`, with a
+`1.58e-11` normalized low-thrust mismatch (`1.50e-10` when repropagated with
+DOP853) and a daily-sampled minimum solar distance of `0.671522 AU`. An earlier
+Sims–Flanagan approximation scored `1,850,730.667522`, but finite-thrust
+propagation exposed a `3.23e-2` endpoint mismatch, so it is kept only as a
+warning. The chapter is explicit that this is not a new official competition
+result: pykep-core supplies VSOP2013 Earth-Moon-barycentre states rather than
+the required DE405-equivalent Earth-centre ephemeris. The active Venus
+periapsis margin is only 0.225 m, and pykep-core rejects VSOP2013 thresholds
+below `1e-9`, so the model cannot establish that margin's robustness.
 
 ![The GTOC1 split-brain architecture separates AI planet-order proposals, continuous timing optimization, cheap scoring, and costly low-thrust validation](gtoc1/images/split-brain.svg)
 

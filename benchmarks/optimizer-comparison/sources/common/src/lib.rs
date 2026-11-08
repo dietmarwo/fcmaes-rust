@@ -1,6 +1,6 @@
 //! Dependency-free benchmark contract shared by every optimizer adapter.
 //!
-//! `gtop.rs` is copied verbatim from `examples/src/gtop.rs` by the external
+//! `gtop.rs` is copied verbatim from `crates/fcmaes-gtop/src/lib.rs` by the external
 //! workspace generator. Keeping the objective implementation outside the
 //! adapter crates prevents optimizer-specific problem variants.
 

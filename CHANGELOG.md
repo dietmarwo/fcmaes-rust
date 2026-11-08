@@ -57,9 +57,10 @@ phase, with breaking changes called out explicitly.
 - The README points to [experiment-craft](https://github.com/dietmarwo/experiment-craft),
   which runs reproducible campaigns of `fcmaes-job-worker` jobs and rebuilds and
   tests this repository at a pinned revision.
-- optimization-jobs pin `eb232ae` (its 0.4.0 release plus documentation-only
-  changes: doc comments on every public item and a simulator section in the
-  guide that `get_guide` serves, so the job crates are 0.4.0) in every manifest and lockfile, including the four tutorials with a
+- optimization-jobs pin `12f9d57` (its 0.4.0 release plus documentation-only
+  changes: doc comments on every public item, a simulator section in the
+  guide that `get_guide` serves and corrections to the guide and job API
+  docs, so the job crates are 0.4.0) in every manifest and lockfile, including the four tutorials with a
   job worker. The runner gains `node capabilities`, `jobs execution JOB_ID`
   (an execution record of how each job's worker process ended), opt-in trusted
   command jobs with verified binary file transfer, and explicitly placed jobs
@@ -75,6 +76,11 @@ phase, with breaking changes called out explicitly.
 
 ### Fixed
 
+- Documentation errors found in a review of the Markdown files:
+  - `benchmarks/optimizer-comparison/prepare_external.sh` copied `examples/src/gtop.rs`, which no longer exists; it copies `crates/fcmaes-gtop/src/lib.rs`, and the benchmark README, `docs/development.md` and the external harness's doc comment name that file; the benchmark's `SHA256SUMS` lists the changed files' new checksums.
+  - `ai-context.md` lists all fifteen MCP tools, and its surrogate summary, like `benchmarks/surrogate-comparison/README.md`, says which method leads at half budget on each problem (fcmaes on Branin, noiseless BoTorch and Optuna's GP sampler on the oscillator, Optuna's GP sampler on Hartmann-3).
+  - `tutorials/README.md` quotes the stored GTOC1 solution's score, mismatch and margins from its recorded files.
+  - `docs/python-bindings.md` lists the keys of the retry result dicts; `docs/repositories.md` lists the CRN-craft crates at 0.4.0; `tutorials/truss-bounds/README.md` names the replay example at its path.
 - Figures and text in the tutorials that disagreed, from a review of every figure in the book:
   - Truss sizing, sindr circuit design: one value on a linear axis hid the rest. The truss panel annotates the infeasible arm's +4e5 thousand kg penalty instead of drawing it to scale. The sindr replay errors (1e-4 % to 0.3 %) use a log axis.
   - Energy hub QD archive, CFD verification: the legends no longer cover data (row 9 of the archive, the baseline held-out line).
