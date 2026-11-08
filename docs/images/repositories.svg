@@ -120,10 +120,10 @@
 <!-- DOM&#45;&gt;CRN -->
 <g id="edge10" class="edge">
 <title>DOM:pop&#45;&gt;CRN</title>
-<path fill="none" stroke="#5b6677" stroke-width="1.1" d="M664.04,-383.5C675.83,-383.5 670.34,-366.26 663.04,-357 646.75,-336.33 625.71,-358.48 606.04,-341 594.77,-330.99 588.28,-315.34 584.6,-302.14"/>
-<polygon fill="#5b6677" stroke="#5b6677" stroke-width="1.1" points="586.92,-301.3 582.83,-295.11 582.16,-302.5 586.92,-301.3"/>
-<text text-anchor="middle" x="640.04" y="-330.2" font-family="Helvetica,sans-Serif" font-size="13.50" fill="#2b2f36"> vendored</text>
-<text text-anchor="middle" x="640.04" y="-315.2" font-family="Helvetica,sans-Serif" font-size="13.50" fill="#2b2f36"> core</text>
+<path fill="none" stroke="#5b6677" stroke-width="1.1" d="M664.04,-383.5C675.83,-383.5 670.17,-366.39 663.04,-357 648.93,-338.42 630.9,-356.01 613.04,-341 600.89,-330.78 592.62,-314.94 587.39,-301.69"/>
+<polygon fill="#5b6677" stroke="#5b6677" stroke-width="1.1" points="589.66,-300.76 584.94,-295.05 585.07,-302.46 589.66,-300.76"/>
+<text text-anchor="middle" x="643.54" y="-330.2" font-family="Helvetica,sans-Serif" font-size="13.50" fill="#2b2f36"> crn&#45;craft</text>
+<text text-anchor="middle" x="643.54" y="-315.2" font-family="Helvetica,sans-Serif" font-size="13.50" fill="#2b2f36"> crate</text>
 </g>
 <!-- FCE -->
 <g id="node13" class="node">

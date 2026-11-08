@@ -46,7 +46,7 @@ digraph repos {
   ART -> FCE;
   ARC -> FCE;
   DOM -> FCE  [label=" examples"];
-  DOM:pop -> CRN [label=" vendored\n core"];
+  DOM:pop -> CRN [label=" crn-craft\n crate"];
   PL  -> PK   [label=" Rust\n consumer"];
   PL  -> FCR  [label=" fcmaes-core"];
   BUD -> FCR  [label=" optional\n tuner"];
