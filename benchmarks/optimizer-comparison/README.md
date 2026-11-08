@@ -10,7 +10,7 @@ The original definitions are in ESA's
 The alternative crates are never added to the public fcmaes Cargo workspace.
 [`prepare_external.sh`](prepare_external.sh) copies the published adapter
 sources into a sibling workspace, copies the exact native GTOP objective
-implementation from `examples/src/gtop.rs`, and builds the comparison there.
+implementation from `crates/fcmaes-gtop/src/lib.rs`, and builds the comparison there.
 Consequently, `cargo build --workspace` and `cargo test --workspace` from the
 repository root do not resolve or compile any comparison library.
 

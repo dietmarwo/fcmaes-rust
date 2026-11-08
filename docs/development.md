@@ -184,7 +184,7 @@ not only line execution.
 
 ## Adding a GTOP problem or CLI option
 
-Add objective numerics to `gtop.rs`, then add a named `Problem` with validated
+Add objective numerics to `crates/fcmaes-gtop/src/lib.rs`, then add a named `Problem` with validated
 bounds in `problems.rs`. Add name aliases to `by_name`, reference-value tests,
 and catalog coverage. Shared CLI options belong in `runner::Cli`; both binaries
 should continue to use the same parser.

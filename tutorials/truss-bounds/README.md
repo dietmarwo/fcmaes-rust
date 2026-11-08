@@ -27,7 +27,7 @@ To run the chapter on its own, use `python tutorials/truss-bounds/run.py --prese
 
 ## Independent answer and validation
 
-The nominal yield-only bound is about 249.17 kg. Recompute a separate bound at the moved geometry. Continuous FEM sensitivities pass finite differences; both the published and rounded catalogue designs are replayed through the original Rust FEM helper (`examples/structured_replay.rs`), which refuses designs the tutorial's decoder could not produce: moved supports or load nodes, offsets beyond the decoder's limits, repeated members, member counts outside 8–40 or unknown sections.
+The nominal yield-only bound is about 249.17 kg. Recompute a separate bound at the moved geometry. Continuous FEM sensitivities pass finite differences; both the published and rounded catalogue designs are replayed through the original Rust FEM helper (`tutorials/truss-sizing/examples/structured_replay.rs`), which refuses designs the tutorial's decoder could not produce: moved supports or load nodes, offsets beyond the decoder's limits, repeated members, member counts outside 8–40 or unknown sections.
 
 Every run keeps the native status, points and available diagnostics. Application-specific references are computed separately. All failures remain in the report.
 

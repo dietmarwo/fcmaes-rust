@@ -10,7 +10,7 @@ Since `67bd698`, the job crates `optimization-job-api` and
 `optimization-runner` (0.4.0 since the pin move to their 0.4.0 release)
 come from
 [optimization-jobs](https://github.com/dietmarwo/optimization-jobs) (#11; the
-in-repo `fcmaes-job-api` crate is gone), now at the pinned revision `eb232ae` (the optimization-jobs 0.4.0 release plus documentation: doc comments on every public item and a simulator section in the guide that `get_guide` serves), which adds
+in-repo `fcmaes-job-api` crate is gone), now at the pinned revision `12f9d57` (the optimization-jobs 0.4.0 release plus documentation: doc comments on every public item, a simulator section in the guide that `get_guide` serves, and corrections to the guide and job API docs), which adds
 `node capabilities`, `jobs execution JOB_ID`, opt-in trusted local command
 jobs with verified binary file transfer, and explicitly placed jobs on SSH
 nodes, all through the CLI. The pins up to `v0.3.0`
@@ -66,8 +66,9 @@ Evidence: in [`benchmarks/surrogate-comparison`](benchmarks/surrogate-comparison
 (equal call budgets, ten seeds) it had the lowest median final regret of the
 GP methods (BoTorch, egobox, scikit-optimize, Optuna) on Hartmann-3/6, the
 RK4 oscillator and Styblinski–Tang-10, egobox was better on Branin, and its
-proposal time was 1–3 orders of magnitude lower; at half budget Optuna's GP
-sampler and noiseless BoTorch led on two and three variables. BiteOpt and
+proposal time was 1–3 orders of magnitude lower; at half budget noiseless BoTorch and
+Optuna's GP sampler led on the two-variable oscillator and Optuna's GP sampler
+on Hartmann-3. BiteOpt and
 CMA-ES were orders of magnitude worse on the smooth problems at these
 budgets, but BiteOpt beat every GP method on the separable, many-modal
 Styblinski–Tang-10 (median regret 17 against 57). One proposal round with a
@@ -764,10 +765,10 @@ client with absolute paths, for example Claude Code:
 claude mcp add fcmaes-jobs -- "$PWD/target/release/optimization-mcp" --root "$JOB_NODE"
 ```
 
-Its thirteen tools (`describe_node`, `describe_worker`, `validate_job`,
-`submit_job`, `get_job`, `wait_job`, `get_result`, `get_events`,
-`get_artifact`, `list_jobs`, `cancel_job`, `kill_job`, `repair_job`) drive the
-runner CLI, whose rules apply unchanged. `get_result` returns a summary
+Its fifteen tools (`get_guide`, `describe_node`, `describe_worker`,
+`validate_job`, `put_input`, `submit_job`, `get_job`, `wait_job`,
+`get_result`, `get_events`, `get_artifact`, `list_jobs`, `cancel_job`,
+`kill_job`, `repair_job`) drive the runner CLI, whose rules apply unchanged. `get_result` returns a summary
 without points; pass `tasks` (task IDs) for complete records.
 `get_artifact` reads [artifacts](https://github.com/dietmarwo/optimization-jobs/blob/main/docs/job-api.md#artifacts),
 also while the job runs: `results` and the files a worker declared (the

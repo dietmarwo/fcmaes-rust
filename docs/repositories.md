@@ -225,7 +225,7 @@ tolerances. Optional integrations add BDF integration with forward
 sensitivities, fcmaes job applications, global-to-SQP fitting and
 SBML/BioNetGen import subsets; the default Rust engine depends on none of
 them. Available as `crn-craft` on PyPI, with pandas results, and as the
-crates `crn-craft`, `crn-craft-rules` and `crn-craft-cli` (0.3.0). Four
+crates `crn-craft`, `crn-craft-rules` and `crn-craft-cli` (0.4.0). Four
 optimization lessons cover stochastic calibration and inference.
 
 **Relations:** its optional job integration builds on fcmaes-rust's job
