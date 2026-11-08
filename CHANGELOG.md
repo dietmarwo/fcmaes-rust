@@ -77,7 +77,7 @@ phase, with breaking changes called out explicitly.
 ### Fixed
 
 - Documentation errors found in a review of the Markdown files:
-  - `benchmarks/optimizer-comparison/prepare_external.sh` copied `examples/src/gtop.rs`, which no longer exists; it copies `crates/fcmaes-gtop/src/lib.rs`, and the benchmark README, `docs/development.md` and the external harness's doc comment name that file.
+  - `benchmarks/optimizer-comparison/prepare_external.sh` copied `examples/src/gtop.rs`, which no longer exists; it copies `crates/fcmaes-gtop/src/lib.rs`, and the benchmark README, `docs/development.md` and the external harness's doc comment name that file; the benchmark's `SHA256SUMS` lists the changed files' new checksums.
   - `ai-context.md` lists all fifteen MCP tools, and its surrogate summary, like `benchmarks/surrogate-comparison/README.md`, says which method leads at half budget on each problem (fcmaes on Branin, noiseless BoTorch and Optuna's GP sampler on the oscillator, Optuna's GP sampler on Hartmann-3).
   - `tutorials/README.md` quotes the stored GTOC1 solution's score, mismatch and margins from its recorded files.
   - `docs/python-bindings.md` lists the keys of the retry result dicts; `docs/repositories.md` lists the CRN-craft crates at 0.4.0; `tutorials/truss-bounds/README.md` names the replay example at its path.
