@@ -35,6 +35,7 @@ optimization-jobs.
 | An objective written in Rust, or an expensive simulation with few evaluations | [fcmaes-rust](#2-fcmaes-rust) |
 | A linear or mixed-integer model | [LP-IP-craft](#3-lp-ip-craft) |
 | A smooth constrained model with derivatives and at most 256 variables | [SQP-craft](#4-sqp-craft) |
+| A larger smooth constrained model with small overlapping cliques | [SQP-craft structured mode](#4-sqp-craft), experimental, from 0.18.0 |
 | Solver runs that must be durable, or an AI agent that drives them over MCP | [optimization-jobs](#5-optimization-jobs) |
 | Parameter sweeps or solver comparisons with reports | [experiment-craft](#6-experiment-craft) |
 
@@ -115,11 +116,15 @@ shared guide routes linear and integer problems here instead of to fcmaes.
 **Sequential quadratic programming for smooth constrained problems.**
 [github.com/dietmarwo/SQP-craft](https://github.com/dietmarwo/SQP-craft)
 
-A dense-BFGS SQP solver in Rust with Python bindings (`sqp-craft` 0.17.0)
-and a separate job worker, for problems with derivatives and at most 256
-variables, such as trajectory transcriptions. Tutorials range from
-constrained calibration and collocation to a low-thrust transfer, an
-Earth–Mars Sims–Flanagan leg, reaction kinetics and AC power dispatch.
+A sequential quadratic programming solver in Rust with Python bindings
+(`sqp-craft` 0.17.0) and a separate job worker. The dense default mode
+handles up to 256 variables. The experimental
+[structured mode](https://github.com/dietmarwo/SQP-craft/blob/main/docs/structured-sqp.md)
+(from 0.18.0) uses partitioned BFGS and sparse Clarabel QPs for models with small
+overlapping cliques. The Earth–Mars multiple-shooting study passed
+independent first-order checks at 1,916 variables under the original
+budget and at 4,994 with an extended budget. Tutorials cover calibration,
+collocation, low-thrust transfer, reaction kinetics and AC power dispatch.
 
 **Relations:** its job worker depends on the optimization-jobs crates.
 CRN-craft's optional fitting extra pairs a global fcmaes-rust search with

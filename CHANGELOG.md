@@ -52,6 +52,7 @@ phase, with breaking changes called out explicitly.
 
 ### Changed
 
+- `docs/repositories.md`: SQP-craft's experimental structured mode (partitioned BFGS with sparse Clarabel QPs, from 0.18.0) in the "Where to start" table and its section.
 - `docs/repositories.md`: CRN-craft 0.5.0 (paths and event columns as xarray arrays), and population-epidemiology's dependency on the `crn-craft` crate instead of a vendored core, also in the relationship diagram (`docs/images/repositories.dot`, SVG regenerated with Graphviz 2.43.0).
 - Upgraded the GTOC1 and GTOC1 route-search tutorials from `pykep-core` 0.1.4 to 0.1.5. Their tests pass, and the stored GTOC1 solution evaluates to the same score, mismatch and DOP853 validation. Route search takes the pykep-core and fcmaes-core versions in its cache identity from constants that a new test checks against the `Cargo.toml` pins; fcmaes-core stays at the registry pin 0.1.3.
 
