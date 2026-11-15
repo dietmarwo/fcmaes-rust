@@ -8,6 +8,8 @@ phase, with breaking changes called out explicitly.
 
 ### Added
 
+- Reader learning paths for Python users, Rust users and agent builders, linked from the repository overview and book, with runnable checkpoints and existing or shared capstones. A default-branch link/anchor checker rejects moved-page stubs and runs on pull requests and weekly.
+
 - `docs/repositories.md`: an overview of the 18 related repositories (optimizers, job layer, split-brain research loops, simulators, astrodynamics, domain evaluators and budel-craft), what each does and how they depend on each other, with a Graphviz diagram in `docs/images/repositories.svg` and its source. The README, the documentation map and the book link to it.
 
 - A bounded `crn_reference` example (contributed by Astra) in the existing oscillator-topology-search workspace for the [CRN C3 companion](https://github.com/dietmarwo/CRN-craft/blob/main/tutorials/optimization/C3-oscillators.md), using the documented local ReBop compatibility backend; linked the simulator tutorial series. The request carries the initial state and unknown fields are rejected.

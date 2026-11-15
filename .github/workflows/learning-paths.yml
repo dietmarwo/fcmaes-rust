@@ -1,0 +1,42 @@
+name: Learning-path links
+
+on:
+  pull_request:
+    paths:
+      - 'docs/learning-paths.md'
+      - 'scripts/check_learning_paths.py'
+      - 'scripts/test_learning_paths.py'
+      - '.github/workflows/learning-paths.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'docs/learning-paths.md'
+      - 'scripts/check_learning_paths.py'
+      - 'scripts/test_learning_paths.py'
+      - '.github/workflows/learning-paths.yml'
+  workflow_dispatch:
+  schedule:
+    - cron: '17 5 * * 1'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: learning-paths-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  links:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Check rejection cases normally and with optimized Python
+        run: |
+          python scripts/test_learning_paths.py
+          python -O scripts/test_learning_paths.py
+      - name: Check current default-branch targets
+        run: python scripts/check_learning_paths.py --remote
