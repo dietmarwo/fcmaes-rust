@@ -3,8 +3,10 @@
 
 Only the selected page is traversed. Its targets are checked for existence,
 anchors, default-branch source URLs and moved-page stubs, not recursively
-crawled. Remote mode uses temporary shallow Git checkouts; it never changes
-or fetches into the reader's checkouts. Requires Python 3.10+ and Git.
+crawled. Remote mode reads the other repositories from temporary shallow Git
+checkouts of their default branches; it never changes or fetches into the
+reader's checkouts. This repository is always read from the working tree, so
+a pull request is checked against its own files. Requires Python 3.10+ and Git.
 """
 from __future__ import annotations
 
@@ -111,16 +113,26 @@ class Sources:
             raise ValueError("invalid repository name")
         if name in self.cache:
             return self.cache[name]
-        if self.remote is not None:
+        url = f"https://github.com/{OWNER}/{name}.git"
+        if name == REPOSITORY:
+            path = self.root
+        elif self.remote is not None:
             path = self.remote / name
-            command(["git", "clone", "--depth", "1", "--quiet", "--single-branch",
-                     f"https://github.com/{OWNER}/{name}.git", str(path)])
+            command(["git", "clone", "--depth", "1", "--quiet", "--single-branch", url, str(path)])
         else:
-            path = self.root if name == REPOSITORY else self.sources / name
+            path = self.sources / name
         if not path.is_dir():
             raise ValueError(f"missing sibling checkout: {name}")
-        branch = command(["git", "-C", str(path), "symbolic-ref", "--short",
-                          "refs/remotes/origin/HEAD"]).removeprefix("origin/")
+        if self.remote is not None and name == REPOSITORY:
+            # A CI checkout of a pull request has no origin/HEAD; ask the remote.
+            head = re.search(r"^ref: refs/heads/(\S+)\s+HEAD$",
+                             command(["git", "ls-remote", "--symref", url, "HEAD"]), re.MULTILINE)
+            if head is None:
+                raise ValueError(f"default branch not reported: {name}")
+            branch = head.group(1)
+        else:
+            branch = command(["git", "-C", str(path), "symbolic-ref", "--short",
+                              "refs/remotes/origin/HEAD"]).removeprefix("origin/")
         self.cache[name] = (path, branch)
         return path, branch
 

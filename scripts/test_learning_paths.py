@@ -80,6 +80,28 @@ class ResolutionTests(unittest.TestCase):
             sources.checkout('fast-cma-es')
             self.assertEqual(call.call_count, 2)
 
+    def test_remote_mode_reads_this_repository_from_the_working_tree(self):
+        # A pull request is checked against its own files, not against main.
+        remote = self.parent / 'remote'
+        remote.mkdir()
+        sources = Sources(self.parent, self.root, remote)
+        (self.root / 'docs/new.md').write_text('# New page\n')
+        self.page.write_text('# Tracks\n[N](new.md#new-page) '
+                             '[A](https://github.com/dietmarwo/fcmaes-rust/blob/main/docs/new.md) '
+                             '[G](gone.md)')
+        def fake_command(argv, timeout=180):
+            if argv[1] == 'clone':
+                raise AssertionError('the repository under test must not be cloned')
+            if argv[1] == 'ls-remote':
+                return 'ref: refs/heads/main\tHEAD\n0123abc\tHEAD'
+            raise AssertionError(argv)
+        with patch('check_learning_paths.command', side_effect=fake_command):
+            report = check_page(self.page, sources)
+            with self.assertRaisesRegex(ValueError, 'default branch'):
+                sources.check('https://github.com/dietmarwo/fcmaes-rust/blob/master/docs/new.md',
+                              self.page, '')
+        self.assertEqual([e['link'] for e in report['errors']], ['gone.md'], report)
+
 
 if __name__ == '__main__':
     unittest.main()
