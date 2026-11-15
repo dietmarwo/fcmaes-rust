@@ -39,6 +39,14 @@ optimization-jobs.
 | Solver runs that must be durable, or an AI agent that drives them over MCP | [optimization-jobs](#5-optimization-jobs) |
 | Parameter sweeps or solver comparisons with reports | [experiment-craft](#6-experiment-craft) |
 
+### By reader
+
+| Reader | Learning path |
+| --- | --- |
+| Python user | [A bounded objective through a repeatable campaign](learning-paths.md#python-user) |
+| Rust user | [A native objective through a registered job worker](learning-paths.md#rust-user) |
+| Agent builder | [Solver choice, discovery, evidence and campaigns](learning-paths.md#agent-builder) |
+
 ## How they connect
 
 Solid arrows are code dependencies; their labels say when a dependency is
@@ -310,7 +318,10 @@ repository's `packages/` folder and are not on PyPI.
 from fast-cma-es. hydro-craft grew out of the fast-cma-es Water/HBV
 tutorial, and population-epidemiology depends on the `crn-craft` crate (its
 0.3.0 packages carry a vendored copy of the core). They have
-no dedicated optimization-jobs workers.
+no dedicated optimization-jobs workers. The executed
+[hydro command-job tutorial](https://github.com/dietmarwo/hydro-craft/blob/main/docs/command-jobs.md)
+wraps evaluation, optimization and a checked campaign; thermo-craft runs
+through the same shared driver.
 
 ## 7. Application
 
