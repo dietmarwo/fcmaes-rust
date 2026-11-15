@@ -366,11 +366,8 @@ pub fn rollout(gait: &Gait, config: &RolloutConfig) -> Rollout {
 
     for step in 0..steps {
         let time = step as f64 * config.time_step_s;
-        for joint_index in 0..JOINTS {
-            if let Some(joint) = world
-                .impulse_joints
-                .get_mut(robot.joints[joint_index], true)
-            {
+        for (joint_index, &handle) in robot.joints.iter().enumerate() {
+            if let Some(joint) = world.impulse_joints.get_mut(handle, true) {
                 joint.data.set_motor_position(
                     JointAxis::AngX,
                     gait.target(joint_index, time),
