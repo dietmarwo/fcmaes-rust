@@ -146,3 +146,6 @@
 - [Publishing checklist](RELEASING.md)
 - [AI problem-solving context](ai-context.md)
 - [Agent guide](AGENTS.md)
+
+- [Experimental native surrogate v2](docs/surrogate/ADVANCED.md)
+  - [Advanced surrogate measured results](docs/surrogate/advanced-evidence/README.md)

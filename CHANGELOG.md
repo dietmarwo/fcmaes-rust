@@ -6,6 +6,10 @@ phase, with breaking changes called out explicitly.
 
 ## [Unreleased]
 
+### Added
+
+- Opt-in surrogate /2: bounded archive fitting, numerical reuse/diagnostics, correlated sampling, region restarts, async evaluation, governor and BiteOpt handoff; strict new events/warm format and measured quality limits.
+
 ## [0.3.0] - 2026-11-16
 
 ### Changed

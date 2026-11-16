@@ -1,0 +1,262 @@
+{
+  "records": 600,
+  "failed": 0,
+  "rows": [
+    {
+      "problem": "sphere",
+      "variant": "legacy",
+      "median_loss": 1.279655963650494e-06,
+      "median_seconds": 0.0245641125,
+      "pairs": 30,
+      "geometric_ratio": 1.0,
+      "ratio_95_interval": [
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "problem": "sphere",
+      "variant": "advanced",
+      "median_loss": 0.00022920148856556312,
+      "median_seconds": 0.09069617299999999,
+      "pairs": 30,
+      "geometric_ratio": 231.3362182774904,
+      "ratio_95_interval": [
+        99.15138606386053,
+        542.287792766056
+      ]
+    },
+    {
+      "problem": "sphere",
+      "variant": "thompson",
+      "median_loss": 0.0870127066293461,
+      "median_seconds": 0.323179677,
+      "pairs": 30,
+      "geometric_ratio": 76024.60176927786,
+      "ratio_95_interval": [
+        46095.52974977521,
+        122361.51785938506
+      ]
+    },
+    {
+      "problem": "sphere",
+      "variant": "handoff",
+      "median_loss": 0.01732370717593487,
+      "median_seconds": 0.030117886,
+      "pairs": 30,
+      "geometric_ratio": 9713.276303919683,
+      "ratio_95_interval": [
+        4377.327234880466,
+        19961.876498695292
+      ]
+    },
+    {
+      "problem": "sphere",
+      "variant": "governor",
+      "median_loss": 0.00028789915288245733,
+      "median_seconds": 0.0842669365,
+      "pairs": 30,
+      "geometric_ratio": 287.759868915757,
+      "ratio_95_interval": [
+        150.6954061773428,
+        538.4783861064009
+      ]
+    },
+    {
+      "problem": "ackley",
+      "variant": "legacy",
+      "median_loss": 4.440892098500626e-16,
+      "median_seconds": 0.033577789999999996,
+      "pairs": 30,
+      "geometric_ratio": 1.0,
+      "ratio_95_interval": [
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "problem": "ackley",
+      "variant": "advanced",
+      "median_loss": 4.440892098500626e-16,
+      "median_seconds": 0.07718121,
+      "pairs": 30,
+      "geometric_ratio": 1.0,
+      "ratio_95_interval": [
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "problem": "ackley",
+      "variant": "thompson",
+      "median_loss": 4.440892098500626e-16,
+      "median_seconds": 0.270615934,
+      "pairs": 30,
+      "geometric_ratio": 1.0,
+      "ratio_95_interval": [
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "problem": "ackley",
+      "variant": "handoff",
+      "median_loss": 4.440892098500626e-16,
+      "median_seconds": 0.0352519735,
+      "pairs": 30,
+      "geometric_ratio": 1.0,
+      "ratio_95_interval": [
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "problem": "ackley",
+      "variant": "governor",
+      "median_loss": 4.440892098500626e-16,
+      "median_seconds": 0.075689341,
+      "pairs": 30,
+      "geometric_ratio": 1.0,
+      "ratio_95_interval": [
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "problem": "styblinski",
+      "variant": "legacy",
+      "median_loss": 45.508112722732825,
+      "median_seconds": 0.031441684,
+      "pairs": 30,
+      "geometric_ratio": 1.0,
+      "ratio_95_interval": [
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "problem": "styblinski",
+      "variant": "advanced",
+      "median_loss": 68.37635295088486,
+      "median_seconds": 0.11124985,
+      "pairs": 30,
+      "geometric_ratio": 1.3769632401551297,
+      "ratio_95_interval": [
+        1.2202747682111335,
+        1.5688655815312644
+      ]
+    },
+    {
+      "problem": "styblinski",
+      "variant": "thompson",
+      "median_loss": 91.38925230594563,
+      "median_seconds": 0.338243228,
+      "pairs": 30,
+      "geometric_ratio": 1.9409111305034066,
+      "ratio_95_interval": [
+        1.6541564355818754,
+        2.2807957165740484
+      ]
+    },
+    {
+      "problem": "styblinski",
+      "variant": "handoff",
+      "median_loss": 74.88990492773233,
+      "median_seconds": 0.035393035,
+      "pairs": 30,
+      "geometric_ratio": 1.60385251901225,
+      "ratio_95_interval": [
+        1.4371769012984854,
+        1.8024910323273076
+      ]
+    },
+    {
+      "problem": "styblinski",
+      "variant": "governor",
+      "median_loss": 64.65871900078578,
+      "median_seconds": 0.106470492,
+      "pairs": 30,
+      "geometric_ratio": 1.3784669103059441,
+      "ratio_95_interval": [
+        1.2035492876096006,
+        1.5746983076050403
+      ]
+    },
+    {
+      "problem": "oscillator",
+      "variant": "legacy",
+      "median_loss": 0.0002279572139102735,
+      "median_seconds": 0.0155150135,
+      "pairs": 30,
+      "geometric_ratio": 1.0,
+      "ratio_95_interval": [
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "problem": "oscillator",
+      "variant": "advanced",
+      "median_loss": 0.00023930169568839234,
+      "median_seconds": 0.060764997,
+      "pairs": 30,
+      "geometric_ratio": 1.0691703130948125,
+      "ratio_95_interval": [
+        1.0291087733279456,
+        1.1153016713499055
+      ]
+    },
+    {
+      "problem": "oscillator",
+      "variant": "thompson",
+      "median_loss": 0.00023367949469205965,
+      "median_seconds": 0.258075886,
+      "pairs": 30,
+      "geometric_ratio": 1.0621618821103065,
+      "ratio_95_interval": [
+        1.0117770740927445,
+        1.1132426707441339
+      ]
+    },
+    {
+      "problem": "oscillator",
+      "variant": "handoff",
+      "median_loss": 0.00023875463066335553,
+      "median_seconds": 0.026683633999999998,
+      "pairs": 30,
+      "geometric_ratio": 1.057574698651599,
+      "ratio_95_interval": [
+        1.0109023309560687,
+        1.1157534977486538
+      ]
+    },
+    {
+      "problem": "oscillator",
+      "variant": "governor",
+      "median_loss": 0.0002490267869314918,
+      "median_seconds": 0.0617210755,
+      "pairs": 30,
+      "geometric_ratio": 1.086414485462584,
+      "ratio_95_interval": [
+        1.040709095896326,
+        1.1381571134646862
+      ]
+    }
+  ],
+  "default_promoted": false,
+  "initial_600_status": "exploratory after used to correct initial-design/refinement defect; final seeds201..230 independent of that tuning",
+  "ackley_caveat": "centre initial design is the optimum; not useful evidence of search performance",
+  "async_pilot": {
+    "sync-cost": 0.584062681,
+    "async": 0.45431884749999996,
+    "ratio": 0.777859743961282
+  },
+  "reuse_microbenchmark": {
+    "append_seconds": 0.001805794,
+    "dimension": 5,
+    "iterations": 50,
+    "rebuild_seconds": 0.061141557,
+    "scope": "fixed-transform fixed-hyperparameter microbenchmark",
+    "training": 224
+  }
+}

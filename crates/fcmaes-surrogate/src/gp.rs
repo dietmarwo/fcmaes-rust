@@ -248,6 +248,79 @@ pub struct ExactGp {
 }
 
 impl ExactGp {
+    /// Number of training observations, including any fantasies.
+    pub fn len(&self) -> usize {
+        self.ys.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.ys.is_empty()
+    }
+
+    /// Retarget an unchanged covariance factor after an affine output refit.
+    /// The caller must keep coordinates, kernel, hyperparameters and nugget unchanged.
+    pub fn with_values(&self, ys: &[f64]) -> Result<Self> {
+        if ys.len() != self.len() || ys.iter().any(|y| !y.is_finite()) {
+            return Err(Error::Invalid("retarget shape or nonfinite value".into()));
+        }
+        let mut gp = self.clone();
+        gp.ys = ys.to_vec();
+        gp.alpha = gp.cholesky.solve(ys);
+        gp.negative_log_posterior = 0.5
+            * (dot(ys, &gp.alpha) + gp.cholesky.log_determinant() + ys.len() as f64 * LOG_2PI)
+            + lengthscale_prior(&gp.hyper);
+        if gp.alpha.iter().any(|v| !v.is_finite()) || !gp.negative_log_posterior.is_finite() {
+            return Err(Error::Numerical("retarget solve overflow".into()));
+        }
+        Ok(gp)
+    }
+
+    /// Latent posterior cross covariance; correlated sampling uses this rather
+    /// than independent marginal normals.
+    pub fn posterior_covariance(&self, a: &[f64], b: &[f64]) -> Result<f64> {
+        let (_, ka) = self.cross(a)?;
+        let (_, kb) = self.cross(b)?;
+        let v = covariance(self.kernel, a, b, &self.hyper)
+            - dot(&self.cholesky.forward(&ka), &self.cholesky.forward(&kb));
+        if !v.is_finite() {
+            return Err(Error::Numerical("posterior covariance".into()));
+        }
+        Ok(v)
+    }
+
+    /// Conditioning coefficient for a sampled prior and observation noise.
+    pub(crate) fn condition_path(&self, prior_at_data: &[f64]) -> Result<Vec<f64>> {
+        if prior_at_data.len() != self.len() {
+            return Err(Error::Invalid("path shape".into()));
+        }
+        let residual: Vec<_> = self
+            .ys
+            .iter()
+            .zip(prior_at_data)
+            .map(|(y, p)| y - p)
+            .collect();
+        let alpha = self.cholesky.solve(&residual);
+        if alpha.iter().any(|x| !x.is_finite()) {
+            return Err(Error::Numerical("path solve".into()));
+        }
+        Ok(alpha)
+    }
+
+    pub(crate) fn training_points(&self) -> &[Vec<f64>] {
+        &self.xs
+    }
+
+    /// Pivot ratio is a diagnostic, not a matrix condition-number estimate.
+    pub fn pivot_ratio(&self) -> f64 {
+        let lo = (0..self.len())
+            .map(|i| self.cholesky.diagonal(i))
+            .fold(f64::INFINITY, f64::min);
+        let hi = (0..self.len())
+            .map(|i| self.cholesky.diagonal(i))
+            .fold(0.0, f64::max);
+        lo / hi
+    }
+
     /// A GP with the default nugget.
     pub fn with_hyper(xs: &[Vec<f64>], ys: &[f64], kernel: Kernel, hyper: Hyper) -> Result<Self> {
         Self::with_nugget(xs, ys, kernel, hyper, DEFAULT_NUGGET)

@@ -9,12 +9,15 @@
 //! The numerical library has no dependency on the optimization job API.
 #![forbid(unsafe_code)]
 
+pub mod advanced;
 pub mod design;
 pub mod driver;
 pub mod gp;
 mod linalg;
 mod optim;
 pub mod problems;
+pub mod sampling;
+mod sobol_directions;
 pub mod space;
 pub mod special;
 pub mod strategy;

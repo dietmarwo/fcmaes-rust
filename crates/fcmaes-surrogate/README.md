@@ -28,3 +28,5 @@ Supported: 1–32 coordinates, at most 256 new plus warm observations, batches 1
 Absent: Thompson sampling and multiple trust regions (TuRBO-m), async, noisy GP, Thompson sampling, Sobol, full L-BFGS-B (Cauchy point and subspace minimization), constraints, handoff, Python bindings and stateless job sessions. A warm start creates a new state from observations, not an interrupted-state resume. Same-host thread determinism is tested; cross-platform bit equality is not promised.
 
 See [reviewed plan](../../docs/surrogate/PLAN.md), [job profile](../../docs/job-api/surrogate.md), [tutorial](../../tutorials/surrogate/README.md) [measured results](../../docs/surrogate/validation/REPORT.md) and the [comparison with BoTorch, egobox, scikit-optimize and Optuna](../../benchmarks/surrogate-comparison/README.md).
+
+Experimental v2 adds bounded archive fitting, async callbacks and sampling; it remains opt-in after failed default-promotion gates. See [advanced guide](../../docs/surrogate/ADVANCED.md).

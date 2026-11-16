@@ -1658,3 +1658,7 @@ reason for the change.
 ## Optional application tutorial workers
 
 For prompt-driven trebuchet, production-line, energy-hub and GTOC1 experiments, see [application tutorial workers](docs/job-api/application-tutorials.md). Build the selected standalone tutorial with `--features job-worker`, register its separate binary, then use discovery. These application registrations reuse the generic worker API; they are not models bundled into the stock worker. The linked guide explains parameter validation, parity tests and the differences from the original search campaigns.
+
+## Experimental surrogate v2
+
+The optional `fcmaes.surrogate/2` profile extends deterministic scalar boxes with a bounded archive, native async callbacks, real restarts, approximate correlated sampling and BiteOpt handoff. It failed the small-budget quality gate and is not the default chooser recommendation. Read [the advanced guide](docs/surrogate/ADVANCED.md) and its measured limits. For noisy/mixed/constraint/multiobjective BO, use the separately supplied BO-craft capability matrix.

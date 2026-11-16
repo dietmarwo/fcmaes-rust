@@ -286,7 +286,12 @@ fn examples_cover_models_with_inputs_and_profiles_follow_the_models() {
     let d = adapter.describe();
     assert_eq!(
         d["profiles"],
-        json!(["fcmaes.retry/1", "fcmaes.evaluate/1", "fcmaes.surrogate/1"])
+        json!([
+            "fcmaes.retry/1",
+            "fcmaes.evaluate/1",
+            "fcmaes.surrogate/1",
+            "fcmaes.surrogate/2"
+        ])
     );
     assert!(
         d["examples"]

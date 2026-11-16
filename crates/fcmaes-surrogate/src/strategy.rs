@@ -194,7 +194,7 @@ fn score(gp: &ExactGp, x: &[f64], best: f64, config: &Config) -> Result<f64> {
 }
 
 #[allow(clippy::too_many_arguments)]
-fn optimize(
+pub(crate) fn optimize(
     gp: &ExactGp,
     candidates: &[Vec<f64>],
     occupied: &[Vec<f64>],

@@ -36,7 +36,7 @@
 //! and the problem gives runnable `examples`. A model that needs inputs,
 //! required parameters or (multi-objective, without its own) a reference
 //! point registers an `Example` to get them.
-use crate::{PROFILES, evaluate, map_elites, mode, retry, surrogate};
+use crate::{PROFILES, evaluate, map_elites, mode, retry, surrogate, surrogate2};
 use optimization_job_api::{JobSpec, Result, legacy};
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use serde_json::{Map, Value, json};
@@ -293,7 +293,12 @@ impl Kind {
     /// Every supported profile; `profile()` remains the optimizing default.
     pub fn profiles(self) -> &'static [&'static str] {
         match self {
-            Kind::Scalar => &[retry::PROFILE, surrogate::PROFILE, evaluate::PROFILE],
+            Kind::Scalar => &[
+                retry::PROFILE,
+                surrogate::PROFILE,
+                surrogate2::PROFILE,
+                evaluate::PROFILE,
+            ],
             Kind::MultiObjective => &[mode::PROFILE, evaluate::PROFILE],
             Kind::QualityDiversity => &[map_elites::PROFILE, evaluate::PROFILE],
         }

@@ -1,0 +1,32 @@
+{
+  "phase": "development",
+  "seeds": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9
+  ],
+  "problems": [
+    "sphere",
+    "ackley",
+    "styblinski",
+    "oscillator"
+  ],
+  "variants": [
+    "legacy",
+    "advanced",
+    "thompson",
+    "handoff",
+    "governor"
+  ],
+  "budget": 48,
+  "watchdog_seconds": 90,
+  "workers": 2,
+  "binary_sha256": "45102969c7e19039e09ce594be85ef01b493e49b1af2866bfaa7ec0b4fb002f7"
+}
