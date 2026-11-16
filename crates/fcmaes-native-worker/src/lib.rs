@@ -13,6 +13,17 @@ pub fn solve(
     seed: u64,
     obj: &(impl Fn(&[f64]) -> f64 + Sync),
 ) -> RetryRunResult {
+    solve_until(spec, bounds, seed, obj, &|| false)
+}
+
+/// Runs one retry, checking the cooperative predicate before each evaluation.
+pub fn solve_until(
+    spec: &JobSpec,
+    bounds: &RetryBounds,
+    seed: u64,
+    obj: &(impl Fn(&[f64]) -> f64 + Sync),
+    stop: &dyn Fn() -> bool,
+) -> RetryRunResult {
     if spec.optimizer.kind == "biteopt" {
         let mut solver = BiteOpt::new(
             bounds.lower(),
@@ -26,7 +37,7 @@ pub fn solve(
                 ..Default::default()
             },
         );
-        let r = solver.optimize(obj);
+        let r = solver.optimize_until(obj, stop);
         RetryRunResult {
             x: r.x,
             y: r.y,
@@ -52,7 +63,7 @@ pub fn solve(
                 ..Default::default()
             },
         );
-        let r = solver.optimize(obj);
+        let r = solver.optimize_until(obj, stop);
         RetryRunResult {
             x: r.x,
             y: r.y,

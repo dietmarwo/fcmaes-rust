@@ -53,7 +53,7 @@ pub use pareto::{
 pub use pgpe::{Pgpe, PgpeParams, PgpeResult};
 pub use retry::{
     AdvancedRetryConfig, RetryBounds, RetryConfig, RetryContext, RetryEntry, RetryImprovement,
-    RetryResult, RetryRunResult, advanced_retry, retry, retry_run_seed,
+    RetryResult, RetryRunResult, advanced_retry, retry, retry_run_seed, retry_until,
 };
 pub use rng::Rng;
 

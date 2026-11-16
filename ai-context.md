@@ -154,7 +154,7 @@ C/C++ compiler. Building the Python package from its source distribution does
 require Rust. Do not tell a Python user to install the historical `fcmaes`
 package when they asked specifically for this Rust implementation.
 
-The workspace version is 0.2.1, published as `fcmaes-core` 0.2.1
+The source workspace version is 0.3.0 (release preparation); the baseline was published as `fcmaes-core` 0.2.1
 (crates.io) and `fcmaes-rust` 0.2.1 (PyPI) on 23 October 2026. Check the
 registries for the latest published version before relying on it. This repository's job-layer crates (`fcmaes-job-worker`,
 `fcmaes-runner`, `fcmaes-native-worker`) and the experimental
@@ -718,11 +718,7 @@ and paths, and keep using the same `JOB_NODE`:
 ./target/release/optimization-run --root "$JOB_NODE" jobs cancel JOB_ID
 ```
 
-fcmaes retries check cancellation between retries; an active retry can continue
-to its evaluation budget. On a `Scalar::simulation` model it stops at the
-next `SimContext` checkpoint, its remaining evaluations return `+inf` at once
-(`cancelled_evaluations`) and its best point keeps `claimed` evidence without
-a recheck. MODE and MAP-Elites runs check it between generations
+In the 0.3.0 source preparation, every retry model observes cancel/deadline while it runs: serial BiteOpt/DE stop between evaluations; batched/delayed methods drain in-flight work; CMA-ES, CR-FM-NES and PGPE stop between populations. Simulation models also stop at `SimContext` checkpoints. Results retain exact evaluation counts. A stopped plain model has `cancelled_evaluations=0`; simulation attempts cancelled at checkpoints are counted separately. The best point is not rechecked after a stop, and retains `claimed` evidence. MODE and MAP-Elites runs check it between generations
 and return their current front or archive with `termination: "cancelled"`; at
 the wall deadline the SDK uses the same signal, so the job state says whether
 it was `cancelled` or `timed_out`. Surrogate runs stop before the next

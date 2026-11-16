@@ -97,6 +97,7 @@ const FAILURE_MESSAGE_CHARS: usize = 200;
 pub(crate) struct Evaluator<'a> {
     model: &'a Scalar,
     context: Option<SimContext>,
+    stop_context: SimContext,
     failed: AtomicU64,
     cancelled: AtomicU64,
     /// The smallest distinct failure messages with their counts, which do
@@ -106,12 +107,12 @@ pub(crate) struct Evaluator<'a> {
 
 impl<'a> Evaluator<'a> {
     pub(crate) fn new(model: &'a Scalar, control: &Control, remaining: f64, seed: u64) -> Self {
-        let context = model
-            .is_simulation()
-            .then(|| SimContext::new(control.token(), deadline(remaining), 1, seed));
+        let stop_context = SimContext::new(control.token(), deadline(remaining), 1, seed);
+        let context = model.is_simulation().then(|| stop_context.clone());
         Self {
             model,
             context,
+            stop_context,
             failed: AtomicU64::new(0),
             cancelled: AtomicU64::new(0),
             messages: Mutex::new(BTreeMap::new()),
@@ -120,10 +121,9 @@ impl<'a> Evaluator<'a> {
     pub(crate) fn is_simulation(&self) -> bool {
         self.context.is_some()
     }
-    /// True once the job of a simulation model is cancelled or at its
-    /// deadline; always false for a plain model.
+    /// True when any model's job is cancelled or reaches its deadline.
     pub(crate) fn is_cancelled(&self) -> bool {
-        self.context.as_ref().is_some_and(SimContext::is_cancelled)
+        self.stop_context.is_cancelled()
     }
     /// The model's value at `x`, without counting.
     pub(crate) fn try_value(&self, x: &[f64]) -> Result<f64, Failure> {

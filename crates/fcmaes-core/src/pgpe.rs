@@ -384,7 +384,19 @@ impl Pgpe {
     }
 
     /// Generational loop evaluating each population through a batch closure.
-    pub fn optimize_batch<F>(&mut self, mut eval_batch: F) -> PgpeResult
+    pub fn optimize_batch<F>(&mut self, eval_batch: F) -> PgpeResult
+    where
+        F: FnMut(&[Vec<f64>]) -> Vec<f64>,
+    {
+        self.optimize_batch_until(eval_batch, &|| false)
+    }
+
+    /// Like [`Self::optimize_batch`], stopping before the next population.
+    pub fn optimize_batch_until<F>(
+        &mut self,
+        mut eval_batch: F,
+        stop: &dyn Fn() -> bool,
+    ) -> PgpeResult
     where
         F: FnMut(&[Vec<f64>]) -> Vec<f64>,
     {
@@ -394,6 +406,9 @@ impl Pgpe {
             && !self.fitfun.terminate()
             && self.stop == 0
         {
+            if stop() {
+                break;
+            }
             let rows = self.ask_pop_internal();
             let mut ys = eval_batch(&rows);
             for v in ys.iter_mut() {

@@ -149,3 +149,7 @@ Package descriptions and README links reach registries only with a new
 release. Check the rendered package page after publishing and update the
 shared catalog when installation availability changes. Repository topics
 and About text are GitHub settings, not fields a commit changes.
+
+## Prepared 0.3.0 cancellation release
+
+The source version is 0.3.0. Run the usual release gates, including `scripts/job-api/test_retry_stop.py --output stop-results.json` after building the `stop_worker` example. Cancelled results now contain exact partial work and claimed, unrechecked candidates. The maintainer creates registry release tags; after publication update CFD-craft, CRN-craft and experiment-craft to the released revision. No downstream pin is advanced to an unpublished local commit.

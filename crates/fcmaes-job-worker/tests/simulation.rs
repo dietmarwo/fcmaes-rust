@@ -243,7 +243,8 @@ fn a_retry_cancelled_after_good_points_keeps_an_unchecked_claim() {
     assert!(evidence.get("refuted").is_none());
     assert_eq!(o.details["recheck"], "skipped: cancelled");
     assert_eq!(result.work["evaluations"], 9);
-    assert_eq!(result.work["evaluation_attempts"], 1000);
+    assert_eq!(result.work["evaluation_attempts"], 10);
+    assert_eq!(result.work["cancelled_evaluations"], 1);
 }
 
 #[test]

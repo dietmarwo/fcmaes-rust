@@ -490,8 +490,18 @@ fn common_and_legacy_profiles_share_capacity_and_retry_seeds() {
     );
     let endless_run = read(&endless_dir.join("run.json"));
     assert_eq!(endless_run["status"], "cancelled");
-    assert_eq!(endless_run["work"], Value::Null);
-    assert_eq!(endless_run["runner"]["accounting_complete"], false);
+    // The common worker now stops inside its active retries, so even
+    // --now can retain exact partial work before the hard grace expires.
+    assert!(endless_run["work"]["evaluations"].is_u64());
+    assert_eq!(endless_run["runner"]["accounting_complete"], true);
+    let spent: u64 = endless_run["results"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|r| r["work"]["evaluations"].as_u64().unwrap())
+        .sum();
+    assert_eq!(endless_run["work"]["evaluations"], spent);
+    assert!(spent < 4 * ENDLESS_RETRY);
 
     wait_child(&mut waiting_child);
     assert_eq!(node.get(&job_id("legacy-waits"))["state"], "completed");
@@ -529,7 +539,25 @@ fn graceful_cancel_of_a_common_job_keeps_active_tasks() {
         completed > 0 && completed < 6,
         "completed {completed} tasks"
     );
-    assert_eq!(run["work"]["evaluations"], completed * LONG_RETRY);
+    let results = run["results"].as_array().unwrap();
+    let spent: u64 = results
+        .iter()
+        .map(|r| r["work"]["evaluations"].as_u64().unwrap())
+        .sum();
+    assert_eq!(run["work"]["evaluations"], spent);
+    assert!(spent > 0 && spent < completed * LONG_RETRY);
+    assert!(
+        results
+            .iter()
+            .any(|r| r["outcome"]["termination"] == "cancelled")
+    );
+    for r in results
+        .iter()
+        .filter(|r| r["outcome"]["termination"] == "cancelled")
+    {
+        assert_eq!(r["work"]["validation_evaluations"], 0);
+        assert_eq!(r["outcome"]["evidence"]["level"], "claimed");
+    }
     assert_eq!(node.ledger(), json!({}));
 }
 

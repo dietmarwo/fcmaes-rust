@@ -509,13 +509,28 @@ impl Crfmnes {
 
     /// Run the generational loop, evaluating each population through
     /// `eval_batch(decoded_rows) -> ys`.
-    pub fn optimize_batch<F>(&mut self, mut eval_batch: F) -> CrfmnesResult
+    pub fn optimize_batch<F>(&mut self, eval_batch: F) -> CrfmnesResult
+    where
+        F: FnMut(&[Vec<f64>]) -> Vec<f64>,
+    {
+        self.optimize_batch_until(eval_batch, &|| false)
+    }
+
+    /// Like [`Self::optimize_batch`], stopping before the next population.
+    pub fn optimize_batch_until<F>(
+        &mut self,
+        mut eval_batch: F,
+        stop: &dyn Fn() -> bool,
+    ) -> CrfmnesResult
     where
         F: FnMut(&[Vec<f64>]) -> Vec<f64>,
     {
         self.iterations = 1;
         self.fitfun.reset_evaluations();
         while self.fitfun.evaluations() < self.max_evaluations && !self.fitfun.terminate() {
+            if stop() {
+                break;
+            }
             self.ask();
             let rows = self.decode_columns(&self.x);
             let mut ys = eval_batch(&rows);

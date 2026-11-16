@@ -6,6 +6,16 @@ phase, with breaking changes called out explicitly.
 
 ## [Unreleased]
 
+### Fixed
+
+- Running retries of plain models now stop on cancel/deadline between evaluations for serial BiteOpt/DE and between batches/populations for their parallel and ES variants. Stopped tasks preserve exact evaluation counts and skip the best-point recheck, retaining claimed evidence. Simulation checkpoint cancellation and its work accounting remain supported.
+
+### Added
+
+- Cooperative `optimize_until` / `optimize_batch_until` / `optimize_delayed_until` methods for BiteOpt, deep BiteOpt, DE and the ES population loops, plus `retry_until` to stop claiming new runs. Existing methods delegate with a predicate that never fires, preserving ordinary seeded results. BiteOpt/DE results expose `stopped`.
+- Real CLI cancellation/deadline regression using the plain sleeping `stop_worker` example; updated runner regressions assert exact partial work instead of full nominal retry budgets.
+- Prepared fcmaes-core and synchronized workspace/Python 0.3.0 metadata. Release tags and downstream dependency updates remain maintainer steps.
+
 ### Added
 
 - [Learning paths](docs/learning-paths.md) for Python users, Rust users and agent builders, linked from the repository overview and the book: five stages per track, each with a runnable checkpoint, ending in a capstone that continuous integration runs. `scripts/check_learning_paths.py` checks the page's links, anchors and default-branch URLs and rejects moved-page stubs; it reads this repository from the working tree and the other repositories from their default branches, on pull requests and weekly.

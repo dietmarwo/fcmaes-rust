@@ -18,7 +18,7 @@ use fcmaes_core::{
     BiteOpt, BiteParams, Cmaes, CmaesParams, Crfmnes, CrfmnesParams, De, DeParams, Fitness, Pgpe,
     PgpeParams, RetryBounds, RetryRunResult, Rng, retry_run_seed,
 };
-use fcmaes_native_worker::solve;
+use fcmaes_native_worker::solve_until;
 use optimization_job_api::{
     JobSpec, Result,
     legacy::{self, JobSpec as LegacySpec},
@@ -624,7 +624,7 @@ pub fn es_retry(
     )
 }
 
-/// [`es_retry`] that starts no further restart once `stopped` returns true.
+/// [`es_retry`] that stops between populations and starts no further restart once stopped.
 pub fn es_retry_until(
     settings: &EsSettings,
     bounds: &RetryBounds,
@@ -632,7 +632,7 @@ pub fn es_retry_until(
     evaluations: u64,
     objective: &(dyn Fn(&[f64]) -> f64 + Send + Sync),
     threads: &Threads,
-    stopped: &dyn Fn() -> bool,
+    stopped: &(dyn Fn() -> bool + Sync),
 ) -> EsRun {
     let s = settings;
     let mut start = Rng::new(seed ^ 0x9E37_79B9_7F4A_7C15);
@@ -680,7 +680,7 @@ pub fn es_retry_until(
             retry_run_seed(seed, run)
         };
         let (r, run_stop) = es_run(
-            s, bounds, &guess, population, sigma, run_seed, budget, objective, threads,
+            s, bounds, &guess, population, sigma, run_seed, budget, objective, threads, stopped,
         );
         used += r.evaluations;
         if large {
@@ -721,6 +721,7 @@ fn es_run(
     evaluations: u64,
     objective: &(dyn Fn(&[f64]) -> f64 + Send + Sync),
     threads: &Threads,
+    stopped: &(dyn Fn() -> bool + Sync),
 ) -> (RetryRunResult, i32) {
     if s.kind == EsKind::Cmaes {
         let mut cma = Cmaes::new(
@@ -735,7 +736,7 @@ fn es_run(
             },
         );
         let workers = threads.core_workers();
-        let r = threads.install(|| cma.optimize(&|x: &[f64]| objective(x), workers));
+        let r = threads.install(|| cma.optimize_until(&|x: &[f64]| objective(x), workers, stopped));
         // CMA-ES evaluates the clamped decode of its sample but stores the
         // unclamped one, which can lie an ulp outside the box on a bound.
         // Clamping gives exactly the point that was evaluated.
@@ -777,7 +778,7 @@ fn es_run(
                 ..Default::default()
             },
         );
-        let r = nes.optimize_batch(&mut evaluate);
+        let r = nes.optimize_batch_until(&mut evaluate, stopped);
         (r.evaluations, r.stop)
     } else {
         let mut pgpe = Pgpe::new(
@@ -793,7 +794,7 @@ fn es_run(
                 ..Default::default()
             },
         );
-        let r = pgpe.optimize_batch(&mut evaluate);
+        let r = pgpe.optimize_batch_until(&mut evaluate, stopped);
         (r.evaluations, r.stop)
     };
     (
@@ -835,6 +836,30 @@ pub fn batch_retry_from(
     objective: &(dyn Fn(&[f64]) -> f64 + Send + Sync),
     threads: &Threads,
 ) -> RetryRunResult {
+    batch_retry_from_until(
+        spec,
+        batch,
+        start,
+        bounds,
+        seed,
+        objective,
+        threads,
+        &|| false,
+    )
+}
+
+/// Cooperative-stop variant of [`batch_retry_from`].
+#[allow(clippy::too_many_arguments)]
+pub fn batch_retry_from_until(
+    spec: &LegacySpec,
+    batch: usize,
+    start: Option<&Start>,
+    bounds: &RetryBounds,
+    seed: u64,
+    objective: &(dyn Fn(&[f64]) -> f64 + Send + Sync),
+    threads: &Threads,
+    stop: &(dyn Fn() -> bool + Sync),
+) -> RetryRunResult {
     let population = spec.optimizer.parameters.population.unwrap() as i32;
     let evaluations = spec.budget.evaluations_per_retry;
     let evaluate = |rows: &[Vec<f64>]| threads.map(rows, |x| objective(x));
@@ -851,7 +876,7 @@ pub fn batch_retry_from(
                 ..Default::default()
             },
         )
-        .optimize_batch(batch, evaluate);
+        .optimize_batch_until(batch, evaluate, stop);
         RetryRunResult {
             x: r.x,
             y: r.y,
@@ -859,7 +884,8 @@ pub fn batch_retry_from(
         }
     } else {
         let mut de = de(spec, start, bounds, seed);
-        let r = threads.install(|| de.optimize_delayed(&|x: &[f64]| objective(x), batch));
+        let r =
+            threads.install(|| de.optimize_delayed_until(&|x: &[f64]| objective(x), batch, stop));
         RetryRunResult {
             x: r.x,
             y: r.y,
@@ -914,6 +940,18 @@ pub fn serial_retry(
     seed: u64,
     objective: &(dyn Fn(&[f64]) -> f64 + Send + Sync),
 ) -> RetryRunResult {
+    serial_retry_until(spec, start, bounds, seed, objective, &|| false)
+}
+
+/// Cooperative-stop variant of [`serial_retry`].
+pub fn serial_retry_until(
+    spec: &LegacySpec,
+    start: &Start,
+    bounds: &RetryBounds,
+    seed: u64,
+    objective: &(dyn Fn(&[f64]) -> f64 + Send + Sync),
+    stop: &(dyn Fn() -> bool + Sync),
+) -> RetryRunResult {
     let (x, y, evaluations) = if spec.optimizer.kind == "biteopt" {
         let r = BiteOpt::new(
             bounds.lower(),
@@ -927,10 +965,10 @@ pub fn serial_retry(
                 ..Default::default()
             },
         )
-        .optimize(&|x: &[f64]| objective(x));
+        .optimize_until(&|x: &[f64]| objective(x), stop);
         (r.x, r.y, r.evaluations)
     } else {
-        let r = de(spec, Some(start), bounds, seed).optimize(&|x: &[f64]| objective(x));
+        let r = de(spec, Some(start), bounds, seed).optimize_until(&|x: &[f64]| objective(x), stop);
         (r.x, r.y, r.evaluations)
     };
     RetryRunResult { x, y, evaluations }
@@ -1046,9 +1084,8 @@ impl Prepared for Run {
     fn tasks(&self) -> usize {
         self.payload.retries
     }
-    /// fcmaes-core has no in-retry stop token: a plain model's retry runs to
-    /// its budget, while a `Scalar::simulation` model sees the cancel at its
-    /// checkpoints and every further evaluation returns at once.
+    /// Stop every optimizer between evaluations (between batches for batch
+    /// engines). Simulations also see the signal at their checkpoints.
     fn cancel(&self) {
         self.control.cancel();
     }
@@ -1065,6 +1102,7 @@ impl Run {
         let seed = retry_run_seed(self.payload.seed, task);
         let evaluator = Evaluator::new(&self.model, &self.control, remaining, seed);
         let objective = |x: &[f64]| evaluator.value(x);
+        let stop = || self.control.stop().is_some() || evaluator.is_cancelled();
         let mut details = json!({"run_seed":seed,"evaluation_limit_mode":self.payload.evaluation_limit_mode,
             "requested_evaluations":self.payload.evaluations_per_retry,"global_optimum_certified":false});
         let r = match &self.engine {
@@ -1072,17 +1110,17 @@ impl Run {
                 spec,
                 batch: None,
                 start: None,
-            } => solve(spec, &self.bounds, seed, &objective),
+            } => solve_until(spec, &self.bounds, seed, &objective, &stop),
             Engine::Legacy {
                 spec,
                 batch: None,
                 start: Some(start),
-            } => serial_retry(spec, start, &self.bounds, seed, &objective),
+            } => serial_retry_until(spec, start, &self.bounds, seed, &objective, &stop),
             Engine::Legacy {
                 spec,
                 batch: Some(batch),
                 start,
-            } => batch_retry_from(
+            } => batch_retry_from_until(
                 spec,
                 *batch,
                 start.as_ref(),
@@ -1090,6 +1128,7 @@ impl Run {
                 seed,
                 &objective,
                 threads,
+                &stop,
             ),
             Engine::Es(settings) => {
                 let run = es_retry_until(
@@ -1099,7 +1138,7 @@ impl Run {
                     self.payload.evaluations_per_retry,
                     &objective,
                     threads,
-                    &|| evaluator.is_cancelled(),
+                    &stop,
                 );
                 details["stop_code"] = json!(run.stop);
                 if settings.restarts != Restarts::None {
@@ -1109,14 +1148,12 @@ impl Run {
                 run.result
             }
         };
-        if r.evaluations == 0 || r.evaluations > self.per_retry_limit {
+        if (r.evaluations == 0 && !stop()) || r.evaluations > self.per_retry_limit {
             return Err("native evaluation budget mismatch".into());
         }
         let (failed, cancelled) = (evaluator.failed(), evaluator.cancelled());
-        // BiteOpt and DE always spend their budget; CMA-ES, CR-FM-NES and
-        // PGPE without restarts can stop earlier on their own tests. After a
-        // cancel, a simulation's remaining evaluations return at once.
-        let termination = if cancelled > 0 {
+        // All engines stop cooperatively; batch engines drain in-flight work.
+        let termination = if stop() {
             "cancelled"
         } else if r.evaluations >= self.payload.evaluations_per_retry {
             "evaluation_limit"
@@ -1125,11 +1162,11 @@ impl Run {
         };
         let attempts = r.evaluations;
         let mut cancelled_validations = 0;
-        let (outcome, validations) = if !evaluator.is_simulation() {
-            judge(r, &self.bounds, &objective)?
-        } else if evaluator.is_cancelled() {
+        let (outcome, validations) = if stop() {
             details["recheck"] = json!("skipped: cancelled");
             judge_with(r, &self.bounds, None)?
+        } else if !evaluator.is_simulation() {
+            judge(r, &self.bounds, &objective)?
         } else {
             // The recheck uses the point's seed again; a failure refutes
             // the claim, a cancel leaves it unchecked.
@@ -1162,6 +1199,10 @@ impl Run {
             ("validation_evaluations".into(), validations),
         ]
         .into();
+        if !evaluator.is_simulation() && termination == "cancelled" {
+            details["cancelled_evaluations"] = json!(0);
+            work.insert("cancelled_evaluations".into(), 0);
+        }
         if evaluator.is_simulation() {
             details["failed_evaluations"] = json!(failed);
             details["cancelled_evaluations"] = json!(cancelled);

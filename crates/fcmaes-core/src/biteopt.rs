@@ -116,6 +116,8 @@ enum PopSel {
 /// Outcome of a BiteOpt run.
 #[derive(Clone, Debug)]
 pub struct BiteResult {
+    /// The cooperative stop predicate fired; evaluated points are retained.
+    pub stopped: bool,
     /// Best decision vector found.
     pub x: Vec<f64>,
     /// Objective value at [`x`](Self::x).
@@ -2398,12 +2400,34 @@ impl BiteOpt {
     /// # Panics
     ///
     /// Panics if `eval_batch` does not return one cost per row.
-    pub fn optimize_batch<F>(&mut self, batch: usize, mut eval_batch: F) -> BiteResult
+    pub fn optimize_batch<F>(&mut self, batch: usize, eval_batch: F) -> BiteResult
+    where
+        F: FnMut(&[Vec<f64>]) -> Vec<f64>,
+    {
+        self.optimize_batch_until(batch, eval_batch, &|| false)
+    }
+
+    /// Batched optimization with a cooperative stop checked before each batch.
+    /// An in-flight batch is incorporated in full, with exact evaluation counts.
+    ///
+    /// # Panics
+    /// Panics if `eval_batch` does not return one cost per row.
+    pub fn optimize_batch_until<F>(
+        &mut self,
+        batch: usize,
+        mut eval_batch: F,
+        stop: &dyn Fn() -> bool,
+    ) -> BiteResult
     where
         F: FnMut(&[Vec<f64>]) -> Vec<f64>,
     {
         let batch = batch.max(1);
         while self.evaluations < self.max_evaluations && self.stop == 0 {
+            if stop() {
+                let mut result = self.result();
+                result.stopped = true;
+                return result;
+            }
             let rows = self.ask(batch);
             if rows.is_empty() {
                 break;
@@ -2452,7 +2476,17 @@ impl BiteOpt {
 
     /// Run until the evaluation budget or a stop condition is reached.
     pub fn optimize(&mut self, obj: &impl Objective) -> BiteResult {
+        self.optimize_until(obj, &|| false)
+    }
+
+    /// Like [`Self::optimize`], checking `stop` before every evaluation.
+    pub fn optimize_until(&mut self, obj: &impl Objective, stop: &dyn Fn() -> bool) -> BiteResult {
         while self.evaluations < self.max_evaluations && self.stop == 0 {
+            if stop() {
+                let mut result = self.result();
+                result.stopped = true;
+                return result;
+            }
             self.optimize_step(obj);
             self.iterations += 1;
             self.evaluations += 1;
@@ -2463,6 +2497,7 @@ impl BiteOpt {
 
     fn result(&self) -> BiteResult {
         BiteResult {
+            stopped: false,
             x: self.best_values.clone(),
             y: self.best_cost,
             evaluations: self.evaluations,
@@ -2583,7 +2618,17 @@ impl DeepBiteOpt {
 
     /// One-shot optimization until the (total) evaluation budget or a stop.
     pub fn optimize(&mut self, obj: &impl Objective) -> BiteResult {
+        self.optimize_until(obj, &|| false)
+    }
+
+    /// Deep BiteOpt with a cooperative stop before every evaluation.
+    pub fn optimize_until(&mut self, obj: &impl Objective, stop: &dyn Fn() -> bool) -> BiteResult {
         while self.total_evaluations() < self.max_evaluations && self.stop == 0 {
+            if stop() {
+                let mut result = self.result();
+                result.stopped = true;
+                return result;
+            }
             self.pick_push();
             let opt_idx = self.cur_opt;
             let (sc, push) = self.opts[opt_idx].step_collect(obj, self.m > 1);
@@ -2696,6 +2741,7 @@ impl DeepBiteOpt {
     pub fn result(&self) -> BiteResult {
         let b = self.best();
         BiteResult {
+            stopped: false,
             x: b.best_values.clone(),
             y: b.best_cost,
             evaluations: self.evaluations,
