@@ -7,10 +7,10 @@ PGPE), MODE, MAP-Elites (CVT, CMA-ME/CMA-MAE) and evaluation profiles under
 result contract 0.2; and the experimental `fcmaes-surrogate` crate with the
 `fcmaes.surrogate/1` profile and `benchmarks/surrogate-comparison` (#14).
 Since `67bd698`, the job crates `optimization-job-api` and
-`optimization-runner` (0.4.0 since the pin move to their 0.4.0 release)
+`optimization-runner` (0.4.1 since the pin move to their 0.4.1 release)
 come from
 [optimization-jobs](https://github.com/dietmarwo/optimization-jobs) (#11; the
-in-repo `fcmaes-job-api` crate is gone), now at the pinned revision `12f9d57` (the optimization-jobs 0.4.0 release plus documentation: doc comments on every public item, a simulator section in the guide that `get_guide` serves, and corrections to the guide and job API docs), which adds
+in-repo `fcmaes-job-api` crate is gone), now at the pinned revision `78970a2` (tag `v0.4.1`, the optimization-jobs 0.4.1 release: doc comments on every public item and a current guide behind `get_guide`, with job and worker protocols as in 0.4.0), which adds
 `node capabilities`, `jobs execution JOB_ID`, opt-in trusted local command
 jobs with verified binary file transfer, and explicitly placed jobs on SSH
 nodes, all through the CLI. The pins up to `v0.3.0`

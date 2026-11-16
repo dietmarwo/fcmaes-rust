@@ -516,8 +516,8 @@ checksum = "384b8ab6d37215f3c5301a95a4accb5d64aa607f1fcb26a11b5303878451b4fe"
 
 [[package]]
 name = "optimization-job-api"
-version = "0.4.0"
-source = "git+https://github.com/dietmarwo/optimization-jobs?rev=12f9d573ade24f57c282dcf9eb7ad7025cfe51bf#12f9d573ade24f57c282dcf9eb7ad7025cfe51bf"
+version = "0.4.1"
+source = "git+https://github.com/dietmarwo/optimization-jobs?rev=78970a290f63f90a3f3d6ecbfe23f5e1ef24a235#78970a290f63f90a3f3d6ecbfe23f5e1ef24a235"
 dependencies = [
  "fs2",
  "libc",
@@ -528,8 +528,8 @@ dependencies = [
 
 [[package]]
 name = "optimization-runner"
-version = "0.4.0"
-source = "git+https://github.com/dietmarwo/optimization-jobs?rev=12f9d573ade24f57c282dcf9eb7ad7025cfe51bf#12f9d573ade24f57c282dcf9eb7ad7025cfe51bf"
+version = "0.4.1"
+source = "git+https://github.com/dietmarwo/optimization-jobs?rev=78970a290f63f90a3f3d6ecbfe23f5e1ef24a235#78970a290f63f90a3f3d6ecbfe23f5e1ef24a235"
 dependencies = [
  "clap",
  "fs2",
