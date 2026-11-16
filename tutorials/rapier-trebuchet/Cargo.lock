@@ -251,7 +251,7 @@ checksum = "da7c62ceae207dd37ea5b845da6a0696c799f85e97da1ab5b7910be3c1c80223"
 
 [[package]]
 name = "fcmaes-core"
-version = "0.2.1"
+version = "0.3.0"
 dependencies = [
  "libm",
  "nalgebra 0.33.3",
@@ -263,11 +263,11 @@ dependencies = [
 
 [[package]]
 name = "fcmaes-gtop"
-version = "0.2.1"
+version = "0.3.0"
 
 [[package]]
 name = "fcmaes-job-worker"
-version = "0.2.1"
+version = "0.3.0"
 dependencies = [
  "fcmaes-core",
  "fcmaes-native-worker",
