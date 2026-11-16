@@ -452,6 +452,22 @@ where
     O: Fn(&[f64]) -> f64 + Sync,
     F: Fn(&O, &RetryContext) -> RetryRunResult + Sync + Send,
 {
+    retry_until(objective, bounds, config, optimize, &|| false)
+}
+
+/// Like [`retry`], but stops claiming new runs when `stop` fires.
+/// Pass the same predicate into the inner optimizer to stop active runs too.
+pub fn retry_until<O, F>(
+    objective: &O,
+    bounds: &RetryBounds,
+    config: &RetryConfig,
+    optimize: F,
+    stop: &(dyn Fn() -> bool + Sync),
+) -> RetryResult
+where
+    O: Fn(&[f64]) -> f64 + Sync,
+    F: Fn(&O, &RetryContext) -> RetryRunResult + Sync + Send,
+{
     if config.num_retries == 0 {
         return RetryStore::new(bounds.dim(), config.capacity, config.statistic_num).into_result();
     }
@@ -467,7 +483,7 @@ where
     run_parallel(workers, |worker_id| {
         let mut worker_rng = spawned_worker_rng(config.seed, worker_id);
         loop {
-            if stopped.load(AtomicOrdering::Relaxed) {
+            if stopped.load(AtomicOrdering::Relaxed) || stop() {
                 break;
             }
             let run_id = next_run.fetch_add(1, AtomicOrdering::Relaxed);

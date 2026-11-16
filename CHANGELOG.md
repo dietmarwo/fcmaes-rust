@@ -6,7 +6,68 @@ phase, with breaking changes called out explicitly.
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-11-16
+
+### Changed
+
+- Breaking for direct users of fcmaes-core: `BiteResult` and `DeResult` gain a public `stopped` field, so struct literals must set it; the job worker's `es_retry_until` predicate must be `Sync`. Cancelled or timed-out retry jobs now report the work actually done and an unrechecked (`claimed`) best point instead of running to their evaluation budget. A retry that spent its whole budget before the stop keeps `evaluation_limit`.
+
+- `docs/repositories.md`: SQP-craft's experimental structured mode (partitioned BFGS with sparse Clarabel QPs, from 0.18.0) in the "Where to start" table and its section.
+- `docs/repositories.md`: CRN-craft 0.5.0 (paths and event columns as xarray arrays), and population-epidemiology's dependency on the `crn-craft` crate instead of a vendored core, also in the relationship diagram (`docs/images/repositories.dot`, SVG regenerated with Graphviz 2.43.0).
+- Upgraded the GTOC1 and GTOC1 route-search tutorials from `pykep-core` 0.1.4 to 0.1.5. Their tests pass, and the stored GTOC1 solution evaluates to the same score, mismatch and DOP853 validation. Route search takes the pykep-core and fcmaes-core versions in its cache identity from constants that a new test checks against the `Cargo.toml` pins; fcmaes-core stays at the registry pin 0.1.3.
+
+- The README points to [experiment-craft](https://github.com/dietmarwo/experiment-craft),
+  which runs reproducible campaigns of `fcmaes-job-worker` jobs and rebuilds and
+  tests this repository at a pinned revision.
+- optimization-jobs pin `78970a2` (tag `v0.4.1`; the job crates are 0.4.1) in
+  every manifest and lockfile, including the four tutorials with a job
+  worker. That release documents every public item and updates the guide
+  that `get_guide` serves; the CLI, the MCP tools, the job envelope, the
+  worker protocol and the result contract are unchanged.
+- optimization-jobs pin `12f9d57` (its 0.4.0 release plus documentation-only
+  changes: doc comments on every public item, a simulator section in the
+  guide that `get_guide` serves and corrections to the guide and job API
+  docs, so the job crates are 0.4.0) in every manifest and lockfile, including the four tutorials with a
+  job worker. The runner gains `node capabilities`, `jobs execution JOB_ID`
+  (an execution record of how each job's worker process ended), opt-in trusted
+  command jobs with verified binary file transfer, and explicitly placed jobs
+  on SSH nodes with persisted dispatch and reconciliation, all through the
+  CLI. Envelope, result contract, worker protocol and solver behavior are
+  unchanged.
+- `ai-context.md` records 0.2.1 as published on crates.io and PyPI
+  (23 October 2026), after installing it from both registries.
+- Clippy 1.88, the minimum supported Rust, is clean on the workspace too:
+  the L-BFGS two-loop updates of Dual Annealing iterate with `zip`, and
+  three format strings inline their arguments. Results and output are
+  unchanged.
+
+### Fixed
+
+- Running retries of plain models now stop on cancel/deadline between evaluations for serial BiteOpt/DE and between batches/populations for their parallel and ES variants. Stopped tasks preserve exact evaluation counts and skip the best-point recheck, retaining claimed evidence. Simulation checkpoint cancellation and its work accounting remain supported.
+
+- Documentation errors found in a review of the Markdown files:
+  - `benchmarks/optimizer-comparison/prepare_external.sh` copied `examples/src/gtop.rs`, which no longer exists; it copies `crates/fcmaes-gtop/src/lib.rs`, and the benchmark README, `docs/development.md` and the external harness's doc comment name that file; the benchmark's `SHA256SUMS` lists the changed files' new checksums.
+  - `ai-context.md` lists all fifteen MCP tools, and its surrogate summary, like `benchmarks/surrogate-comparison/README.md`, says which method leads at half budget on each problem (fcmaes on Branin, noiseless BoTorch and Optuna's GP sampler on the oscillator, Optuna's GP sampler on Hartmann-3).
+  - `tutorials/README.md` quotes the stored GTOC1 solution's score, mismatch and margins from its recorded files.
+  - `docs/python-bindings.md` lists the keys of the retry result dicts; `docs/repositories.md` lists the released CRN-craft crate version; `tutorials/truss-bounds/README.md` names the replay example at its path.
+- Figures and text in the tutorials that disagreed, from a review of every figure in the book:
+  - Truss sizing, sindr circuit design: one value on a linear axis hid the rest. The truss panel annotates the infeasible arm's +4e5 thousand kg penalty instead of drawing it to scale. The sindr replay errors (1e-4 % to 0.3 %) use a log axis.
+  - Energy hub QD archive, CFD verification: the legends no longer cover data (row 9 of the archive, the baseline held-out line).
+  - Workspace architecture diagram: the dependency note no longer covers the tutorials → fcmaes-core edge, and no box title overflows its box.
+  - Energy-hub budget wall times, water-network parallel throughput (6.7×, not 6.1×) and ML-tuning worker scaling now match their recorded run files.
+  - ML-tuning smoke MODE, NeXosim validation archive and dispersion convergence: the captions now say what those figures show.
+- The banner `docs/images/fcmaes-rust.png` (README and documentation site) had a black patch right of the title. The patch is filled with the surrounding background; the rest of the image is unchanged.
+- [Energy-hub bilevel sizing](tutorials/energy-hub-bilevel/README.md): the dispatch figure's caption no longer says that battery state interacts with the dispatch. The selected DE design has no battery, so that panel stays at zero; the caption now says so.
+- Math on the documentation site rendered as raw TeX: mdBook had no MathJax and its Markdown parser removed backslashes (`\|` became `|`). `book/book.toml` enables MathJax, and `scripts/build_book.py` rewrites `$…$`, `$$…$$`, `\(…\)` and `\[…\]` in the staged sources only, outside code, so the canonical Markdown still renders on GitHub. This affects 10 pages (including X4, the validated-numerics theorem and search pages, Buckingham–Pi, oscillator topology search, optical lens design and GTOC1).
+- [Thomson refinement](tutorials/thomson-refinement/README.md) (X4): the figures plot the energy gap on a log scale with the first-order status and actual pair work. The old linear bars hid the agreement of SQP and hybrid in smoke and the study hybrid's different local minimum (+4.7e−3). The figures are re-rendered from the unchanged recorded summaries. The page shows both figures and a table of the recorded results, and explains why curvature is classified at the hybrid point in study.
+- Nine tutorials that build `fcmaes-core` from the checkout still recorded it
+  as 0.1.4 in their lockfiles, so `cargo build --locked` failed there; they
+  record 0.2.1 now, as do rapier-trebuchet and nexosim-production-line.
+
 ### Added
+
+- Cooperative `optimize_until` / `optimize_batch_until` / `optimize_delayed_until` methods for BiteOpt, deep BiteOpt, DE and the ES population loops, plus `retry_until` to stop claiming new runs. Existing methods delegate with a predicate that never fires, preserving ordinary seeded results. BiteOpt/DE results expose `stopped`.
+- Real CLI cancellation/deadline regression using the plain sleeping `stop_worker` example; updated runner regressions assert exact partial work instead of full nominal retry budgets.
 
 - [Learning paths](docs/learning-paths.md) for Python users, Rust users and agent builders, linked from the repository overview and the book: five stages per track, each with a runnable checkpoint, ending in a capstone that continuous integration runs. `scripts/check_learning_paths.py` checks the page's links, anchors and default-branch URLs and rejects moved-page stubs; it reads this repository from the working tree and the other repositories from their default branches, on pull requests and weekly.
 
@@ -51,53 +112,6 @@ phase, with breaking changes called out explicitly.
     the holdout scenarios with the training formulas.
   - CI runs clippy and the tests of these four tutorials with the feature too,
     and the guide is in the documentation book.
-
-### Changed
-
-- `docs/repositories.md`: SQP-craft's experimental structured mode (partitioned BFGS with sparse Clarabel QPs, from 0.18.0) in the "Where to start" table and its section.
-- `docs/repositories.md`: CRN-craft 0.5.0 (paths and event columns as xarray arrays), and population-epidemiology's dependency on the `crn-craft` crate instead of a vendored core, also in the relationship diagram (`docs/images/repositories.dot`, SVG regenerated with Graphviz 2.43.0).
-- Upgraded the GTOC1 and GTOC1 route-search tutorials from `pykep-core` 0.1.4 to 0.1.5. Their tests pass, and the stored GTOC1 solution evaluates to the same score, mismatch and DOP853 validation. Route search takes the pykep-core and fcmaes-core versions in its cache identity from constants that a new test checks against the `Cargo.toml` pins; fcmaes-core stays at the registry pin 0.1.3.
-
-- The README points to [experiment-craft](https://github.com/dietmarwo/experiment-craft),
-  which runs reproducible campaigns of `fcmaes-job-worker` jobs and rebuilds and
-  tests this repository at a pinned revision.
-- optimization-jobs pin `12f9d57` (its 0.4.0 release plus documentation-only
-  changes: doc comments on every public item, a simulator section in the
-  guide that `get_guide` serves and corrections to the guide and job API
-  docs, so the job crates are 0.4.0) in every manifest and lockfile, including the four tutorials with a
-  job worker. The runner gains `node capabilities`, `jobs execution JOB_ID`
-  (an execution record of how each job's worker process ended), opt-in trusted
-  command jobs with verified binary file transfer, and explicitly placed jobs
-  on SSH nodes with persisted dispatch and reconciliation, all through the
-  CLI. Envelope, result contract, worker protocol and solver behavior are
-  unchanged.
-- `ai-context.md` records 0.2.1 as published on crates.io and PyPI
-  (23 October 2026), after installing it from both registries.
-- Clippy 1.88, the minimum supported Rust, is clean on the workspace too:
-  the L-BFGS two-loop updates of Dual Annealing iterate with `zip`, and
-  three format strings inline their arguments. Results and output are
-  unchanged.
-
-### Fixed
-
-- Documentation errors found in a review of the Markdown files:
-  - `benchmarks/optimizer-comparison/prepare_external.sh` copied `examples/src/gtop.rs`, which no longer exists; it copies `crates/fcmaes-gtop/src/lib.rs`, and the benchmark README, `docs/development.md` and the external harness's doc comment name that file; the benchmark's `SHA256SUMS` lists the changed files' new checksums.
-  - `ai-context.md` lists all fifteen MCP tools, and its surrogate summary, like `benchmarks/surrogate-comparison/README.md`, says which method leads at half budget on each problem (fcmaes on Branin, noiseless BoTorch and Optuna's GP sampler on the oscillator, Optuna's GP sampler on Hartmann-3).
-  - `tutorials/README.md` quotes the stored GTOC1 solution's score, mismatch and margins from its recorded files.
-  - `docs/python-bindings.md` lists the keys of the retry result dicts; `docs/repositories.md` lists the released CRN-craft crate version; `tutorials/truss-bounds/README.md` names the replay example at its path.
-- Figures and text in the tutorials that disagreed, from a review of every figure in the book:
-  - Truss sizing, sindr circuit design: one value on a linear axis hid the rest. The truss panel annotates the infeasible arm's +4e5 thousand kg penalty instead of drawing it to scale. The sindr replay errors (1e-4 % to 0.3 %) use a log axis.
-  - Energy hub QD archive, CFD verification: the legends no longer cover data (row 9 of the archive, the baseline held-out line).
-  - Workspace architecture diagram: the dependency note no longer covers the tutorials → fcmaes-core edge, and no box title overflows its box.
-  - Energy-hub budget wall times, water-network parallel throughput (6.7×, not 6.1×) and ML-tuning worker scaling now match their recorded run files.
-  - ML-tuning smoke MODE, NeXosim validation archive and dispersion convergence: the captions now say what those figures show.
-- The banner `docs/images/fcmaes-rust.png` (README and documentation site) had a black patch right of the title. The patch is filled with the surrounding background; the rest of the image is unchanged.
-- [Energy-hub bilevel sizing](tutorials/energy-hub-bilevel/README.md): the dispatch figure's caption no longer says that battery state interacts with the dispatch. The selected DE design has no battery, so that panel stays at zero; the caption now says so.
-- Math on the documentation site rendered as raw TeX: mdBook had no MathJax and its Markdown parser removed backslashes (`\|` became `|`). `book/book.toml` enables MathJax, and `scripts/build_book.py` rewrites `$…$`, `$$…$$`, `\(…\)` and `\[…\]` in the staged sources only, outside code, so the canonical Markdown still renders on GitHub. This affects 10 pages (including X4, the validated-numerics theorem and search pages, Buckingham–Pi, oscillator topology search, optical lens design and GTOC1).
-- [Thomson refinement](tutorials/thomson-refinement/README.md) (X4): the figures plot the energy gap on a log scale with the first-order status and actual pair work. The old linear bars hid the agreement of SQP and hybrid in smoke and the study hybrid's different local minimum (+4.7e−3). The figures are re-rendered from the unchanged recorded summaries. The page shows both figures and a table of the recorded results, and explains why curvature is classified at the hybrid point in study.
-- Nine tutorials that build `fcmaes-core` from the checkout still recorded it
-  as 0.1.4 in their lockfiles, so `cargo build --locked` failed there; they
-  record 0.2.1 now, as do rapier-trebuchet and nexosim-production-line.
 
 ## [0.2.1] - 2026-10-23
 

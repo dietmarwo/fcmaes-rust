@@ -40,6 +40,8 @@ use crate::rng::Rng;
 /// Outcome of a Differential Evolution run.
 #[derive(Clone, Debug)]
 pub struct DeResult {
+    /// The cooperative stop predicate fired; every dispatched point is counted.
+    pub stopped: bool,
     /// Best decoded decision vector found.
     pub x: Vec<f64>,
     /// Objective value at [`x`](Self::x).
@@ -465,6 +467,13 @@ impl De {
     /// [`DeParams::max_evaluations`] by up to `2 * popsize - 1` evaluations;
     /// use [`optimize_delayed`](De::optimize_delayed) for an exact limit.
     pub fn optimize(&mut self, obj: &impl Objective) -> DeResult {
+        self.optimize_until(obj, &|| false)
+    }
+
+    /// Serial DE with a cooperative stop before each evaluation, including
+    /// temporal-locality trials. The usual generational budget is unchanged.
+    pub fn optimize_until(&mut self, obj: &impl Objective, stop: &dyn Fn() -> bool) -> DeResult {
+        let mut evaluated_best = (Vec::new(), f64::INFINITY);
         self.iterations = 1;
         self.fitfun.reset_evaluations();
         while self.fitfun.evaluations() < self.max_evaluations && !self.fitfun.terminate() {
@@ -473,6 +482,15 @@ impl De {
             }
             self.oscillate();
             for p in 0..self.popsize {
+                if stop() {
+                    let mut result = self.make_result(self.fitfun.evaluations());
+                    result.stopped = true;
+                    if evaluated_best.1 < result.y {
+                        result.x = evaluated_best.0;
+                        result.y = evaluated_best.1;
+                    }
+                    return result;
+                }
                 let xp = self.pop_x[p].clone();
                 let xb = self.pop_x[self.best_i].clone();
                 let (r1, r2) = self.pick_two(p);
@@ -490,10 +508,20 @@ impl De {
                 }
                 self.modify(&mut x);
                 let mut y = self.fitfun.eval_encoded_scalar(&x, obj);
+                if y.is_finite() && y < evaluated_best.1 {
+                    evaluated_best = (x.clone(), y);
+                }
                 if y.is_finite() && y < self.pop_y[p] {
                     // temporal locality: an extra trial along the last move
                     let x2t = self.next_improve(&xb, &x, &xp);
-                    let y2 = self.fitfun.eval_encoded_scalar(&x2t, obj);
+                    let y2 = if stop() {
+                        f64::INFINITY
+                    } else {
+                        self.fitfun.eval_encoded_scalar(&x2t, obj)
+                    };
+                    if y2.is_finite() && y2 < evaluated_best.1 {
+                        evaluated_best = (x2t.clone(), y2);
+                    }
                     if y2.is_finite() && y2 < y {
                         y = y2;
                         x = x2t;
@@ -546,6 +574,20 @@ impl De {
     ///
     /// Resumes a panic of the objective in the caller.
     pub fn optimize_delayed(&mut self, obj: &impl Objective, workers: usize) -> DeResult {
+        self.optimize_delayed_until(obj, workers, &|| false)
+    }
+
+    /// Delayed DE with a cooperative stop before dispatch. At most `workers`
+    /// evaluations are in flight; all are drained and told in ask order.
+    ///
+    /// # Panics
+    /// Resumes an objective panic in the caller.
+    pub fn optimize_delayed_until(
+        &mut self,
+        obj: &impl Objective,
+        workers: usize,
+        stop: &(dyn Fn() -> bool + Sync),
+    ) -> DeResult {
         use std::collections::BTreeMap;
         use std::sync::mpsc;
         type Evaluated = (u64, std::thread::Result<f64>);
@@ -572,7 +614,7 @@ impl De {
                 asked.push_back((id, p, x));
                 *dispatched += 1;
             };
-            while dispatched < budget.min(workers) {
+            while dispatched < budget.min(workers) && !stop() {
                 dispatch(self, &mut asked, &mut dispatched);
             }
             while let Some(&(oldest, _, _)) = asked.front() {
@@ -604,17 +646,20 @@ impl De {
                 };
                 self.tell_one(y, &x, p);
                 told += 1;
-                if self.stop == 0 && dispatched < budget && !self.fitfun.terminate() {
+                if self.stop == 0 && dispatched < budget && !self.fitfun.terminate() && !stop() {
                     dispatch(self, &mut asked, &mut dispatched);
                 }
             }
         });
         self.external_evaluations += told;
-        self.make_result(told)
+        let mut result = self.make_result(told);
+        result.stopped = stop();
+        result
     }
 
     fn make_result(&self, evaluations: u64) -> DeResult {
         DeResult {
+            stopped: false,
             x: self.best_x.clone(),
             y: self.best_y,
             evaluations,

@@ -70,6 +70,9 @@ jobs:
           python3 tutorials/job-api/run.py --root "$RUNNER_TEMP/job-api-tutorial"
           cargo build --release --locked -p fcmaes-job-worker --example simulation_worker
           python3 scripts/surrogate/test_job_api.py
+          # A cancel or deadline stops running BiteOpt and DE retries of a plain model.
+          cargo build --release --locked -p fcmaes-job-worker --example stop_worker
+          python3 scripts/job-api/test_retry_stop.py --output "$RUNNER_TEMP/retry-stop.json"
           python3 tutorials/surrogate/run.py --root "$RUNNER_TEMP/surrogate-tutorial"
       - name: Python binding tests
         run: |

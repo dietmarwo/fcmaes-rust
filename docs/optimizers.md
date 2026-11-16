@@ -323,3 +323,11 @@ run is exactly repeatable. In a multi-worker run, scheduling can change how
 many retries each worker stream consumes, so repeated results need not be
 bit-identical. Rust is also not expected to reproduce historical C++ or Python
 streams exactly; port parity is statistical.
+
+## Cooperative stopping (since 0.3.0)
+
+Use `BiteOpt::optimize_until`, `DeepBiteOpt::optimize_until` or `De::optimize_until` with a borrowed `Fn() -> bool`. The predicate runs before each evaluation; DE also checks before a temporal-locality trial. The result's `stopped` flag distinguishes that exit, while `evaluations`, `x` and `y` describe actual completed work. A stop before the first evaluation has no usable best value.
+
+`BiteOpt::optimize_batch_until` checks before each batch and incorporates an in-flight batch in full. `De::optimize_delayed_until` stops new dispatch and drains all in-flight rows in ask order; its predicate is `Sync`. Their latency is bounded by in-flight work, not by a single callback. CMA-ES has `optimize_until`; CR-FM-NES and PGPE have `optimize_batch_until`, each checking between populations. Existing entry points use a never-firing predicate and preserve their seeded arithmetic and budget semantics.
+
+The core cannot interrupt an arbitrary callback mid-evaluation. Long simulations should use checkpoints in their job model. Stopped job retries skip revalidation and preserve claimed evidence.

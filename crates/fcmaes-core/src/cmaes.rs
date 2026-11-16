@@ -609,9 +609,22 @@ impl Cmaes {
     /// Run the full generational loop, evaluating each population through
     /// `obj` with the requested worker count.
     pub fn optimize(&mut self, obj: &impl Objective, workers: i32) -> AcmaResult {
+        self.optimize_until(obj, workers, &|| false)
+    }
+
+    /// Like [`Self::optimize`], stopping before the next population.
+    pub fn optimize_until(
+        &mut self,
+        obj: &impl Objective,
+        workers: i32,
+        stop: &dyn Fn() -> bool,
+    ) -> AcmaResult {
         self.iterations = 0;
         self.fitfun.reset_evaluations();
         while self.fitfun.evaluations() < self.max_evaluations && !self.fitfun.terminate() {
+            if stop() {
+                break;
+            }
             let xs = self.ask_all();
             let ys = self
                 .fitfun
