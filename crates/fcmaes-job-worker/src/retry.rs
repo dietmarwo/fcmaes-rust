@@ -1080,6 +1080,19 @@ fn judge_with(
     Ok((outcome, 1))
 }
 
+/// The termination of one retry. A cancel or deadline that arrives only after
+/// a plain model's retry spent its whole budget does not relabel the
+/// completed run; a simulation whose evaluations were cancelled was stopped.
+fn retry_termination(cancelled: u64, stopped: bool, evaluations: u64, budget: u64) -> &'static str {
+    if cancelled > 0 || (stopped && evaluations < budget) {
+        "cancelled"
+    } else if evaluations >= budget {
+        "evaluation_limit"
+    } else {
+        "optimizer_stop"
+    }
+}
+
 impl Prepared for Run {
     fn tasks(&self) -> usize {
         self.payload.retries
@@ -1148,21 +1161,23 @@ impl Run {
                 run.result
             }
         };
-        if (r.evaluations == 0 && !stop()) || r.evaluations > self.per_retry_limit {
+        // One snapshot of the stop signal, so that the termination and the
+        // recheck decision agree even if the job is cancelled meanwhile.
+        let stopped = stop();
+        if (r.evaluations == 0 && !stopped) || r.evaluations > self.per_retry_limit {
             return Err("native evaluation budget mismatch".into());
         }
         let (failed, cancelled) = (evaluator.failed(), evaluator.cancelled());
         // All engines stop cooperatively; batch engines drain in-flight work.
-        let termination = if stop() {
-            "cancelled"
-        } else if r.evaluations >= self.payload.evaluations_per_retry {
-            "evaluation_limit"
-        } else {
-            "optimizer_stop"
-        };
+        let termination = retry_termination(
+            cancelled,
+            stopped,
+            r.evaluations,
+            self.payload.evaluations_per_retry,
+        );
         let attempts = r.evaluations;
         let mut cancelled_validations = 0;
-        let (outcome, validations) = if stop() {
+        let (outcome, validations) = if stopped {
             details["recheck"] = json!("skipped: cancelled");
             judge_with(r, &self.bounds, None)?
         } else if !evaluator.is_simulation() {
@@ -1296,4 +1311,21 @@ pub fn examples(probe: &Probe, representative: bool) -> Vec<Value> {
         ));
     }
     examples
+}
+
+#[cfg(test)]
+mod tests {
+    use super::retry_termination;
+
+    #[test]
+    fn a_stop_after_the_whole_budget_keeps_the_completed_termination() {
+        // Stopped before the budget was spent: cancelled.
+        assert_eq!(retry_termination(0, true, 7, 100), "cancelled");
+        // A cancel that arrives after the last evaluation of a plain model.
+        assert_eq!(retry_termination(0, true, 100, 100), "evaluation_limit");
+        // A simulation whose remaining evaluations returned at once.
+        assert_eq!(retry_termination(3, true, 100, 100), "cancelled");
+        assert_eq!(retry_termination(0, false, 100, 100), "evaluation_limit");
+        assert_eq!(retry_termination(0, false, 40, 100), "optimizer_stop");
+    }
 }

@@ -324,7 +324,7 @@ many retries each worker stream consumes, so repeated results need not be
 bit-identical. Rust is also not expected to reproduce historical C++ or Python
 streams exactly; port parity is statistical.
 
-## Cooperative stopping (0.3.0 source)
+## Cooperative stopping (since 0.3.0)
 
 Use `BiteOpt::optimize_until`, `DeepBiteOpt::optimize_until` or `De::optimize_until` with a borrowed `Fn() -> bool`. The predicate runs before each evaluation; DE also checks before a temporal-locality trial. The result's `stopped` flag distinguishes that exit, while `evaluations`, `x` and `y` describe actual completed work. A stop before the first evaluation has no usable best value.
 

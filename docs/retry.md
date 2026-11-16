@@ -264,4 +264,4 @@ also configured to that target.
 
 ## Stop new and active retries
 
-`retry_until(objective, bounds, config, optimize, stop)` stops claiming new runs once a shared predicate fires. Pass that same predicate to the optimizer's `optimize_until` (or batch variant) inside `optimize` so active runs stop too. Single-worker retry remains deterministic with a never-firing predicate. With several workers, already claimed runs may still finish; all completed work is retained. See [cooperative optimizer methods](optimizers.md#cooperative-stopping-030-source).
+`retry_until(objective, bounds, config, optimize, stop)` stops claiming new runs once a shared predicate fires. Pass that same predicate to the optimizer's `optimize_until` (or batch variant) inside `optimize` so active runs stop too. Single-worker retry remains deterministic with a never-firing predicate. With several workers, already claimed runs may still finish; all completed work is retained. See [cooperative optimizer methods](optimizers.md#cooperative-stopping-since-030).
