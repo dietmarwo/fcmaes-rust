@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
-"""Bounded/resumable cells: failures and censoring are retained, never retried silently."""
+"""Bounded/resumable cells: failures and censoring are retained, never retried silently.
+
+The defaults reproduce the recorded 48-call panels. --budget, --variants,
+--problems and --seed-count select other panels, such as the handoff
+panels at 160 and 480 calls (the legacy method allows at most 256).
+"""
 
 import argparse
 import concurrent.futures
@@ -16,16 +21,31 @@ def main():
     p.add_argument("--output", type=Path, required=True)
     p.add_argument("--confirm", action="store_true")
     p.add_argument("--seed-start", type=int, default=101)
+    p.add_argument(
+        "--seed-count", type=int, help="default: 30 to confirm, 10 to develop"
+    )
+    p.add_argument("--budget", type=int, default=48)
+    p.add_argument(
+        "--variants",
+        nargs="+",
+        default=["legacy", "advanced", "thompson", "handoff", "governor"],
+    )
+    p.add_argument(
+        "--problems",
+        nargs="+",
+        default=["sphere", "ackley", "styblinski", "oscillator"],
+    )
     a = p.parse_args()
+    count = a.seed_count or (30 if a.confirm else 10)
     a.output.mkdir(parents=True, exist_ok=True)
     manifest = {
         "phase": "confirmation" if a.confirm else "development",
-        "seeds": list(range(a.seed_start, a.seed_start + 30))
+        "seeds": list(range(a.seed_start, a.seed_start + count))
         if a.confirm
-        else list(range(10)),
-        "problems": ["sphere", "ackley", "styblinski", "oscillator"],
-        "variants": ["legacy", "advanced", "thompson", "handoff", "governor"],
-        "budget": 48,
+        else list(range(count)),
+        "problems": a.problems,
+        "variants": a.variants,
+        "budget": a.budget,
         "watchdog_seconds": 90,
         "workers": 2,
         "binary_sha256": hashlib.sha256(a.binary.read_bytes()).hexdigest(),
@@ -44,7 +64,7 @@ def main():
         begin = time.monotonic()
         try:
             result = subprocess.run(
-                [str(a.binary), v, p, str(s), "48"],
+                [str(a.binary), v, p, str(s), str(a.budget)],
                 capture_output=True,
                 text=True,
                 timeout=90,

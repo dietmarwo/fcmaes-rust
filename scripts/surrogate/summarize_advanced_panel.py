@@ -10,7 +10,10 @@ that exact optima do not divide by zero. The bootstrap uses a fixed seed,
 so the same records give the same summary.
 
     summarize_advanced_panel.py pack CELL_DIR OUTPUT.jsonl.gz
-    summarize_advanced_panel.py summary RECORDS [--bootstrap N] [--seed S]
+    summarize_advanced_panel.py summary RECORDS [--reference ARM] [--bootstrap N] [--seed S]
+
+The reference arm defaults to legacy; panels above legacy's 256 calls use
+another one, such as advanced or biteopt.
 """
 
 import argparse
@@ -24,6 +27,11 @@ from pathlib import Path
 OFFSET = 1e-12
 PROBLEMS = ["sphere", "ackley", "styblinski", "oscillator"]
 VARIANTS = ["legacy", "advanced", "thompson", "handoff", "governor"]
+
+
+def ordered(names, known):
+    """Known names in their order, then the others alphabetically."""
+    return [n for n in known if n in names] + sorted(set(names) - set(known))
 
 
 def load(path):
@@ -52,25 +60,25 @@ def geometric_ratio(pairs):
     )
 
 
-def summary(records, bootstrap, seed):
+def summary(records, bootstrap, seed, reference="legacy"):
     failed = [r for r in records if "status" in r]
     usable = [r for r in records if "status" not in r]
     best = {(r["problem"], r["variant"], r["seed"]): r["best"] for r in usable}
     seconds = {(r["problem"], r["variant"], r["seed"]): r["seconds"] for r in usable}
     rng = random.Random(seed)
     rows = []
-    for problem in PROBLEMS:
-        for variant in VARIANTS:
+    for problem in ordered({p for p, _, _ in best}, PROBLEMS):
+        for variant in ordered({v for _, v, _ in best}, VARIANTS):
             seeds = sorted(s for p, v, s in best if p == problem and v == variant)
             if not seeds:
                 continue
             pairs = [
                 (
                     best[problem, variant, s] + OFFSET,
-                    best[problem, "legacy", s] + OFFSET,
+                    best[problem, reference, s] + OFFSET,
                 )
                 for s in seeds
-                if (problem, "legacy", s) in best
+                if (problem, reference, s) in best
             ]
             draws = sorted(
                 geometric_ratio([pairs[rng.randrange(len(pairs))] for _ in pairs])
@@ -94,7 +102,7 @@ def summary(records, bootstrap, seed):
                     ],
                 }
             )
-    return {
+    result = {
         "records": len(records),
         "failed": len(failed),
         "loss_offset": OFFSET,
@@ -105,6 +113,9 @@ def summary(records, bootstrap, seed):
         },
         "rows": rows,
     }
+    if reference != "legacy":
+        result["reference"] = reference
+    return result
 
 
 def main():
@@ -115,13 +126,18 @@ def main():
     p.add_argument("output", type=Path)
     s = commands.add_parser("summary")
     s.add_argument("records", type=Path)
+    s.add_argument("--reference", default="legacy")
     s.add_argument("--bootstrap", type=int, default=10000)
     s.add_argument("--seed", type=int, default=20261116)
     a = parser.parse_args()
     if a.command == "pack":
         print(json.dumps({"records": pack(a.cells, a.output), "output": str(a.output)}))
     else:
-        print(json.dumps(summary(load(a.records), a.bootstrap, a.seed), indent=2))
+        print(
+            json.dumps(
+                summary(load(a.records), a.bootstrap, a.seed, a.reference), indent=2
+            )
+        )
 
 
 if __name__ == "__main__":
