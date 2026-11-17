@@ -139,6 +139,22 @@ pub fn prepare(registry: &Registry, s: &mut JobSpec, base: &Path) -> Result<Box<
     if !explicit_threshold && p.problem.id.starts_with("gtop.") {
         p.parameters.base.failure_threshold = 1e10;
     }
+    // The top-level fields are the request; the copies in `parameters` are
+    // what a resolved payload records. A differing copy is a conflict, not
+    // something to overwrite silently.
+    for (key, top) in [
+        ("concurrent", p.concurrent),
+        ("evaluation_threads", p.evaluation_threads),
+    ] {
+        if let Some(value) = s.payload.get("parameters").and_then(|q| q.get(key))
+            && value.as_u64() != Some(top as u64)
+        {
+            return Err(format!(
+                "parameters.{key} must be omitted or equal the top-level {key} ({top})"
+            )
+            .into());
+        }
+    }
     p.parameters.concurrent = p.concurrent;
     p.parameters.evaluation_threads = p.evaluation_threads;
     p.parameters.validate()?;
@@ -155,7 +171,7 @@ pub fn prepare(registry: &Registry, s: &mut JobSpec, base: &Path) -> Result<Box<
         || p.target.is_some_and(|t| !t.is_finite())
         || (p.warm_start.is_some() && p.runs != 1)
     {
-        return Err("surrogate needs runs=1..1024, concurrent=1..8, evaluation_threads>=1, concurrent * evaluation_threads <= inner_threads <=8, evaluations=1..256; warm starts need runs=1".into());
+        return Err("fcmaes.surrogate/2 needs runs=1..1024, concurrent=1..8, evaluation_threads>=1, evaluations=1..10000 and inner_threads<=8 covering the reserved threads (asynchronous: concurrent * evaluation_threads + surrogate_threads; synchronous: the larger of concurrent * evaluation_threads and surrogate_threads); warm starts need runs=1".into());
     }
     let profile_inputs: Vec<&str> = p
         .warm_start
@@ -237,7 +253,11 @@ pub fn prepare(registry: &Registry, s: &mut JobSpec, base: &Path) -> Result<Box<
         }
     }
     if warm.len() + p.evaluations > p.parameters.archive_cap {
-        return Err("new evaluations plus warm observations must be <=256".into());
+        return Err(format!(
+            "new evaluations plus warm observations must be <= archive_cap ({})",
+            p.parameters.archive_cap
+        )
+        .into());
     }
     s.payload = serde_json::to_value(&p)?;
     Ok(Box::new(Run {
@@ -543,7 +563,7 @@ pub fn example(probe: &Probe) -> Value {
     schema::example(
         PROFILE,
         format!(
-            "exact-GP surrogate on {}: 8 evaluations, 4 of them initial",
+            "experimental exact-GP surrogate /2 on {}: 8 evaluations, 4 of them initial",
             probe.id
         ),
         probe,
