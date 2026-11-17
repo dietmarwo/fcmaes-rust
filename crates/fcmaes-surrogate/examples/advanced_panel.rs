@@ -1,5 +1,6 @@
 //! One bounded benchmark cell; orchestration supplies process watchdogs.
-use fcmaes_surrogate::{Config, RunSpec, Space, Value, advanced};
+use fcmaes_core::{BiteOpt, BiteParams};
+use fcmaes_surrogate::{Config, Observation, RunSpec, Space, Value, advanced};
 use serde_json::json;
 use std::{
     env,
@@ -75,7 +76,29 @@ fn main() {
         .num_threads(2)
         .build()
         .unwrap();
-    let result = if variant == "legacy" {
+    let result = if variant == "biteopt" {
+        // Population-only baseline: BiteOpt alone in unit coordinates, as
+        // after a handoff, for exactly `budget` calls.
+        let params = BiteParams {
+            max_evaluations: (budget as u64).saturating_mul(1000),
+            seed,
+            ..BiteParams::default()
+        };
+        let mut bite = BiteOpt::new(&vec![0.0; d], &vec![1.0; d], None, &params);
+        let mut history = Vec::new();
+        for id in 0..budget as u64 {
+            let unit = bite.ask(1).pop().unwrap();
+            let x = space.from_unit(&unit).unwrap();
+            let y = evaluate(&x).unwrap();
+            bite.tell(&[y]);
+            history.push(Observation {
+                id,
+                x,
+                value: Value::Finite(y),
+            });
+        }
+        json!({"history":history,"proposal_seconds":0.0,"evaluations":budget})
+    } else if variant == "legacy" {
         let r = pool
             .install(|| {
                 fcmaes_surrogate::run(
@@ -119,6 +142,11 @@ fn main() {
             } else {
                 None
             },
+            // handoff-25, handoff-50 and handoff-75: a share of the budget,
+            // subject to the default minimum of remaining BiteOpt calls.
+            handoff_fraction: variant
+                .strip_prefix("handoff-")
+                .map(|percent| percent.parse::<f64>().unwrap() / 100.0),
             governor: variant == "governor",
             ..advanced::Options::default()
         };

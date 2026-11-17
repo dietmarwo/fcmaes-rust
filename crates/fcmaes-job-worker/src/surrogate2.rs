@@ -126,7 +126,8 @@ pub fn describe() -> Value {
         "method":"bounded local GP, real restarts, correlated approximate Thompson paths or candidate LogEI; synchronous or asynchronous",
         "resources":"async: concurrent*evaluation_threads+surrogate_threads<=inner_threads<=8; sync: max(concurrent*evaluation_threads,surrogate_threads)<=inner_threads",
         "defaults":Config::default(),"warm_start":"observations/2 new run; no exact process resume",
-        "evidence":"best observed usable point; deterministic recheck when enabled and time permits; no global certificate"})
+        "evidence":"best observed usable point; deterministic recheck when enabled and time permits; no global certificate",
+        "handoff":"optional serial BiteOpt after handoff_after calls or handoff_fraction of the budget, only if handoff_min_populations (default 3) BiteOpt populations of 9 + 3d calls remain; otherwise the GP keeps the budget"})
 }
 
 pub fn prepare(registry: &Registry, s: &mut JobSpec, base: &Path) -> Result<Box<dyn Prepared>> {
@@ -478,6 +479,7 @@ impl Run {
             "validation_cancelled":validation_cancelled,"evaluation_threads":self.payload.evaluation_threads,
             "warm_start_points":self.warm.len(),"dropped_warm_points":self.dropped_warm,
             "proposals":result.proposals,"peak_pending":result.peak_pending,
+            "handoff":{"plan":result.handoff_plan,"after":result.handoff_after},
             "proposal_seconds":result.proposal_seconds,
             "evaluation_seconds_sum":result.evaluation_seconds,"recheck":recheck,"reported_objective":reported_objective,
             "log_file":log_name,"warm_start_file":warm_name,
@@ -526,7 +528,9 @@ pub fn payload_schema(problem: Value) -> Value {
         "schedule":{"enum":["synchronous","asynchronous"]},"acquisition":{"enum":["log_ei","thompson"]},
         "features":integer(32,4096),"restart_failures":integer(4,1000000),"surrogate_threads":integer(1,8),
         "evaluation_threads":integer(1,8),"concurrent":integer(1,8),"governor":{"type":"boolean"},
-        "handoff_after":or_null(integer(1,10000))}});
+        "handoff_after":or_null(integer(1,10000)),
+        "handoff_fraction":or_null(json!({"type":"number","exclusiveMinimum":0,"exclusiveMaximum":1})),
+        "handoff_min_populations":integer(0,100)}});
     schema["$comment"] = json!(
         "Resolved top-level concurrent and evaluation_threads override the same internal option fields; all resource and archive relations are checked by prepare. Warm format observations/2."
     );

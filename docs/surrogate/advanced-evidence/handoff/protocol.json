@@ -1,0 +1,24 @@
+{
+  "written": "2026-11-16, before the development panels were run",
+  "question": "Does a budget-aware handoff from the /2 GP to BiteOpt beat both the GP alone (advanced) and BiteOpt alone (biteopt), and at which share of the budget?",
+  "fixed_before_development": {
+    "guard": "handoff_min_populations = 3: hand off only if 3 BiteOpt populations (9 + 3d calls each) remain",
+    "problems": ["sphere", "styblinski", "oscillator"],
+    "excluded": "ackley: the initial design's centre is its optimum",
+    "binary": "advanced_panel built from the commit that adds the panel arms"
+  },
+  "development": {
+    "seeds": "0-9",
+    "budgets": [160, 480],
+    "arms": ["advanced", "biteopt", "handoff-25", "handoff-50", "handoff-75", "legacy (160 only; it allows at most 256 calls)"],
+    "selection_rule": "For each fraction f and each (problem, budget), take the larger of the paired geometric loss ratios of handoff-f against advanced and against biteopt. Choose the f whose largest such value over all (problem, budget) is smallest; on a tie, the smaller f (less GP time)."
+  },
+  "confirmation": {
+    "seeds": "401-430",
+    "budgets": [48, 160, 480],
+    "arms": ["advanced", "biteopt", "handoff-<chosen>", "legacy (48 and 160)"],
+    "target_class": "styblinski (many-modal, separable) at 160 and 480 calls",
+    "success": "on the target class, the upper 95% bound of the paired geometric loss ratio of handoff-<chosen> is below 1 against both advanced and biteopt",
+    "reported_elsewhere": "the same ratios on sphere and oscillator, and at 48 calls, where the guard is expected to skip the handoff"
+  }
+}

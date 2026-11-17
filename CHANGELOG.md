@@ -20,6 +20,13 @@ phase, with breaking changes called out explicitly.
   - the formats `fcmaes.surrogate.events/2` and `fcmaes.surrogate.observations/2`, with `advanced::replay`.
 
   `/1` and its defaults are unchanged and remain the recommendation: `/2` did not pass the default-promotion gate. On 30 held-out seeds its LogEI policy loses precision on sphere (paired geometric loss ratio 3.5, 95% interval 2.1–6.0) and is not shown noninferior on Styblinski–Tang (1.06, 0.87–1.31). The raw panels and their recomputation are in [`docs/surrogate/advanced-evidence`](docs/surrogate/advanced-evidence/README.md). The worker lists `/2` for every scalar model, marked experimental.
+- Surrogate `/2`: budget-aware BiteOpt handoff.
+  - `handoff_fraction` sets the handoff point as a share of the budget.
+  - `handoff_min_populations` (default 3, 0 = always) requires that many BiteOpt populations of 9 + 3d calls to remain. Otherwise the GP keeps the budget, and a `handoff_skipped` event and the result details record the plan. `replay` checks the plan.
+  - A handoff that leaves BiteOpt less than its first population can only lose; this is what made the handoff arm of the 48-call panels poor.
+  - The panel gains a BiteOpt-only arm, `handoff-25`/`-50`/`-75` arms, and `--budget`, `--variants`, `--problems` and `--seed-count` options.
+  - A predeclared development panel (seeds 0–9, 160 and 480 calls) chose a 25% handoff. On held-out seeds 401–430 it beat the GP alone on sphere and Styblinski–Tang and tied on the oscillator, but was not shown better than BiteOpt alone on Styblinski–Tang, the declared target. The handoff stays opt-in ([measurements](docs/surrogate/advanced-evidence/handoff/README.md)).
+  - Traces recorded before this change that contain a handoff replay with their recorded source.
 - Review fixes to the delivered `/2`, before its first release:
   - Its LogEI policy now uses the original method's trust region. The side length only ever grew, and refinement always covered the whole box. This had cost a factor of 231 on sphere.
   - Observations are processed in ID order, so synchronous decisions no longer depend on which callback of a batch finished first.

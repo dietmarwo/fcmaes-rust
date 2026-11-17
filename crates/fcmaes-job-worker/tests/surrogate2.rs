@@ -149,3 +149,24 @@ fn payload_limits_and_thread_fields_are_checked_with_the_v2_limits() {
     adapter.prepare(&mut s, dir.path()).unwrap();
     assert_eq!(s.payload, resolved);
 }
+
+#[test]
+fn a_handoff_without_enough_remaining_calls_is_skipped_and_reported() {
+    let adapter = Adapter::default();
+    let dir = tempfile::tempdir().unwrap();
+    let mut spec = job();
+    spec.payload["parameters"]["handoff_fraction"] = json!(0.5);
+    let run = execute(&adapter, spec, dir.path());
+    let handoff = &run["results"][0]["outcome"]["details"]["handoff"];
+    // 6 of 12 calls remain, fewer than 3 populations of 9 + 3 * 2.
+    assert_eq!(
+        handoff["plan"],
+        json!({"after":6,"remaining":6,"required":45})
+    );
+    assert_eq!(handoff["after"], Value::Null);
+    assert_eq!(run["work"]["evaluations"], 12);
+    let mut both = job();
+    both.payload["parameters"]["handoff_fraction"] = json!(0.5);
+    both.payload["parameters"]["handoff_after"] = json!(6);
+    assert!(adapter.prepare(&mut both, dir.path()).is_err());
+}

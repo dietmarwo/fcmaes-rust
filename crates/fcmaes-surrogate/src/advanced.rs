@@ -58,7 +58,15 @@ pub struct Options {
     pub evaluation_threads: usize,
     pub concurrent: usize,
     pub governor: bool,
+    /// Hand off to BiteOpt after this many BO calls.
     pub handoff_after: Option<usize>,
+    /// Hand off after this fraction of the evaluation budget (0 < f < 1),
+    /// rounded to whole calls; the alternative to `handoff_after`.
+    pub handoff_fraction: Option<f64>,
+    /// Hand off only if at least this many BiteOpt populations (9 + 3d calls
+    /// each) remain; otherwise the GP keeps the whole budget. 0 always hands
+    /// off.
+    pub handoff_min_populations: usize,
 }
 impl Default for Options {
     fn default() -> Self {
@@ -76,6 +84,8 @@ impl Default for Options {
             concurrent: 1,
             governor: false,
             handoff_after: None,
+            handoff_fraction: None,
+            handoff_min_populations: 3,
         }
     }
 }
@@ -92,6 +102,9 @@ impl Options {
             || self.base.acquisition != crate::strategy::Acquisition::LogEi
             || self.restart_failures < 4
             || self.handoff_after == Some(0)
+            || (self.handoff_after.is_some() && self.handoff_fraction.is_some())
+            || self.handoff_fraction.is_some_and(|f| !(f > 0.0 && f < 1.0))
+            || self.handoff_min_populations > 100
         {
             return Err(Error::Invalid(
                 "advanced resource/configuration limits".into(),
@@ -108,6 +121,50 @@ impl Options {
             }
     }
 }
+/// Calls of one BiteOpt population at its default size, 9 + 3d.
+pub fn biteopt_population(dimension: usize) -> usize {
+    9 + 3 * dimension
+}
+
+/// The handoff a run plans: after `after` BO calls, with `remaining` calls
+/// left of which `required` are needed (`handoff_min_populations` BiteOpt
+/// populations).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct HandoffPlan {
+    pub after: usize,
+    pub remaining: usize,
+    pub required: usize,
+}
+
+impl HandoffPlan {
+    /// Whether enough calls remain for the handoff to take place.
+    pub fn performed(&self) -> bool {
+        self.remaining > 0 && self.remaining >= self.required
+    }
+}
+
+/// The planned handoff of a run with `evaluations` calls in `dimension`
+/// coordinates, or `None` if no handoff is configured.
+pub fn handoff_plan(
+    options: &Options,
+    evaluations: usize,
+    dimension: usize,
+) -> Option<HandoffPlan> {
+    let after = options.handoff_after.or_else(|| {
+        options
+            .handoff_fraction
+            .map(|f| ((f * evaluations as f64).round() as usize).max(1))
+    })?;
+    Some(HandoffPlan {
+        after,
+        remaining: evaluations.saturating_sub(after),
+        required: options
+            .handoff_min_populations
+            .saturating_mul(biteopt_population(dimension)),
+    })
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Sample {
@@ -172,6 +229,11 @@ pub enum Event {
         after: usize,
         method: String,
     },
+    /// A planned handoff that does not take place because too few calls
+    /// would remain for BiteOpt; the GP keeps the whole budget.
+    HandoffSkipped {
+        plan: HandoffPlan,
+    },
     Cached {
         source_id: u64,
         x: Vec<f64>,
@@ -195,6 +257,11 @@ pub struct RunResult {
     pub evaluation_seconds: f64,
     pub proposals: usize,
     pub peak_pending: usize,
+    /// The planned handoff, if any; `handoff_plan.performed()` says whether
+    /// it took place (a stop before the handoff point also prevents it).
+    pub handoff_plan: Option<HandoffPlan>,
+    /// BO calls before BiteOpt took over, if it did.
+    pub handoff_after: Option<usize>,
 }
 pub struct RunSpec<'a> {
     pub space: &'a Space,
@@ -760,6 +827,8 @@ pub fn run(
     let mut peak_pending = 0;
     let mut termination = "evaluation_limit".to_string();
     let mut log_error = None;
+    let plan = handoff_plan(spec.options, spec.evaluations, spec.space.dimension());
+    let handoff_after = plan.filter(HandoffPlan::performed).map(|p| p.after);
     sink(&Event::Start {
         schema: "fcmaes.surrogate.events/2".into(),
         space: spec.space.clone(),
@@ -768,6 +837,9 @@ pub fn run(
         budget: spec.evaluations,
         warm: history.clone(),
     })?;
+    if let Some(plan) = plan.filter(|p| !p.performed()) {
+        sink(&Event::HandoffSkipped { plan })?;
+    }
     std::thread::scope(|scope| {
         let (tx, rx) = mpsc::sync_channel(spec.options.concurrent + 2);
         loop {
@@ -788,7 +860,7 @@ pub fn run(
                 ready.clear();
             }
             // Handoff is serial and starts only after all BO evaluations drain.
-            let handoff = spec.options.handoff_after.is_some_and(|n| dispatched >= n);
+            let handoff = handoff_after.is_some_and(|n| dispatched >= n);
             if !halted.load(Ordering::Acquire) && !handoff {
                 while pending.len() < spec.options.concurrent && dispatched < spec.evaluations {
                     let Some((x, region)) = ready.pop_front() else {
@@ -828,7 +900,7 @@ pub fn run(
                             began.elapsed().as_secs_f64(),
                         ));
                     });
-                    if spec.options.handoff_after.is_some_and(|n| dispatched >= n) {
+                    if handoff_after.is_some_and(|n| dispatched >= n) {
                         break;
                     }
                 }
@@ -836,7 +908,7 @@ pub fn run(
                     spec.options.schedule == Schedule::Asynchronous || pending.is_empty();
                 if !fitting && ready.is_empty() && sync_ready && dispatched < spec.evaluations {
                     let mut count = (spec.evaluations - dispatched).min(spec.options.concurrent);
-                    if let Some(n) = spec.options.handoff_after {
+                    if let Some(n) = handoff_after {
                         count = count.min(n.saturating_sub(dispatched));
                     }
                     if count > 0 {
@@ -974,10 +1046,9 @@ pub fn run(
     if let Some(e) = log_error {
         return Err(e);
     }
-    if !halted.load(Ordering::Acquire)
-        && spec.options.handoff_after.is_some()
-        && dispatched < spec.evaluations
-    {
+    let mut handed_off = None;
+    if !halted.load(Ordering::Acquire) && handoff_after.is_some() && dispatched < spec.evaluations {
+        handed_off = Some(dispatched);
         sink(&Event::Handoff {
             after: dispatched,
             method: "biteopt".into(),
@@ -1103,6 +1174,8 @@ pub fn run(
         evaluation_seconds,
         proposals: request as usize,
         peak_pending,
+        handoff_plan: plan,
+        handoff_after: handed_off,
     })
 }
 
@@ -1122,6 +1195,9 @@ pub fn replay(events: &[Event]) -> Result<()> {
         return Err(Error::Invalid("missing advanced Start".into()));
     };
     let mut engine = Engine::new(space.clone(), options.clone(), *seed)?;
+    let plan = handoff_plan(options, *budget, space.dimension());
+    let skip_expected = plan.filter(|p| !p.performed());
+    let mut skip_seen = false;
     let mut observations: BTreeMap<u64, Sample> =
         warm.iter().map(|s| (s.observation.id, s.clone())).collect();
     if observations.len() != warm.len() {
@@ -1209,8 +1285,17 @@ pub fn replay(events: &[Event]) -> Result<()> {
                     return Err(Error::Invalid("invalid cached handoff".into()));
                 }
             }
-            Event::Handoff { .. } => {
+            Event::Handoff { after, .. } => {
+                if handoff || plan.is_none_or(|p| !p.performed() || p.after != *after) {
+                    return Err(Error::Invalid("handoff outside its plan".into()));
+                }
                 handoff = true;
+            }
+            Event::HandoffSkipped { plan: recorded } => {
+                if skip_seen || skip_expected != Some(*recorded) {
+                    return Err(Error::Invalid("handoff skip outside its plan".into()));
+                }
+                skip_seen = true;
             }
             Event::Finished {
                 completed: c,
@@ -1234,6 +1319,9 @@ pub fn replay(events: &[Event]) -> Result<()> {
     }
     if !finished {
         return Err(Error::Invalid("incomplete advanced trace".into()));
+    }
+    if skip_expected.is_some() != skip_seen {
+        return Err(Error::Invalid("missing handoff skip".into()));
     }
     Ok(())
 }

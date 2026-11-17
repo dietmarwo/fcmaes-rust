@@ -1,0 +1,31 @@
+{
+  "phase": "development",
+  "seeds": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9
+  ],
+  "problems": [
+    "sphere",
+    "styblinski",
+    "oscillator"
+  ],
+  "variants": [
+    "advanced",
+    "biteopt",
+    "handoff-25",
+    "handoff-50",
+    "handoff-75"
+  ],
+  "budget": 480,
+  "watchdog_seconds": 90,
+  "workers": 2,
+  "binary_sha256": "f62ac6758df611b4149cfd7b1b4be3fcb440be38644f0ca722f440255257804b"
+}

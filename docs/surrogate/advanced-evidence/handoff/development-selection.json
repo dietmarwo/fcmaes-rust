@@ -1,0 +1,131 @@
+{
+  "chosen": "handoff-25",
+  "candidates": [
+    {
+      "variant": "handoff-25",
+      "worst": 1.0000000711095163,
+      "rows": [
+        {
+          "budget": 160,
+          "problem": "oscillator",
+          "against_advanced": 0.9985300451443309,
+          "against_biteopt": 0.8823725113470043
+        },
+        {
+          "budget": 160,
+          "problem": "sphere",
+          "against_advanced": 0.5168034442973709,
+          "against_biteopt": 0.005032143477849309
+        },
+        {
+          "budget": 160,
+          "problem": "styblinski",
+          "against_advanced": 0.00849411979094948,
+          "against_biteopt": 0.15628686066075936
+        },
+        {
+          "budget": 480,
+          "problem": "oscillator",
+          "against_advanced": 0.99993746550019,
+          "against_biteopt": 1.0000000711095163
+        },
+        {
+          "budget": 480,
+          "problem": "sphere",
+          "against_advanced": 1.03313055627042e-05,
+          "against_biteopt": 0.2679111146945328
+        },
+        {
+          "budget": 480,
+          "problem": "styblinski",
+          "against_advanced": 4.2464943281029415e-07,
+          "against_biteopt": 0.04059199059054122
+        }
+      ]
+    },
+    {
+      "variant": "handoff-50",
+      "worst": 18.399418010007782,
+      "rows": [
+        {
+          "budget": 160,
+          "problem": "oscillator",
+          "against_advanced": 0.9992466996176664,
+          "against_biteopt": 0.8830057984578732
+        },
+        {
+          "budget": 160,
+          "problem": "sphere",
+          "against_advanced": 2.076949815203319,
+          "against_biteopt": 0.020223374247447676
+        },
+        {
+          "budget": 160,
+          "problem": "styblinski",
+          "against_advanced": 1.0,
+          "against_biteopt": 18.399418010007782
+        },
+        {
+          "budget": 480,
+          "problem": "oscillator",
+          "against_advanced": 0.9999377998419984,
+          "against_biteopt": 1.0000004054722575
+        },
+        {
+          "budget": 480,
+          "problem": "sphere",
+          "against_advanced": 6.271517276568645e-05,
+          "against_biteopt": 1.6263280320127667
+        },
+        {
+          "budget": 480,
+          "problem": "styblinski",
+          "against_advanced": 4.1840163538244334e-05,
+          "against_biteopt": 3.9994767293374527
+        }
+      ]
+    },
+    {
+      "variant": "handoff-75",
+      "worst": 906.6487464549348,
+      "rows": [
+        {
+          "budget": 160,
+          "problem": "oscillator",
+          "against_advanced": 1.0,
+          "against_biteopt": 0.8836714685129613
+        },
+        {
+          "budget": 160,
+          "problem": "sphere",
+          "against_advanced": 1.0,
+          "against_biteopt": 0.00973705483850025
+        },
+        {
+          "budget": 160,
+          "problem": "styblinski",
+          "against_advanced": 1.0,
+          "against_biteopt": 18.399418010007782
+        },
+        {
+          "budget": 480,
+          "problem": "oscillator",
+          "against_advanced": 1.0000414271136433,
+          "against_biteopt": 1.0001040392319567
+        },
+        {
+          "budget": 480,
+          "problem": "sphere",
+          "against_advanced": 0.028936661541488325,
+          "against_biteopt": 750.3846635903166
+        },
+        {
+          "budget": 480,
+          "problem": "styblinski",
+          "against_advanced": 0.009484823738355108,
+          "against_biteopt": 906.6487464549348
+        }
+      ]
+    }
+  ]
+}

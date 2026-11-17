@@ -140,6 +140,8 @@ fn handoff_partial_and_warm_duplicate_validation() {
     for n in [1, 2, 3, 9] {
         let options = Options {
             handoff_after: Some(1),
+            // Partial budgets: hand off however few calls remain.
+            handoff_min_populations: 0,
             ..Options::default()
         };
         let calls = AtomicUsize::new(0);
@@ -366,4 +368,144 @@ fn synchronous_advanced_decisions_ignore_numerical_pool_size() {
         );
     }
     assert_eq!(histories[0], histories[1]);
+}
+
+fn handoff_run(
+    evaluations: usize,
+    options: &Options,
+) -> (advanced::RunResult, Vec<advanced::Event>) {
+    let space = Space::new(vec![-2.0; 2], vec![2.0; 2], vec![false; 2]).unwrap();
+    let mut events = Vec::new();
+    let result = advanced::run(
+        advanced::RunSpec {
+            space: &space,
+            options,
+            evaluations,
+            seed: 5,
+            warm: &[],
+            target: None,
+            inner_threads: 1,
+        },
+        &|x| Ok(x.iter().map(|v| (v - 0.3).powi(2)).sum()),
+        &mut |e| {
+            events.push(e.clone());
+            Ok(())
+        },
+        &|| None,
+    )
+    .unwrap();
+    (result, events)
+}
+
+fn quick(options: Options) -> Options {
+    Options {
+        base: fcmaes_surrogate::Config {
+            initial_points: 4,
+            candidates: 32,
+            fit_restarts: 1,
+            fit_iterations: 4,
+            ..Default::default()
+        },
+        training_cap: 32,
+        ..options
+    }
+}
+
+#[test]
+fn handoff_plan_needs_enough_biteopt_populations() {
+    use advanced::{HandoffPlan, biteopt_population, handoff_plan};
+    assert_eq!(biteopt_population(2), 15);
+    let fraction = Options {
+        handoff_fraction: Some(0.25),
+        ..Options::default()
+    };
+    // 0.25 * 30 = 7.5 rounds to 8; 3 populations of 15 calls are required.
+    let plan = handoff_plan(&fraction, 30, 2).unwrap();
+    assert_eq!(
+        plan,
+        HandoffPlan {
+            after: 8,
+            remaining: 22,
+            required: 45
+        }
+    );
+    assert!(!plan.performed());
+    assert!(handoff_plan(&fraction, 200, 2).unwrap().performed());
+    assert!(handoff_plan(&Options::default(), 200, 2).is_none());
+    // Count and fraction are alternatives; fractions lie strictly in (0, 1).
+    for options in [
+        Options {
+            handoff_after: Some(4),
+            ..fraction.clone()
+        },
+        Options {
+            handoff_fraction: Some(0.0),
+            ..Options::default()
+        },
+        Options {
+            handoff_fraction: Some(1.0),
+            ..Options::default()
+        },
+        Options {
+            handoff_min_populations: 101,
+            ..Options::default()
+        },
+    ] {
+        assert!(options.validate().is_err());
+    }
+}
+
+#[test]
+fn a_handoff_with_too_few_remaining_calls_is_skipped_and_recorded() {
+    // 24 of 48 calls remain, fewer than 3 * 15: the GP keeps the budget.
+    let options = quick(Options {
+        handoff_after: Some(24),
+        ..Options::default()
+    });
+    let (result, events) = handoff_run(48, &options);
+    assert_eq!(result.evaluations, 48);
+    assert_eq!(result.handoff_after, None);
+    assert!(!result.handoff_plan.unwrap().performed());
+    assert!(matches!(events[1], advanced::Event::HandoffSkipped { .. }));
+    assert!(
+        !events
+            .iter()
+            .any(|e| matches!(e, advanced::Event::Handoff { .. }))
+    );
+    advanced::replay(&events).unwrap();
+    // A skip that disagrees with the plan, or a missing one, is refused.
+    let mut tampered = events.clone();
+    if let advanced::Event::HandoffSkipped { plan } = &mut tampered[1] {
+        plan.required -= 1;
+    }
+    assert!(advanced::replay(&tampered).is_err());
+    let mut missing = events.clone();
+    missing.remove(1);
+    assert!(advanced::replay(&missing).is_err());
+}
+
+#[test]
+fn a_fractional_handoff_takes_place_at_its_planned_call() {
+    // 0.25 * 100 = 25 BO calls; 75 remain, at least 3 * 15.
+    let options = quick(Options {
+        handoff_fraction: Some(0.25),
+        ..Options::default()
+    });
+    let (result, events) = handoff_run(100, &options);
+    assert_eq!(result.evaluations, 100);
+    assert_eq!(result.handoff_after, Some(25));
+    assert!(
+        events
+            .iter()
+            .any(|e| matches!(e, advanced::Event::Handoff { after: 25, .. }))
+    );
+    advanced::replay(&events).unwrap();
+    // The same trace with the handoff moved is refused.
+    let mut moved = events.clone();
+    for e in &mut moved {
+        if let advanced::Event::Handoff { after, .. } = e {
+            *after = 24;
+        }
+    }
+    assert!(advanced::replay(&moved).is_err());
 }

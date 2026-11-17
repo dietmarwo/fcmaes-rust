@@ -4,7 +4,9 @@ The delivered confirmation (seeds 201-230): record count, medians exactly
 and paired geometric ratios to 1e-12 relative. Its bootstrap procedure was
 not recorded, so its intervals are not recomputed. The trust-region review
 confirmation (seeds 301-330): the whole summary, intervals included,
-exactly, with summarize_advanced_panel.py's recorded bootstrap seed.
+exactly, with summarize_advanced_panel.py's recorded bootstrap seed. The
+handoff panels: the development selection and every confirmation summary,
+exactly.
 """
 
 import importlib.util
@@ -18,6 +20,11 @@ spec = importlib.util.spec_from_file_location(
 )
 summarize = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(summarize)
+spec = importlib.util.spec_from_file_location(
+    "select", Path(__file__).with_name("select_handoff_fraction.py")
+)
+selection = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(selection)
 
 
 def rows(summary):
@@ -49,9 +56,34 @@ assert (
     == review
 )
 
+handoff = EVIDENCE / "handoff"
+development = [handoff / f"development-{b}.jsonl.gz" for b in (160, 480)]
+assert selection.select(development) == json.loads(
+    (handoff / "development-selection.json").read_text()
+)
+summaries = 0
+for path in sorted(handoff.glob("confirmation-*-vs-*.json")):
+    budget, reference = path.stem.removeprefix("confirmation-").split("-vs-")
+    recorded = json.loads(path.read_text())
+    panel = summarize.load(handoff / f"confirmation-{budget}.jsonl.gz")
+    manifest = json.loads(
+        (handoff / f"confirmation-{budget}-manifest.json").read_text()
+    )
+    assert manifest["seeds"] == list(range(401, 431)) and manifest["budget"] == int(
+        budget
+    )
+    assert not any("status" in r for r in panel)
+    b = recorded["bootstrap"]
+    assert summarize.summary(panel, b["resamples"], b["seed"], reference) == recorded, (
+        path
+    )
+    summaries += 1
+assert summaries == 8
+
 print(
     json.dumps(
         {
+            "handoff": {"confirmation_summaries": summaries},
             "delivered": {"records": len(records), "rows": len(delivered["rows"])},
             "trust_region_review": {
                 "records": len(review_records),
