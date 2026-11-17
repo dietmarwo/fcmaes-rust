@@ -10,7 +10,7 @@ Since `67bd698`, the job crates `optimization-job-api` and
 `optimization-runner` (0.4.1 since the pin move to their 0.4.1 release)
 come from
 [optimization-jobs](https://github.com/dietmarwo/optimization-jobs) (#11; the
-in-repo `fcmaes-job-api` crate is gone), now at the pinned revision `78970a2` (tag `v0.4.1`, the optimization-jobs 0.4.1 release: doc comments on every public item and a current guide behind `get_guide`, with job and worker protocols as in 0.4.0), which adds
+in-repo `fcmaes-job-api` crate is gone), now at the pinned revision `41d5f00` (optimization-jobs main after the 0.4.1 release; the crates are still 0.4.1: command jobs may declare a JSON-lines progress file, read with `jobs progress` while they run, and the guide behind `get_guide` lists BO-craft; job and worker protocols are as in 0.4.0), which adds
 `node capabilities`, `jobs execution JOB_ID`, opt-in trusted local command
 jobs with verified binary file transfer, and explicitly placed jobs on SSH
 nodes, all through the CLI. The pins up to `v0.3.0`

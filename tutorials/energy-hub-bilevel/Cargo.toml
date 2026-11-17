@@ -10,7 +10,7 @@ description = "Bilevel energy-hub sizing with a pure-Rust inner LP"
 [workspace]
 
 [dependencies]
-optimization-job-api = { git = "https://github.com/dietmarwo/optimization-jobs", rev = "78970a290f63f90a3f3d6ecbfe23f5e1ef24a235", optional = true }
+optimization-job-api = { git = "https://github.com/dietmarwo/optimization-jobs", rev = "41d5f000f0f69525cbbb3ecf2bfb97b91f1be388", optional = true }
 fcmaes-job-worker = { path = "../../crates/fcmaes-job-worker", optional = true }
 fcmaes-core = "=0.1.3"
 # For development against this checkout, replace the line above with:
