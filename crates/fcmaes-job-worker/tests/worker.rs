@@ -89,7 +89,8 @@ fn describe_reports_profile_and_workspace_engine_version() {
             "fcmaes.mode/1",
             "fcmaes.map-elites/1",
             "fcmaes.evaluate/1",
-            "fcmaes.surrogate/1"
+            "fcmaes.surrogate/1",
+            "fcmaes.surrogate/2"
         ])
     );
     assert_eq!(d["evaluation"]["profile"], "fcmaes.evaluate/1");

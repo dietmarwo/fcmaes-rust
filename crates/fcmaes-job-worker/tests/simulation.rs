@@ -329,11 +329,21 @@ fn describe_lists_every_scalar_profile_for_simulation_models() {
     assert_eq!(entry["profile"], "fcmaes.surrogate/1");
     assert_eq!(
         entry["profiles"],
-        json!(["fcmaes.retry/1", "fcmaes.surrogate/1", "fcmaes.evaluate/1"])
+        json!([
+            "fcmaes.retry/1",
+            "fcmaes.surrogate/1",
+            "fcmaes.surrogate/2",
+            "fcmaes.evaluate/1"
+        ])
     );
     // A worker with scalar models only advertises the scalar profiles.
     assert_eq!(
         d["profiles"],
-        json!(["fcmaes.retry/1", "fcmaes.evaluate/1", "fcmaes.surrogate/1"])
+        json!([
+            "fcmaes.retry/1",
+            "fcmaes.evaluate/1",
+            "fcmaes.surrogate/1",
+            "fcmaes.surrogate/2"
+        ])
     );
 }

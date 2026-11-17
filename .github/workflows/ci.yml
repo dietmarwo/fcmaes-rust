@@ -74,6 +74,13 @@ jobs:
           cargo build --release --locked -p fcmaes-job-worker --example stop_worker
           python3 scripts/job-api/test_retry_stop.py --output "$RUNNER_TEMP/retry-stop.json"
           python3 tutorials/surrogate/run.py --root "$RUNNER_TEMP/surrogate-tutorial"
+          # Experimental surrogate /2: asynchronous RK4 job, warm start and deadline.
+          python3 tutorials/surrogate/advanced.py --root "$RUNNER_TEMP/surrogate-advanced" \
+            --runner "$PWD/target/release/optimization-run" \
+            --worker "$PWD/target/release/fcmaes-job-worker" \
+            --simulation-worker "$PWD/target/release/examples/simulation_worker"
+          # The recorded /2 panel summaries are recomputed from their raw data.
+          python3 scripts/surrogate/verify_advanced_evidence.py
       - name: Python binding tests
         run: |
           python -m venv .venv

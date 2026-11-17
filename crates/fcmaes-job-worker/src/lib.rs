@@ -35,6 +35,7 @@ pub mod retry;
 pub mod schema;
 pub mod simulation;
 pub mod surrogate;
+pub mod surrogate2;
 pub mod threads;
 
 use registry::Probe;
@@ -56,12 +57,13 @@ use std::{
 
 /// All profiles of this worker. `describe` lists those its registered models
 /// support ([`Registry::profiles`]).
-pub const PROFILES: [&str; 5] = [
+pub const PROFILES: [&str; 6] = [
     retry::PROFILE,
     mode::PROFILE,
     map_elites::PROFILE,
     evaluate::PROFILE,
     surrogate::PROFILE,
+    surrogate2::PROFILE,
 ];
 
 /// Largest `inner_threads`: the envelope's `cpu_slots` limit.
@@ -113,7 +115,7 @@ impl Default for Adapter {
 /// The payload schema of `profile` for the models of `registry`.
 fn payload_schema(registry: &Registry, profile: &str) -> Value {
     let models = registry.models(profile);
-    let largest = if profile == surrogate::PROFILE {
+    let largest = if [surrogate::PROFILE, surrogate2::PROFILE].contains(&profile) {
         fcmaes_surrogate::MAX_DIMENSION
     } else {
         registry::MAX_DIMENSION
@@ -124,6 +126,7 @@ fn payload_schema(registry: &Registry, profile: &str) -> Value {
         mode::PROFILE => mode::payload_schema(problem),
         map_elites::PROFILE => map_elites::payload_schema(problem),
         evaluate::PROFILE => evaluate::payload_schema(problem),
+        surrogate2::PROFILE => surrogate2::payload_schema(problem),
         _ => surrogate::payload_schema(problem),
     }
 }
@@ -133,7 +136,9 @@ fn fits(probe: &Probe, profile: &str) -> bool {
     probe.kind.profiles().contains(&profile)
         && match profile {
             mode::PROFILE => probe.mode_ready,
-            surrogate::PROFILE => probe.dimension <= fcmaes_surrogate::MAX_DIMENSION,
+            surrogate::PROFILE | surrogate2::PROFILE => {
+                probe.dimension <= fcmaes_surrogate::MAX_DIMENSION
+            }
             _ => true,
         }
 }
@@ -145,6 +150,7 @@ fn profile_examples(profile: &str, probe: &Probe, representative: bool) -> Vec<V
         mode::PROFILE => vec![mode::example(probe)],
         map_elites::PROFILE => vec![map_elites::example(probe)],
         evaluate::PROFILE => vec![evaluate::example(probe)],
+        surrogate2::PROFILE => vec![surrogate2::example(probe)],
         _ => vec![surrogate::example(probe)],
     }
 }
@@ -199,6 +205,7 @@ impl Worker for Adapter {
         d["optimizers"] = optimizers;
         d["evaluation"] = evaluate::describe();
         d["surrogate"] = surrogate::describe();
+        d["surrogate2"] = surrogate2::describe();
         d["resources"]["surrogate"] = json!(
             "synchronous batches: concurrent * evaluation_threads <= inner_threads <= 8; GP work and nested Rayon callbacks use the same task-owned pool between/within batches"
         );
@@ -230,7 +237,7 @@ impl Worker for Adapter {
             .collect();
         d["payload_schemas"] = Value::Object(schemas);
         if profiles.contains(&surrogate::PROFILE) {
-            d["input_schemas"] = json!({surrogate::WARM_SCHEMA: surrogate::warm_start_schema()});
+            d["input_schemas"] = json!({surrogate::WARM_SCHEMA: surrogate::warm_start_schema(),surrogate2::WARM_SCHEMA:surrogate2::warm_start_schema()});
         }
         d["examples"] = json!(examples(&probes, &profiles));
         d
@@ -250,6 +257,7 @@ impl Worker for Adapter {
             mode::PROFILE => mode::prepare(registry, s, base),
             map_elites::PROFILE => map_elites::prepare(registry, s, base),
             surrogate::PROFILE => surrogate::prepare(registry, s, base),
+            surrogate2::PROFILE => surrogate2::prepare(registry, s, base),
             _ => evaluate::prepare(registry, s, base),
         }
     }

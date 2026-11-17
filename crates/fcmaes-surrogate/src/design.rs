@@ -73,3 +73,29 @@ pub fn candidates(count: usize, d: usize, seed: u64, centres: &[Vec<f64>]) -> Ve
     }
     xs
 }
+
+/// Sobol digital net with a seeded digital shift, not Owen scrambling.
+/// Direction numbers come from the bundled BSD-licensed SciPy/Joe-Kuo data.
+pub fn sobol_shifted(n: usize, d: usize, seed: u64) -> crate::Result<Vec<Vec<f64>>> {
+    if !(1..=32).contains(&d) || n > 65536 {
+        return Err(crate::Error::Invalid("Sobol dimensions/count".into()));
+    }
+    let mut rng = Rng::new(seed);
+    let shifts: Vec<u32> = (0..d).map(|_| rng.next_u64() as u32).collect();
+    let mut result = Vec::with_capacity(n);
+    for i in 0..n {
+        let gray = (i ^ (i >> 1)) as u32;
+        let mut x = Vec::with_capacity(d);
+        for (j, shift) in shifts.iter().enumerate() {
+            let mut value = *shift;
+            for bit in 0..32 {
+                if gray & (1 << bit) != 0 {
+                    value ^= crate::sobol_directions::DIRECTIONS[j][bit];
+                }
+            }
+            x.push((value as f64 + 0.5) / 4294967296.0);
+        }
+        result.push(x);
+    }
+    Ok(result)
+}
