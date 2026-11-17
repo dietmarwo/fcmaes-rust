@@ -1,0 +1,17 @@
+{
+  "date": "2026-11-16",
+  "source_commit": "1199bb3ecaf4610b29183e21fe9ee9cd7cf71243",
+  "binary": "cargo build --release --locked -p fcmaes-surrogate --example advanced_panel",
+  "binary_sha256": "f62ac6758df611b4149cfd7b1b4be3fcb440be38644f0ca722f440255257804b",
+  "rustc": "rustc 1.97.0 (2d8144b78 2026-07-07)",
+  "python": "3.13.18",
+  "platform": "Linux-6.18.44-fc-v553-x86_64-with-glibc2.39",
+  "cpu_count": 2,
+  "protocol": "protocol.json, committed and pushed before the development panels ran",
+  "records": "packed with summarize_advanced_panel.py pack --drop-traces: the panel binary replayed every /2 trace before writing its cell",
+  "source_files_sha256": {
+    "crates/fcmaes-surrogate/src/advanced.rs": "5bfaa692610216771ee38b1afcf4e8070f59683ebca6529ec707f46b4bf724ca",
+    "crates/fcmaes-surrogate/src/strategy.rs": "e1379e08ce1b6857659c61498c318279b7f31a4d6c44da89e7b73e43342286cd",
+    "crates/fcmaes-surrogate/examples/advanced_panel.rs": "2d1d3cd66e871c7dae3c35981ad86d5ecddf6b0deb4b4aedcfbce2f8a7ddbb49"
+  }
+}

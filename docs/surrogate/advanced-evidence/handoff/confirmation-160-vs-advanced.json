@@ -1,0 +1,157 @@
+{
+  "records": 360,
+  "failed": 0,
+  "loss_offset": 1e-12,
+  "bootstrap": {
+    "resamples": 10000,
+    "seed": 20261116,
+    "interval": "percentile, paired over seeds"
+  },
+  "rows": [
+    {
+      "problem": "sphere",
+      "variant": "legacy",
+      "median_loss": 1.383168678230246e-07,
+      "median_seconds": 0.482869027,
+      "pairs": 30,
+      "geometric_ratio": 0.12018722933019245,
+      "ratio_95_interval": [
+        0.07554835620201109,
+        0.18757561770020442
+      ]
+    },
+    {
+      "problem": "sphere",
+      "variant": "advanced",
+      "median_loss": 1.1465774731849417e-06,
+      "median_seconds": 0.4415032875,
+      "pairs": 30,
+      "geometric_ratio": 1.0,
+      "ratio_95_interval": [
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "problem": "sphere",
+      "variant": "biteopt",
+      "median_loss": 3.608464651622504e-05,
+      "median_seconds": 0.0005693655,
+      "pairs": 30,
+      "geometric_ratio": 35.97231975402658,
+      "ratio_95_interval": [
+        11.804417809021041,
+        100.31464995687718
+      ]
+    },
+    {
+      "problem": "sphere",
+      "variant": "handoff-25",
+      "median_loss": 7.692450288672887e-08,
+      "median_seconds": 0.085453212,
+      "pairs": 30,
+      "geometric_ratio": 0.04885944319791061,
+      "ratio_95_interval": [
+        0.016069310999077716,
+        0.12801918969404896
+      ]
+    },
+    {
+      "problem": "styblinski",
+      "variant": "legacy",
+      "median_loss": 28.320163036210637,
+      "median_seconds": 0.7450402199999999,
+      "pairs": 30,
+      "geometric_ratio": 1.4662661188458324,
+      "ratio_95_interval": [
+        0.4033673954625167,
+        4.569322517846375
+      ]
+    },
+    {
+      "problem": "styblinski",
+      "variant": "advanced",
+      "median_loss": 28.277848665087205,
+      "median_seconds": 0.7607660825,
+      "pairs": 30,
+      "geometric_ratio": 1.0,
+      "ratio_95_interval": [
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "problem": "styblinski",
+      "variant": "biteopt",
+      "median_loss": 0.9477479032526226,
+      "median_seconds": 0.000620873,
+      "pairs": 30,
+      "geometric_ratio": 0.06121981562290046,
+      "ratio_95_interval": [
+        0.02075418258513052,
+        0.20443647916397303
+      ]
+    },
+    {
+      "problem": "styblinski",
+      "variant": "handoff-25",
+      "median_loss": 1.1807866843171198,
+      "median_seconds": 0.09674640400000001,
+      "pairs": 30,
+      "geometric_ratio": 0.09399685282217822,
+      "ratio_95_interval": [
+        0.03355917307071939,
+        0.2624403697923708
+      ]
+    },
+    {
+      "problem": "oscillator",
+      "variant": "legacy",
+      "median_loss": 0.00022766553143445967,
+      "median_seconds": 0.4552992265,
+      "pairs": 30,
+      "geometric_ratio": 0.9964526285530086,
+      "ratio_95_interval": [
+        0.9933155162277135,
+        0.9988384543231736
+      ]
+    },
+    {
+      "problem": "oscillator",
+      "variant": "advanced",
+      "median_loss": 0.0002277293729478893,
+      "median_seconds": 0.3726902815,
+      "pairs": 30,
+      "geometric_ratio": 1.0,
+      "ratio_95_interval": [
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "problem": "oscillator",
+      "variant": "biteopt",
+      "median_loss": 0.00022836510692998018,
+      "median_seconds": 0.000760732,
+      "pairs": 30,
+      "geometric_ratio": 1.0441537679868516,
+      "ratio_95_interval": [
+        1.0042382272330892,
+        1.1041424599218845
+      ]
+    },
+    {
+      "problem": "oscillator",
+      "variant": "handoff-25",
+      "median_loss": 0.00022769321655666572,
+      "median_seconds": 0.077403127,
+      "pairs": 30,
+      "geometric_ratio": 0.9985684628897058,
+      "ratio_95_interval": [
+        0.9949711120317624,
+        1.002371383367941
+      ]
+    }
+  ],
+  "reference": "advanced"
+}

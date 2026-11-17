@@ -36,6 +36,8 @@ Supply a durable fallible sink for expensive work. The example closure discards 
 | evaluation_threads | 1 | Allowance per callback in the bounded aggregate evaluation pool |
 | governor | false | Timing-dependent candidate/refit control, recorded for replay |
 | handoff_after | null | Optional BO callback count before serial BiteOpt |
+| handoff_fraction | null | Alternative to handoff_after: hand off after this share of the budget (0 < f < 1) |
+| handoff_min_populations | 3 | Hand off only if this many BiteOpt populations (9 + 3d calls each) remain; 0 always hands off |
 
 In worker payloads, set `concurrent` and `evaluation_threads` at the top level; the resolved payload records them in `parameters` too, and a differing copy there is refused. The legacy base acquisition must be LogEI; the advanced acquisition is selected separately.
 
@@ -59,7 +61,7 @@ Reserve `concurrent * evaluation_threads + surrogate_threads <= inner_threads` f
 
 Stop prevents further dispatch, abandons queued proposals and drains active work. Simulations cooperate through existing SimContext checkpoints; plain callbacks must finish or be stopped by the runtime process deadline. The largest uninterruptible GP operation is a bounded factorization/gradient block at the training cap. Completed, failed, cancelled and validation work remain separate.
 
-BiteOpt handoff uses normalized coordinates, including log variables, and the best observed incumbent. Cached points are told back without a new callback and emit a Cached event. Actual callback budget remains global; final partial work and immediately preceding improvements are retained. Only BiteOpt handoff is exposed in this release.
+BiteOpt handoff uses normalized coordinates, including log variables, and the best observed incumbent. It takes place only if `handoff_min_populations` BiteOpt populations remain after the handoff point; otherwise the GP keeps the whole budget, the trace records `handoff_skipped` with the plan, and the result details report it. A handoff with fewer calls left than BiteOpt's first population can only lose to the GP. On held-out seeds, `handoff_fraction: 0.25` with the default guard beat the GP alone on sphere and Styblinski–Tang at 160 and 480 calls and tied on the oscillator, but it was not shown better than BiteOpt alone on Styblinski–Tang, so the handoff stays opt-in ([measurements](advanced-evidence/handoff/README.md)). Cached points are told back without a new callback and emit a Cached event. Actual callback budget remains global; final partial work and immediately preceding improvements are retained. Only BiteOpt handoff is exposed in this release.
 
 ## Trace, warm inputs and claims
 

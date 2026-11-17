@@ -9,7 +9,7 @@ with a percentile bootstrap interval over seeds. Each ratio is
 that exact optima do not divide by zero. The bootstrap uses a fixed seed,
 so the same records give the same summary.
 
-    summarize_advanced_panel.py pack CELL_DIR OUTPUT.jsonl.gz
+    summarize_advanced_panel.py pack CELL_DIR OUTPUT.jsonl.gz [--drop-traces]
     summarize_advanced_panel.py summary RECORDS [--reference ARM] [--bootstrap N] [--seed S]
 
 The reference arm defaults to legacy; panels above legacy's 256 calls use
@@ -44,9 +44,17 @@ def load(path):
         return [json.loads(line) for line in f]
 
 
-def pack(cells, output):
-    """Write the cells as JSONL.GZ in file-name order, with no timestamp."""
+def pack(cells, output, drop_traces=False):
+    """Write the cells as JSONL.GZ in file-name order, with no timestamp.
+
+    With drop_traces the event traces are left out. The panel binary has
+    already replayed each trace before writing its cell, and summaries need
+    only the histories; long panels' traces grow quadratically.
+    """
     records = load(cells)
+    if drop_traces:
+        for r in records:
+            r.get("result", {}).pop("trace", None)
     lines = "".join(json.dumps(r, separators=(",", ":")) + "\n" for r in records)
     with open(output, "wb") as raw:
         with gzip.GzipFile(filename="", mode="wb", fileobj=raw, mtime=0) as f:
@@ -124,6 +132,7 @@ def main():
     p = commands.add_parser("pack")
     p.add_argument("cells", type=Path)
     p.add_argument("output", type=Path)
+    p.add_argument("--drop-traces", action="store_true")
     s = commands.add_parser("summary")
     s.add_argument("records", type=Path)
     s.add_argument("--reference", default="legacy")
@@ -131,7 +140,14 @@ def main():
     s.add_argument("--seed", type=int, default=20261116)
     a = parser.parse_args()
     if a.command == "pack":
-        print(json.dumps({"records": pack(a.cells, a.output), "output": str(a.output)}))
+        print(
+            json.dumps(
+                {
+                    "records": pack(a.cells, a.output, a.drop_traces),
+                    "output": str(a.output),
+                }
+            )
+        )
     else:
         print(
             json.dumps(

@@ -65,6 +65,8 @@ The delivered panel, before the fixes:
 | oscillator | handoff | 0.000238755 | 0.02668 | 1.058 [1.011, 1.116] |
 | oscillator | governor | 0.000249027 | 0.06172 | 1.086 [1.041, 1.138] |
 
+The budget-aware BiteOpt handoff has its own [panels at 48, 160 and 480 calls](handoff/README.md).
+
 How to read them:
 
 - Each ratio pairs a variant with `legacy` on the same seed and adds 1e-12

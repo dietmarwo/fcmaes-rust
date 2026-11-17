@@ -37,6 +37,7 @@
     - [Surrogate implementation log](docs/surrogate/IMPLEMENTATION_LOG.md)
     - [Experimental surrogate /2](docs/surrogate/ADVANCED.md)
       - [Surrogate /2 measured results](docs/surrogate/advanced-evidence/README.md)
+        - [Budget-aware BiteOpt handoff](docs/surrogate/advanced-evidence/handoff/README.md)
       - [Surrogate /2 improvement plan](docs/plans/fcmaes-surrogate-improvement-plan-2026-11-16.md)
       - [Companion BO-craft plan](docs/plans/bo-craft-implementation-plan-2026-11-16.md)
 - [Combinatorial encodings](docs/combinatorial-encodings.md)
