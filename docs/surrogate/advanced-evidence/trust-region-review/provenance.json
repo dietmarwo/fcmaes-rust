@@ -1,0 +1,29 @@
+{
+  "date": "2026-11-16",
+  "phase": "confirmation after review fixes",
+  "source_commit": "ec9111ad133f53bde66002e56f5b752ab56a5169",
+  "binary": "cargo build --release --locked -p fcmaes-surrogate --example advanced_panel",
+  "rustc": "rustc 1.97.0 (2d8144b78 2026-07-07)",
+  "binary_sha256": "ac41a4a5ffd072ee1f33d8f97caba57bb92f7cffa6dff8e68da570a229d8ebf7",
+  "python": "3.13.18",
+  "platform": "Linux-6.18.44-fc-v553-x86_64-with-glibc2.39",
+  "cpu_count": 2,
+  "harness": "scripts/surrogate/run_advanced_panel.py --confirm --seed-start 301 (as delivered)",
+  "summary": "scripts/surrogate/summarize_advanced_panel.py summary confirmation.jsonl.gz",
+  "source_files_sha256": {
+    "crates/fcmaes-surrogate/src/advanced.rs": "ec8d84ecdd1542162206c652bd2a0f1eb9f2563da3591bd1f942bd3bfdc49381",
+    "crates/fcmaes-surrogate/src/design.rs": "066947a301794df888419c177619f391d125e5f0499043e8a1cb1ac093cb498b",
+    "crates/fcmaes-surrogate/src/driver.rs": "00b275e3715dd02f3a4d53b617627e880eb32e70588a8379f30f655a0679a1e4",
+    "crates/fcmaes-surrogate/src/gp.rs": "20a4489074a68717d392633be580f14faa7373cfa4dff66399d360df6f9f8bee",
+    "crates/fcmaes-surrogate/src/lib.rs": "3be0bd4377634c7c5465a956e404cfaabcf90873d0fe51221d31cd9128f6f107",
+    "crates/fcmaes-surrogate/src/linalg.rs": "74e7ab167c6ec9b094ce457b0ba49a205f48211426bd12f4511245956e295f87",
+    "crates/fcmaes-surrogate/src/optim.rs": "9b82ac55338db45bb57aec8c045743e4fb7882e339ace03765cb50d8742dd548",
+    "crates/fcmaes-surrogate/src/problems.rs": "2cf3a360dbe4a18e563af382f62e913ada2f77c7cb6ad45d38334280f6fc0905",
+    "crates/fcmaes-surrogate/src/sampling.rs": "4c975d5faf8aea0bd5cdfdf38c22bbbfeab8067c1771a2881830469edf6aef81",
+    "crates/fcmaes-surrogate/src/sobol_directions.rs": "884f4322eaec7b0e5c895eec1e898949adf8b8a294466b1942bbd951aae262bb",
+    "crates/fcmaes-surrogate/src/space.rs": "ed366705b96d5605e3c77412bab83e4768069a8161958752178b570581c438d0",
+    "crates/fcmaes-surrogate/src/special.rs": "41376c273b8560795c155652c3601ebdb16c2fa9bf806bdaa6b9e4f839cbad6b",
+    "crates/fcmaes-surrogate/src/strategy.rs": "e1379e08ce1b6857659c61498c318279b7f31a4d6c44da89e7b73e43342286cd",
+    "crates/fcmaes-surrogate/src/transform.rs": "04c1305e8e4a56dba9b6190901a6674a934467172a749b21a3c591ac9d9fae82"
+  }
+}

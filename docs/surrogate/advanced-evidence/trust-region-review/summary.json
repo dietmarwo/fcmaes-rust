@@ -1,0 +1,252 @@
+{
+  "records": 600,
+  "failed": 0,
+  "loss_offset": 1e-12,
+  "bootstrap": {
+    "resamples": 10000,
+    "seed": 20261116,
+    "interval": "percentile, paired over seeds"
+  },
+  "rows": [
+    {
+      "problem": "sphere",
+      "variant": "legacy",
+      "median_loss": 9.987562636585198e-07,
+      "median_seconds": 0.0253535135,
+      "pairs": 30,
+      "geometric_ratio": 1.0,
+      "ratio_95_interval": [
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "problem": "sphere",
+      "variant": "advanced",
+      "median_loss": 4.008520021762305e-06,
+      "median_seconds": 0.12333171300000001,
+      "pairs": 30,
+      "geometric_ratio": 3.524891895595201,
+      "ratio_95_interval": [
+        2.0713879810556244,
+        5.984921084621311
+      ]
+    },
+    {
+      "problem": "sphere",
+      "variant": "thompson",
+      "median_loss": 0.0001792961254978366,
+      "median_seconds": 0.29700287150000004,
+      "pairs": 30,
+      "geometric_ratio": 193.89581734111496,
+      "ratio_95_interval": [
+        124.21464999822771,
+        306.4973540377826
+      ]
+    },
+    {
+      "problem": "sphere",
+      "variant": "handoff",
+      "median_loss": 0.0017044207294453534,
+      "median_seconds": 0.0515619645,
+      "pairs": 30,
+      "geometric_ratio": 1837.5681166235759,
+      "ratio_95_interval": [
+        1075.950120748505,
+        3078.770484071082
+      ]
+    },
+    {
+      "problem": "sphere",
+      "variant": "governor",
+      "median_loss": 2.478069013721533e-06,
+      "median_seconds": 0.11419069500000001,
+      "pairs": 30,
+      "geometric_ratio": 3.059286549840654,
+      "ratio_95_interval": [
+        1.6590350832839371,
+        5.586189231638667
+      ]
+    },
+    {
+      "problem": "ackley",
+      "variant": "legacy",
+      "median_loss": 4.440892098500626e-16,
+      "median_seconds": 0.0362544855,
+      "pairs": 30,
+      "geometric_ratio": 1.0,
+      "ratio_95_interval": [
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "problem": "ackley",
+      "variant": "advanced",
+      "median_loss": 4.440892098500626e-16,
+      "median_seconds": 0.11063084549999999,
+      "pairs": 30,
+      "geometric_ratio": 1.0,
+      "ratio_95_interval": [
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "problem": "ackley",
+      "variant": "thompson",
+      "median_loss": 4.440892098500626e-16,
+      "median_seconds": 0.24922787600000001,
+      "pairs": 30,
+      "geometric_ratio": 1.0,
+      "ratio_95_interval": [
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "problem": "ackley",
+      "variant": "handoff",
+      "median_loss": 4.440892098500626e-16,
+      "median_seconds": 0.053803482,
+      "pairs": 30,
+      "geometric_ratio": 1.0,
+      "ratio_95_interval": [
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "problem": "ackley",
+      "variant": "governor",
+      "median_loss": 4.440892098500626e-16,
+      "median_seconds": 0.098995082,
+      "pairs": 30,
+      "geometric_ratio": 1.0,
+      "ratio_95_interval": [
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "problem": "styblinski",
+      "variant": "legacy",
+      "median_loss": 49.90924503155067,
+      "median_seconds": 0.03724068,
+      "pairs": 30,
+      "geometric_ratio": 1.0,
+      "ratio_95_interval": [
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "problem": "styblinski",
+      "variant": "advanced",
+      "median_loss": 47.14772715151719,
+      "median_seconds": 0.140958787,
+      "pairs": 30,
+      "geometric_ratio": 1.0612774712950974,
+      "ratio_95_interval": [
+        0.8678136569944821,
+        1.3134350973680828
+      ]
+    },
+    {
+      "problem": "styblinski",
+      "variant": "thompson",
+      "median_loss": 58.94676662860476,
+      "median_seconds": 0.3326510815,
+      "pairs": 30,
+      "geometric_ratio": 1.35165483757565,
+      "ratio_95_interval": [
+        1.0870505744024788,
+        1.731383963200368
+      ]
+    },
+    {
+      "problem": "styblinski",
+      "variant": "handoff",
+      "median_loss": 82.70940426443008,
+      "median_seconds": 0.049266859499999996,
+      "pairs": 30,
+      "geometric_ratio": 1.7694245482926192,
+      "ratio_95_interval": [
+        1.4745633502696542,
+        2.1740258662568253
+      ]
+    },
+    {
+      "problem": "styblinski",
+      "variant": "governor",
+      "median_loss": 48.71707648944174,
+      "median_seconds": 0.144435635,
+      "pairs": 30,
+      "geometric_ratio": 1.0889386610152108,
+      "ratio_95_interval": [
+        0.907893233072972,
+        1.3198719427307781
+      ]
+    },
+    {
+      "problem": "oscillator",
+      "variant": "legacy",
+      "median_loss": 0.00022809223743670221,
+      "median_seconds": 0.019781293499999998,
+      "pairs": 30,
+      "geometric_ratio": 1.0,
+      "ratio_95_interval": [
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "problem": "oscillator",
+      "variant": "advanced",
+      "median_loss": 0.0002305326054100843,
+      "median_seconds": 0.0811527195,
+      "pairs": 30,
+      "geometric_ratio": 1.0134726445380315,
+      "ratio_95_interval": [
+        0.9984455674804456,
+        1.0283991835051047
+      ]
+    },
+    {
+      "problem": "oscillator",
+      "variant": "thompson",
+      "median_loss": 0.00023629964868049686,
+      "median_seconds": 0.25337415550000003,
+      "pairs": 30,
+      "geometric_ratio": 1.0409285449348162,
+      "ratio_95_interval": [
+        1.0091820018818165,
+        1.071367211913664
+      ]
+    },
+    {
+      "problem": "oscillator",
+      "variant": "handoff",
+      "median_loss": 0.0002387856286128741,
+      "median_seconds": 0.041921119,
+      "pairs": 30,
+      "geometric_ratio": 1.0947533315714013,
+      "ratio_95_interval": [
+        1.0316259141029036,
+        1.1712876580591047
+      ]
+    },
+    {
+      "problem": "oscillator",
+      "variant": "governor",
+      "median_loss": 0.0002285347504369168,
+      "median_seconds": 0.0834198635,
+      "pairs": 30,
+      "geometric_ratio": 1.0017437161084517,
+      "ratio_95_interval": [
+        0.9742064328207206,
+        1.024623458898393
+      ]
+    }
+  ]
+}

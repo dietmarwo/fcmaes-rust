@@ -1,0 +1,52 @@
+{
+  "phase": "confirmation",
+  "seeds": [
+    301,
+    302,
+    303,
+    304,
+    305,
+    306,
+    307,
+    308,
+    309,
+    310,
+    311,
+    312,
+    313,
+    314,
+    315,
+    316,
+    317,
+    318,
+    319,
+    320,
+    321,
+    322,
+    323,
+    324,
+    325,
+    326,
+    327,
+    328,
+    329,
+    330
+  ],
+  "problems": [
+    "sphere",
+    "ackley",
+    "styblinski",
+    "oscillator"
+  ],
+  "variants": [
+    "legacy",
+    "advanced",
+    "thompson",
+    "handoff",
+    "governor"
+  ],
+  "budget": 48,
+  "watchdog_seconds": 90,
+  "workers": 2,
+  "binary_sha256": "ac41a4a5ffd072ee1f33d8f97caba57bb92f7cffa6dff8e68da570a229d8ebf7"
+}
