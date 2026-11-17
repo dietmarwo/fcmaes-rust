@@ -37,7 +37,20 @@ Read [simulation_worker.rs](../../crates/fcmaes-job-worker/examples/simulation_w
 
 Replace the integration body with your Rust model. Return `Err` for evaluation failures, use checkpoints in long loops, obey `ctx.threads()`, and derive reproducible simulation randomness from `ctx.seed()`. Do not start a new native pool on every evaluation. Bump the model version when its objective changes. Register factories on a deterministic registry; jobs carry model parameters and data hashes, not source code.
 
-Retry and evaluate accept the same simulation model (the worker's `describe` has examples of all three on the oscillator, which the script runs), so it can be compared with BiteOpt under one budget. Global GP is limited to 32 coordinates and 256 new+retained observations. Multiple trust regions with Thompson sampling, async queues, the overhead governor, handoff and noisy optimization remain roadmap work. The seeded simulation callback is repeatable; it is not an expected-value estimator.
+Retry and evaluate accept the same simulation model (the worker's `describe` has examples of all three on the oscillator, which the script runs), so it can be compared with BiteOpt under one budget. Global GP is limited to 32 coordinates and 256 new+retained observations. Thompson sampling, asynchronous callbacks, the overhead governor and a BiteOpt handoff exist only in the experimental `fcmaes.surrogate/2` profile (next section); multiple trust regions and noisy optimization remain roadmap work. The seeded simulation callback is repeatable; it is not an expected-value estimator.
+
+## Experimental /2 jobs
+
+```sh
+cargo build --release --locked -p optimization-runner -p fcmaes-job-worker
+cargo build --release --locked -p fcmaes-job-worker --example simulation_worker
+python3 tutorials/surrogate/advanced.py --root /absolute/new/advanced \
+  --runner "$PWD/target/release/optimization-run" \
+  --worker "$PWD/target/release/fcmaes-job-worker" \
+  --simulation-worker "$PWD/target/release/examples/simulation_worker"
+```
+
+`advanced.py` runs the same oscillator with `fcmaes.surrogate/2`: 16 asynchronous evaluations with two callbacks in flight and a rechecked best point, a 4-evaluation warm start from that job's `fcmaes.surrogate.observations/2` snapshot, and a slow variant that the deadline stops (`timed_out`, no recheck). It validates each payload against the worker's schema. `/2` did not pass the default-promotion gate; see the [advanced guide](../../docs/surrogate/ADVANCED.md). CI runs this script too.
 
 ## Run the actual runner/MCP tests
 

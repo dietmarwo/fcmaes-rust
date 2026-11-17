@@ -1,6 +1,6 @@
 # Experimental surrogate job profile
 
-`fcmaes.surrogate/1` is an in-worker exact-GP optimizer in `fcmaes-job-worker`. It uses the existing `optimization.job/0.1` envelope and `optimization.result/0.2` evidence. It optimizes registered deterministic scalar Rust models, including `Scalar::simulation`. No callable code is carried in a job. It is a bounded first implementation, not the full async/TuRBO design in the supplied roadmap.
+`fcmaes.surrogate/1` is an in-worker exact-GP optimizer in `fcmaes-job-worker`. It uses the existing `optimization.job/0.1` envelope and `optimization.result/0.2` evidence. It optimizes registered deterministic scalar Rust models, including `Scalar::simulation`. No callable code is carried in a job. It is a bounded first implementation, not the full async/TuRBO design in the supplied roadmap. The opt-in `fcmaes.surrogate/2` profile adds a larger archive, asynchronous callbacks and other experimental policies; it did not pass the default-promotion gate (see the [advanced guide](../surrogate/ADVANCED.md)).
 
 ## Build and run
 

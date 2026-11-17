@@ -8,7 +8,25 @@ phase, with breaking changes called out explicitly.
 
 ### Added
 
-- Opt-in surrogate /2: bounded archive fitting, numerical reuse/diagnostics, correlated sampling, region restarts, async evaluation, governor and BiteOpt handoff; strict new events/warm format and measured quality limits.
+- Experimental, opt-in surrogate `/2`: `fcmaes_surrogate::advanced` and the job profile `fcmaes.surrogate/2` ([guide](docs/surrogate/ADVANCED.md)). Over `/1` it adds:
+  - an archive of up to 10,000 observations, of which a GP trains on at most 240 (the incumbent, its neighbours and maximin coverage);
+  - asynchronous callbacks with one background proposal;
+  - factor reuse with numerical diagnostics;
+  - region restarts;
+  - approximate correlated Thompson sampling;
+  - a Sobol candidate design;
+  - a timing-based governor;
+  - a budgeted BiteOpt handoff;
+  - the formats `fcmaes.surrogate.events/2` and `fcmaes.surrogate.observations/2`, with `advanced::replay`.
+
+  `/1` and its defaults are unchanged and remain the recommendation: `/2` did not pass the default-promotion gate. On 30 held-out seeds its LogEI policy loses precision on sphere (paired geometric loss ratio 3.5, 95% interval 2.1–6.0) and is not shown noninferior on Styblinski–Tang (1.06, 0.87–1.31). The raw panels and their recomputation are in [`docs/surrogate/advanced-evidence`](docs/surrogate/advanced-evidence/README.md). The worker lists `/2` for every scalar model, marked experimental.
+- Review fixes to the delivered `/2`, before its first release:
+  - Its LogEI policy now uses the original method's trust region. The side length only ever grew, and refinement always covered the whole box. This had cost a factor of 231 on sphere.
+  - Observations are processed in ID order, so synchronous decisions no longer depend on which callback of a batch finished first.
+  - A `parameters.concurrent` or `parameters.evaluation_threads` that differs from the top-level field is refused instead of overwritten.
+  - The rejection messages give `/2`'s limits.
+  - The bundled SciPy notice is reduced to SciPy's own BSD license, with the Joe–Kuo notice for the Sobol direction numbers added.
+  - CI runs the `/2` tutorial and recomputes the recorded panel summaries.
 
 ## [0.3.0] - 2026-11-16
 

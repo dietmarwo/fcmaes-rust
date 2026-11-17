@@ -2,7 +2,7 @@
 
 The original `fcmaes.surrogate/1` and `fcmaes_surrogate::run` remain the recommended small deterministic-box implementation. The new opt-in `fcmaes.surrogate/2` and `fcmaes_surrogate::advanced` support a larger archive, bounded GP fitting, asynchronous callbacks, real region restarts, correlated approximate Thompson sampling, an overhead controller and a budgeted BiteOpt handoff.
 
-The new policies did **not** pass the quality gate for default promotion. Read [the raw-data-derived results](advanced-evidence/README.md). Their broader execution capabilities are experimental; the existing method wins precision on several small-budget cases. Ackley in the test panel starts at its optimum and is not useful search evidence.
+The new policies did **not** pass the quality gate for default promotion. Read [the raw-data-derived results](advanced-evidence/README.md). The review of the delivery found that the LogEI policy never narrowed its search and that synchronous decisions depended on callback completion order; both are fixed. On 30 fresh seeds after the fixes, `advanced` against `legacy` has a paired geometric loss ratio of 3.5 on sphere (95% interval 2.1–6.0, down from 231 before the fix), 1.06 on Styblinski–Tang (0.87–1.31) and 1.01 on the oscillator (1.00–1.03). The existing method still wins precision on sphere, and the upper bounds on sphere and Styblinski–Tang exceed the gate's 1.05. Ackley in the test panel starts at its optimum and is not useful search evidence.
 
 ## Rust API
 
@@ -37,17 +37,19 @@ Supply a durable fallible sink for expensive work. The example closure discards 
 | governor | false | Timing-dependent candidate/refit control, recorded for replay |
 | handoff_after | null | Optional BO callback count before serial BiteOpt |
 
-In worker payloads, top-level concurrent/evaluation_threads override the same internal Options fields and are frozen in resolved options. The legacy base acquisition must be LogEI; the advanced acquisition is selected separately. The base trust_region flag controls sparse local candidate generation. The other native limits still hold: 1–32 continuous coordinates, deterministic scalar outcomes and valid finite box/log bounds. This is not noisy GP inference, constrained BO or multiobjective BO.
+In worker payloads, set `concurrent` and `evaluation_threads` at the top level; the resolved payload records them in `parameters` too, and a differing copy there is refused. The legacy base acquisition must be LogEI; the advanced acquisition is selected separately.
+
+The base `trust_region` flag enables the trust region of the original method. Its side `region_length` (unit coordinates, recorded in each proposal's diagnostics) starts at 0.8, halves after max(4, d) completed evaluations without a meaningful improvement, doubles after three improvements up to 1.6, and resets to 0.8 below 1/128. Two of every three LogEI proposals refine inside a lengthscale-shaped box of that side around the incumbent; the third searches the whole box. Sparse local candidates around the incumbent use the same scale. Thompson proposals score the whole candidate pool. A restart after `restart_failures` non-improving evaluations also resets the region. The other native limits still hold: 1–32 continuous coordinates, deterministic scalar outcomes and valid finite box/log bounds. This is not noisy GP inference, constrained BO or multiobjective BO.
 
 Training selection retains the usable incumbent, local neighbours and deterministic maximin global coverage. The durable archive retains every completion, including failures. Training-factor memory is quadratic in the training cap; factorization is cubic in that cap. Duplicate filtering and coordinate refinement still inspect archive points and can dominate at large archives: a cap is a resource bound, not a scalability guarantee. Training caps above 240 and automatic multi-region allocation are not exposed.
 
 ## Numerics and sampling
 
-Fixed-hyperparameter factor reuse compares training IDs and normalized coordinates. Re-estimated transformed targets are solved again; covariance is reused only when valid. A real observation can append the Cholesky factor with the new target. Jitter, pivot ratio, selected training IDs, reuse/refit decisions and fallbacks are recorded. Pivot ratio is not a matrix condition number.
+Observations are processed in ID order, so the region counters and the GP's training order do not depend on which callback of a batch completed first. Fixed-hyperparameter factor reuse compares training IDs and normalized coordinates. Re-estimated transformed targets are solved again; covariance is reused only when valid. A real observation can append the Cholesky factor with the new target. Jitter, pivot ratio, selected training IDs, reuse/refit decisions, fallbacks and the region side are recorded. Pivot ratio is not a matrix condition number.
 
 Exact finite-candidate posterior samples are a small correctness oracle. Decoupled paths use an approximate RFF prior and an exact-kernel conditioning correction, including the model's regularization noise. The Matérn-5/2 frequencies use a multivariate t distribution with five degrees of freedom. Samples keep cross-candidate correlation. Approximation quality depends on feature count; no exact-sampling claim is made.
 
-Sobol candidates use 32-bit Joe–Kuo direction data distributed by SciPy under its bundled license, and a seeded digital shift. This is not Owen scrambling. One-dimensional bin occupancy and the applicable two-dimensional 256-point net are checked; no blanket discrepancy guarantee is inferred for every dimension/projection. Startup retains the centre/maximin design so comparisons do not silently change initialization.
+Sobol candidates use the 32-bit Joe–Kuo direction numbers of the first 32 dimensions as SciPy 1.17.0 initializes them (BSD-3-Clause; see the [Joe–Kuo](../../crates/fcmaes-surrogate/third_party/JOE_KUO_LICENSE.txt) and [SciPy](../../crates/fcmaes-surrogate/third_party/SCIPY_LICENSE.txt) notices), and a seeded digital shift. The unscrambled points equal SciPy's for the first 1024 points in every dimension. This is not Owen scrambling. One-dimensional bin occupancy and the applicable two-dimensional 256-point net are checked; no blanket discrepancy guarantee is inferred for every dimension/projection. Startup retains the centre/maximin design so comparisons do not silently change initialization.
 
 ## Scheduling and stopping
 
@@ -77,7 +79,10 @@ python3 tutorials/surrogate/advanced.py --root /absolute/new/demo \
   --runner /absolute/optimization-run --worker /absolute/fcmaes-job-worker \
   --simulation-worker /absolute/simulation_worker
 python3 scripts/surrogate/run_advanced_panel.py --binary /absolute/advanced_panel \
-  --output /absolute/new/panel --confirm --seed-start 201
+  --output /absolute/new/panel --confirm --seed-start 301
+python3 scripts/surrogate/summarize_advanced_panel.py pack /absolute/new/panel panel.jsonl.gz
+python3 scripts/surrogate/summarize_advanced_panel.py summary panel.jsonl.gz
+python3 scripts/surrogate/verify_advanced_evidence.py
 ```
 
 The harness retains failed/censored cells and resumes only matching unfinished cells, with two worker processes and a 90-second per-cell watchdog. Do not replace retained evidence. Hardware deployment, sustained 16-core limits and actual multi-host/reboot acceptance remain January work.

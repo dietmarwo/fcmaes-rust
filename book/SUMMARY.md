@@ -35,6 +35,10 @@
     - [Surrogate decisions](docs/surrogate/decisions.md)
     - [Surrogate validation](docs/surrogate/validation/REPORT.md)
     - [Surrogate implementation log](docs/surrogate/IMPLEMENTATION_LOG.md)
+    - [Experimental surrogate /2](docs/surrogate/ADVANCED.md)
+      - [Surrogate /2 measured results](docs/surrogate/advanced-evidence/README.md)
+      - [Surrogate /2 improvement plan](docs/plans/fcmaes-surrogate-improvement-plan-2026-11-16.md)
+      - [Companion BO-craft plan](docs/plans/bo-craft-implementation-plan-2026-11-16.md)
 - [Combinatorial encodings](docs/combinatorial-encodings.md)
 - [Python bindings](docs/python-bindings.md)
 - [Examples](docs/examples.md)
@@ -146,6 +150,3 @@
 - [Publishing checklist](RELEASING.md)
 - [AI problem-solving context](ai-context.md)
 - [Agent guide](AGENTS.md)
-
-- [Experimental native surrogate v2](docs/surrogate/ADVANCED.md)
-  - [Advanced surrogate measured results](docs/surrogate/advanced-evidence/README.md)

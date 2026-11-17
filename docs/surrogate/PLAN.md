@@ -174,4 +174,4 @@ Open decisions: optimizer for analytic MAP gradients; local GP data policy and c
 
 ## November 2026 advanced iteration
 
-The opt-in v2 implementation and measured decisions are documented in [ADVANCED.md](ADVANCED.md). The original synchronous defaults remain. The old ledger above is historical: live artifact paging and scalar simulation support in retry/evaluate are already available.
+The opt-in v2 implementation, its review fixes and the measured decisions are documented in [ADVANCED.md](ADVANCED.md). The original synchronous defaults remain. The old ledger above is historical: live artifact paging and scalar simulation support in retry/evaluate are already available.
