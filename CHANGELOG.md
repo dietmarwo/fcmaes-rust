@@ -6,6 +6,10 @@ phase, with breaking changes called out explicitly.
 
 ## [Unreleased]
 
+### Fixed
+
+- The X3 (truss bounds) and X4 (Thomson refinement) tutorial records gain the four report fields of sqp-craft 0.20.0 (`elastic_mode`, `initial_curvature_scale`, `qp_solver`, `step_limited_iterations`), which optimization-jobs' structured-tutorial check now installs. A local run of both presets matched every recorded value within 1e-6; no recorded value changes.
+
 ### Added
 
 - Experimental, opt-in surrogate `/2`: `fcmaes_surrogate::advanced` and the job profile `fcmaes.surrogate/2` ([guide](docs/surrogate/ADVANCED.md)). Over `/1` it adds:
