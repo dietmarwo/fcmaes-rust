@@ -10,6 +10,15 @@ phase, with breaking changes called out explicitly.
 
 - The X3 (truss bounds) and X4 (Thomson refinement) tutorial records gain the four report fields of sqp-craft 0.20.0 (`elastic_mode`, `initial_curvature_scale`, `qp_solver`, `step_limited_iterations`), which optimization-jobs' structured-tutorial check now installs. A local run of both presets matched every recorded value within 1e-6; no recorded value changes.
 
+### Changed
+
+- optimization-jobs pin `41d5f00` (main after the 0.4.1 release; the job
+  crates are still 0.4.1) in every manifest and lockfile, including the four
+  tutorials with a job worker. It adds an optional progress file to command
+  jobs (`jobs progress`), which experiment-craft uses to prune adaptive
+  trials, and guide entries; the job envelope, the worker protocol and the
+  result contract are unchanged.
+
 ### Added
 
 - Experimental, opt-in surrogate `/2`: `fcmaes_surrogate::advanced` and the job profile `fcmaes.surrogate/2` ([guide](docs/surrogate/ADVANCED.md)). Over `/1` it adds:
