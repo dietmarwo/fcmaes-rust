@@ -105,13 +105,13 @@ pub struct TrustRegion {
     pub best: f64,
 }
 
-const TR_INITIAL: f64 = 0.8;
-const TR_MIN: f64 = 0.0078125;
-const TR_MAX: f64 = 1.6;
-const TR_SUCCESSES: u32 = 3;
+pub(crate) const TR_INITIAL: f64 = 0.8;
+pub(crate) const TR_MIN: f64 = 0.0078125;
+pub(crate) const TR_MAX: f64 = 1.6;
+pub(crate) const TR_SUCCESSES: u32 = 3;
 /// With a trust region, every third proposal maximizes the acquisition over
 /// the whole box instead.
-const GLOBAL_EVERY: u64 = 3;
+pub(crate) const GLOBAL_EVERY: u64 = 3;
 
 impl TrustRegion {
     /// Updates the region with the incumbent after the previous batch.

@@ -3,7 +3,9 @@
 use crate::{
     Config, Error, Observation, Result, Space, Value, design,
     gp::{self, ExactGp},
-    sampling, stream_seed,
+    sampling,
+    strategy::{GLOBAL_EVERY, TR_INITIAL, TR_MAX, TR_MIN, TR_SUCCESSES},
+    stream_seed,
     transform::Transform,
 };
 use fcmaes_core::{BiteOpt, BiteParams, Rng};
@@ -125,6 +127,9 @@ pub struct Diagnostics {
     pub fallback: Option<String>,
     pub candidates: usize,
     pub refit_interval: usize,
+    /// Side of the trust region in unit coordinates before lengthscale
+    /// shaping, as used by this proposal.
+    pub region_length: f64,
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(tag = "event", rename_all = "snake_case", deny_unknown_fields)]
@@ -219,6 +224,7 @@ pub struct Engine {
     best: Option<f64>,
     length: f64,
     successes: usize,
+    failures: usize,
     cache: Option<Cached>,
     last_cost: f64,
     eval_cost: f64,
@@ -237,8 +243,9 @@ impl Engine {
             processed: BTreeSet::new(),
             stalls: 0,
             best: None,
-            length: 0.8,
+            length: TR_INITIAL,
             successes: 0,
+            failures: 0,
             cache: None,
             last_cost: 0.0,
             eval_cost: 0.0,
@@ -282,10 +289,14 @@ impl Engine {
         for p in pending {
             occupied.push(self.space.to_unit(p)?);
         }
-        let usable: Vec<_> = history
+        // Process observations in ID order, not completion order, so that the
+        // region counters and the GP's training order do not depend on which
+        // callback of a synchronous batch finished first.
+        let mut usable: Vec<_> = history
             .iter()
             .filter(|s| matches!(s.observation.value, Value::Finite(_)))
             .collect();
+        usable.sort_by_key(|s| s.observation.id);
         let ys: Vec<_> = usable
             .iter()
             .map(|s| match s.observation.value {
@@ -309,15 +320,25 @@ impl Engine {
                     self.best = Some(y);
                     self.stalls = 0;
                     self.successes += 1;
+                    self.failures = 0;
                 } else {
                     self.stalls += 1;
                     self.successes = 0;
+                    self.failures += 1;
+                }
+                // The TuRBO-1 side-length rule of the original method, applied
+                // per completed evaluation (batch size one).
+                if self.successes >= TR_SUCCESSES as usize {
+                    self.length = (self.length * 2.0).min(TR_MAX);
+                    self.successes = 0;
+                } else if self.failures >= 4.max(self.space.dimension()) {
+                    self.length *= 0.5;
+                    self.failures = 0;
+                }
+                if self.length < TR_MIN {
+                    self.length = TR_INITIAL;
                 }
             }
-        }
-        if self.successes >= 3 {
-            self.length = (self.length * 2.0).min(1.6);
-            self.successes = 0;
         }
         if self.stalls >= self.options.restart_failures {
             self.region += 1;
@@ -327,8 +348,10 @@ impl Engine {
                 .max()
                 .map_or(0, |v| v + 1);
             self.stalls = 0;
+            self.successes = 0;
+            self.failures = 0;
             self.best = None;
-            self.length = 0.8;
+            self.length = TR_INITIAL;
             self.cache = None;
         }
         let local: Vec<_> = usable
@@ -426,6 +449,7 @@ impl Engine {
             }
         }
         let mut rng = Rng::new(stream_seed(self.seed, 302, self.round));
+        let d = self.space.dimension();
         let mut pool = match self.options.design {
             Design::LatinHypercube => {
                 design::latin_hypercube(candidates, self.space.dimension(), rng.next_u64())
@@ -434,6 +458,33 @@ impl Engine {
                 design::sobol_shifted(candidates, self.space.dimension(), rng.next_u64())?
             }
         };
+        // Two of every three LogEI proposals search a box of side `length`
+        // around the incumbent, shaped by the lengthscales as in the original
+        // method; the third searches the whole box.
+        let full = (vec![0.0; d], vec![1.0; d]);
+        let mut region = None;
+        if self.options.base.trust_region
+            && let Some(gp) = &model
+            && let Some((index, _)) = raw.iter().enumerate().min_by(|a, b| a.1.total_cmp(b.1))
+        {
+            let mean_log = gp.hyper.lengthscales.iter().map(|l| l.ln()).sum::<f64>() / d as f64;
+            let (mut lower, mut upper) = full.clone();
+            for (j, l) in gp.hyper.lengthscales.iter().enumerate() {
+                let half = 0.5 * self.length * (l.ln() - mean_log).exp();
+                lower[j] = (xs[index][j] - half).max(0.0);
+                upper[j] = (xs[index][j] + half).min(1.0);
+            }
+            let boxed: Vec<Vec<f64>> = pool
+                .iter()
+                .map(|x| {
+                    x.iter()
+                        .enumerate()
+                        .map(|(j, v)| lower[j] + v * (upper[j] - lower[j]))
+                        .collect()
+                })
+                .collect();
+            region = Some((boxed, lower, upper));
+        }
         // Half sparse local candidates; a global half is always retained.
         if self.options.base.trust_region
             && let Some((index, _)) = raw.iter().enumerate().min_by(|a, b| a.1.total_cmp(b.1))
@@ -515,14 +566,21 @@ impl Engine {
             } else if self.options.acquisition == Acquisition::LogEi
                 && let Some(gp) = model.as_ref()
             {
+                let slot = self.round * count as u64 + i as u64;
+                let (cands, lower, upper) = match &region {
+                    Some((boxed, lower, upper)) if slot % GLOBAL_EVERY != GLOBAL_EVERY - 1 => {
+                        (boxed, lower, upper)
+                    }
+                    _ => (&pool, &full.0, &full.1),
+                };
                 crate::strategy::optimize(
                     gp,
-                    &pool,
+                    cands,
                     &occupied,
                     best,
                     &self.options.base,
-                    &vec![0.0; self.space.dimension()],
-                    &vec![1.0; self.space.dimension()],
+                    lower,
+                    upper,
                     stop,
                 )?
             } else {
@@ -552,6 +610,7 @@ impl Engine {
             fallback,
             candidates,
             refit_interval: interval,
+            region_length: self.length,
         };
         self.round += 1;
         self.last_cost = began.elapsed().as_secs_f64();
@@ -1177,4 +1236,103 @@ pub fn replay(events: &[Event]) -> Result<()> {
         return Err(Error::Invalid("incomplete advanced trace".into()));
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn sample(id: u64, x: [f64; 2], y: f64) -> Sample {
+        Sample {
+            observation: Observation {
+                id,
+                x: x.to_vec(),
+                value: Value::Finite(y),
+            },
+            region: 0,
+        }
+    }
+
+    fn new_engine() -> (Space, Engine) {
+        let space = Space::new(vec![0.0; 2], vec![1.0; 2], vec![false; 2]).unwrap();
+        let options = Options {
+            base: Config {
+                initial_points: 4,
+                candidates: 64,
+                fit_restarts: 1,
+                fit_iterations: 8,
+                ..Config::default()
+            },
+            training_cap: 64,
+            archive_cap: 200,
+            ..Options::default()
+        };
+        (space.clone(), Engine::new(space, options, 7).unwrap())
+    }
+
+    /// The incumbent at (0.3, 0.3), then `failures` worse points.
+    fn incumbent_then_failures(failures: u64) -> Vec<Sample> {
+        let mut history = vec![sample(0, [0.3, 0.3], 0.0)];
+        for i in 1..=failures {
+            let (row, column) = ((i - 1) / 6, (i - 1) % 6);
+            let x = [0.05 + 0.18 * column as f64, 0.55 + 0.09 * row as f64];
+            history.push(sample(i, x, 1.0 + 0.01 * i as f64));
+        }
+        history
+    }
+
+    #[test]
+    fn region_halves_after_failures_and_local_proposals_stay_inside_it() {
+        let (space, mut engine) = new_engine();
+        // One success, then seven failures: one halving after max(4, d) = 4.
+        let history = incumbent_then_failures(7);
+        let (points, diagnostics) = engine.propose(&history, &[], 3, &|| false).unwrap();
+        assert_eq!(diagnostics.region_length, TR_INITIAL / 2.0);
+        let hyper = &engine.cache.as_ref().expect("fitted model").gp.hyper;
+        let mean_log = hyper.lengthscales.iter().map(|l| l.ln()).sum::<f64>() / 2.0;
+        // Slots 0 and 1 are local, slot 2 searches the whole box.
+        for x in &points[..2] {
+            let unit = space.to_unit(x).unwrap();
+            for (j, l) in hyper.lengthscales.iter().enumerate() {
+                let half = 0.5 * diagnostics.region_length * (l.ln() - mean_log).exp();
+                assert!(
+                    (unit[j] - 0.3).abs() <= half + 1e-12,
+                    "{unit:?} outside the region"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn region_doubles_after_successes_and_resets_below_its_minimum() {
+        let (_, mut engine) = new_engine();
+        let improving: Vec<_> = (0..4)
+            .map(|i| sample(i, [0.1 + 0.2 * i as f64, 0.5], 10.0 - i as f64))
+            .collect();
+        let (_, diagnostics) = engine.propose(&improving, &[], 1, &|| false).unwrap();
+        assert_eq!(diagnostics.region_length, TR_MAX);
+
+        let (_, mut engine) = new_engine();
+        // 24 failures halve six times: 0.8 / 64 = 0.0125.
+        let history = incumbent_then_failures(28);
+        let (_, diagnostics) = engine.propose(&history[..25], &[], 1, &|| false).unwrap();
+        assert_eq!(diagnostics.region_length, TR_INITIAL / 64.0);
+        // The seventh halving falls below the minimum and resets the side.
+        let (_, diagnostics) = engine.propose(&history, &[], 1, &|| false).unwrap();
+        assert_eq!(diagnostics.region_length, TR_INITIAL);
+    }
+
+    #[test]
+    fn proposals_do_not_depend_on_the_completion_order_of_the_history() {
+        let history = incumbent_then_failures(9);
+        let mut reversed = history.clone();
+        reversed.reverse();
+        let (_, mut forward) = new_engine();
+        let (_, mut backward) = new_engine();
+        let (a, da) = forward.propose(&history, &[], 3, &|| false).unwrap();
+        let (b, db) = backward.propose(&reversed, &[], 3, &|| false).unwrap();
+        assert_eq!(a, b);
+        assert_eq!(da.region_length, db.region_length);
+        assert_eq!(da.training_ids, db.training_ids);
+    }
 }
