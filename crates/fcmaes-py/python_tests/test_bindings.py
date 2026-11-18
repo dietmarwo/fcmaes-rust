@@ -205,6 +205,62 @@ def test_bite_ask_tell_contract_and_validation():
         )
 
 
+POPULATION_TELLS = {
+    "DE": lambda: fcmaes_rust.DE(3, [-2.0] * 3, [2.0] * 3, [], [], [False] * 3, popsize=8, seed=3),
+    "ACMA": lambda: fcmaes_rust.ACMA([0.5] * 3, [-2.0] * 3, [2.0] * 3, [0.3], popsize=8, seed=3),
+    "CRFMNES": lambda: fcmaes_rust.CRFMNES([0.5] * 3, [-2.0] * 3, [2.0] * 3, 0.3, 8, seed=3),
+    "PGPE": lambda: fcmaes_rust.PGPE([0.5] * 3, [-2.0] * 3, [2.0] * 3, [0.3], 8, seed=3),
+}
+
+
+@pytest.mark.parametrize("name", sorted(POPULATION_TELLS))
+def test_population_tell_rejects_wrong_batches_without_changing_state(name):
+    def run(reject):
+        optimizer = POPULATION_TELLS[name]()
+        if reject:
+            with pytest.raises(ValueError, match="pending"):
+                optimizer.tell(np.zeros(optimizer.popsize))
+        asked = []
+        for _ in range(4):
+            xs = optimizer.ask()
+            assert xs.shape == (optimizer.popsize, 3)
+            ys = [sphere(x) for x in xs]
+            if reject:
+                for wrong in (ys[:-1], ys + [0.0], []):
+                    with pytest.raises(ValueError, match="popsize"):
+                        optimizer.tell(wrong)
+            assert optimizer.tell(ys) == 0
+            if reject:
+                with pytest.raises(ValueError, match="pending"):
+                    optimizer.tell(ys)
+            asked.append(xs)
+        asked.append(optimizer.ask())
+        return np.array(asked), optimizer.population(), optimizer.result()
+
+    rejected, plain = run(True), run(False)
+    np.testing.assert_array_equal(rejected[0], plain[0])
+    np.testing.assert_array_equal(rejected[1], plain[1])
+    np.testing.assert_array_equal(rejected[2][0], plain[2][0])
+    assert rejected[2][1:] == plain[2][1:]
+
+
+def test_acma_tell_x_rejects_mismatched_shapes():
+    acma = POPULATION_TELLS["ACMA"]()
+    xs = acma.ask()
+    ys = [sphere(x) for x in xs]
+    with pytest.raises(ValueError, match="popsize"):
+        acma.tell_x(ys[:-1], xs[:-1])
+    with pytest.raises(ValueError, match="one decoded point per value"):
+        acma.tell_x(ys, xs[:-1])
+    with pytest.raises(ValueError, match="width"):
+        acma.tell_x(ys, np.hstack([xs, np.zeros((len(xs), 1))]))
+    assert acma.tell_x(ys, xs) == 0
+    # tell_x consumed the pending batch; it needs none itself.
+    with pytest.raises(ValueError, match="pending"):
+        acma.tell(ys)
+    assert acma.tell_x(ys, xs) == 0
+
+
 def sample_optimizer(fun, bounds, guess, _sdev, rng, store):
     assert store.eval_num(3) == 3
     assert store.get_count_runs() >= 0

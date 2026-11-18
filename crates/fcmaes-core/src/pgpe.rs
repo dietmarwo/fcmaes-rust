@@ -184,8 +184,13 @@ pub struct Pgpe {
     best_y: f64,
     iterations: i32,
     stop: i32,
+    /// Whether `pop_x` holds a batch from [`Pgpe::ask_pop`] not told yet.
+    pending: bool,
     external_evaluations: u64,
 }
+
+const PGPE_NOT_PENDING: &str = "PGPE tell_pop called without a pending ask_pop batch";
+const PGPE_BATCH_LENGTH: &str = "PGPE tell_pop batch length must equal popsize";
 
 impl Pgpe {
     /// Create a PGPE distribution centered on `guess`.
@@ -242,6 +247,7 @@ impl Pgpe {
             best_y: f64::MAX,
             iterations: 0,
             stop: 0,
+            pending: false,
             external_evaluations: 0,
             rng: Rng::new(p.seed.wrapping_add(p.runid as u64)),
             fitfun,
@@ -424,17 +430,48 @@ impl Pgpe {
 
     // ---- ask/tell interface (mirrors PgpeState::Impl) ----
 
-    /// Sample and return one decoded population.
+    /// Sample and return one decoded population of `popsize` rows.
+    ///
+    /// The batch stays pending until it is told. Calling `ask_pop` again
+    /// before that draws a new batch that replaces the pending one; the
+    /// replaced batch can no longer be told.
     pub fn ask_pop(&mut self) -> Vec<Vec<f64>> {
-        self.ask_pop_internal()
+        let rows = self.ask_pop_internal();
+        self.pending = true;
+        rows
     }
 
-    /// Update the distribution from objective values corresponding to
-    /// [`ask_pop`](Self::ask_pop), returning the current stop code.
+    /// Update the distribution from one objective value per row of the
+    /// population from [`ask_pop`](Self::ask_pop), in the same order,
+    /// returning the current stop code.
+    ///
+    /// # Panics
+    ///
+    /// Panics if no batch is pending or if `ys` does not have `popsize`
+    /// values. Use [`Pgpe::try_tell_pop`] to receive these as errors instead.
     pub fn tell_pop(&mut self, ys: &[f64]) -> i32 {
+        self.try_tell_pop(ys).expect("invalid PGPE tell_pop call")
+    }
+
+    /// Fallible tell variant validating call order and batch length. A
+    /// rejected call changes no optimizer state.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if no batch is pending (no
+    /// [`ask_pop`](Self::ask_pop) since the last successful tell) or if `ys`
+    /// does not have `popsize` values.
+    pub fn try_tell_pop(&mut self, ys: &[f64]) -> Result<i32, &'static str> {
+        if !self.pending {
+            return Err(PGPE_NOT_PENDING);
+        }
+        if ys.len() != self.popsize {
+            return Err(PGPE_BATCH_LENGTH);
+        }
+        self.pending = false;
         let stop = self.tell(ys);
         self.external_evaluations += ys.len() as u64;
-        stop
+        Ok(stop)
     }
 
     /// Return the most recently sampled decoded population.
@@ -493,6 +530,101 @@ mod tests {
         // best_x must evaluate close to the reported best value.
         assert!((sphere(&r.x) - r.y).abs() < 1e-6 || r.y < 1e-2);
         assert!(sphere(&r.x) < 1e-1, "best_x not good: {}", sphere(&r.x));
+    }
+
+    fn pgpe(seed: u64, max_evaluations: u64) -> Pgpe {
+        let mut fit = Fitness::bounded(4, 1, &[-5.0; 4], &[5.0; 4]);
+        fit.set_normalize(true);
+        let params = PgpeParams {
+            popsize: 10,
+            max_evaluations,
+            seed,
+            ..Default::default()
+        };
+        Pgpe::new(fit, &[2.0, -1.0, 0.5, 3.0], &[0.5; 4], &params)
+    }
+
+    fn summary(r: &PgpeResult) -> (Vec<f64>, f64, u64, i32, i32) {
+        (r.x.clone(), r.y, r.evaluations, r.iterations, r.stop)
+    }
+
+    /// Ask/tell evaluates the same points and reaches the same result as the
+    /// one-shot `optimize_batch` for the same number of generations.
+    #[test]
+    fn ask_tell_equals_optimize_batch() {
+        let mut one_shot = pgpe(6, 50 * 10);
+        let mut evaluated = Vec::new();
+        let expected = one_shot.optimize_batch(|rows| {
+            evaluated.extend_from_slice(rows);
+            rows.iter().map(|x| sphere(x)).collect()
+        });
+        assert_eq!(expected.evaluations, 50 * 10);
+        let mut driven = pgpe(6, 50 * 10);
+        let mut asked = Vec::new();
+        for _ in 0..50 {
+            let xs = driven.ask_pop();
+            let ys: Vec<f64> = xs.iter().map(|x| sphere(x)).collect();
+            asked.extend(xs);
+            driven.tell_pop(&ys);
+        }
+        assert_eq!(asked, evaluated);
+        assert_eq!(summary(&driven.result()), summary(&expected));
+        assert_eq!(driven.population(), one_shot.population());
+    }
+
+    /// Rejected tells (none pending, short, long, repeated) change nothing:
+    /// the run continues exactly as one without them.
+    #[test]
+    fn rejected_tells_leave_the_state_unchanged() {
+        let run = |reject: bool| {
+            let mut es = pgpe(5, 10_000);
+            if reject {
+                assert_eq!(es.try_tell_pop(&[]), Err(PGPE_NOT_PENDING));
+                assert_eq!(es.try_tell_pop(&[1.0; 10]), Err(PGPE_NOT_PENDING));
+            }
+            let mut asked = Vec::new();
+            for _ in 0..5 {
+                let xs = es.ask_pop();
+                let ys: Vec<f64> = xs.iter().map(|x| sphere(x)).collect();
+                if reject {
+                    assert_eq!(es.try_tell_pop(&ys[..9]), Err(PGPE_BATCH_LENGTH));
+                    let long = [ys.as_slice(), &[0.0]].concat();
+                    assert_eq!(es.try_tell_pop(&long), Err(PGPE_BATCH_LENGTH));
+                    assert_eq!(es.try_tell_pop(&[]), Err(PGPE_BATCH_LENGTH));
+                }
+                assert_eq!(es.try_tell_pop(&ys), Ok(0));
+                if reject {
+                    assert_eq!(es.try_tell_pop(&ys), Err(PGPE_NOT_PENDING));
+                }
+                asked.push(xs);
+            }
+            asked.push(es.ask_pop());
+            (asked, es.population(), summary(&es.result()))
+        };
+        assert_eq!(run(true), run(false));
+    }
+
+    #[test]
+    #[should_panic(expected = "PGPE tell_pop batch length must equal popsize")]
+    fn tell_pop_panics_on_a_short_batch() {
+        let mut es = pgpe(1, 1000);
+        let xs = es.ask_pop();
+        es.tell_pop(&vec![0.0; xs.len() - 1]);
+    }
+
+    #[test]
+    #[should_panic(expected = "PGPE tell_pop batch length must equal popsize")]
+    fn tell_pop_panics_on_a_long_batch() {
+        let mut es = pgpe(1, 1000);
+        let xs = es.ask_pop();
+        es.tell_pop(&vec![0.0; xs.len() + 1]);
+    }
+
+    #[test]
+    #[should_panic(expected = "PGPE tell_pop called without a pending ask_pop batch")]
+    fn tell_pop_panics_without_a_pending_ask() {
+        let mut es = pgpe(1, 1000);
+        es.tell_pop(&[0.0; 10]);
     }
 
     #[test]

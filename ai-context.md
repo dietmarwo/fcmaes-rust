@@ -210,6 +210,17 @@ runs are more valuable. Every fcmaes population optimizer exposes an ask/tell
 boundary; Dual Annealing is the sequential non-population exception. External
 optimizers can use generic retry without becoming `fcmaes-core` dependencies.
 
+Tell exactly one value per asked row, in ask order, once per `ask`. DE, jSO,
+CMA-ES, CR-FM-NES, PGPE and MODE reject a `tell` without a pending batch or
+with a different number of values: the Rust `tell` (`tell_pop` for CR-FM-NES
+and PGPE) panics, `try_tell` (`try_tell_pop`) returns the error, and the
+Python classes raise `ValueError`; a rejected call changes nothing. Do not
+tell a partial generation: when a budget ends inside one, evaluate the rest or
+discard it. A second `ask` before `tell` is rejected by jSO and MODE, returns
+the same batch in BiteOpt, and replaces the pending batch in DE, CMA-ES,
+CR-FM-NES and PGPE. `Cmaes::tell_x` (Python `ACMA.tell_x`) tells `popsize`
+caller-supplied points and needs no pending `ask`.
+
 ## Required workflow for the AI
 
 Before selecting an algorithm, create a problem card containing the following

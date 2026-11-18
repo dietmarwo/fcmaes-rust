@@ -3,6 +3,7 @@
 
 use fcmaes_core::{De, DeParams, Fitness};
 use numpy::PyReadonlyArray1;
+use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3::types::PyTuple;
 
@@ -186,7 +187,9 @@ pub fn optimize_de<'py>(
 /// arrays and sequences: one that is not one-dimensional raises ``TypeError``,
 /// values NumPy cannot convert to ``float64`` (``bool`` for ``ints``) raise
 /// ``ValueError``. :meth:`tell` raises ``ValueError`` if it does not receive
-/// exactly one value per row returned by the most recent :meth:`ask`.
+/// exactly one value per row returned by the most recent :meth:`ask`, or if
+/// no :meth:`ask` is pending. A second :meth:`ask` before :meth:`tell`
+/// replaces the pending batch.
 #[pyclass]
 pub struct DE {
     inner: De,
@@ -248,11 +251,16 @@ impl DE {
         rows_to_pyarray(py, &self.inner.ask())
     }
 
-    /// Submit one minimized objective value per row returned by :meth:`ask`.
+    /// Submit one minimized objective value per row returned by the most
+    /// recent :meth:`ask`.
     ///
-    /// Returns the optimizer stop code.
-    fn tell(&mut self, ys: F64Vec<'_>) -> i32 {
-        self.inner.tell(&slice_or_vec(&ys))
+    /// Returns the optimizer stop code. Raises ``ValueError`` if no batch is
+    /// pending (no :meth:`ask` since the last :meth:`tell`) or if ``ys`` does
+    /// not have ``popsize`` values; the optimizer is then unchanged.
+    fn tell(&mut self, ys: F64Vec<'_>) -> PyResult<i32> {
+        self.inner
+            .try_tell(&slice_or_vec(&ys))
+            .map_err(PyValueError::new_err)
     }
 
     /// Return the current decoded population, shape ``(popsize, dim)``.

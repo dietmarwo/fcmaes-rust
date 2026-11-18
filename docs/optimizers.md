@@ -63,6 +63,17 @@ optimizer.tell(&ys);
 
 The same split permits GPU batches, asynchronous services, or external
 simulator pools, as long as results are restored to ask order before `tell`.
+
+`tell` checks the batch it receives against the pending one, the batch
+returned by the most recent `ask` and not told yet. DE, jSO, CMA-ES,
+CR-FM-NES, PGPE and MODE reject a `tell` without a pending batch or with a
+different number of values: `tell` (`tell_pop` for CR-FM-NES and PGPE) panics,
+and `try_tell` (`try_tell_pop`) returns the error instead. A rejected call
+changes no optimizer state. The optimizers differ in what a second `ask`
+before `tell` does: jSO and MODE reject it, BiteOpt returns the pending batch
+again, and DE, CMA-ES, CR-FM-NES and PGPE draw a new batch that replaces the
+pending one. BiteOpt's `tell` returns `-1` for a wrong batch instead of
+panicking.
 When combining retry and population evaluation, budget threads explicitly:
 for example, four retry lanes with four evaluation workers each on 16 physical
 cores. Using 16 lanes each with 16 inner workers normally oversubscribes the
@@ -108,6 +119,9 @@ Key `DeParams` defaults:
 Pass empty guess and sigma slices for uniform initialization. With a guess,
 provide a same-dimensional sigma vector. The optional integer mask must match
 the problem dimension.
+
+`ask` returns `popsize` rows; `tell` takes exactly one value per row and
+rejects any other length (`try_tell` returns the error instead of panicking).
 
 ## jSO
 
@@ -175,6 +189,13 @@ Key `CmaesParams` defaults:
 `Cmaes::optimize(objective, workers)` controls population-evaluation
 parallelism. Use `1` when outer retry already supplies parallelism.
 
+`ask` returns `popsize` decoded rows and `tell` takes exactly one value per
+row. `tell_x(ys, xs)` tells `popsize` values for points supplied by the caller,
+for example repaired versions of the asked rows; it needs no pending `ask`,
+consumes one that is pending, and rejects `xs` unless it has one `dim`-wide
+point per value. `try_tell` and `try_tell_x` return these errors instead of
+panicking.
+
 ## CR-FM-NES
 
 `Crfmnes` evaluates complete populations through a batch closure:
@@ -187,7 +208,9 @@ let result = optimizer.optimize_batch(|rows| {
 
 Defaults include population 32, 100,000 evaluations, penalty coefficient
 `1e5`, and constraint-violation handling enabled. `ask_pop` returns decoded,
-in-bound rows; `tell_pop` consumes one value per row.
+in-bound rows; `tell_pop` consumes exactly one value per row and rejects
+any other length or a call without a pending `ask_pop` (`try_tell_pop`
+returns the error instead of panicking).
 
 ## PGPE
 

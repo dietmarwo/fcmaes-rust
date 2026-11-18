@@ -347,6 +347,22 @@ def _invalid_inputs():
     yield "optimize_jso zero budget", lambda: fcmaes_rust.optimize_jso(
         f, 2, good_lo, good_up, seed=1, max_evaluations=0)
     yield "JSO zero budget", lambda: fcmaes_rust.JSO(2, good_lo, good_up, seed=1, max_evaluations=0)
+    stateful = {
+        "DE": lambda: fcmaes_rust.DE(2, good_lo, good_up, empty, empty, no_ints, popsize=8, seed=1),
+        "ACMA": lambda: fcmaes_rust.ACMA([0.0, 0.0], good_lo, good_up, [0.3, 0.3], popsize=8, seed=1),
+        "CRFMNES": lambda: fcmaes_rust.CRFMNES([0.0, 0.0], good_lo, good_up, 0.3, 8, seed=1),
+        "PGPE": lambda: fcmaes_rust.PGPE([0.0, 0.0], good_lo, good_up, [0.3, 0.3], 8, seed=1),
+    }
+
+    def tell(make, extra):
+        optimizer = make()
+        optimizer.tell(np.zeros(len(optimizer.ask()) + extra))
+
+    for name, make in stateful.items():
+        yield f"{name} short tell", lambda make=make: tell(make, -1)
+        yield f"{name} long tell", lambda make=make: tell(make, 1)
+        yield f"{name} tell without ask", lambda make=make: make().tell(np.zeros(8))
+    yield "ACMA narrow tell_x", lambda: stateful["ACMA"]().tell_x(np.zeros(8), np.zeros((8, 1)))
 
 
 INVALID = dict(_invalid_inputs())

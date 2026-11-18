@@ -3,6 +3,7 @@
 
 use fcmaes_core::{Crfmnes, CrfmnesParams, Fitness};
 use numpy::PyArray2;
+use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3::types::PyTuple;
 
@@ -164,7 +165,8 @@ fn eval_batch(batch_fun: &Py<PyAny>, rows: &[Vec<f64>], failures: &FailureLog) -
 /// one-dimensional raises ``TypeError``, values NumPy cannot convert to
 /// ``float64`` raise ``ValueError``. :meth:`tell` raises ``ValueError`` if it
 /// does not receive exactly one value per row returned by the most recent
-/// :meth:`ask`.
+/// :meth:`ask`, or if no :meth:`ask` is pending. A second :meth:`ask` before
+/// :meth:`tell` replaces the pending batch.
 #[allow(clippy::upper_case_acronyms)]
 #[pyclass]
 pub struct CRFMNES {
@@ -216,9 +218,13 @@ impl CRFMNES {
 
     /// Submit one minimized value per row from the most recent :meth:`ask`.
     ///
-    /// Returns the current stop code.
-    fn tell(&mut self, ys: F64Vec<'_>) -> i32 {
-        self.inner.tell_pop(&slice_or_vec(&ys))
+    /// Returns the current stop code. Raises ``ValueError`` if no batch is
+    /// pending (no :meth:`ask` since the last :meth:`tell`) or if ``ys`` does
+    /// not have ``popsize`` values; the optimizer is then unchanged.
+    fn tell(&mut self, ys: F64Vec<'_>) -> PyResult<i32> {
+        self.inner
+            .try_tell_pop(&slice_or_vec(&ys))
+            .map_err(PyValueError::new_err)
     }
 
     /// Return the current decoded population.

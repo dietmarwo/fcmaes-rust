@@ -13,9 +13,12 @@ converted by NumPy to ``float64`` (``bool`` for the ``ints`` masks); a
 ``float64`` array is used without a copy. An argument with the wrong number of
 dimensions raises ``TypeError``, values NumPy cannot convert raise
 ``ValueError``. Mismatched lengths, invalid bounds and population sizes raise
-``ValueError``, as does a ``tell`` with the wrong number of values; ``Bite``
+``ValueError``, as does a ``tell`` with the wrong number of values or without
+a pending ``ask``; a rejected ``tell`` leaves the optimizer unchanged. ``Bite``
 raises ``RuntimeError`` for ``tell`` before ``ask`` and for two ``ask`` calls
-in a row.
+in a row, as ``JSO`` and ``MODE`` raise ``ValueError`` for the latter; a
+second ``ask`` of ``ACMA``, ``CRFMNES``, ``DE`` or ``PGPE`` replaces the
+pending batch. ``ACMA.tell_x`` needs no pending ``ask``.
 
 As in fcmaes, an objective callback that raises does not abort the run: the
 call counts as a failed evaluation (ranked worst) and the exception is not

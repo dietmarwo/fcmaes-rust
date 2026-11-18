@@ -168,8 +168,15 @@ pub struct Cmaes {
     // ask/tell bookkeeping (mirrors AcmaState::Impl)
     asked_x: DMatrix<f64>,
     population_decoded: DMatrix<f64>,
+    /// Whether `asked_x` holds a batch from [`Cmaes::ask`] not told yet.
+    pending: bool,
     external_evaluations: u64,
 }
+
+const CMA_NOT_PENDING: &str = "CMA-ES tell called without a pending ask batch";
+const CMA_BATCH_LENGTH: &str = "CMA-ES tell batch length must equal popsize";
+const CMA_POINTS: &str = "CMA-ES tell_x needs one decoded point per value";
+const CMA_POINT_WIDTH: &str = "CMA-ES tell_x point width must equal dim";
 
 impl Cmaes {
     /// Build a CMA-ES optimizer. `guess` is the initial mean, `input_sigma`
@@ -296,6 +303,7 @@ impl Cmaes {
             compute_arz: true,
             asked_x: DMatrix::zeros(dim, popsize),
             population_decoded: DMatrix::zeros(dim, popsize),
+            pending: false,
             external_evaluations: 0,
             rng: Rng::new(p.seed.wrapping_add(p.runid as u64)),
             fitfun,
@@ -680,17 +688,47 @@ impl Cmaes {
         encoded
     }
 
-    /// Ask for a decoded population (rows = individuals).
+    /// Ask for a decoded population of `popsize` rows (rows = individuals).
+    ///
+    /// The batch stays pending until it is told. Calling `ask` again before
+    /// that draws a new batch that replaces the pending one; the replaced
+    /// batch can no longer be told.
     pub fn ask(&mut self) -> Vec<Vec<f64>> {
         self.asked_x = self.ask_all();
         self.population_decoded = self.decode_population(&self.asked_x);
+        self.pending = true;
         (0..self.popsize)
             .map(|p| col(&self.population_decoded, p).as_slice().to_vec())
             .collect()
     }
 
-    /// Tell fitness values for the population returned by [`ask`](Cmaes::ask).
+    /// Tell one fitness value per row of the population returned by
+    /// [`ask`](Cmaes::ask), in the same order. Returns the termination code.
+    ///
+    /// # Panics
+    ///
+    /// Panics if no batch is pending or if `ys` does not have `popsize`
+    /// values. Use [`Cmaes::try_tell`] to receive these as errors instead.
     pub fn tell(&mut self, ys: &[f64]) -> i32 {
+        self.try_tell(ys).expect("invalid CMA-ES tell call")
+    }
+
+    /// Fallible tell variant validating call order and batch length. A
+    /// rejected call changes no optimizer state.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if no batch is pending (no [`ask`](Cmaes::ask) since
+    /// the last successful tell or [`tell_x`](Cmaes::tell_x)) or if `ys` does
+    /// not have `popsize` values.
+    pub fn try_tell(&mut self, ys: &[f64]) -> Result<i32, &'static str> {
+        if !self.pending {
+            return Err(CMA_NOT_PENDING);
+        }
+        if ys.len() != self.popsize {
+            return Err(CMA_BATCH_LENGTH);
+        }
+        self.pending = false;
         self.told = 0;
         let asked = self.asked_x.clone();
         for (p, &y) in ys.iter().enumerate() {
@@ -698,17 +736,51 @@ impl Cmaes {
         }
         self.compute_arz = false;
         self.external_evaluations += ys.len() as u64;
-        self.stop
+        Ok(self.stop)
     }
 
-    /// Tell fitness values for an externally supplied decoded population.
+    /// Tell fitness values for an externally supplied decoded population of
+    /// `popsize` rows, for example repaired versions of the asked rows.
+    ///
+    /// No pending [`ask`](Cmaes::ask) is needed: the supplied population
+    /// replaces the asked one, and a pending batch is consumed.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `ys` does not have `popsize` values, if `xs_decoded` does
+    /// not have one point per value or if a point does not have `dim`
+    /// coordinates. Use [`Cmaes::try_tell_x`] to receive these as errors
+    /// instead.
     pub fn tell_x(&mut self, ys: &[f64], xs_decoded: &[Vec<f64>]) -> i32 {
+        self.try_tell_x(ys, xs_decoded)
+            .expect("invalid CMA-ES tell_x call")
+    }
+
+    /// Fallible [`tell_x`](Cmaes::tell_x) variant validating the shapes. A
+    /// rejected call changes no optimizer state.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if `ys` does not have `popsize` values, if
+    /// `xs_decoded` does not have one point per value or if a point does not
+    /// have `dim` coordinates.
+    pub fn try_tell_x(&mut self, ys: &[f64], xs_decoded: &[Vec<f64>]) -> Result<i32, &'static str> {
+        if ys.len() != self.popsize {
+            return Err(CMA_BATCH_LENGTH);
+        }
+        if xs_decoded.len() != ys.len() {
+            return Err(CMA_POINTS);
+        }
+        if xs_decoded.iter().any(|row| row.len() != self.dim) {
+            return Err(CMA_POINT_WIDTH);
+        }
         let mut decoded = DMatrix::zeros(self.dim, self.popsize);
         for (p, row) in xs_decoded.iter().enumerate() {
             for i in 0..self.dim {
                 decoded[(i, p)] = row[i];
             }
         }
+        self.pending = false;
         self.asked_x = self.encode_population(&decoded);
         self.population_decoded = decoded;
         self.told = 0;
@@ -718,7 +790,7 @@ impl Cmaes {
         }
         self.compute_arz = true;
         self.external_evaluations += ys.len() as u64;
-        self.stop
+        Ok(self.stop)
     }
 
     /// Current decoded population (rows = individuals).
@@ -805,6 +877,133 @@ mod tests {
             }
         }
         assert!(opt.result().y < 1e-3, "ask/tell did not converge");
+    }
+
+    fn cma(seed: u64) -> Cmaes {
+        let mut fit = Fitness::bounded(3, 1, &[-5.0; 3], &[5.0; 3]);
+        fit.set_normalize(true);
+        let params = CmaesParams {
+            popsize: 12,
+            max_evaluations: 2000,
+            seed,
+            ..Default::default()
+        };
+        Cmaes::new(fit, &[1.0, -2.0, 0.5], &[0.3], &params)
+    }
+
+    fn summary(r: &AcmaResult) -> (Vec<f64>, f64, u64, i32, i32) {
+        (r.x.clone(), r.y, r.evaluations, r.iterations, r.stop)
+    }
+
+    /// One ask/tell pair is one generation of the `ask_all`/`tell_one`
+    /// sequence the interface is built from. (`optimize` restarts the
+    /// iteration count at zero and so follows a different path.)
+    #[test]
+    fn ask_tell_equals_the_generation_reference() {
+        let mut reference = cma(7);
+        let mut driven = cma(7);
+        for _ in 0..40 {
+            let encoded = reference.ask_all();
+            let decoded = reference.decode_population(&encoded);
+            let rows: Vec<Vec<f64>> = (0..12)
+                .map(|p| col(&decoded, p).as_slice().to_vec())
+                .collect();
+            let xs = driven.ask();
+            assert_eq!(xs, rows);
+            let ys: Vec<f64> = xs.iter().map(|x| rosen(x)).collect();
+            reference.told = 0;
+            for (p, &y) in ys.iter().enumerate() {
+                reference.tell_one(y, &col(&encoded, p));
+            }
+            assert_eq!(driven.tell(&ys), reference.stop);
+        }
+        assert_eq!(driven.xmean, reference.xmean);
+        assert_eq!(driven.sigma, reference.sigma);
+        assert_eq!(
+            summary(&driven.result()),
+            summary(&reference.make_result(40 * 12))
+        );
+    }
+
+    /// Rejected tells (none pending, short, long, repeated, mismatched
+    /// `tell_x` points) change nothing: the run continues exactly as one
+    /// without them.
+    #[test]
+    fn rejected_tells_leave_the_state_unchanged() {
+        let run = |reject: bool| {
+            let mut es = cma(9);
+            if reject {
+                assert_eq!(es.try_tell(&[]), Err(CMA_NOT_PENDING));
+                assert_eq!(es.try_tell(&[1.0; 12]), Err(CMA_NOT_PENDING));
+            }
+            let mut asked = Vec::new();
+            for generation in 0..6 {
+                let xs = es.ask();
+                let ys: Vec<f64> = xs.iter().map(|x| rosen(x)).collect();
+                if reject {
+                    assert_eq!(es.try_tell(&ys[..11]), Err(CMA_BATCH_LENGTH));
+                    let long = [ys.as_slice(), &[0.0]].concat();
+                    assert_eq!(es.try_tell(&long), Err(CMA_BATCH_LENGTH));
+                    assert_eq!(es.try_tell_x(&ys[..11], &xs[..11]), Err(CMA_BATCH_LENGTH));
+                    assert_eq!(es.try_tell_x(&long, &xs), Err(CMA_BATCH_LENGTH));
+                    assert_eq!(es.try_tell_x(&ys, &xs[..11]), Err(CMA_POINTS));
+                    let wide: Vec<Vec<f64>> =
+                        xs.iter().map(|x| [x.as_slice(), &[0.0]].concat()).collect();
+                    assert_eq!(es.try_tell_x(&ys, &wide), Err(CMA_POINT_WIDTH));
+                }
+                if generation % 2 == 0 {
+                    assert_eq!(es.try_tell(&ys), Ok(0));
+                } else {
+                    assert_eq!(es.try_tell_x(&ys, &xs), Ok(0));
+                }
+                if reject {
+                    assert_eq!(es.try_tell(&ys), Err(CMA_NOT_PENDING));
+                }
+                asked.push(xs);
+            }
+            asked.push(es.ask());
+            (asked, es.population(), summary(&es.result()))
+        };
+        assert_eq!(run(true), run(false));
+    }
+
+    #[test]
+    #[should_panic(expected = "CMA-ES tell batch length must equal popsize")]
+    fn tell_panics_on_a_short_batch() {
+        let mut es = cma(1);
+        let xs = es.ask();
+        es.tell(&vec![0.0; xs.len() - 1]);
+    }
+
+    #[test]
+    #[should_panic(expected = "CMA-ES tell batch length must equal popsize")]
+    fn tell_panics_on_a_long_batch() {
+        let mut es = cma(1);
+        let xs = es.ask();
+        es.tell(&vec![0.0; xs.len() + 1]);
+    }
+
+    #[test]
+    #[should_panic(expected = "CMA-ES tell called without a pending ask batch")]
+    fn tell_panics_without_a_pending_ask() {
+        let mut es = cma(1);
+        es.tell(&[0.0; 12]);
+    }
+
+    #[test]
+    #[should_panic(expected = "CMA-ES tell batch length must equal popsize")]
+    fn tell_x_panics_on_a_short_batch() {
+        let mut es = cma(1);
+        let xs = es.ask();
+        es.tell_x(&[0.0; 11], &xs[..11]);
+    }
+
+    #[test]
+    #[should_panic(expected = "CMA-ES tell_x needs one decoded point per value")]
+    fn tell_x_panics_on_mismatched_points() {
+        let mut es = cma(1);
+        let xs = es.ask();
+        es.tell_x(&[0.0; 12], &xs[..11]);
     }
 
     #[test]

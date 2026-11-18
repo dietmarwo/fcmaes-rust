@@ -8,6 +8,23 @@ phase, with breaking changes called out explicitly.
 
 ### Fixed
 
+- The ask/tell `tell` of DE (`De::tell`), active CMA-ES (`Cmaes::tell`,
+  `Cmaes::tell_x`), CR-FM-NES (`Crfmnes::tell_pop`) and PGPE
+  (`Pgpe::tell_pop`) did not check the batch length. Depending on the
+  optimizer, a short batch was accepted as a partial update or panicked with
+  an index error, a long one panicked with an index error (PGPE silently
+  ignored the extra values), and a `tell` without a pending `ask` was applied
+  to a stale or empty batch. All of these are now rejected without changing the
+  optimizer: `tell`/`tell_pop` panic with a clear message, and the new
+  `De::try_tell`, `Cmaes::try_tell`, `Cmaes::try_tell_x`,
+  `Crfmnes::try_tell_pop` and `Pgpe::try_tell_pop` return the error, as MODE
+  and jSO already did. `tell_x` also rejects points that are not one
+  `dim`-wide point per value; it still needs no pending `ask`. In Python,
+  `tell` of `DE`, `ACMA`, `CRFMNES` and `PGPE` and `ACMA.tell_x` raise
+  `ValueError`, as the type stub documented, instead of accepting the batch
+  or raising `PanicException`. A second `ask` before `tell` still replaces
+  the pending batch. Correct ask/tell sequences evaluate the same points and
+  give the same results as before.
 - `optimize_da` keeps to `max_evaluations`, as documented. Its local search
   evaluated the finite-difference gradient (`2 * dim + 1` calls) and the first
   line-search step without a budget check, and could start a second local
