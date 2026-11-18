@@ -227,6 +227,9 @@ limits of the experiment.
 
 ## Round 2
 
+The outcome is in [DECISION.md](DECISION.md). `python3 posthoc_round2.py`
+prints two robustness checks that are outside the declared rules.
+
 [ROUND2.md](ROUND2.md) declares a second round: one restart protocol (T)
 with run budgets of the size fcmaes is normally used with, two DE→CMA-style
 sequence arms, and the ten round-1 problems with a mean evaluation time of

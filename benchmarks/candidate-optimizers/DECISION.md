@@ -75,3 +75,84 @@ cells. Incumbent mean ranks: DE→CMA 3.60, DE 4.13, BiteOpt 5.02, CR-FM-NES
   L-SHADE.
 - More repetitions on the cells BIPOP ties, and a decision whether the
   BIPOP schedule of `fcmaes-job-worker` should move into core.
+
+# Round 2
+
+Campaign of 18 November 2026 under [ROUND2.md](ROUND2.md): 12 solvers, 10
+problems (8 GTOP, 2 Lennard-Jones), protocol T (400,000 evaluations per
+repetition, runs of at most 100,000, restart until spent), 20 repetitions,
+2,400 runs, no contract violation. Numbers are in
+[results/round2/report.md](results/round2/report.md), runs in
+[results/round2/raw.tsv](results/round2/raw.tsv).
+
+## Outcome by the declared rules
+
+| Candidate | Wins | Losses | Ties | Mean rank (of 12) | G1 | G2 | Decision |
+|---|---:|---:|---:|---:|:-:|:-:|---|
+| jSO→CMA (`jso_cma`) | 1 | 3 | 6 | 3.7 | no | yes | Include |
+| L-SRTDE→CMA (`lsrtde_cma`) | 0 | 3 | 7 | 4.4 | no | no | Reject |
+| L-SRTDE, base difference (`lsrtde_b`) | 0 | 5 | 5 | 6.2 | no | no | Reject |
+| jSO (`jso`) | 1 | 6 | 3 | 7.1 | no | no | Watch |
+| L-SHADE (`lshade`) | 0 | 7 | 3 | 7.6 | no | no | Reject |
+| BIPOP-aCMA-ES (`bipop`) | 0 | 6 | 4 | 7.7 | no | no | Reject |
+
+Incumbent mean ranks: DE→CMA 3.9, DE 5.6, CMA-ES 6.6, CR-FM-NES 8.0,
+BiteOpt 8.1, Dual Annealing 9.1.
+
+`jso_cma` meets gate G2 with a mean rank of 3.7 against 3.9 for DE→CMA. By
+the declared rule this is an *include*: implement jSO in core and offer it
+as a sequence stage.
+
+## How strong the include is
+
+The gate compares two mean ranks without a margin. Two checks outside the
+declared rules ([posthoc_round2.py](posthoc_round2.py)) show that the
+difference is within the noise of 20 repetitions:
+
+- When the repetitions are resampled, `jso_cma` meets G2 in 55% of 10,000
+  resamples. The 95% interval of its mean rank minus that of DE→CMA is
+  −1.2 to +1.1.
+- Head to head with DE→CMA, `jso_cma` is significantly better on GTOC1 and
+  Tandem and significantly worse on Cassini1, Sagas and Messenger full.
+  `lsrtde_cma` is significantly worse on the same three and significantly
+  better on none.
+
+The data therefore support this reading: a jSO first stage is about as good
+as the DE first stage overall and has a different profile; it does not
+replace DE.
+
+| Problem | DE→CMA median | jSO→CMA median | L-SRTDE→CMA median |
+|---|---:|---:|---:|
+| GTOC1 | −1,060,676 | −1,200,625 | −1,099,773 |
+| Tandem | −558.8 | −779.6 | −706.3 |
+| Messenger reduced | 10.11 | 9.50 | 8.78 |
+| Rosetta | 1.963 | 1.902 | 1.885 |
+| Lennard-Jones 38 | −123.7 | −128.7 | −127.5 |
+| Lennard-Jones 13 | −41.445 | −41.458 | −41.420 |
+| Cassini2 | 14.46 | 14.86 | 14.25 |
+| Cassini1 | 4.968 | 5.303 | 5.303 |
+| Messenger full | 11.02 | 13.51 | 13.45 |
+| Sagas | 83.3 | 225.1 | 228.7 |
+
+## What the cells show
+
+- **Standalone candidates do not pass with large restart budgets either.**
+  L-SHADE, jSO and L-SRTDE lose 7, 6 and 5 of 10 problems; the only win is
+  jSO on GTOC1.
+- **The CMA-ES second stage is what makes them competitive.** On the
+  Lennard-Jones cluster with 114 variables, jSO alone reaches −39.7 and
+  jSO→CMA −128.7.
+- **BIPOP falls back.** It ranks ninth of twelve and loses 6 of 10
+  problems. In round 1 it ranked third; the rounds differ in budget and in
+  that every solver now spends the whole budget.
+- **Sagas, Messenger full and Cassini1 belong to the DE first stage.**
+  Both candidate sequences settle at the 225 basin on Sagas in the median.
+
+## Limits
+
+- Two domains only. The truss-sizing (36.7 µs) and dispersion (43.3 µs)
+  problems missed the 25 µs entry rule, and the three costlier round-1
+  problems were out of reach at 100,000 evaluations per run.
+- One protocol, one host, 20 repetitions, published defaults.
+- The first stage gets 40% of each run because the core sequence does; no
+  other split was tried.

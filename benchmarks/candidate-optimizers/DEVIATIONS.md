@@ -62,3 +62,10 @@ Known limits that follow from the protocol and are not changed:
   (2,838) and about one generation for L-SHADE (1,728) and L-SRTDE (1,920).
 - L-SRTDE details that the paper leaves open are listed in the module
   documentation.
+
+## Round 2
+
+No deviation from [ROUND2.md](ROUND2.md). Both optional problems failed the
+timing rule and did not enter. The compute rule kept 20 repetitions: one
+full-scale timing repetition (root seed 999, not a campaign row) projected
+64 minutes.
