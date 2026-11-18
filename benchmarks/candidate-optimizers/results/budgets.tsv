@@ -1,0 +1,14 @@
+problem	domain	dim	mean_eval_us	budget
+cassini1	space	6	5.877	200000
+gtoc1	space	8	8.452	200000
+sagas	space	12	3.416	200000
+messenger	space	18	10.022	100000
+tandem	space	18	9.621	200000
+cassini2	space	22	13.037	100000
+rosetta	space	22	11.331	100000
+messenger_full	space	26	15.578	100000
+optical_lens	optics	11	539.674	16000
+bandpass	circuits	5	455.549	16000
+phased_array	antennas	96	998.256	16000
+lj13	chemistry	39	0.436	200000
+lj38	chemistry	114	3.005	200000
