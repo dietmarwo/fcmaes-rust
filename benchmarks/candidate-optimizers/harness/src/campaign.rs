@@ -15,6 +15,13 @@
 //! `wall_ms` are summed over the restarts; `best_value` is the lowest value
 //! any guard recorded (`inf` if no evaluation was made). Floats are written
 //! in Rust's shortest round-trip exponent form.
+//!
+//! Round 2 (`ROUND2.md`) adds protocol T, written to its own file
+//! (`results/round2/raw.tsv`) with the round-1 columns followed by `runs,
+//! root_seed, total, run_cap, min_run` ([`RAW_HEADER_T`]). A T row has
+//! `budget = total`, `budget_scale = 1`, `seed` = seed of run 0, and
+//! `evaluations`, violations and `wall_ms` summed over its `runs` runs. A file
+//! holds either S/R rows (round-1 format, unchanged) or T rows, never both.
 
 use std::collections::{BTreeMap, HashSet};
 use std::fs::{File, OpenOptions};
@@ -28,7 +35,7 @@ use fcmaes_core::Rng;
 use solver_api::{Guard, Solver};
 
 use crate::problems::Problem;
-use crate::seeds::{measure_seed, run_seed};
+use crate::seeds::{measure_seed, run_seed, run_seed_from};
 use crate::solvers::uniform_point;
 
 /// Uniform random points timed per problem.
@@ -42,6 +49,19 @@ pub const BUDGET_HEADER: &str = "problem\tdomain\tdim\tmean_eval_us\tbudget";
 
 /// Header of `raw.tsv`.
 pub const RAW_HEADER: &str = "solver\tproblem\tdomain\tdim\tprotocol\trep\tseed\tbudget\tbudget_scale\tevaluations\tbest_value\tover_budget\tout_of_bounds\twall_ms";
+
+/// Header of a protocol-T raw file: [`RAW_HEADER`] plus the protocol
+/// settings and the number of runs.
+pub const RAW_HEADER_T: &str = "solver\tproblem\tdomain\tdim\tprotocol\trep\tseed\tbudget\tbudget_scale\tevaluations\tbest_value\tover_budget\tout_of_bounds\twall_ms\truns\troot_seed\ttotal\trun_cap\tmin_run";
+
+/// Total evaluations of one protocol-T repetition (`ROUND2.md`, section 4).
+pub const T_TOTAL: u64 = 400_000;
+
+/// Largest budget of one protocol-T run.
+pub const T_RUN_CAP: u64 = 100_000;
+
+/// Protocol T starts no further run when fewer evaluations remain.
+pub const T_MIN_RUN: u64 = 1_000;
 
 /// Budget class table of protocol section 3.3.
 pub fn budget_for(mean_eval_us: f64) -> u64 {
@@ -71,6 +91,20 @@ pub fn measure_problem(problem: &Problem) -> f64 {
     let elapsed = started.elapsed().as_secs_f64();
     std::hint::black_box(sink);
     elapsed * 1e6 / MEASURE_POINTS as f64
+}
+
+/// Points re-evaluated by [`is_deterministic`].
+pub const DETERMINISM_POINTS: usize = 200;
+
+/// Whether `problem` returns bit-identical values when the first
+/// [`DETERMINISM_POINTS`] points of its measurement sample are evaluated
+/// twice (round-2 entry rule).
+pub fn is_deterministic(problem: &Problem) -> bool {
+    let mut rng = Rng::new(measure_seed(problem.name));
+    (0..DETERMINISM_POINTS).all(|_| {
+        let x = uniform_point(&problem.lower, &problem.upper, &mut rng);
+        (problem.objective)(&x).to_bits() == (problem.objective)(&x).to_bits()
+    })
 }
 
 /// One line of `budgets.tsv`.
@@ -142,6 +176,9 @@ pub enum Protocol {
     S,
     /// Eight independent runs with budget ⌊B/8⌋ each.
     R,
+    /// Round 2: restarts with fresh seeds until the total is spent
+    /// ([`TSettings`]).
+    T,
 }
 
 impl Protocol {
@@ -150,6 +187,7 @@ impl Protocol {
         match self {
             Self::S => 'S',
             Self::R => 'R',
+            Self::T => 'T',
         }
     }
 
@@ -161,7 +199,8 @@ impl Protocol {
         match text {
             "S" => Ok(Self::S),
             "R" => Ok(Self::R),
-            _ => Err(format!("unknown protocol '{text}' (expected S or R)")),
+            "T" => Ok(Self::T),
+            _ => Err(format!("unknown protocol '{text}' (expected S, R or T)")),
         }
     }
 }
@@ -186,10 +225,131 @@ pub struct RunResult {
 }
 
 /// Run budget of one restart for scaled budget `scaled` under `protocol`.
+/// (Protocol T has no fixed restart budget; this returns its total, and
+/// [`run_repetition_t`] assigns the run budgets.)
 pub fn restart_budget(protocol: Protocol, scaled: u64) -> u64 {
     match protocol {
-        Protocol::S => scaled,
+        Protocol::S | Protocol::T => scaled,
         Protocol::R => scaled / u64::from(RESTARTS_R),
+    }
+}
+
+/// Settings of protocol T, recorded in every T row.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct TSettings {
+    /// Root seed of the seed derivation (round 2: 2).
+    pub root_seed: u64,
+    /// Total evaluations of one repetition ([`T_TOTAL`]).
+    pub total: u64,
+    /// Largest budget of one run ([`T_RUN_CAP`]).
+    pub run_cap: u64,
+    /// No run starts when fewer evaluations remain ([`T_MIN_RUN`]).
+    pub min_run: u64,
+}
+
+impl TSettings {
+    /// The declared defaults with root seed `root_seed`.
+    pub fn with_root_seed(root_seed: u64) -> Self {
+        Self {
+            root_seed,
+            total: T_TOTAL,
+            run_cap: T_RUN_CAP,
+            min_run: T_MIN_RUN,
+        }
+    }
+
+    /// Whether these are the declared round-2 campaign settings.
+    pub fn is_declared(&self) -> bool {
+        self.total == T_TOTAL && self.run_cap == T_RUN_CAP && self.min_run == T_MIN_RUN
+    }
+
+    fn validate(&self) -> Result<(), String> {
+        if self.total == 0 || self.run_cap == 0 || self.min_run == 0 {
+            return Err("protocol T needs a positive total, run cap and minimum run".into());
+        }
+        Ok(())
+    }
+}
+
+/// Result of one protocol-T repetition.
+#[derive(Clone, Debug, PartialEq)]
+pub struct TResult {
+    /// Summed row fields; `budget` is the total.
+    pub result: RunResult,
+    /// Runs made (including a final run without evaluations, if any).
+    pub runs: u32,
+    /// Restarting stopped because a run made no evaluation.
+    pub stopped_empty: bool,
+}
+
+/// Execute one protocol-T repetition (`ROUND2.md`, section 4).
+///
+/// Run `k = 0, 1, 2, ...` uses seed `run_seed_from(root, problem, 'T', rep,
+/// k)` and a fresh [`Guard`] with budget `min(run_cap, remaining)`, where
+/// `remaining` is the total minus the evaluations the guards counted in the
+/// earlier runs (not the solvers' claims). Restarting ends when fewer than
+/// `min_run` evaluations remain, or when a run made no evaluation at all
+/// (a solver that returns at once would otherwise restart forever). The best
+/// value over all runs counts; evaluations, violations and wall time are
+/// summed.
+pub fn run_repetition_t(
+    solver: &dyn Solver,
+    problem: &Problem,
+    repetition: u32,
+    settings: &TSettings,
+) -> TResult {
+    let objective = &problem.objective;
+    let seed_of = |restart: u32| {
+        run_seed_from(
+            settings.root_seed,
+            problem.name,
+            Protocol::T.letter(),
+            repetition,
+            restart,
+        )
+    };
+    let mut result = RunResult {
+        seed: seed_of(0),
+        budget: settings.total,
+        evaluations: 0,
+        best_value: f64::INFINITY,
+        over_budget: 0,
+        out_of_bounds: 0,
+        wall_ms: 0.0,
+    };
+    let mut remaining = settings.total;
+    let mut runs = 0u32;
+    let mut stopped_empty = false;
+    while remaining >= settings.min_run.max(1) {
+        let allowance = settings.run_cap.min(remaining);
+        let seed = seed_of(runs);
+        let guard = Guard::new(
+            objective.as_ref(),
+            &problem.lower,
+            &problem.upper,
+            allowance,
+        );
+        let started = Instant::now();
+        let guarded = |x: &[f64]| guard.eval(x);
+        let _claimed = solver.minimize(&guarded, &problem.lower, &problem.upper, allowance, seed);
+        result.wall_ms += started.elapsed().as_secs_f64() * 1e3;
+        let calls = guard.calls();
+        result.evaluations += calls;
+        result.over_budget += guard.over_budget();
+        result.out_of_bounds += guard.out_of_bounds();
+        result.best_value = result.best_value.min(guard.best_y());
+        runs += 1;
+        // The guard never counts more than its allowance.
+        remaining -= calls;
+        if calls == 0 {
+            stopped_empty = true;
+            break;
+        }
+    }
+    TResult {
+        result,
+        runs,
+        stopped_empty,
     }
 }
 
@@ -198,7 +358,11 @@ pub fn scaled_budget(budget: u64, scale: f64) -> u64 {
     ((budget as f64 * scale).floor() as u64).max(1)
 }
 
-/// Execute one repetition: every run goes through a fresh [`Guard`].
+/// Execute one repetition of protocol S or R: every run goes through a fresh
+/// [`Guard`].
+///
+/// # Panics
+/// Panics for protocol T, which runs through [`run_repetition_t`].
 pub fn run_repetition(
     solver: &dyn Solver,
     problem: &Problem,
@@ -209,6 +373,7 @@ pub fn run_repetition(
     let restarts = match protocol {
         Protocol::S => 1,
         Protocol::R => RESTARTS_R,
+        Protocol::T => panic!("protocol T runs through run_repetition_t"),
     };
     let per_run = restart_budget(protocol, scaled);
     let objective = &problem.objective;
@@ -246,6 +411,8 @@ pub struct RawRow {
     pub key: RowKey,
     /// Budget scale of the row.
     pub budget_scale: f64,
+    /// Protocol-T settings of the row (T files only).
+    pub t_settings: Option<TSettings>,
 }
 
 /// Format one raw row (with trailing newline).
@@ -276,19 +443,51 @@ pub fn format_row(
     )
 }
 
-/// Load the rows of an existing raw file. A trailing line without newline
-/// (an interrupted write) is cut from the file. Creates the file with its
-/// header if it does not exist.
+/// Format one protocol-T raw row (with trailing newline): the round-1
+/// columns (budget scale 1) followed by `runs, root_seed, total, run_cap,
+/// min_run`.
+pub fn format_row_t(
+    solver: &str,
+    problem: &Problem,
+    repetition: u32,
+    settings: &TSettings,
+    t: &TResult,
+) -> String {
+    let mut line = format_row(solver, problem, Protocol::T, repetition, 1.0, &t.result);
+    line.pop();
+    line.push_str(&format!(
+        "\t{}\t{}\t{}\t{}\t{}\n",
+        t.runs, settings.root_seed, settings.total, settings.run_cap, settings.min_run
+    ));
+    line
+}
+
+/// Load the rows of an existing round-1 (S/R) raw file. A trailing line
+/// without newline (an interrupted write) is cut from the file. Creates the
+/// file with its header if it does not exist.
 ///
 /// # Errors
 /// Returns a message for I/O or format errors.
 pub fn load_or_create_raw(path: &Path) -> Result<Vec<RawRow>, String> {
+    load_or_create(path, RAW_HEADER)
+}
+
+/// Like [`load_or_create_raw`] for a protocol-T file ([`RAW_HEADER_T`]).
+///
+/// # Errors
+/// Returns a message for I/O or format errors.
+pub fn load_or_create_raw_t(path: &Path) -> Result<Vec<RawRow>, String> {
+    load_or_create(path, RAW_HEADER_T)
+}
+
+fn load_or_create(path: &Path, expected_header: &str) -> Result<Vec<RawRow>, String> {
+    let field_count = expected_header.split('\t').count();
     let describe = |e: std::io::Error| format!("{}: {e}", path.display());
     if !path.exists() {
         if let Some(parent) = path.parent() {
             std::fs::create_dir_all(parent).map_err(describe)?;
         }
-        std::fs::write(path, format!("{RAW_HEADER}\n")).map_err(describe)?;
+        std::fs::write(path, format!("{expected_header}\n")).map_err(describe)?;
         return Ok(Vec::new());
     }
     let mut file = OpenOptions::new()
@@ -299,7 +498,7 @@ pub fn load_or_create_raw(path: &Path) -> Result<Vec<RawRow>, String> {
     let mut bytes = Vec::new();
     file.read_to_end(&mut bytes).map_err(describe)?;
     if bytes.is_empty() {
-        file.write_all(format!("{RAW_HEADER}\n").as_bytes())
+        file.write_all(format!("{expected_header}\n").as_bytes())
             .map_err(describe)?;
         return Ok(Vec::new());
     }
@@ -314,7 +513,7 @@ pub fn load_or_create_raw(path: &Path) -> Result<Vec<RawRow>, String> {
         file.seek(SeekFrom::End(0)).map_err(describe)?;
         bytes.truncate(keep);
         if bytes.is_empty() {
-            file.write_all(format!("{RAW_HEADER}\n").as_bytes())
+            file.write_all(format!("{expected_header}\n").as_bytes())
                 .map_err(describe)?;
             return Ok(Vec::new());
         }
@@ -322,7 +521,7 @@ pub fn load_or_create_raw(path: &Path) -> Result<Vec<RawRow>, String> {
     let mut rows = Vec::new();
     let mut lines = BufReader::new(bytes.as_slice()).lines();
     let header = lines.next().transpose().map_err(describe)?;
-    if header.as_deref() != Some(RAW_HEADER) {
+    if header.as_deref() != Some(expected_header) {
         return Err(format!("{}: unexpected header", path.display()));
     }
     for line in lines {
@@ -331,7 +530,7 @@ pub fn load_or_create_raw(path: &Path) -> Result<Vec<RawRow>, String> {
             continue;
         }
         let fields: Vec<&str> = line.split('\t').collect();
-        if fields.len() != 14 {
+        if fields.len() != field_count {
             return Err(format!("{}: malformed row '{line}'", path.display()));
         }
         let bad = |name: &str| format!("{}: bad {name} in '{line}'", path.display());
@@ -344,6 +543,16 @@ pub fn load_or_create_raw(path: &Path) -> Result<Vec<RawRow>, String> {
                 fields[5].parse().map_err(|_| bad("rep"))?,
             ),
             budget_scale: fields[8].parse().map_err(|_| bad("budget_scale"))?,
+            t_settings: if field_count > 14 {
+                Some(TSettings {
+                    root_seed: fields[15].parse().map_err(|_| bad("root_seed"))?,
+                    total: fields[16].parse().map_err(|_| bad("total"))?,
+                    run_cap: fields[17].parse().map_err(|_| bad("run_cap"))?,
+                    min_run: fields[18].parse().map_err(|_| bad("min_run"))?,
+                })
+            } else {
+                None
+            },
         });
     }
     Ok(rows)
@@ -373,14 +582,65 @@ struct Task {
     cell: usize,
 }
 
-/// Run the campaign, appending rows to `out`. Returns the number of rows
-/// written by this call.
+/// Run the campaign (protocols S and R), appending rows to `out`. Returns
+/// the number of rows written by this call.
 ///
 /// # Errors
-/// Returns a message for I/O errors, inconsistent budget scales or a
-/// budget too small for protocol R.
+/// Returns a message for I/O errors, inconsistent budget scales, a budget
+/// too small for protocol R or a request for protocol T.
 pub fn run_campaign(config: &CampaignConfig<'_>, out: &Path) -> Result<usize, String> {
-    let existing = load_or_create_raw(out)?;
+    run_campaign_with(config, None, out)
+}
+
+/// Run a protocol-T campaign (round 2), appending rows to `out` in the
+/// [`RAW_HEADER_T`] format. The budgets of `config.problems` are ignored;
+/// every repetition gets `settings.total`. `config.protocols` must be `[T]`
+/// and `config.budget_scale` 1. Resumable like [`run_campaign`]; a file with
+/// rows of other settings is refused.
+///
+/// # Errors
+/// Returns a message for I/O errors, invalid settings or a file holding rows
+/// with other settings.
+pub fn run_campaign_t(
+    config: &CampaignConfig<'_>,
+    settings: &TSettings,
+    out: &Path,
+) -> Result<usize, String> {
+    run_campaign_with(config, Some(settings), out)
+}
+
+fn run_campaign_with(
+    config: &CampaignConfig<'_>,
+    t_settings: Option<&TSettings>,
+    out: &Path,
+) -> Result<usize, String> {
+    let existing = if let Some(settings) = t_settings {
+        settings.validate()?;
+        if config.protocols != [Protocol::T] {
+            return Err("a protocol-T campaign runs protocol T only".into());
+        }
+        if config.budget_scale != 1.0 {
+            return Err("protocol T has no budget scale; use --total for smoke runs".into());
+        }
+        let existing = load_or_create_raw_t(out)?;
+        if let Some(row) = existing
+            .iter()
+            .find(|row| row.t_settings.as_ref() != Some(settings))
+        {
+            return Err(format!(
+                "{} holds rows with protocol-T settings {:?} (current {settings:?}); \
+                 use another output file",
+                out.display(),
+                row.t_settings
+            ));
+        }
+        existing
+    } else {
+        if config.protocols.contains(&Protocol::T) {
+            return Err("protocol T runs through run_campaign_t (round-2 file format)".into());
+        }
+        load_or_create_raw(out)?
+    };
     if let Some(row) = existing
         .iter()
         .find(|row| row.budget_scale != config.budget_scale)
@@ -395,6 +655,9 @@ pub fn run_campaign(config: &CampaignConfig<'_>, out: &Path) -> Result<usize, St
     let done: HashSet<RowKey> = existing.into_iter().map(|row| row.key).collect();
 
     for &(problem, budget) in &config.problems {
+        if t_settings.is_some() {
+            break;
+        }
         for &protocol in &config.protocols {
             let scaled = scaled_budget(budget, config.budget_scale);
             if restart_budget(protocol, scaled) == 0 {
@@ -484,17 +747,33 @@ pub fn run_campaign(config: &CampaignConfig<'_>, out: &Path) -> Result<usize, St
                         .get_or_insert_with(Instant::now);
                     let (problem, budget) = config.problems[task.problem];
                     let solver = config.solvers[task.solver];
-                    let scaled = scaled_budget(budget, config.budget_scale);
-                    let result =
-                        run_repetition(solver, problem, task.protocol, task.repetition, scaled);
-                    let line = format_row(
-                        solver.name(),
-                        problem,
-                        task.protocol,
-                        task.repetition,
-                        config.budget_scale,
-                        &result,
-                    );
+                    let line = if let Some(settings) = t_settings {
+                        let t = run_repetition_t(solver, problem, task.repetition, settings);
+                        if t.stopped_empty {
+                            eprintln!(
+                                "warning: {} on {} rep {}: run {} made no evaluation; \
+                                 restarting stopped with {} evaluations left",
+                                solver.name(),
+                                problem.name,
+                                task.repetition,
+                                t.runs - 1,
+                                settings.total - t.result.evaluations
+                            );
+                        }
+                        format_row_t(solver.name(), problem, task.repetition, settings, &t)
+                    } else {
+                        let scaled = scaled_budget(budget, config.budget_scale);
+                        let result =
+                            run_repetition(solver, problem, task.protocol, task.repetition, scaled);
+                        format_row(
+                            solver.name(),
+                            problem,
+                            task.protocol,
+                            task.repetition,
+                            config.budget_scale,
+                            &result,
+                        )
+                    };
                     {
                         let mut file = writer
                             .lock()
@@ -535,7 +814,8 @@ pub fn run_campaign(config: &CampaignConfig<'_>, out: &Path) -> Result<usize, St
     Ok(written.into_inner())
 }
 
-/// Count rows per (solver, problem, protocol) in a raw file, for summaries.
+/// Count rows per (solver, problem, protocol) in a round-1 raw file, for
+/// summaries.
 ///
 /// # Errors
 /// Returns a message for I/O or format errors.
@@ -568,5 +848,18 @@ mod tests {
         assert_eq!(restart_budget(Protocol::R, 40_000), 5_000);
         assert_eq!(restart_budget(Protocol::R, 16_007), 2_000);
         assert_eq!(scaled_budget(200_000, 0.02), 4_000);
+    }
+
+    #[test]
+    fn t_header_extends_the_round_one_header() {
+        assert!(RAW_HEADER_T.starts_with(&format!("{RAW_HEADER}\t")));
+        assert_eq!(RAW_HEADER_T.split('\t').count(), 19);
+        let defaults = TSettings::with_root_seed(2);
+        assert!(defaults.is_declared());
+        assert_eq!(
+            (defaults.total, defaults.run_cap, defaults.min_run),
+            (400_000, 100_000, 1_000)
+        );
+        assert_eq!(Protocol::parse("T"), Ok(Protocol::T));
     }
 }

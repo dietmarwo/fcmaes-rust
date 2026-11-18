@@ -1,21 +1,25 @@
 //! Seed derivation.
 //!
-//! Every run seed is a function of the root seed (1), the problem name, the
-//! protocol, the repetition and the restart index only, so all solvers see
-//! the same seeds. The mix is a chain of SplitMix64 finalizers:
+//! Every run seed is a function of the root seed (1 in round 1, 2 in round
+//! 2), the problem name, the protocol, the repetition and the restart index
+//! only, so all solvers see the same seeds. The mix is a chain of SplitMix64
+//! finalizers:
 //!
 //! ```text
-//! h = splitmix64(ROOT_SEED)
+//! h = splitmix64(root)
 //! h = splitmix64(h ^ fnv1a64(problem))
-//! h = splitmix64(h ^ protocol_tag)        // 'S' = 0x53, 'R' = 0x52
+//! h = splitmix64(h ^ protocol_tag)        // 'S' = 0x53, 'R' = 0x52, 'T' = 0x54
 //! h = splitmix64(h ^ repetition)
 //! h = splitmix64(h ^ restart)             // 0 for protocol S
 //! ```
 //!
 //! `fnv1a64` is the 64-bit FNV-1a hash of the UTF-8 problem name.
 
-/// Root seed declared in the protocol.
+/// Root seed declared in the protocol (round 1).
 pub const ROOT_SEED: u64 = 1;
+
+/// Root seed declared for round 2 (`ROUND2.md`, section 4).
+pub const ROOT_SEED_ROUND2: u64 = 2;
 
 /// SplitMix64 finalizer (Steele, Lea and Flood 2014): add the golden-ratio
 /// increment, then two xor-shift-multiply rounds.
@@ -37,9 +41,20 @@ pub fn fnv1a64(text: &str) -> u64 {
 }
 
 /// Seed of one run: `(problem, protocol tag, repetition, restart)` mixed into
-/// the root seed. `protocol` is the protocol letter (`'S'` or `'R'`).
+/// the round-1 root seed. `protocol` is the protocol letter (`'S'` or `'R'`).
 pub fn run_seed(problem: &str, protocol: char, repetition: u32, restart: u32) -> u64 {
-    let mut h = splitmix64(ROOT_SEED);
+    run_seed_from(ROOT_SEED, problem, protocol, repetition, restart)
+}
+
+/// Seed of one run under root seed `root` (same mix as [`run_seed`]).
+pub fn run_seed_from(
+    root: u64,
+    problem: &str,
+    protocol: char,
+    repetition: u32,
+    restart: u32,
+) -> u64 {
+    let mut h = splitmix64(root);
     h = splitmix64(h ^ fnv1a64(problem));
     h = splitmix64(h ^ u64::from(protocol));
     h = splitmix64(h ^ u64::from(repetition));
@@ -86,6 +101,18 @@ mod tests {
         0x94AC_F2B9_CF81_86A7,
         0x09A9_B373_4F13_CC8A,
     ];
+
+    #[test]
+    fn root_seed_one_is_the_round_one_derivation() {
+        assert_eq!(
+            run_seed_from(1, "lj13", 'R', 4, 7),
+            run_seed("lj13", 'R', 4, 7)
+        );
+        assert_ne!(
+            run_seed_from(2, "lj13", 'T', 0, 0),
+            run_seed_from(1, "lj13", 'T', 0, 0)
+        );
+    }
 
     #[test]
     fn run_seeds_are_distinct() {

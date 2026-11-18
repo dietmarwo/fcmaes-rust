@@ -27,7 +27,9 @@
 //!   evaluation with `+inf` without evaluating them, so the evaluated
 //!   sequence is the exact `B`-prefix of the library run (see [`Da`]).
 //! - DE→CMA stops its DE phase exactly at the DE share of the budget and its
-//!   CMA phase like CMA-ES above.
+//!   CMA phase like CMA-ES above. The round-2 sequences jSO→CMA and
+//!   L-SRTDE→CMA share this code ([`cma_sequence`]); their first stage is a
+//!   candidate run with the DE share as its whole budget.
 //!
 //! Each point is also projected onto the box before it is evaluated. The core
 //! optimizers clamp their samples already; the projection only removes
@@ -343,11 +345,88 @@ impl Solver for Da {
     }
 }
 
+/// First stage of a CMA sequence, as handed to the stage by
+/// [`cma_sequence`].
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct FirstStage {
+    /// Budget of the stage, `max(2B/5, 31)`: the `max_evaluations` the DE
+    /// stage of `de_cma` is configured with.
+    pub budget: u64,
+    /// Evaluation count at which the stage must have stopped:
+    /// `min(budget, B)` (smaller than `budget` only when `B < 31`).
+    pub stop: u64,
+    /// Seed of the stage (the run seed drawn after the step size).
+    pub seed: u64,
+}
+
+/// DE→CMA-style sequence with an exchangeable first stage.
+///
+/// This is the GTOP benchmark's `de_cma_run` (`examples/src/runner.rs`)
+/// with the first stage passed in:
+///
+/// 1. `Rng::new(seed)` draws the step size `0.05 + 0.05 U[0,1]` first (as the
+///    retry coordinator does), then the run seed `run_seed = next_u64()`.
+/// 2. The first stage gets [`FirstStage`] with `budget = max(2B/5, 31)`,
+///    `stop = min(budget, B)` and `seed = run_seed`; it evaluates through the
+///    given [`Budgeted`] wrapper and returns its best point. It must not make
+///    more than `stop` evaluations.
+/// 3. If the budget is spent, the run ends. Otherwise core CMA-ES
+///    (`CmaesParams` defaults, population 31, normalized box) starts from the
+///    returned point with the step size of step 1 in every coordinate, seed
+///    `run_seed ^ 0xA0761D6478BD642F` and internal limit
+///    `max(B - budget, 31)`; it stops before the first generation that does
+///    not fit into the remaining budget.
+pub fn cma_sequence<F>(
+    objective: Objective<'_>,
+    lower: &[f64],
+    upper: &[f64],
+    max_evaluations: u64,
+    seed: u64,
+    first_stage: F,
+) -> Outcome
+where
+    F: FnOnce(&Budgeted<'_>, FirstStage) -> Vec<f64>,
+{
+    let wrapped = Budgeted::new(objective, lower, upper, max_evaluations);
+    let dim = lower.len();
+    // The retry coordinator draws the step size first, then the run seed.
+    let mut rng = Rng::new(seed);
+    let sdev = 0.05 + 0.05 * rng.uniform01();
+    let run_seed = rng.next_u64();
+    let stage_budget = (max_evaluations * 2 / 5).max(31);
+    let cma_budget = max_evaluations.saturating_sub(stage_budget).max(31);
+    // Below 31 evaluations the stage share exceeds the whole budget.
+    let stage = FirstStage {
+        budget: stage_budget,
+        stop: stage_budget.min(max_evaluations),
+        seed: run_seed,
+    };
+    let start = first_stage(&wrapped, stage);
+    if wrapped.exhausted() {
+        return wrapped.outcome();
+    }
+
+    let mut cma = Cmaes::new(
+        normalized_fitness(lower, upper),
+        &start,
+        &vec![sdev; dim],
+        &CmaesParams {
+            max_evaluations: cma_budget,
+            seed: run_seed ^ 0xA076_1D64_78BD_642F,
+            ..Default::default()
+        },
+    );
+    let popsize = cma.popsize() as u64;
+    let f = |x: &[f64]| wrapped.eval(x);
+    cma.optimize_until(&f, 1, &|| wrapped.remaining() < popsize);
+    wrapped.outcome()
+}
+
 /// DE→CMA sequence of the GTOP benchmark (`de_cma_run` in
-/// `examples/src/runner.rs`): DE with `max(2B/5, 31)` evaluations and a
-/// uniform initial population, then CMA-ES (population 31, normalized box)
-/// from the DE optimum with the retry coordinator's random step size
-/// `0.05 + 0.05 U[0,1]` and `max(B - DE share, 31)` evaluations.
+/// `examples/src/runner.rs`): [`cma_sequence`] with DE (`DeParams` defaults,
+/// uniform initial population, `max_evaluations = max(2B/5, 31)`) as the
+/// first stage, stopped exactly at `min(max(2B/5, 31), B)` evaluations; CMA-ES
+/// starts from the DE optimum.
 #[derive(Clone, Copy, Debug, Default)]
 pub struct DeCma;
 
@@ -364,58 +443,143 @@ impl Solver for DeCma {
         max_evaluations: u64,
         seed: u64,
     ) -> Outcome {
-        let wrapped = Budgeted::new(objective, lower, upper, max_evaluations);
-        let dim = lower.len();
-        // The retry coordinator draws the step size first, then the run seed.
-        let mut rng = Rng::new(seed);
-        let sdev = 0.05 + 0.05 * rng.uniform01();
-        let run_seed = rng.next_u64();
-        let de_budget = (max_evaluations * 2 / 5).max(31);
-        let cma_budget = max_evaluations.saturating_sub(de_budget).max(31);
-        let f = |x: &[f64]| wrapped.eval(x);
-
-        let mut de = De::new(
-            Fitness::bounded(dim, 1, lower, upper),
-            &[],
-            &[],
-            None,
-            &DeParams {
-                max_evaluations: de_budget,
-                seed: run_seed,
-                ..Default::default()
+        cma_sequence(
+            objective,
+            lower,
+            upper,
+            max_evaluations,
+            seed,
+            |wrapped, stage| {
+                let f = |x: &[f64]| wrapped.eval(x);
+                let mut de = De::new(
+                    Fitness::bounded(lower.len(), 1, lower, upper),
+                    &[],
+                    &[],
+                    None,
+                    &DeParams {
+                        max_evaluations: stage.budget,
+                        seed: stage.seed,
+                        ..Default::default()
+                    },
+                );
+                de.optimize_until(&f, &|| wrapped.used() >= stage.stop).x
             },
-        );
-        // Below 31 evaluations the DE share exceeds the whole budget.
-        let de_stop = de_budget.min(max_evaluations);
-        let de_result = de.optimize_until(&f, &|| wrapped.used() >= de_stop);
-        if wrapped.exhausted() {
-            return wrapped.outcome();
-        }
+        )
+    }
+}
 
-        let mut cma = Cmaes::new(
-            normalized_fitness(lower, upper),
-            &de_result.x,
-            &vec![sdev; dim],
-            &CmaesParams {
-                max_evaluations: cma_budget,
-                seed: run_seed ^ 0xA076_1D64_78BD_642F,
-                ..Default::default()
-            },
-        );
-        let popsize = cma.popsize() as u64;
-        cma.optimize_until(&f, 1, &|| wrapped.remaining() < popsize);
-        wrapped.outcome()
+/// Sequence with a candidate [`Solver`] as the first stage (round 2).
+///
+/// The candidate runs as a whole solver with `max_evaluations = stop`
+/// (`= max(2B/5, 31)` whenever `B >= 31`) and seed `stage.seed`, so its
+/// budget-driven population schedule is scaled to the first-stage share.
+/// CMA-ES starts from the best point the candidate reports. Everything else
+/// is [`cma_sequence`], shared with [`DeCma`].
+#[cfg(feature = "candidates")]
+fn candidate_sequence(
+    first: &dyn Solver,
+    objective: Objective<'_>,
+    lower: &[f64],
+    upper: &[f64],
+    max_evaluations: u64,
+    seed: u64,
+) -> Outcome {
+    cma_sequence(
+        objective,
+        lower,
+        upper,
+        max_evaluations,
+        seed,
+        |wrapped, stage| {
+            let f = |x: &[f64]| wrapped.eval(x);
+            first.minimize(&f, lower, upper, stage.stop, stage.seed).x
+        },
+    )
+}
+
+/// jSO→CMA sequence (round 2): `cand_de::Jso::default()` as the first stage
+/// of [`cma_sequence`].
+#[cfg(feature = "candidates")]
+#[derive(Clone, Copy, Debug, Default)]
+pub struct JsoCma;
+
+#[cfg(feature = "candidates")]
+impl Solver for JsoCma {
+    fn name(&self) -> &'static str {
+        "jso_cma"
+    }
+
+    fn minimize(
+        &self,
+        objective: Objective<'_>,
+        lower: &[f64],
+        upper: &[f64],
+        max_evaluations: u64,
+        seed: u64,
+    ) -> Outcome {
+        let first = cand_de::Jso::default();
+        candidate_sequence(&first, objective, lower, upper, max_evaluations, seed)
+    }
+}
+
+/// L-SRTDE (base-difference form, the `lsrtde_b` candidate)→CMA sequence
+/// (round 2): `cand_de::LSrtde { pbest_difference_from_base: true, .. }` as
+/// the first stage of [`cma_sequence`].
+#[cfg(feature = "candidates")]
+#[derive(Clone, Copy, Debug, Default)]
+pub struct LSrtdeCma;
+
+#[cfg(feature = "candidates")]
+impl Solver for LSrtdeCma {
+    fn name(&self) -> &'static str {
+        "lsrtde_cma"
+    }
+
+    fn minimize(
+        &self,
+        objective: Objective<'_>,
+        lower: &[f64],
+        upper: &[f64],
+        max_evaluations: u64,
+        seed: u64,
+    ) -> Outcome {
+        let first = cand_de::LSrtde {
+            pbest_difference_from_base: true,
+            ..Default::default()
+        };
+        candidate_sequence(&first, objective, lower, upper, max_evaluations, seed)
     }
 }
 
 /// Names of the incumbents, in registry order.
 pub const INCUMBENTS: [&str; 6] = ["bite", "de", "cma", "crfmnes", "da", "de_cma"];
 
-/// Names of the candidates, in registry order.
+/// Names of the round-1 candidates, in registry order.
 pub const CANDIDATES: [&str; 6] = ["lshade", "jso", "lsrtde", "lsrtde_b", "bipop", "amalgam"];
 
+/// Names of the round-2 candidate arms (`ROUND2.md`, section 2).
+pub const CANDIDATES_ROUND2: [&str; 6] = [
+    "lshade",
+    "jso",
+    "lsrtde_b",
+    "bipop",
+    "jso_cma",
+    "lsrtde_cma",
+];
+
+/// The twelve round-2 solvers: the six incumbents, then the six candidate
+/// arms.
+pub fn round2_solver_names() -> Vec<&'static str> {
+    INCUMBENTS
+        .iter()
+        .chain(&CANDIDATES_ROUND2)
+        .copied()
+        .collect()
+}
+
 /// All solvers available in this build: the six incumbents, BIPOP and, with
-/// the `candidates` feature, L-SHADE, jSO, both L-SRTDE forms and AMaLGaM.
+/// the `candidates` feature, L-SHADE, jSO, both L-SRTDE forms, AMaLGaM and
+/// the round-2 sequences jSO→CMA and L-SRTDE→CMA.
 pub fn registry() -> Vec<Box<dyn Solver>> {
     #[allow(unused_mut)]
     let mut solvers: Vec<Box<dyn Solver>> = vec![
@@ -434,6 +598,8 @@ pub fn registry() -> Vec<Box<dyn Solver>> {
         solvers.push(Box::new(cand_de::LSrtde::default()));
         solvers.push(Box::new(LSrtdeBase));
         solvers.push(Box::new(cand_eda::Amalgam::default()));
+        solvers.push(Box::new(JsoCma));
+        solvers.push(Box::new(LSrtdeCma));
     }
     solvers
 }

@@ -224,3 +224,178 @@ repetitions; incomplete cells are listed and excluded from best-incumbent
 selection, tests, ranks and gates. Holm-adjusted p-values at most 0.05 are
 significant. The report states the Python, NumPy and SciPy versions and the
 limits of the experiment.
+
+## Round 2
+
+[ROUND2.md](ROUND2.md) declares a second round: one restart protocol (T)
+with run budgets of the size fcmaes is normally used with, two DE→CMA-style
+sequence arms, and the ten round-1 problems with a mean evaluation time of
+at most 25 µs. Everything not stated here works as for round 1; protocols S
+and R, their file format and the round-1 analysis are as described above.
+
+### Reproduce
+
+```sh
+cargo build --release -p candidate-harness --features candidates
+BIN=target/release/candidate-harness   # or $CARGO_TARGET_DIR/release/...
+
+$BIN list
+$BIN measure --out results/round2/budgets.tsv \
+    --problems round2,truss_sizing,dispersion
+$BIN run --protocols T --root-seed 2 --reps 20 --threads 2 \
+    --out results/round2/raw.tsv
+python3 analyze.py --round 2 --raw results/round2/raw.tsv \
+    --out results/round2/report.md --reps 20
+```
+
+`run --protocols T` defaults to `--problems round2 --solvers round2`, which
+`list` prints. Its other options are `--reps`, `--threads`, `--root-seed`
+(default 1; the campaign uses 2), `--total` (default 400000), `--run-cap`
+(default 100000) and `--min-run` (default 1000). `--budgets` and
+`--budget-scale` do not apply, and T cannot be combined with S or R in one
+call. The runner is resumable in the same way as for round 1; a file whose
+rows carry other protocol-T settings is refused.
+
+Smoke run and full-scale timing, as used before the campaign:
+
+```sh
+$BIN run --protocols T --root-seed 2 --total 8000 --run-cap 2000 --min-run 20 \
+    --reps 2 --out results/round2/smoke/raw.tsv
+python3 analyze.py --round 2 --raw results/round2/smoke/raw.tsv \
+    --out results/round2/smoke/report.md --reps 2
+$BIN run --protocols T --root-seed 999 --reps 1 --out results/round2/timing/raw.tsv
+```
+
+The smoke report states that its settings are not the declared ones and that
+its numbers must not be used for any decision. The timing rows (root seed
+999) are not campaign rows; only their wall times, evaluations and run
+counts are used, for the compute rule of ROUND2.md section 4.
+
+Tests:
+
+```sh
+cargo test --workspace --features candidate-harness/candidates
+cargo clippy --workspace --all-targets --features candidate-harness/candidates -- -D warnings
+```
+
+`harness/tests/round2.rs` covers the sequence arms and the protocol-T driver,
+`harness/tests/de_cma_frozen.rs` holds evaluation sequences and campaign rows
+of `de_cma` recorded from the round-1 adapter, which the shared sequence code
+must reproduce bit for bit.
+
+### Protocol T
+
+A repetition has a total of 400,000 evaluations. Run `k = 0, 1, 2, ...` gets
+`min(100000, remaining)` evaluations behind its own fresh `Guard`, with seed
+
+```text
+h = splitmix64(2)
+h = splitmix64(h ^ fnv1a64(p))
+h = splitmix64(h ^ 0x54)        // ASCII 'T'
+h = splitmix64(h ^ r)
+seed = splitmix64(h ^ k)
+```
+
+(the round-1 derivation with root seed 2). `remaining` is the total minus
+the evaluations the guards counted, never the solvers' claims. A run ends by
+its own stop criterion or by its budget; restarting ends when fewer than
+1,000 evaluations remain. If a run makes no evaluation at all, restarting
+stops as well (a solver that returns at once would otherwise restart
+forever); the runner prints a warning, and the row shows it as
+`total − evaluations ≥ min_run`. The recorded value is the best value any of
+the guards saw.
+
+### Sequence arms
+
+`jso_cma` and `lsrtde_cma` share one function with `de_cma`
+(`cma_sequence` in `harness/src/solvers.rs`); only the first stage differs.
+For a run with budget B and seed s:
+
+| Step | Configuration |
+|---|---|
+| Step size and run seed | `Rng::new(s)`: σ = `0.05 + 0.05 U` drawn first, then `run_seed = next_u64()` |
+| First stage share | `max(⌊2B/5⌋, 31)`; the stage stops at `min(max(⌊2B/5⌋, 31), B)` evaluations |
+| First stage, `de_cma` | `De`, `DeParams` defaults, `max_evaluations` = the share, uniform initial population, seed `run_seed`, cooperative stop at the stop count |
+| First stage, `jso_cma` | `cand_de::Jso::default()` as a whole run with budget = the stop count and seed `run_seed`, so its population schedule is driven by the first-stage budget |
+| First stage, `lsrtde_cma` | `cand_de::LSrtde { pbest_difference_from_base: true, ..Default::default() }` (the `lsrtde_b` candidate), configured like jSO |
+| Second stage | core `Cmaes`, `CmaesParams` defaults (population 31), normalized box, start at the first stage's best point, σ in every coordinate, seed `run_seed ^ 0xA0761D6478BD642F`, `max_evaluations = max(B − share, 31)`, stopped before the first generation that does not fit into the remaining budget |
+| Budget spent in the first stage | the run ends without the second stage |
+
+The stop count equals the share whenever B ≥ 31; below that, the candidate
+gets the whole budget B, exactly as `de_cma` stops DE at B. Under protocol T
+with 100,000 evaluations per run the first stage gets 40,000.
+
+### Problems
+
+Round-2 problem set (`--problems round2`), with the mean evaluation times of
+`results/round2/budgets.tsv` (2,000 uniform random points, one thread, load
+average 0.23 before measuring):
+
+| Problem | Domain | D | Mean evaluation time (µs) |
+|---|---|---:|---:|
+| `cassini1` | space | 6 | 7.2 |
+| `gtoc1` | space | 8 | 10.3 |
+| `sagas` | space | 12 | 4.2 |
+| `messenger` | space | 18 | 10.0 |
+| `tandem` | space | 18 | 9.3 |
+| `cassini2` | space | 22 | 12.9 |
+| `rosetta` | space | 22 | 11.0 |
+| `messenger_full` | space | 26 | 13.7 |
+| `lj13` | chemistry | 39 | 0.44 |
+| `lj38` | chemistry | 114 | 3.0 |
+
+Problems examined under the entry rule of ROUND2.md section 3 and left out:
+
+| Problem | Domain | D | Objective | Mean evaluation time (µs) | Result |
+|---|---|---:|---|---:|---|
+| `truss_sizing` | structures | 171 | `tutorials/truss-sizing`, the cost of its scalar arms (`so::optimize_arm`): `evaluate(controls, &GroundStructure::reference(), Scenario::TRAINING, false, &counter).objective` (penalized mass), `INVALID_COST` (1e12) when the controls do not decode; unit box | 36.7 | builds, deterministic, too slow (limit 25 µs) |
+| `dispersion` | environment | 12 | `tutorials/dispersion-source-localization`, the cost of its scalar arm (`optimize_scalar`): the tutorial's public `scalar_objective(values, &Dataset::synthetic())`, which returns 1e99 for an invalid design; the tutorial's bounds | 43.3 | builds, deterministic, too slow (limit 25 µs) |
+
+Both objectives call the tutorials' own public functions; the harness adds
+no scalarization of its own. Determinism was checked by evaluating 200
+points of each measurement sample twice (`measure` prints the result) and
+in `cargo test`. The decision used the timing in `budgets.tsv` only; a second
+measurement gave 47.7 and 46.7 µs. The tutorials' scalar arms start from a
+seeded baseline design and replay it at the end; here, as for every other
+problem, solvers start from their own uniform initial points. Both problems
+stay registered (`list`, `measure`) but are not in the round-2 set. The
+optical lens, the band-pass filter and the phased array are left out by
+ROUND2.md itself.
+
+### Compute projection
+
+One full-scale repetition (all 12 solvers, all 10 problems, root seed 999,
+two threads) took 381.5 s of summed run wall time, which projects to
+381.5 s × 20 / 2 ≈ 64 minutes for 20 repetitions on two threads (48 minutes
+for 15). That is below the 180 minutes of the compute rule, so the campaign
+keeps 20 repetitions.
+
+### File formats
+
+`results/round2/budgets.tsv`: the round-1 format. The `budget` column is the
+round-1 class value and is not used by protocol T.
+
+`results/round2/raw.tsv`: the round-1 columns followed by `runs` (number of
+runs made, including a final run without evaluations if there was one),
+`root_seed`, `total`, `run_cap` and `min_run`. `protocol` is `T`, `budget`
+equals `total`, `budget_scale` is 1, `seed` is the seed of run 0, and
+`evaluations`, `over_budget`, `out_of_bounds` and `wall_ms` are summed over
+the runs.
+
+`results/round2/report.md`: written by `analyze.py --round 2`. Cells are
+problems; incumbents `bite`, `de`, `cma`, `crfmnes`, `da`, `de_cma`;
+candidates `lshade`, `jso`, `lsrtde_b`, `bipop`, `jso_cma`, `lsrtde_cma`.
+The best incumbent per cell has the lowest median (ties: lower mean). Each
+candidate is compared with it by a two-sided Mann–Whitney U test (SciPy
+default method; a NaN p-value, which occurs when all values are identical,
+counts as 1), Holm-corrected over the candidate's complete cells, α = 0.05.
+G1 needs at least 3 winning cells, G2 a mean rank among the twelve solvers
+strictly better than the best incumbent's. The report lists the decision,
+mean ranks, win/loss/tie per cell with adjusted p-values, per-cell medians,
+runs per repetition and evaluations used per solver, violations, incomplete
+cells (excluded) and limits. A file whose settings differ from the declared
+ones (root seed 2, total 400,000, run cap 100,000, minimum run 1,000) is
+reported as a smoke test.
+
+`results/round2/smoke/` and `results/round2/timing/` hold the smoke run (raw
+rows, report, runner log) and the timing repetition (raw rows, runner log).

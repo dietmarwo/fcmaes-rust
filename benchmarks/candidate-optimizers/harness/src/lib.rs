@@ -6,10 +6,12 @@
 //! - [`seeds`]: the SplitMix64-style seed derivation shared by all solvers;
 //! - [`solvers`]: adapters for the six `fcmaes-core` incumbents, the
 //!   BIPOP-aCMA-ES restart schedule ([`bipop`]) and, with the `candidates`
-//!   feature, the four DE/EDA candidates;
-//! - [`problems`]: the thirteen real-world problems of protocol section 3.2;
-//! - [`campaign`]: budget measurement, the resumable campaign runner and the
-//!   raw TSV format.
+//!   feature, the four DE/EDA candidates and the round-2 sequences
+//!   jSO→CMA and L-SRTDE→CMA;
+//! - [`problems`]: the thirteen real-world problems of protocol section 3.2
+//!   and the two problems examined for round 2 (`ROUND2.md`);
+//! - [`campaign`]: budget measurement, the resumable campaign runner
+//!   (protocols S and R, and protocol T of round 2) and the raw TSV formats.
 
 #![forbid(unsafe_code)]
 

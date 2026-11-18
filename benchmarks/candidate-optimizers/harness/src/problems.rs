@@ -1,4 +1,5 @@
-//! The thirteen problems of protocol section 3.2.
+//! The thirteen problems of protocol section 3.2 ([`all`]) and the two
+//! problems examined for round 2 ([`optional_round2`]).
 //!
 //! - GTOP: objectives from `crates/fcmaes-gtop`; the bounds and the GTOC1
 //!   shift are restated from `examples/src/problems.rs` (the examples crate
@@ -19,8 +20,21 @@
 //!   parameterization in the suite's box `[-1.5 N^(1/3), 1.5 N^(1/3)]^(3N)`;
 //!   an evaluation error maps to 1e12, the value the suite's campaign
 //!   returns for a refused evaluation. (Errors cannot occur inside the box.)
+//!
+//! Round 2 (`ROUND2.md`, section 3):
+//!
+//! - `truss_sizing`: `tutorials/truss-sizing`, the cost of its scalar arms
+//!   (`so::optimize_arm`): `evaluate(controls, &GroundStructure::reference(),
+//!   Scenario::TRAINING, false, &counter).objective` (penalized mass),
+//!   `INVALID_COST` (1e12) when the controls do not decode, on the unit box
+//!   (D = 171). The work counter only counts calls.
+//! - `dispersion`: `tutorials/dispersion-source-localization`, the cost of its
+//!   scalar arm (`optimize_scalar`): `scalar_objective(values,
+//!   &Dataset::synthetic())`, which itself returns 1e99 for an invalid design,
+//!   in the tutorial's bounds (D = 12).
 
 use std::f64::consts::PI;
+use std::sync::Arc;
 
 use fcmaes_foundations::suites::Suite;
 use fcmaes_foundations::suites::lennard_jones::{LennardJones, Parameterization};
@@ -250,7 +264,41 @@ fn lennard_jones(name: &'static str, atoms: usize) -> Problem {
     }
 }
 
-/// All problems in protocol order.
+fn truss_sizing() -> Problem {
+    use truss_sizing::decode::dimension;
+    use truss_sizing::evaluate::evaluate;
+    use truss_sizing::fem::{Scenario, WorkCounter};
+    use truss_sizing::ground::GroundStructure;
+    let ground = Arc::new(GroundStructure::reference());
+    let dim = dimension(&ground);
+    let counter = WorkCounter::default();
+    Problem {
+        name: "truss_sizing",
+        domain: "structures",
+        lower: vec![0.0; dim],
+        upper: vec![1.0; dim],
+        objective: Box::new(move |controls| {
+            evaluate(controls, &ground, Scenario::TRAINING, false, &counter)
+                .map_or(truss_sizing::INVALID_COST, |evaluation| {
+                    evaluation.objective
+                })
+        }),
+    }
+}
+
+fn dispersion() -> Problem {
+    use dispersion_source_localization::{Dataset, lower_bounds, scalar_objective, upper_bounds};
+    let dataset = Dataset::synthetic();
+    Problem {
+        name: "dispersion",
+        domain: "environment",
+        lower: lower_bounds().to_vec(),
+        upper: upper_bounds().to_vec(),
+        objective: Box::new(move |values| scalar_objective(values, &dataset)),
+    }
+}
+
+/// All round-1 problems in protocol order.
 pub fn all() -> Vec<Problem> {
     vec![
         cassini1(),
@@ -269,9 +317,54 @@ pub fn all() -> Vec<Problem> {
     ]
 }
 
-/// Look up a problem by name.
+/// The two problems examined for round 2 (`ROUND2.md`, section 3).
+pub fn optional_round2() -> Vec<Problem> {
+    vec![truss_sizing(), dispersion()]
+}
+
+/// Every registered problem: [`all`] followed by [`optional_round2`].
+pub fn catalog() -> Vec<Problem> {
+    let mut problems = all();
+    problems.extend(optional_round2());
+    problems
+}
+
+/// The ten round-1 problems that enter round 2 (mean evaluation time at
+/// most 25 µs, `ROUND2.md` section 3).
+pub const ROUND2_REQUIRED: [&str; 10] = [
+    "cassini1",
+    "gtoc1",
+    "sagas",
+    "messenger",
+    "tandem",
+    "cassini2",
+    "rosetta",
+    "messenger_full",
+    "lj13",
+    "lj38",
+];
+
+/// Optional problems that passed the round-2 entry rule (timing only).
+///
+/// None did: in `results/round2/budgets.tsv` `truss_sizing` measured
+/// 36.7 µs and `dispersion` 43.3 µs per evaluation, above the 25 µs limit.
+/// Both stay registered (for `measure` and tests) but are not in the
+/// round-2 set.
+pub const ROUND2_ENTERED: [&str; 0] = [];
+
+/// The round-2 problem set (`--problems round2`): [`ROUND2_REQUIRED`]
+/// followed by [`ROUND2_ENTERED`].
+pub fn round2_names() -> Vec<&'static str> {
+    ROUND2_REQUIRED
+        .iter()
+        .chain(&ROUND2_ENTERED)
+        .copied()
+        .collect()
+}
+
+/// Look up a problem by name in the [`catalog`].
 pub fn by_name(name: &str) -> Option<Problem> {
-    all().into_iter().find(|problem| problem.name == name)
+    catalog().into_iter().find(|problem| problem.name == name)
 }
 
 #[cfg(test)]
@@ -303,9 +396,63 @@ mod tests {
     }
 
     #[test]
+    fn optional_problems_have_the_tutorial_dimensions() {
+        let dims: Vec<(&str, &str, usize)> = optional_round2()
+            .iter()
+            .map(|p| (p.name, p.domain, p.dim()))
+            .collect();
+        assert_eq!(
+            dims,
+            vec![
+                ("truss_sizing", "structures", 171),
+                ("dispersion", "environment", 12)
+            ]
+        );
+        for name in round2_names() {
+            assert!(by_name(name).is_some(), "{name}");
+        }
+        assert_eq!(round2_names().len(), 10);
+    }
+
+    #[test]
+    fn every_problem_is_deterministic() {
+        let mut rng = Rng::new(11);
+        for problem in catalog() {
+            for _ in 0..20 {
+                let x = crate::solvers::uniform_point(&problem.lower, &problem.upper, &mut rng);
+                let first = (problem.objective)(&x);
+                let second = (problem.objective)(&x);
+                assert_eq!(first.to_bits(), second.to_bits(), "{}", problem.name);
+            }
+        }
+    }
+
+    #[test]
+    fn optional_problems_reproduce_tutorial_values() {
+        // Truss: the tutorial's braced baseline evaluates to a finite mass
+        // below the invalid cost.
+        let ground = truss_sizing::ground::GroundStructure::reference();
+        let baseline = truss_sizing::decode::baseline_controls(&ground);
+        let truss = by_name("truss_sizing").unwrap();
+        let value = (truss.objective)(&baseline);
+        assert!(value.is_finite() && value < truss_sizing::INVALID_COST);
+        // Dispersion: the generating design fits its own synthetic data
+        // better than the tutorial's baseline guess.
+        use dispersion_source_localization::{Dataset, Design, scalar_objective};
+        let dispersion = by_name("dispersion").unwrap();
+        let truth = (dispersion.objective)(Design::truth().values());
+        let baseline = (dispersion.objective)(Design::baseline().values());
+        assert_eq!(
+            truth.to_bits(),
+            scalar_objective(Design::truth().values(), &Dataset::synthetic()).to_bits()
+        );
+        assert!(truth < baseline);
+    }
+
+    #[test]
     fn every_problem_is_finite_at_random_points() {
         let mut rng = Rng::new(7);
-        for problem in all() {
+        for problem in catalog() {
             assert_eq!(problem.lower.len(), problem.upper.len());
             assert!(problem.lower.iter().zip(&problem.upper).all(|(l, u)| l < u));
             for _ in 0..5 {
