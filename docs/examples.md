@@ -23,7 +23,7 @@ The `fcmaes-examples` crate provides:
 | `gtop-examples` | Independent basic retry | 40% DE, then 60% active CMA-ES |
 | `gtop-advexamples` | Coordinated advanced retry | 40% DE, then 60% active CMA-ES |
 | `benchmark-gtop` | Repeated coordinated-retry experiments | GTOP tutorial-style statistics and raw results |
-| `benchmark-biteopt-gtop` | Repeated basic-retry experiments | BiteOpt or DE→CMA statistics and raw results |
+| `benchmark-biteopt-gtop` | Repeated basic-retry experiments | BiteOpt, DE→CMA or jSO→CMA statistics and raw results |
 | `mazda-mo` | MODE | Constrained mass/common-parts Pareto search |
 | `mazda-qd` | CVT-MAP-Elites, optional Diversifier | Mazda behavior archive |
 | `trading` | MODE and CVT-MAP-Elites | Four-stock EMA/SMA strategy search |
@@ -423,7 +423,12 @@ cargo run --release -p fcmaes-examples --bin benchmark-biteopt-gtop -- \
   --raw-output benchmarks/benchmark_de_cma_gtop_rust_100_raw.tsv
 ```
 
-Both tables report success rate, wall-time statistics, and the mean and
+`--algo jso_cma` runs the same sequence with jSO instead of DE as the first
+stage (same 4,000/6,000 split, step sizes and seeds; `jso_cma_run` in
+`examples/src/runner.rs`). jSO stops exactly at its share; its initial
+population is uniform in the box.
+
+Each table reports success rate, wall-time statistics, and the mean and
 population standard deviation of the final optimum across all runs. See the
 [native benchmark index](../benchmarks/README.md) for recorded output and
 reproduction notes.

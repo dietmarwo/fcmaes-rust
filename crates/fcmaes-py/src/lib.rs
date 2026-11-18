@@ -16,6 +16,7 @@ mod crfmnes;
 mod da;
 mod de;
 mod gtop;
+mod jso;
 mod mapelites;
 mod mode;
 mod moretry;
@@ -64,6 +65,7 @@ fn _fcmaes_ext(m: &Bound<'_, PyModule>) -> PyResult<()> {
     da::register(m)?;
     de::register(m)?;
     gtop::register(m)?;
+    jso::register(m)?;
     mapelites::register(m)?;
     mode::register(m)?;
     moretry::register(m)?;

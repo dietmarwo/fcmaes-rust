@@ -1,0 +1,13 @@
+problem	domain	dim	mean_eval_us	budget
+cassini1	space	6	7.226	200000
+gtoc1	space	8	10.285	100000
+sagas	space	12	4.197	200000
+messenger	space	18	10.004	100000
+tandem	space	18	9.324	200000
+cassini2	space	22	12.897	100000
+rosetta	space	22	11.035	100000
+messenger_full	space	26	13.686	100000
+lj13	chemistry	39	0.438	200000
+lj38	chemistry	114	3.029	200000
+truss_sizing	structures	171	36.715	100000
+dispersion	environment	12	43.329	100000

@@ -15,7 +15,7 @@ ext = fcmaes_rust.native
 EMPTY_FLOAT = np.empty(0, dtype=np.float64)
 EMPTY_BOOL = np.empty(0, dtype=np.bool_)
 
-PUBLIC_CLASSES = ("DE", "ACMA", "CRFMNES", "PGPE", "Bite", "MODE", "Archive")
+PUBLIC_CLASSES = ("DE", "JSO", "ACMA", "CRFMNES", "PGPE", "Bite", "MODE", "Archive")
 
 
 def sphere(x):
@@ -90,6 +90,74 @@ def test_optimize_de_minimizes_sphere():
     assert evaluations >= 4_000
     assert iterations > 0
     assert stop in (0, 1)
+
+
+def shifted(x):
+    values = np.asarray(x, dtype=np.float64)
+    return float(np.sum((values - 1.3) ** 2))
+
+
+def test_optimize_jso_minimizes_sphere_within_the_budget():
+    dim = 5
+    lower = np.full(dim, -5.0, dtype=np.float64)
+    upper = np.full(dim, 5.0, dtype=np.float64)
+    x, value, evaluations, iterations, stop = fcmaes_rust.optimize_jso(
+        shifted, dim, lower, upper, seed=7, max_evaluations=6_000
+    )
+    assert np.asarray(x).shape == (dim,)
+    assert value == shifted(x)
+    assert value < 1e-6
+    assert evaluations == 6_000
+    assert iterations > 0
+    assert stop == 0
+    # Generations evaluated on threads give the same run.
+    parallel = fcmaes_rust.optimize_jso(
+        shifted, dim, lower, upper, seed=7, max_evaluations=6_000, workers=3
+    )
+    np.testing.assert_array_equal(parallel[0], x)
+    assert parallel[1:] == (value, evaluations, iterations, stop)
+    reached = fcmaes_rust.optimize_jso(
+        shifted, dim, lower, upper, seed=7, max_evaluations=6_000, stop_fitness=1e-2
+    )
+    assert reached[4] == 1 and reached[1] < 1e-2 and reached[2] < 6_000
+
+
+def test_jso_ask_tell_equals_optimize_and_validates_calls():
+    dim, budget = 4, 1_003  # not a whole number of generations
+    lower, upper = [-2.0] * dim, [3.0] * dim
+    seen = []
+
+    def recording(x):
+        seen.append(np.array(x))
+        return shifted(x)
+
+    reference = fcmaes_rust.optimize_jso(recording, dim, lower, upper, seed=5, max_evaluations=budget)
+    jso = fcmaes_rust.JSO(dim, lower, upper, seed=5, max_evaluations=budget)
+    initial = jso.popsize
+    assert (jso.dim, initial, jso.stop) == (dim, round(25 * np.log(dim) * np.sqrt(dim)), 0)
+    assert jso.population().shape == (initial, dim)
+    with pytest.raises(ValueError, match="pending"):
+        jso.tell([1.0])
+    asked = []
+    lengths = []
+    while True:
+        xs = jso.ask()
+        if len(xs) == 0:
+            assert xs.shape == (0, dim)
+            break
+        with pytest.raises(ValueError, match="pending"):
+            jso.ask()
+        with pytest.raises(ValueError, match="length"):
+            jso.tell(np.zeros(len(xs) + 1))
+        asked.extend(xs)
+        lengths.append(len(xs))
+        assert jso.tell([shifted(x) for x in xs]) == 0
+    np.testing.assert_array_equal(np.array(asked), np.array(seen))
+    assert lengths[0] == initial and sum(lengths) == budget
+    assert jso.popsize < initial
+    x, value, evaluations, iterations, stop = jso.result()
+    np.testing.assert_array_equal(x, reference[0])
+    assert (value, evaluations, iterations, stop) == reference[1:]
 
 
 def test_bite_ask_tell_contract_and_validation():
@@ -240,6 +308,7 @@ ONE_SHOT_AND_STATEFUL = [
     ("optimize_bite", "Bite"),
     ("optimize_crfmnes", "CRFMNES"),
     ("optimize_de", "DE"),
+    ("optimize_jso", "JSO"),
     ("optimize_pgpe", "PGPE"),
 ]
 

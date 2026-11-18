@@ -45,14 +45,14 @@ Run `git diff --check` before handing off changes.
 |---|---|
 | Public Rust exports | `crates/fcmaes-core/src/lib.rs` |
 | Objective and bounds machinery | `crates/fcmaes-core/src/fitness.rs` |
-| Optimizers | `crates/fcmaes-core/src/{de,cmaes,crfmnes,pgpe,da,biteopt,mode}.rs` |
+| Optimizers | `crates/fcmaes-core/src/{de,jso,cmaes,crfmnes,pgpe,da,biteopt,mode}.rs` |
 | Retry coordinators | `crates/fcmaes-core/src/{retry,moretry}.rs` |
 | Quality diversity | `crates/fcmaes-core/src/mapelites.rs` |
 | Python registration | `crates/fcmaes-py/src/lib.rs` |
 | Optional PyO3 surface | `crates/fcmaes-py/src/` |
 | GTOP implementation | `crates/fcmaes-gtop/src/lib.rs` |
 | GTOP names and bounds | `examples/src/problems.rs` |
-| CLI and DE→CMA runner | `examples/src/runner.rs` |
+| CLI and DE→CMA and jSO→CMA runners | `examples/src/runner.rs` |
 | Native binary entry points | `examples/src/bin/` |
 | Native Mazda evaluator and objectives | `examples/src/mazda.rs`, `examples/src/mazda_model.rs` |
 | Trading model and Yahoo cache | `examples/src/trading.rs` |

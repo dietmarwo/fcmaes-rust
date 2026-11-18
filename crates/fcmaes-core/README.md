@@ -81,8 +81,8 @@ returned within a fixed wall time:
   training jobs, hardware tests, or remote requests.
 
 Every population-based core optimizer has ask/tell or an equivalent batch
-boundary: DE, active CMA-ES, CR-FM-NES, PGPE, BiteOpt, MODE, MAP-Elites, and
-Diversifier. Dual Annealing is sequential and has no population ask/tell
+boundary: DE, jSO, active CMA-ES, CR-FM-NES, PGPE, BiteOpt, MODE, MAP-Elites,
+and Diversifier. Dual Annealing is sequential and has no population ask/tell
 interface; use retry to parallelize independent Dual Annealing searches.
 
 The controlled
@@ -96,7 +96,8 @@ between the two layers to avoid oversubscription.
 
 ## Capabilities
 
-- Differential Evolution, active CMA-ES, CR-FM-NES, PGPE and Dual Annealing
+- Differential Evolution, jSO (adaptive DE with population size reduction),
+  active CMA-ES, CR-FM-NES, PGPE and Dual Annealing
 - BiteOpt and batched ask/tell optimization
 - MODE multi-objective optimization
 - exact and sampled hypervolume, IGD/IGD+, GD/GD+, epsilon, spacing, spread,
@@ -110,13 +111,14 @@ between the two layers to avoid oversubscription.
 | Problem | Start here |
 |---|---|
 | General bounded scalar optimization | [`De`](https://docs.rs/fcmaes-core/latest/fcmaes_core/de/struct.De.html), [`Cmaes`](https://docs.rs/fcmaes-core/latest/fcmaes_core/cmaes/struct.Cmaes.html), or [`BiteOpt`](https://docs.rs/fcmaes-core/latest/fcmaes_core/biteopt/struct.BiteOpt.html) |
+| First stage of a sequence before CMA-ES, as an alternative to DE | [`Jso`](https://docs.rs/fcmaes-core/latest/fcmaes_core/jso/struct.Jso.html) |
 | High-dimensional or noisy search | [`Pgpe`](https://docs.rs/fcmaes-core/latest/fcmaes_core/pgpe/struct.Pgpe.html) or [`Crfmnes`](https://docs.rs/fcmaes-core/latest/fcmaes_core/crfmnes/struct.Crfmnes.html) |
 | Independent or adaptive restarts | [`retry`](https://docs.rs/fcmaes-core/latest/fcmaes_core/retry/index.html) |
 | Several competing objectives | [`mode`](https://docs.rs/fcmaes-core/latest/fcmaes_core/mode/index.html) and [`moretry`](https://docs.rs/fcmaes-core/latest/fcmaes_core/moretry/index.html) |
 | Audit a multi-objective front | [`indicators`](https://docs.rs/fcmaes-core/latest/fcmaes_core/indicators/index.html) |
 | Keep the exact two-objective front of all evaluations, with hypervolume | [`ParetoArchive2D`](https://docs.rs/fcmaes-core/latest/fcmaes_core/pareto/struct.ParetoArchive2D.html) |
 | Diverse high-quality solutions | [`mapelites`](https://docs.rs/fcmaes-core/latest/fcmaes_core/mapelites/index.html) |
-| External, GPU, service, or custom batch evaluator | the ask/tell methods on DE, CMA-ES, CR-FM-NES, PGPE, BiteOpt, and MODE |
+| External, GPU, service, or custom batch evaluator | the ask/tell methods on DE, jSO, CMA-ES, CR-FM-NES, PGPE, BiteOpt, and MODE |
 
 Every public item is documented. Module pages provide runnable examples,
 algorithm references, parameter semantics, stopping behavior, and execution
@@ -130,6 +132,7 @@ at compile time.
 - [Getting started](https://dietmarwo.github.io/fcmaes-rust/docs/getting-started.html)
 - [Choosing an optimizer](https://dietmarwo.github.io/fcmaes-rust/docs/choosing-an-optimizer.html)
 - [Optimizer scope and interoperation](https://dietmarwo.github.io/fcmaes-rust/docs/optimizer-boundary.html)
+- [The algorithm portfolio](https://dietmarwo.github.io/fcmaes-rust/docs/algorithm-portfolio.html)
 - [Optimizer guide](https://dietmarwo.github.io/fcmaes-rust/docs/optimizers.html)
 - [Retry guide](https://dietmarwo.github.io/fcmaes-rust/docs/retry.html)
 

@@ -7,12 +7,13 @@ use std::time::Instant;
 use fcmaes_examples::benchmark_gtop::{
     BenchmarkCase, ProblemSummary, RunRecord, mean_sdev, run_seed, selected_bite_cases, summarize,
 };
-use fcmaes_examples::runner::{Cli, run_basic, run_bite};
+use fcmaes_examples::runner::{Cli, run_basic, run_bite, run_jso_cma};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Algorithm {
     Biteopt,
     DeCma,
+    JsoCma,
 }
 
 impl Algorithm {
@@ -20,7 +21,8 @@ impl Algorithm {
         match value {
             "biteopt" => Ok(Self::Biteopt),
             "de_cma" => Ok(Self::DeCma),
-            _ => Err("--algo must be 'biteopt' or 'de_cma'".to_owned()),
+            "jso_cma" => Ok(Self::JsoCma),
+            _ => Err("--algo must be 'biteopt', 'de_cma' or 'jso_cma'".to_owned()),
         }
     }
 
@@ -28,6 +30,7 @@ impl Algorithm {
         match self {
             Self::Biteopt => "biteopt",
             Self::DeCma => "de_cma",
+            Self::JsoCma => "jso_cma",
         }
     }
 
@@ -35,6 +38,7 @@ impl Algorithm {
         match self {
             Self::Biteopt => "BiteOpt",
             Self::DeCma => "DE-CMA",
+            Self::JsoCma => "jSO-CMA",
         }
     }
 }
@@ -130,7 +134,7 @@ impl Default for BenchmarkCli {
 
 impl BenchmarkCli {
     const USAGE: &str = "options:\n\
-      --algo NAME              biteopt or de_cma (default biteopt)\n\
+      --algo NAME              biteopt, de_cma or jso_cma (default biteopt)\n\
       --runs N                 independent experiments per problem (default 100)\n\
       --workers N              basic-retry worker threads (default 24)\n\
       --retries N              optimizer retries per experiment (default 24)\n\
@@ -271,6 +275,7 @@ fn main() {
             let result = match cli.algorithm {
                 Algorithm::Biteopt => run_bite(&case.problem, &run_cli),
                 Algorithm::DeCma => run_basic(&case.problem, &run_cli),
+                Algorithm::JsoCma => run_jso_cma(&case.problem, &run_cli),
             };
             let wall_seconds = started.elapsed().as_secs_f64();
             let success = result.success && result.y <= case.stop_value;
@@ -378,6 +383,11 @@ mod tests {
         assert!(BenchmarkCli::from_args(["--runs"]).is_err());
         assert!(BenchmarkCli::from_args(["--unknown", "1"]).is_err());
         assert!(BenchmarkCli::from_args(["--algo", "cma"]).is_err());
+        let jso = BenchmarkCli::from_args(["--algo", "jso_cma"])
+            .unwrap()
+            .unwrap();
+        assert_eq!(jso.algorithm, Algorithm::JsoCma);
+        assert_eq!(jso.algorithm.key(), "jso_cma");
     }
 
     #[test]
@@ -412,7 +422,11 @@ mod tests {
             )
         );
         assert!(
-            render_markdown(Algorithm::DeCma, &[summary]).contains("GTOP DE-CMA retry results")
+            render_markdown(Algorithm::DeCma, std::slice::from_ref(&summary))
+                .contains("GTOP DE-CMA retry results")
+        );
+        assert!(
+            render_markdown(Algorithm::JsoCma, &[summary]).contains("GTOP jSO-CMA retry results")
         );
     }
 }

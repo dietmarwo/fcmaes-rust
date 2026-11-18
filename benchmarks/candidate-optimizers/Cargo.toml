@@ -1,0 +1,23 @@
+[workspace]
+resolver = "2"
+members = ["solver-api", "cand-de", "cand-eda", "harness"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+publish = false
+
+[workspace.dependencies]
+fcmaes-core = { path = "../../crates/fcmaes-core" }
+solver-api = { path = "solver-api" }
+cand-de = { path = "cand-de" }
+cand-eda = { path = "cand-eda" }
+
+[profile.release]
+codegen-units = 1
+lto = "thin"
+
+# Tests run real optimizations; unoptimized builds make them needlessly slow.
+[profile.test]
+opt-level = 3

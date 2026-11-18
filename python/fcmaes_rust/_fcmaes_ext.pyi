@@ -28,8 +28,8 @@ are. Exceptions from the ``optimize`` callbacks of ``minimize_retry`` and
 ``minimize_retry``, which only ``optimize`` calls.
 
 ``evaluations`` in an ``optimize_*`` result is the number of objective
-evaluations actually made. ``optimize_bite`` and ``optimize_da`` keep to
-``max_evaluations``. ``optimize_de`` checks it before each generation and can
+evaluations actually made. ``optimize_bite``, ``optimize_da`` and
+``optimize_jso`` keep to ``max_evaluations``. ``optimize_de`` checks it before each generation and can
 make up to ``2 * popsize - 1`` more; ``optimize_acma``, ``optimize_crfmnes``,
 ``optimize_pgpe`` and ``Archive.diversify`` evaluate whole generations and can
 make up to ``popsize - 1`` more.
@@ -147,6 +147,19 @@ def optimize_de(
     max_mutate: float = 0.5,
     workers: int = 1,
     terminate: Callable[[], bool] | None = None,
+) -> _Result: ...
+def optimize_jso(
+    fun: Callable[[_F64], float],
+    dim: int,
+    lower: _ArrayLike,
+    upper: _ArrayLike,
+    *,
+    seed: int,
+    runid: int = 0,
+    max_evaluations: int = 100_000,
+    stop_fitness: float = -np.inf,
+    popsize: int = 0,
+    workers: int = 1,
 ) -> _Result: ...
 def optimize_pgpe(
     batch_fun: Callable[[_F64], _ArrayLike],
@@ -345,6 +358,33 @@ class DE:
         *,
         seed: int,
         runid: int = 0,
+    ) -> None: ...
+    @property
+    def dim(self) -> int: ...
+    @property
+    def popsize(self) -> int: ...
+    @property
+    def stop(self) -> int: ...
+    def ask(self) -> _F64: ...
+    def population(self) -> _F64: ...
+    def result(self) -> _Result: ...
+    def tell(self, ys: _ArrayLike) -> int: ...
+
+class JSO:
+    """Stateful jSO (adaptive DE with population size reduction) driven by
+    external ``ask``/``tell``; one pair per generation, varying batch length."""
+
+    def __init__(
+        self,
+        dim: int,
+        lower: _ArrayLike,
+        upper: _ArrayLike,
+        popsize: int = 0,
+        *,
+        seed: int,
+        runid: int = 0,
+        max_evaluations: int = 100_000,
+        stop_fitness: float = -np.inf,
     ) -> None: ...
     @property
     def dim(self) -> int: ...

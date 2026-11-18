@@ -46,7 +46,7 @@ print(fcmaes_rust.phase1_build_info())
 ## Optimizers
 
 The package exposes one-shot and ask/tell interfaces for Differential
-Evolution, active CMA-ES, CR-FM-NES, PGPE and BiteOpt, plus Dual Annealing,
+Evolution, jSO, active CMA-ES, CR-FM-NES, PGPE and BiteOpt, plus Dual Annealing,
 MODE, MAP-Elites, the Diversifier, independent retry, coordinated retry and
 weighted multi-objective retry.
 

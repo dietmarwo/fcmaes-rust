@@ -125,8 +125,8 @@ when one objective evaluation is expensive.
 | Independent `retry` | Complete optimizer runs | Multimodal problems; serial internal algorithms; cheap to moderately costly objectives | Explores more independent basins and improves the distribution of the returned best |
 | Population ask/tell | Candidates from one optimizer generation | Expensive simulations, training jobs, hardware tests, or remote evaluations | Advances one search through more generations during the same wait |
 
-DE, active CMA-ES, CR-FM-NES, PGPE, BiteOpt, and MODE provide direct ask/tell
-interfaces. MAP-Elites and Diversifier provide equivalent batch evaluators and
+DE, jSO, active CMA-ES, CR-FM-NES, PGPE, BiteOpt, and MODE provide direct
+ask/tell interfaces. MAP-Elites and Diversifier provide equivalent batch evaluators and
 ordered archive updates. Dual Annealing is the deliberate exception: its next
 point depends on the preceding point and score, so it has no population to
 evaluate concurrently. Retry can still parallelize independent Dual Annealing
@@ -189,7 +189,9 @@ The [optimizer-boundary guide](docs/optimizer-boundary.md) records why the
 core stops at bounded gradient-free global methods and evidence utilities.
 Corrected paired experiments keep Nelder–Mead, Bayesian optimization, and
 gradient solvers behind the retry adapter boundary instead of adding them as
-core algorithms or dependencies.
+core algorithms or dependencies. [The algorithm portfolio](docs/algorithm-portfolio.md)
+states which gradient-free algorithms are in core, which were benchmarked and
+left out, and the evidence for each.
 
 ### Tutorial evidence map
 
@@ -258,10 +260,10 @@ SVGs needed to reproduce the published pages from a clean clone. Schema-driven
 tutorials use `run.json`; room ventilation and neural policy search also check
 aggregate CSVs and plots spanning multiple seeds and validation studies.
 
-Implemented algorithms include Differential Evolution, active CMA-ES,
-CR-FM-NES, PGPE, Dual Annealing, BiteOpt, MODE, CVT-MAP-Elites, the
-Diversifier, independent retry, coordinated retry, and weighted
-multi-objective retry. `ParetoArchive2D` keeps the exact non-dominated front
+Implemented algorithms include Differential Evolution, jSO (adaptive DE with
+population size reduction), active CMA-ES, CR-FM-NES, PGPE, Dual Annealing,
+BiteOpt, MODE, CVT-MAP-Elites, the Diversifier, independent retry,
+coordinated retry, and weighted multi-objective retry. `ParetoArchive2D` keeps the exact non-dominated front
 and hypervolume of all points evaluated on a two-objective problem, next to
 any optimizer ([guide](crates/fcmaes-core/PARETO_ARCHIVE.md)).
 
@@ -386,6 +388,7 @@ python examples/python/test_cma.py
 - [Security and numerical-integrity reporting](SECURITY.md)
 - [Getting started](docs/getting-started.md)
 - [Choosing an optimizer](docs/choosing-an-optimizer.md)
+- [The algorithm portfolio](docs/algorithm-portfolio.md)
 - [Architecture and implementation boundaries](docs/architecture.md)
 - [Optimizer guide](docs/optimizers.md)
 - [Retry and multi-objective retry](docs/retry.md)

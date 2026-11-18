@@ -1,7 +1,7 @@
 # Agent guide
 
 fcmaes-rust is a pure-Rust gradient-free optimization library (`fcmaes-core`:
-BiteOpt, DE, CMA-ES, CR-FM-NES, PGPE, Dual Annealing, MODE, MAP-Elites,
+BiteOpt, DE, jSO, CMA-ES, CR-FM-NES, PGPE, Dual Annealing, MODE, MAP-Elites,
 retry), its Python binding (`fcmaes-rust`, imported as `fcmaes_rust`), and a
 job worker (`fcmaes-job-worker`) that runs registered models as durable jobs
 through the shared job API of

@@ -409,7 +409,8 @@ impl<'a, O: Objective> Da<'a, O> {
         if self.not_improved_idx >= self.not_improved_max_idx {
             do_ls = true;
         }
-        if do_ls {
+        // The first local search can spend the budget without improving.
+        if do_ls && !self.max_eval_reached() {
             let (e, x) = self.local_search(&self.xmin.clone());
             self.xmin = x.clone();
             self.emin = e;
@@ -426,9 +427,22 @@ impl<'a, O: Objective> Da<'a, O> {
 
     // ---- bounded L-BFGS local search on [0,1]^dim ----
 
+    /// Evaluate an *encoded* point if the budget allows another call.
+    fn try_value(&mut self, x: &[f64]) -> Option<f64> {
+        if self.max_eval_reached() {
+            None
+        } else {
+            Some(self.value(x))
+        }
+    }
+
     /// Finite-difference gradient matching the C++ `LBFGSFunc` (per-coordinate
     /// forward/backward difference with boundary handling); returns `(grad, f)`.
-    fn fd_grad(&mut self, arg: &[f64]) -> (Vec<f64>, f64) {
+    ///
+    /// The gradient costs `2 * dim + 1` calls. Returns `None` when the budget
+    /// runs out before all of them are made; the calls already made still
+    /// count and still update the local-search best.
+    fn fd_grad(&mut self, arg: &[f64]) -> Option<(Vec<f64>, f64)> {
         let eps = 1e-6;
         let mut grad = vec![0.0; self.dim];
         for i in 0..self.dim {
@@ -446,12 +460,12 @@ impl<'a, O: Objective> Da<'a, O> {
                 x2[i] = 0.0;
                 e2 = arg[i];
             }
-            let f1 = self.value(&x1);
-            let f2 = self.value(&x2);
+            let f1 = self.try_value(&x1)?;
+            let f2 = self.try_value(&x2)?;
             grad[i] = (f1 - f2) / (e1 + e2);
         }
-        let f = self.value(arg);
-        (grad, f)
+        let f = self.try_value(arg)?;
+        Some((grad, f))
     }
 
     fn local_search(&mut self, x0: &[f64]) -> (f64, Vec<f64>) {
@@ -468,7 +482,11 @@ impl<'a, O: Objective> Da<'a, O> {
         let mut y_hist: Vec<Vec<f64>> = Vec::new();
         let mut rho: Vec<f64> = Vec::new();
 
-        let (mut g, mut f) = self.fd_grad(&x);
+        // A gradient that does not fit into the budget ends the search with
+        // the best point evaluated so far.
+        let Some((mut g, mut f)) = self.fd_grad(&x) else {
+            return (self.fit_best_y, self.fit_best_x.clone());
+        };
         for _ in 0..max_iter {
             // projected-gradient stopping test
             let pg_norm: f64 = (0..self.dim)
@@ -519,7 +537,9 @@ impl<'a, O: Objective> Da<'a, O> {
                 let cand: Vec<f64> = (0..self.dim)
                     .map(|i| (x[i] + step * d[i]).clamp(0.0, 1.0))
                     .collect();
-                let fc = self.value(&cand);
+                let Some(fc) = self.try_value(&cand) else {
+                    break;
+                };
                 if fc.is_finite() && fc <= f + 1e-4 * step * gd {
                     x_new = cand;
                     f_new = fc;
@@ -535,7 +555,9 @@ impl<'a, O: Objective> Da<'a, O> {
                 break;
             }
 
-            let (g_new, _) = self.fd_grad(&x_new);
+            let Some((g_new, _)) = self.fd_grad(&x_new) else {
+                break;
+            };
             let s: Vec<f64> = (0..self.dim).map(|i| x_new[i] - x[i]).collect();
             let yv: Vec<f64> = (0..self.dim).map(|i| g_new[i] - g[i]).collect();
             let sy = dot(&s, &yv);
@@ -789,12 +811,74 @@ mod tests {
         );
     }
 
+    /// Counts objective calls independently of the optimizer's own counter.
+    fn counted_run(
+        objective: fn(&[f64]) -> f64,
+        dim: usize,
+        budget: u64,
+        seed: u64,
+    ) -> (DaResult, u64) {
+        let calls = std::sync::atomic::AtomicU64::new(0);
+        let counted = |x: &[f64]| {
+            calls.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+            objective(x)
+        };
+        let guess: Vec<f64> = (0..dim).map(|i| -4.0 + (i % 9) as f64).collect();
+        let result = optimize_da(
+            &counted,
+            &guess,
+            vec![-5.0; dim],
+            vec![5.0; dim],
+            &DaParams {
+                max_evaluations: budget,
+                seed,
+                ..Default::default()
+            },
+        );
+        (result, calls.load(std::sync::atomic::Ordering::Relaxed))
+    }
+
+    #[test]
+    fn local_search_never_exceeds_the_budget() {
+        // The finite-difference gradient costs 2 * dim + 1 calls and the
+        // line search follows it; both must stop at the budget.
+        let rastrigin = |x: &[f64]| -> f64 {
+            x.iter()
+                .map(|v| v * v - 10.0 * (2.0 * std::f64::consts::PI * v).cos() + 10.0)
+                .sum()
+        };
+        for objective in [sphere as fn(&[f64]) -> f64, rosen, rastrigin] {
+            for dim in [39, 114] {
+                for budget in [1, 7, 100, 1_000, 25_000] {
+                    for seed in [1, 2] {
+                        let (result, calls) = counted_run(objective, dim, budget, seed);
+                        assert!(
+                            calls <= budget,
+                            "dim {dim} budget {budget} seed {seed}: {calls} calls"
+                        );
+                        assert_eq!(result.evaluations, calls);
+                        assert!(result.y.is_finite());
+                        assert_eq!(result.x.len(), dim);
+                        // The reported value belongs to the reported point.
+                        assert_eq!(objective(&result.x), result.y);
+                    }
+                }
+            }
+        }
+    }
+
     #[test]
     fn finite_difference_handles_both_box_boundaries() {
         let objective = sphere as fn(&[f64]) -> f64;
         let mut optimizer = Da::new(&objective, 2, vec![0.0; 2], vec![1.0; 2], 100, false, 5);
-        let (gradient, value) = optimizer.fd_grad(&[0.0, 1.0]);
+        let (gradient, value) = optimizer.fd_grad(&[0.0, 1.0]).expect("budget left");
         assert!(gradient.iter().all(|component| component.is_finite()));
         assert_eq!(value, 1.0);
+        // Two calls left: the gradient (five calls) does not fit, and only
+        // the two calls the budget allows are made.
+        let mut short = Da::new(&objective, 2, vec![0.0; 2], vec![1.0; 2], 7, false, 5);
+        assert!(short.fd_grad(&[0.5, 0.5]).is_some());
+        assert!(short.fd_grad(&[0.25, 0.5]).is_none());
+        assert_eq!(short.eval_counter, 7);
     }
 }

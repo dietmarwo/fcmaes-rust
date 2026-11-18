@@ -1,0 +1,31 @@
+[package]
+name = "candidate-harness"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+description = "Benchmark harness for the candidate-optimizer inclusion experiment"
+
+[features]
+default = []
+# Adds the four DE/EDA candidates (lshade, jso, lsrtde, amalgam) to the solver
+# registry. Off by default so the harness builds without the candidate crates.
+candidates = ["dep:cand-de", "dep:cand-eda"]
+
+[dependencies]
+fcmaes-core = { workspace = true }
+solver-api = { workspace = true }
+cand-de = { workspace = true, optional = true }
+cand-eda = { workspace = true, optional = true }
+# Problem sources, all inside this repository.
+fcmaes-gtop = { path = "../../../crates/fcmaes-gtop" }
+fcmaes-foundations = { path = "../../../foundations" }
+optical-lens-design = { path = "../../../tutorials/optical-lens-design" }
+sindr-circuit-design = { path = "../../../tutorials/sindr-circuit-design" }
+phased-array-codebook = { path = "../../../tutorials/phased-array-codebook" }
+# Round-2 optional problems (ROUND2.md section 3).
+truss-sizing = { path = "../../../tutorials/truss-sizing" }
+dispersion-source-localization = { path = "../../../tutorials/dispersion-source-localization" }
+# sindr 0.1.0-alpha.6 accepts sindr-devices ^0.1.0-alpha.6 but does not compile
+# against alpha.7; pin the version that the tutorial's own lockfile uses.
+sindr-devices = "=0.1.0-alpha.6"

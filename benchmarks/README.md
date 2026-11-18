@@ -11,6 +11,7 @@ preserve every experiment and are the authoritative inputs for statistics.
 | fcmaes versus independent Rust optimizer crates | [`optimizer-comparison/comparison.md`](optimizer-comparison/comparison.md) | [raw artifacts](https://github.com/dietmarwo/fcmaes-rust/tree/main/benchmarks/optimizer-comparison/raw) |
 | Controlled active CMA-ES implementation diagnostic | [`cmaes-implementation/README.md`](cmaes-implementation/README.md) | [`cmaes-implementation/results/implementation-v1/paired.csv`](cmaes-implementation/results/implementation-v1/paired.csv) (20-pair publication campaign) |
 | Core boundary: DE versus Nelder–Mead refinement and EGO at equal wall deadlines | [`optimizer-boundary/results/decision-v2/comparison.md`](optimizer-boundary/results/decision-v2/comparison.md) | [`refiner-raw.tsv`](optimizer-boundary/results/decision-v2/refiner-raw.tsv), [`bo-trace.tsv`](optimizer-boundary/results/decision-v2/bo-trace.tsv) |
+| Candidate optimizers (L-SHADE, jSO, L-SRTDE, BIPOP-aCMA-ES, AMaLGaM-IDEA, and jSO→CMA and L-SRTDE→CMA sequences) versus the core optimizers on real-world problems, two rounds | [`candidate-optimizers/DECISION.md`](candidate-optimizers/DECISION.md), [`report.md`](candidate-optimizers/results/report.md), [round 2](candidate-optimizers/results/round2/report.md) | [`candidate-optimizers/results/raw.tsv`](candidate-optimizers/results/raw.tsv), [`round2/raw.tsv`](candidate-optimizers/results/round2/raw.tsv) |
 
 Recreate the recorded native fcmaes workloads from the repository root:
 

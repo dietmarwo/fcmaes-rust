@@ -115,7 +115,7 @@ let population = logarithmic_integer(u, 8, 512)?;
 DE and MODE accept an optional integer-coordinate mask. It improves how those
 optimizers mutate integer coordinates, but it does not replace decoding.
 Clamping and conversion in the objective remain authoritative. BiteOpt,
-CMA-ES, CR-FM-NES, and PGPE see only the real coordinate.
+jSO, CMA-ES, CR-FM-NES, and PGPE see only the real coordinate.
 
 ## Categories and Booleans
 
