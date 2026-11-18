@@ -67,7 +67,11 @@ fn spec(profile: &str, payload: Value, inner: usize) -> JobSpec {
 }
 
 fn retry(id: &str, kind: &str, parameters: Value, evaluations: u64) -> Value {
-    let mode = if kind == "biteopt" { "hard" } else { "soft" };
+    let mode = if kind == "biteopt" || kind == "jso" {
+        "hard"
+    } else {
+        "soft"
+    };
     json!({"problem": problem(id, 4), "optimizer": {"kind": kind, "parameters": parameters},
         "seed": 7, "retries": 2, "evaluations_per_retry": evaluations, "evaluation_limit_mode": mode})
 }
@@ -97,6 +101,7 @@ fn retries_find_the_optimum_of_a_simulation_that_fails_on_half_the_box() {
         ("cmaes", json!({"restarts": "bipop"}), 1),
         ("crfmnes", json!({}), 1),
         ("pgpe", json!({}), 1),
+        ("jso", json!({}), 2),
     ] {
         let mut payload = retry("app.holey-sphere", kind, parameters.clone(), 6000);
         if kind == "pgpe" {
@@ -163,7 +168,7 @@ fn simulation_results_do_not_depend_on_inner_threads() {
 
 #[test]
 fn a_cancel_stops_a_retry_at_the_simulations_checkpoints() {
-    for kind in ["biteopt", "cmaes"] {
+    for kind in ["biteopt", "cmaes", "jso"] {
         let started = Arc::new(AtomicUsize::new(0));
         let adapter = Adapter::new(registry(Arc::clone(&started)));
         let dir = tempfile::tempdir().unwrap();

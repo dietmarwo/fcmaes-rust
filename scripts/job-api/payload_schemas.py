@@ -3,7 +3,8 @@
 Checks every schema in `payload_schemas` and `input_schemas`, every example
 payload and example input against them, that each payload schema rejects an
 unknown top-level field, and the given payloads (the tutorials') against
-the payload schema of their profile. Used by tutorials/job-api/run.py and
+the payload schema of their profile; `check_rejected` checks that payloads the
+worker rejects fail their schema. Used by tutorials/job-api/run.py and
 tutorials/surrogate/run.py; without jsonschema it checks nothing unless
 JOB_API_REQUIRE_SCHEMA=1, which makes the package required. `run_examples`
 runs every example through the runner as a client would build it.
@@ -70,6 +71,19 @@ def check(describe, payloads=()):
             raise AssertionError(f'{label}: {error.message}') from error
         checked += 1
     return checked
+
+
+def check_rejected(describe, payloads):
+    """Checks that each of `payloads`, (label, profile, payload) triples, fails
+    the payload schema of its profile, as the worker rejects it.
+
+    Returns the number of checked payloads, 0 without jsonschema.
+    """
+    if jsonschema is None:
+        return 0
+    for label, profile, value in payloads:
+        assert not _validator(describe['payload_schemas'][profile]).is_valid(value), label
+    return len(payloads)
 
 
 def check_input(describe, format, value):

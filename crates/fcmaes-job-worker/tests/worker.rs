@@ -116,6 +116,7 @@ fn describe_reports_profile_and_workspace_engine_version() {
     for kind in [
         "biteopt",
         "de",
+        "jso",
         "cmaes",
         "crfmnes",
         "pgpe",
@@ -123,6 +124,46 @@ fn describe_reports_profile_and_workspace_engine_version() {
         "map_elites",
     ] {
         assert!(d["optimizers"][kind]["profile"].is_string(), "{kind}");
+    }
+    assert_eq!(d["optimizers"]["jso"]["limit"], "hard");
+    assert!(
+        d["optimizers"]["jso"]
+            .get("maximum_overshoot_per_retry")
+            .is_none()
+    );
+    let schema = &d["payload_schemas"]["fcmaes.retry/1"];
+    assert_eq!(
+        schema["properties"]["optimizer"]["properties"]["kind"]["enum"],
+        json!(["biteopt", "de", "jso", "cmaes", "crfmnes", "pgpe"])
+    );
+    let rules = schema["allOf"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|r| r["if"]["properties"]["optimizer"]["properties"]["kind"]["const"] == "jso")
+        .unwrap();
+    assert_eq!(
+        rules["then"]["properties"]["evaluation_limit_mode"]["const"],
+        "hard"
+    );
+    assert_eq!(
+        rules["then"]["properties"]["guess"],
+        json!({"type": "null"})
+    );
+    for absent in [
+        "sigma",
+        "batch",
+        "restarts",
+        "max_population",
+        "center_learning_rate",
+        "stdev_learning_rate",
+    ] {
+        assert_eq!(
+            rules["then"]["properties"]["optimizer"]["properties"]["parameters"]["properties"]
+                [absent],
+            json!({"type": "null"}),
+            "{absent}"
+        );
     }
     // fcmaes-core and this worker both inherit [workspace.package] version.
     let manifest = include_str!("../../../Cargo.toml");
