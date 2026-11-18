@@ -6,8 +6,9 @@ use std::thread::JoinHandle;
 use std::time::{Duration, Instant};
 
 use fcmaes_core::{
-    AdvancedRetryConfig, BiteParams, Cmaes, CmaesParams, De, DeParams, Fitness, RetryConfig,
-    RetryContext, RetryResult, RetryRunResult, Rng, advanced_retry, optimize_bite, retry,
+    AdvancedRetryConfig, BiteParams, Cmaes, CmaesParams, De, DeParams, Fitness, Jso, JsoParams,
+    RetryConfig, RetryContext, RetryResult, RetryRunResult, Rng, advanced_retry, optimize_bite,
+    retry,
 };
 
 use crate::problems::Problem;
@@ -315,6 +316,61 @@ where
     }
 }
 
+/// jSO→CMA: [`de_cma_run`] with core jSO as the first stage.
+///
+/// The budget split (40% for the first stage, at least 31 evaluations for
+/// each stage), the CMA-ES step size (`context.sdev`) and the seeds are those
+/// of [`de_cma_run`]. jSO has no start point: its initial population is
+/// uniform in the retry's bounds, so `context.guess` is not used. Its
+/// evaluation limit is hard, and its population schedule is scaled to the
+/// first-stage budget.
+fn jso_cma_run<O>(objective: &O, context: &RetryContext) -> RetryRunResult
+where
+    O: Fn(&[f64]) -> f64 + Sync,
+{
+    let dim = context.bounds.dim();
+    let jso_budget = (context.max_evaluations * 2 / 5).max(31);
+    let cma_budget = context.max_evaluations.saturating_sub(jso_budget).max(31);
+    let jso_fit = Fitness::bounded(dim, 1, context.bounds.lower(), context.bounds.upper());
+    let mut jso = Jso::new(
+        jso_fit,
+        &JsoParams {
+            max_evaluations: jso_budget,
+            stop_fitness: f64::NEG_INFINITY,
+            seed: context.seed,
+            runid: context.run_id as i64,
+            ..Default::default()
+        },
+    );
+    let jso_result = jso.optimize(objective);
+
+    let mut cma_fit = Fitness::bounded(dim, 1, context.bounds.lower(), context.bounds.upper());
+    cma_fit.set_normalize(true);
+    let mut cma = Cmaes::new(
+        cma_fit,
+        &jso_result.x,
+        &context.sdev,
+        &CmaesParams {
+            max_evaluations: cma_budget,
+            stop_fitness: f64::NEG_INFINITY,
+            seed: context.seed ^ 0xA076_1D64_78BD_642F,
+            runid: context.run_id as i64,
+            ..Default::default()
+        },
+    );
+    let cma_result = cma.optimize(objective, 1);
+    let (x, y) = if cma_result.y < jso_result.y {
+        (cma_result.x, cma_result.y)
+    } else {
+        (jso_result.x, jso_result.y)
+    };
+    RetryRunResult {
+        x,
+        y,
+        evaluations: jso_result.evaluations + cma_result.evaluations,
+    }
+}
+
 fn bite_run<O>(objective: &O, context: &RetryContext, stop_fitness: f64) -> RetryRunResult
 where
     O: Fn(&[f64]) -> f64 + Sync,
@@ -353,7 +409,36 @@ where
     }
 }
 
+/// Two-stage sequence run by each restart of [`run_basic_sequence`].
+#[derive(Clone, Copy, Debug)]
+enum Sequence {
+    DeCma,
+    JsoCma,
+}
+
+impl Sequence {
+    fn run<O>(self, objective: &O, context: &RetryContext) -> RetryRunResult
+    where
+        O: Fn(&[f64]) -> f64 + Sync,
+    {
+        match self {
+            Self::DeCma => de_cma_run(objective, context),
+            Self::JsoCma => jso_cma_run(objective, context),
+        }
+    }
+}
+
 pub fn run_basic(problem: &Problem, cli: &Cli) -> RetryResult {
+    run_basic_sequence(problem, cli, Sequence::DeCma)
+}
+
+/// Run independent jSO→CMA restarts through the basic retry coordinator.
+pub fn run_jso_cma(problem: &Problem, cli: &Cli) -> RetryResult {
+    run_basic_sequence(problem, cli, Sequence::JsoCma)
+}
+
+/// Basic retry with one two-stage sequence per restart.
+fn run_basic_sequence(problem: &Problem, cli: &Cli, sequence: Sequence) -> RetryResult {
     let config = RetryConfig {
         num_retries: cli.retries,
         workers: cli.workers,
@@ -365,7 +450,12 @@ pub fn run_basic(problem: &Problem, cli: &Cli) -> RetryResult {
         ..Default::default()
     };
     if cli.progress_interval <= 0.0 {
-        return retry(&problem.objective, &problem.bounds, &config, de_cma_run);
+        return retry(
+            &problem.objective,
+            &problem.bounds,
+            &config,
+            |objective, context| sequence.run(objective, context),
+        );
     }
 
     let reporter = ProgressReporter::start(problem.name, cli.retries, cli.progress_interval);
@@ -381,7 +471,7 @@ pub fn run_basic(problem: &Problem, cli: &Cli) -> RetryResult {
         &problem.bounds,
         &config,
         move |objective, context| {
-            let result = de_cma_run(objective, context);
+            let result = sequence.run(objective, context);
             completion_state.retry_completed();
             result
         },
@@ -503,6 +593,63 @@ mod tests {
             },
         );
         assert!(result.y < 1.0e-6, "sphere not solved: {}", result.y);
+    }
+
+    #[test]
+    fn native_jso_sequence_converges_and_honors_the_first_stage_budget() {
+        let problem = Problem {
+            name: "sphere",
+            objective: sphere,
+            bounds: fcmaes_core::RetryBounds::new(vec![-5.0; 3], vec![5.0; 3]).unwrap(),
+        };
+        let result = run_jso_cma(
+            &problem,
+            &Cli {
+                retries: 2,
+                evaluations: 2_000,
+                workers: 1,
+                seed: 7,
+                ..Default::default()
+            },
+        );
+        assert!(result.y < 1.0e-6, "sphere not solved: {}", result.y);
+        // jSO stops at exactly 800 evaluations; CMA-ES completes its last
+        // generation of 31 and may stop early on its own criteria.
+        assert!(
+            result.evaluations <= 2 * (2_000 + 30),
+            "{}",
+            result.evaluations
+        );
+    }
+
+    #[test]
+    fn jso_cma_run_counts_actual_calls_and_is_reproducible() {
+        let bounds = fcmaes_core::RetryBounds::new(vec![-5.0; 4], vec![5.0; 4]).unwrap();
+        let config = RetryConfig {
+            num_retries: 1,
+            workers: 1,
+            max_evaluations: 1_000,
+            seed: 11,
+            statistic_num: 0,
+            ..Default::default()
+        };
+        let run = || {
+            let calls = AtomicU64::new(0);
+            let counted = |x: &[f64]| {
+                calls.fetch_add(1, Ordering::Relaxed);
+                sphere(x)
+            };
+            let result = retry(&counted, &bounds, &config, jso_cma_run);
+            (result, calls.load(Ordering::Relaxed))
+        };
+        let (first, calls) = run();
+        assert_eq!(first.evaluations, calls);
+        assert_eq!(sphere(&first.x), first.y);
+        // 400 jSO evaluations, then CMA-ES with at most 600 plus the rest of
+        // its last generation of 31.
+        assert!(calls > 400 && calls <= 1_000 + 30, "{calls}");
+        let (second, _) = run();
+        assert_eq!((second.x, second.y), (first.x, first.y));
     }
 
     #[test]

@@ -21,6 +21,7 @@ API examples, and primary algorithm references are in the
 | [Getting started](getting-started.md) | Building, testing, generating rustdoc, and running a first optimizer |
 | [Choosing an optimizer](choosing-an-optimizer.md) | Deciding whether fcmaes-rust, a structured solver, gradients, a surrogate, or another search representation fits the problem |
 | [The optimizer boundary](optimizer-boundary.md) | Why local, Bayesian, gradient, and structured solvers remain external, with corrected DE/NM/BO experiments |
+| [The algorithm portfolio](algorithm-portfolio.md) | Which gradient-free algorithms are in `fcmaes-core`, which were benchmarked and left out, and the evidence |
 | [Architecture](architecture.md) | Workspace layout, execution paths, concurrency, and scope |
 | [Optimizers](optimizers.md) | Pure-Rust optimizer APIs, defaults, one-shot operation, and ask/tell operation |
 | [Retry](retry.md) | Basic, coordinated, and multi-objective retry |
@@ -39,8 +40,8 @@ API examples, and primary algorithm references are in the
 
 - Bounded fitness handling, normalization, scalar and population evaluation,
   evaluation counting, and PCG-based random generation.
-- Differential Evolution, active CMA-ES, CR-FM-NES, PGPE, Dual Annealing,
-  BiteOpt, MODE, CVT-MAP-Elites, and the Diversifier.
+- Differential Evolution, jSO, active CMA-ES, CR-FM-NES, PGPE, Dual
+  Annealing, BiteOpt, MODE, CVT-MAP-Elites, and the Diversifier.
 - Independent retry, coordinated advanced retry, and weighted
   multi-objective retry.
 - An exact two-objective Pareto archive with incremental hypervolume,

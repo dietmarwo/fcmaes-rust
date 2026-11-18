@@ -27,9 +27,10 @@ before any campaign result had been examined.
    every generation, as published for the population rule 17 + 3·D^1.5; the
    incremental learning rates belong to iAMaLGaM, which uses a different
    population rule. The fraction of shifted samples is ½·τ·n/(n − 1).
-5. **Dual Annealing is truncated at the budget.** Core `optimize_da` can
-   exceed `max_evaluations` in its gradient and line-search path. The adapter
-   counts only the first B evaluations of the library run.
+5. **Dual Annealing is truncated at the budget.** At the time of the
+   campaign, core `optimize_da` could exceed `max_evaluations` in its
+   gradient and line-search path. The adapter counts only the first B
+   evaluations of the library run.
 
 6. **L-SRTDE after the conference paper became available** (recorded while
    the campaign was running, before any campaign result had been examined).

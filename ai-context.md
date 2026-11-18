@@ -285,6 +285,10 @@ The corrected 20-seed
 [optimizer-boundary experiment](docs/optimizer-boundary.md) found no general
 DE→Nelder–Mead advantage and only a narrow, small-budget BO regime. Do not add
 an optimizer dependency to core merely because one application needs it.
+Gradient-free global methods enter core only on benchmark evidence:
+[the algorithm portfolio](docs/algorithm-portfolio.md) lists what is in core,
+what was benchmarked and left out (L-SHADE, L-SRTDE, BIPOP-aCMA-ES,
+AMaLGaM-IDEA), and why jSO was added as a first stage before CMA-ES.
 
 ### Other solvers on the same job node
 
@@ -328,6 +332,14 @@ counters differ between solvers; never compare or add them across profiles.
      poorly characterized black box.
    - Start with DE for robust bounded exploration, mixed continuous/integer
      decoding, and DE-to-CMA pipelines.
+   - Try jSO (`Jso`) as the first stage of a CMA-ES sequence when DE→CMA
+     stalls. In the
+     [candidate-optimizer benchmark](benchmarks/candidate-optimizers/DECISION.md)
+     jSO→CMA ranked about as well as DE→CMA over ten problems, significantly
+     better on GTOC1 and Tandem and worse on Cassini1, Sagas and Messenger
+     full; jSO alone lost most cells against the core optimizers. It needs
+     finite bounds and a budget fixed in advance, and `fcmaes.retry/1` does
+     not offer it.
    - Use active CMA-ES when a useful guess exists, variables are continuous,
      and correlations or ill-conditioning are important (in
      `fcmaes.retry/1`, pass it as `guess` with a matching `sigma`). A plain CMA-ES
@@ -396,9 +408,9 @@ the coefficient of variation from cross-validation in output and reports. See
 `docs/buckingham-pi.md`.
 
 Python users can still use the Rust optimizers through `fcmaes_rust`.
-One-shot functions include `optimize_de`, `optimize_acma`,
+One-shot functions include `optimize_de`, `optimize_jso`, `optimize_acma`,
 `optimize_crfmnes`, `optimize_pgpe`, `optimize_da`, and `optimize_bite`;
-stateful `DE`, `ACMA`, `CRFMNES`, `PGPE`, `Bite`, `MODE`, and `Archive`
+stateful `DE`, `JSO`, `ACMA`, `CRFMNES`, `PGPE`, `Bite`, `MODE`, and `Archive`
 classes expose the corresponding ask/tell or archive workflows. Retry is
 available through `minimize_retry`, `minimize_advanced_retry`, and
 `minimize_moretry`. Treat this as a low-level NumPy-oriented API and consult
@@ -413,8 +425,8 @@ evaluation, as in fcmaes. From 0.2.1, the first failure of a run is logged
 once as a warning on the `fcmaes_rust` logger; still test the objective on its
 own first. The `evaluations` field is the number of calls actually made:
 `optimize_de` can exceed `max_evaluations` by up to `2 * popsize - 1`, ACMA,
-CR-FM-NES and PGPE by up to `popsize - 1`; BiteOpt and Dual Annealing never
-exceed it.
+CR-FM-NES and PGPE by up to `popsize - 1`; BiteOpt, jSO and Dual Annealing
+never exceed it.
 
 The native optimizer loop releases the GIL, but every Python objective callback
 must reacquire it. Cheap objectives written in Python therefore rarely scale
@@ -895,6 +907,7 @@ algorithms, but that is not a capability of this job protocol yet.
 | Algorithm | Best fit | Main limitation | Practical initial configuration |
 |---|---|---|---|
 | Differential Evolution (`De`) | Bounded global search, discontinuities, mixed decoded variables, restarts | One-shot `optimize` is serial; convergence near a smooth optimum can be slower than CMA-ES | Default population 31; uniform initialization when no guess; give roughly 40% of a DE-to-CMA budget to DE; use ask/tell for external batching |
+| jSO (`Jso`) | First stage before CMA-ES, as an alternative to DE | Needs finite bounds and a budget fixed in advance (its population shrinks over it); alone it lost most benchmark cells against the core optimizers | Published defaults: initial population `round(25 ln(D) √D)`, shrinking to 4; 40% of a jSO-to-CMA budget; ask/tell batches shrink with the population |
 | Active CMA-ES (`Cmaes`) | Continuous correlated or ill-conditioned variables, refinement from a guess | Full covariance work grows roughly quadratically with dimension; requires a guess and step size | Default population 31; normalized coordinates; initial sigma commonly 0.05–0.3 in normalized optimizer units |
 | CR-FM-NES (`Crfmnes`) | Medium/high-dimensional continuous search with complete batch evaluation | Needs a meaningful guess and scalar sigma; not a discrete optimizer | Even population, default 32; use `optimize_batch` and parallelize expensive batches |
 | PGPE (`Pgpe`) | High-dimensional mirrored sampling, noisy objectives, parallel batches | Diagonal search distribution does not learn a full covariance | Even population, default 32; ranking on; tune center and standard-deviation learning only after establishing a baseline |
@@ -947,6 +960,28 @@ authoritative rounding, truncation, lookup, and repair.
 `De::optimize_delayed(objective, workers)` is the delayed update of the Python
 fcmaes `de.minimize(workers=...)` on the current Rayon pool, told in ask
 order, within `max_evaluations` and independent of timing.
+
+### jSO
+
+`JsoParams` defaults are the published values:
+
+| Field | Default | Tuning guidance |
+|---|---:|---|
+| `popsize` | 0 | Non-positive selects `round(25 ln(D) √D)` (182 for 10 variables). The population shrinks linearly to `min_popsize` over the budget. |
+| `max_evaluations` | 100,000 | Required and positive; a hard limit. The population, the p-best fraction and the parameter stages follow the fraction already spent, so a run's budget shapes the whole search. |
+| `stop_fitness` | negative infinity | Set only when a genuine target is known. |
+| `min_popsize` / `memory_size` | 4 / 5 | Published values; leave unchanged. |
+| `p_max` / `p_min` / `archive_rate` | 0.25 / 0.125 / 1.0 | Published values; leave unchanged. |
+| `seed` / `runid` | 0 / 0 | The stream is seeded with `seed + runid`. |
+
+`Jso::new(fitness, params)` needs finite bounds; its initial population is
+uniform in the box and it takes no guess. `optimize` and `optimize_until`
+evaluate serially; `optimize_parallel(objective, workers)` evaluates each
+generation as one batch with the same result. One `ask`/`tell` pair is one
+generation, and the batch length shrinks with the population. As a first
+stage, give it 40% of the run budget and start CMA-ES from its best point
+(`jso_cma_run` in `examples/src/runner.rs`). jSO was added after the 0.3.0
+release.
 
 ### Active CMA-ES
 
@@ -1012,7 +1047,9 @@ one at a time and validate across multiple seeds.
 and seed/run ID zero. It supports finite bounds and an explicitly unbounded
 path when both bound vectors are empty. Local search uses bounded projected
 L-BFGS with finite-difference gradients; objective noise makes those
-differences unreliable.
+differences unreliable. `optimize_da` never exceeds `max_evaluations`: a
+gradient or line search that does not fit into the remaining budget ends the
+run with the best point evaluated.
 
 ### BiteOpt
 
@@ -1039,6 +1076,9 @@ Run two fair baselines:
 1. BiteOpt with automatic population and depth 1.
 2. DE for approximately 40% of each run budget, then normalized CMA-ES from
    the DE result for the remaining approximately 60%.
+
+When DE→CMA stalls, try the jSO→CMA variant (`jso_cma_run` in the same
+file, `--algo jso_cma` of `benchmark-biteopt-gtop`) as a further baseline.
 
 The repository's canonical DE-to-CMA restart implementation is
 `examples/src/runner.rs`. It consumes every `RetryContext` field, converts
@@ -1395,7 +1435,8 @@ Use a staged budget:
 
 Some population algorithms check limits at generation boundaries, so reported
 evaluations can exceed the configured limit. Use the reported count for
-comparisons. In `fcmaes.retry/1`, BiteOpt and batched DE never exceed the
+comparisons. In the core library, BiteOpt, jSO, Dual Annealing and
+`De::optimize_delayed` never exceed `max_evaluations`. In `fcmaes.retry/1`, BiteOpt and batched DE never exceed the
 budget, while serial DE, CMA-ES, CR-FM-NES and PGPE have the explicit soft
 allowances described above; do not apply a generic overshoot rule to all of
 them.
@@ -1645,6 +1686,10 @@ reach a global optimum are not security defects.
   diagnostic, protocol boundaries, and publication evidence.
 - `docs/optimizer-boundary.md`: measured reason local, Bayesian, gradient, and
   structured solvers stay behind the adapter boundary.
+- `docs/algorithm-portfolio.md` and
+  `benchmarks/candidate-optimizers/DECISION.md`: which gradient-free
+  algorithms are in core, which were benchmarked and left out, and the
+  evidence.
 - `SECURITY.md`: supported-release policy and private reporting process for
   security and silent optimization-integrity failures.
 - `CHANGELOG.md`: synchronized release history and current-main changes.

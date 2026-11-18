@@ -92,6 +92,7 @@ best point observed by Python and that the evaluation counts agree.
 | Algorithm | One-shot function | Stateful class |
 |---|---|---|
 | Differential Evolution | `optimize_de` | `DE` |
+| jSO | `optimize_jso` | `JSO` |
 | Active CMA-ES | `optimize_acma` | `ACMA` |
 | CR-FM-NES | `optimize_crfmnes` | `CRFMNES` |
 | PGPE | `optimize_pgpe` | `PGPE` |
@@ -102,7 +103,18 @@ best point observed by Python and that the evaluation counts agree.
 
 Stateful scalar classes expose `ask`, `tell`, `population`, and `result` where
 the underlying optimizer supports them. ACMA also exposes `tell_x`. BiteOpt
-enforces pending-batch call order and exact feedback lengths. The authoritative
+and JSO enforce pending-batch call order and exact feedback lengths.
+
+`JSO` differs from `DE` in two ways. Its constructor takes `max_evaluations`,
+because jSO's population size and parameter schedule follow the fraction of
+the budget already spent. And one `ask`/`tell` pair is one generation whose
+length varies: the first `ask` returns the initial population
+(`round(25 ln(dim) sqrt(dim))` rows by default), later ones one row per
+current member as the population shrinks, and the last batch is cut at the
+budget. Once the budget is spent, `ask` returns an empty `(0, dim)` array.
+With serial evaluation the run equals `optimize_jso(..., workers=1)`.
+`optimize_jso` evaluates each generation on `workers` native threads; the
+result is the same for every `workers` value unless `stop_fitness` is reached. The authoritative
 callable signatures and docstrings are generated from the
 `#[pyo3(signature = ...)]` declarations and Rust documentation comments under
 `crates/fcmaes-py/src/`.
@@ -122,8 +134,8 @@ Invalid inputs raise `ValueError`: bounds that do not match the dimension or
 violate finite `lower < upper`, guesses and sigmas of the wrong length or with
 non-finite values, and integer masks of the wrong length. ACMA, CR-FM-NES, PGPE
 and Dual Annealing accept empty `lower` and `upper` for an unbounded search;
-DE accepts them only together with a `guess` and `sigma`; BiteOpt and MODE
-always need bounds. In 0.2.0 several of these cases ended in pyo3's
+DE accepts them only together with a `guess` and `sigma`; BiteOpt, jSO and
+MODE always need bounds, and jSO also a positive `max_evaluations`. In 0.2.0 several of these cases ended in pyo3's
 `PanicException`, which derives from `BaseException` and escapes
 `except Exception`.
 
@@ -150,7 +162,7 @@ The `evaluations` field of a result counts the objective calls actually made.
 
 | Entry point | Overshoot of `max_evaluations` |
 |---|---|
-| `optimize_bite`, `optimize_da` | none |
+| `optimize_bite`, `optimize_da`, `optimize_jso` | none |
 | `optimize_de` | up to `2 * popsize - 1` (checked before each generation; a member costs one or two calls) |
 | `optimize_acma`, `optimize_crfmnes`, `optimize_pgpe`, `Archive.diversify` | up to `popsize - 1` (whole generations) |
 

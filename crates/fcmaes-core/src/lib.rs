@@ -16,6 +16,7 @@ pub mod da;
 pub mod de;
 pub mod fitness;
 pub mod indicators;
+pub mod jso;
 pub mod mapelites;
 pub mod mode;
 pub mod moretry;
@@ -37,6 +38,7 @@ pub use indicators::{
     additive_epsilon, crowding_distance, gd, gd_plus, hypervolume, hypervolume_monte_carlo,
     hypervolume_with, igd, igd_plus, nondominated_sort, spacing, spread,
 };
+pub use jso::{Jso, JsoParams, JsoResult};
 pub use mapelites::{
     Archive, DiversifierParams, GridLayout, MapElitesParams, QdBatchFitness, QdFitness, diversify,
     diversify_batch, map_elites, map_elites_batch, map_elites_batch_with_progress,

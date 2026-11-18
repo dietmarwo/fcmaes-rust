@@ -5,6 +5,7 @@
 | Optimizer | Style | One-shot | Stateful | Useful starting point |
 |---|---|---:|---:|---|
 | Differential Evolution | Population, global | `De::optimize` | `ask` / `tell` | Robust bounded search and retry pipelines |
+| jSO | Adaptive DE with population size reduction | `Jso::optimize` | `ask` / `tell` | First stage before CMA-ES, as an alternative to DE |
 | Active CMA-ES | Distribution, local/global | `Cmaes::optimize` | `ask`, `tell`, `tell_x` | Continuous problems and DE→CMA sequences |
 | CR-FM-NES | Natural evolution strategy | `optimize_batch` | `ask_pop` / `tell_pop` | Higher-dimensional continuous problems |
 | PGPE | Mirrored policy-gradient search | `optimize_batch` | `ask_pop` / `tell_pop` | Batch evaluation and distribution search |
@@ -34,6 +35,7 @@ improve the result returned after a fixed user-visible wait:
 | Algorithm | Population-evaluation interface | Notes |
 |---|---|---|
 | Differential Evolution | `ask` / `tell`; `optimize_delayed(objective, workers)` | One ordered DE population batch; `optimize_delayed` keeps `workers` candidates in flight |
+| jSO | `ask` / `tell`; `optimize_parallel(objective, workers)` | One generation; the batch shrinks with the population and the last one is cut at the budget |
 | Active CMA-ES | `ask` / `tell`; `tell_x`; parallel one-shot evaluation | One CMA generation |
 | CR-FM-NES | `ask_pop` / `tell_pop`; `optimize_batch` | One mirrored population |
 | PGPE | `ask_pop` / `tell_pop`; `optimize_batch` | One mirrored population |
@@ -106,6 +108,52 @@ Key `DeParams` defaults:
 Pass empty guess and sigma slices for uniform initialization. With a guess,
 provide a same-dimensional sigma vector. The optional integer mask must match
 the problem dimension.
+
+## jSO
+
+`Jso` implements jSO (Brest, Maučec and Bošković, CEC 2017): differential
+evolution with a memory of successful `F` and `CR` values, weighted
+current-to-pbest mutation with an archive of replaced parents, and a
+population that shrinks linearly from `round(25 ln(D) √D)` to four over the
+evaluation budget. It needs finite bounds, samples its initial population
+uniformly in the box and takes no guess. The [module
+documentation](https://docs.rs/fcmaes-core/latest/fcmaes_core/jso/index.html)
+lists the details the paper leaves open and how they are resolved.
+
+```rust
+use fcmaes_core::{Fitness, Jso, JsoParams};
+
+let fitness = Fitness::bounded(4, 1, &[-5.0; 4], &[5.0; 4]);
+let params = JsoParams {
+    max_evaluations: 20_000,
+    seed: 1,
+    ..Default::default()
+};
+let mut optimizer = Jso::new(fitness, &params);
+let result = optimizer.optimize(&objective);
+```
+
+Key `JsoParams` defaults are the published values:
+
+| Field | Default |
+|---|---:|
+| `popsize` | 0, meaning `round(25 ln(D) √D)` |
+| `max_evaluations` | 100,000; must be positive |
+| `stop_fitness` | negative infinity |
+| `min_popsize` / `memory_size` | 4 / 5 |
+| `p_max` / `p_min` / `archive_rate` | 0.25 / 0.125 / 1.0 |
+
+The budget drives the population size, the p-best fraction and the parameter
+stages, so set `max_evaluations` to the budget the run really has. It is a
+hard limit. `optimize_parallel(objective, workers)` evaluates each generation
+as one batch and gives the same result as `optimize`. One `ask`/`tell` pair
+is one generation; `tell` rejects a batch of the wrong length (`try_tell`
+returns the error instead of panicking).
+
+Use jSO as the first stage of a CMA-ES sequence, as DE is used in DE→CMA:
+`jso_cma_run` in `examples/src/runner.rs` gives it 40% of each run and starts
+CMA-ES from its best point. [The algorithm portfolio](algorithm-portfolio.md)
+has the benchmark evidence.
 
 ## Active CMA-ES
 
@@ -180,7 +228,9 @@ let result = optimize_da(
 
 The optional local search is a self-contained bounded projected L-BFGS
 implementation using finite-difference gradients. Empty lower and upper
-vectors select the unbounded path.
+vectors select the unbounded path. The run never exceeds `max_evaluations`; a
+gradient or line search that does not fit into the remaining budget ends it
+with the best point evaluated.
 
 ## BiteOpt
 
@@ -313,9 +363,10 @@ Key driver defaults:
 
 ## Evaluation limits and reproducibility
 
-Population optimizers check budgets at generation boundaries, so actual
+Most population optimizers check budgets at generation boundaries, so actual
 evaluation totals can overshoot the configured limit by part of a population.
-Use reported evaluations for accounting.
+BiteOpt, jSO, Dual Annealing and `De::optimize_delayed` never exceed it. Use
+reported evaluations for accounting.
 
 The retry root seed spawns one persistent, independent PCG stream per worker;
 each retry draws its optimizer seed from its worker's stream. A single-worker
@@ -326,8 +377,8 @@ streams exactly; port parity is statistical.
 
 ## Cooperative stopping (since 0.3.0)
 
-Use `BiteOpt::optimize_until`, `DeepBiteOpt::optimize_until` or `De::optimize_until` with a borrowed `Fn() -> bool`. The predicate runs before each evaluation; DE also checks before a temporal-locality trial. The result's `stopped` flag distinguishes that exit, while `evaluations`, `x` and `y` describe actual completed work. A stop before the first evaluation has no usable best value.
+Use `BiteOpt::optimize_until`, `DeepBiteOpt::optimize_until`, `De::optimize_until` or `Jso::optimize_until` with a borrowed `Fn() -> bool`. The predicate runs before each evaluation; DE also checks before a temporal-locality trial. The result's `stopped` flag distinguishes that exit, while `evaluations`, `x` and `y` describe actual completed work. A stop before the first evaluation has no usable best value.
 
-`BiteOpt::optimize_batch_until` checks before each batch and incorporates an in-flight batch in full. `De::optimize_delayed_until` stops new dispatch and drains all in-flight rows in ask order; its predicate is `Sync`. Their latency is bounded by in-flight work, not by a single callback. CMA-ES has `optimize_until`; CR-FM-NES and PGPE have `optimize_batch_until`, each checking between populations. Existing entry points use a never-firing predicate and preserve their seeded arithmetic and budget semantics.
+`BiteOpt::optimize_batch_until` checks before each batch and incorporates an in-flight batch in full. `De::optimize_delayed_until` stops new dispatch and drains all in-flight rows in ask order; its predicate is `Sync`. Their latency is bounded by in-flight work, not by a single callback. CMA-ES has `optimize_until`; CR-FM-NES and PGPE have `optimize_batch_until`, and jSO has `optimize_parallel_until`, each checking between populations. Existing entry points use a never-firing predicate and preserve their seeded arithmetic and budget semantics.
 
 The core cannot interrupt an arbitrary callback mid-evaluation. Long simulations should use checkpoints in their job model. Stopped job retries skip revalidation and preserve claimed evidence.

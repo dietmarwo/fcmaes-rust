@@ -22,10 +22,11 @@
 //!   It fires when the remaining budget is smaller than one population, so
 //!   the run is the library run truncated after the last generation that
 //!   fits; up to `popsize - 1` evaluations stay unused.
-//! - Dual Annealing can overshoot its limit inside the local search and has
-//!   no cooperative stop; the adapter answers its calls after the `B`-th
-//!   evaluation with `+inf` without evaluating them, so the evaluated
-//!   sequence is the exact `B`-prefix of the library run (see [`Da`]).
+//! - Dual Annealing could overshoot its limit inside the local search at the
+//!   time of the campaign and has no cooperative stop; the adapter answers
+//!   its calls after the `B`-th evaluation with `+inf` without evaluating
+//!   them, so the evaluated sequence is the exact `B`-prefix of the library
+//!   run (see [`Da`]).
 //! - DE→CMA stops its DE phase exactly at the DE share of the budget and its
 //!   CMA phase like CMA-ES above. The round-2 sequences jSO→CMA and
 //!   L-SRTDE→CMA share this code ([`cma_sequence`]); their first stage is a
@@ -303,10 +304,10 @@ impl Solver for CrfmnesSolver {
 /// Dual Annealing (`DaParams` defaults: local search on) from a uniform
 /// random guess.
 ///
-/// Despite its documentation, core `optimize_da` can exceed
+/// At the time of the campaign, core `optimize_da` could exceed
 /// `max_evaluations`: its finite-difference gradient (`2D + 1` calls) and the
-/// first line-search step of the local search evaluate without checking the
-/// budget, and a local search can follow the global step that spent it. It
+/// first line-search step of the local search evaluated without checking the
+/// budget, and a local search could follow the global step that spent it. It
 /// has no cooperative stop, so the adapter cuts the run instead: after the
 /// `B`-th evaluation every further call of the core is answered with `+inf`
 /// without evaluating anything (the guard never sees these calls). All
@@ -314,7 +315,9 @@ impl Solver for CrfmnesSolver {
 /// the evaluated sequence is exactly the first `B` evaluations of the library
 /// run with `max_evaluations = B`, and the full budget is available, as for
 /// the other incumbents. (A reduced internal limit would have to subtract a
-/// margin of several `2D + 1` blocks.)
+/// margin of several `2D + 1` blocks.) The current `optimize_da` stops at the
+/// budget after the same first `B` evaluations, so with it the cut does not
+/// fire.
 #[derive(Clone, Copy, Debug, Default)]
 pub struct Da;
 

@@ -8,7 +8,7 @@ The practical boundary is:
 
 | Capability | Project decision |
 |---|---|
-| DE, CMA-ES, CR-FM-NES, PGPE, BiteOpt, Dual Annealing | Implement in core |
+| DE, jSO, CMA-ES, CR-FM-NES, PGPE, BiteOpt, Dual Annealing | Implement in core |
 | Retry, coordinated retry, MODE, MAP-Elites, Diversifier | Implement in core |
 | Pareto indicators, non-dominated sorting, crowding distance | Implement in core |
 | Nelder–Mead and other local derivative-free refiners | Keep external unless broader evidence establishes a generally useful parallel role |
@@ -21,6 +21,11 @@ This is not a claim that the excluded methods are inferior. It is a statement
 about a coherent API, dependency cost, and the problems for which this project
 has evidence. External solvers can run inside the existing retry closure; a
 permanent core dependency is not needed.
+
+This page covers whole classes of methods. Which gradient-free global
+algorithms are in core, which were benchmarked and left out (L-SHADE,
+L-SRTDE, BIPOP-aCMA-ES, AMaLGaM-IDEA), and why jSO was added as a first stage
+before CMA-ES is in [The algorithm portfolio](algorithm-portfolio.md).
 
 ## Evidence behind the decision
 

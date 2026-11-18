@@ -336,6 +336,18 @@ gradient hybrid. A paired DE→Nelder–Mead experiment also found that improvin
 shorter DE prefix did not reliably beat continuing DE for the same resource
 rounds; see [The optimizer boundary](optimizer-boundary.md).
 
+jSO, an adaptive DE with a population that shrinks over the budget, is an
+alternative first stage for the same sequence. In round 2 of the
+[candidate-optimizer benchmark](../benchmarks/candidate-optimizers/DECISION.md)
+(ten problems, 400,000 evaluations per repetition in runs of at most
+100,000), jSO→CMA had a mean rank of 3.7 against 3.9 for DE→CMA, a
+difference within the noise of 20 repetitions. It was significantly better on
+GTOC1 and Tandem and significantly worse on Cassini1, Sagas and Messenger
+full; jSO alone lost six of the ten problems. Keep DE→CMA as the default and
+try jSO→CMA as a second baseline, for example when DE→CMA stalls.
+[The algorithm portfolio](algorithm-portfolio.md) has the evidence for jSO
+and for every other algorithm in core.
+
 ## Symptoms that the choice or formulation is wrong
 
 | Symptom | Likely interpretation |

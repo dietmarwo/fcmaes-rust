@@ -119,15 +119,18 @@ incumbent ever exceeds it, so the guard never refuses a call:
   whole generation that fits; up to `popsize − 1` evaluations stay unused.
 - `de_cma` stops its DE phase exactly at the DE share (or at B if B is
   smaller) and its CMA phase like `cma`.
-- `da`: core `optimize_da` can exceed its documented limit of
-  `max_evaluations`. In its local search, the finite-difference gradient
-  (`2D + 1` calls) and the first line-search step evaluate without a budget
-  check. `optimize_da` has no cooperative stop, so the adapter truncates the
-  run: every call after the B-th evaluation is answered with `+inf` without
-  evaluating anything, and the guard never sees it. Every decision before
-  the B-th evaluation depends only on earlier values, so the evaluated
-  sequence is exactly the first B evaluations of the library run with
-  `max_evaluations = B`, and DA's result is the best of those B evaluations.
+- `da`: at the time of the campaign, core `optimize_da` could exceed its
+  documented limit of `max_evaluations`: in its local search, the
+  finite-difference gradient (`2D + 1` calls) and the first line-search step
+  evaluated without a budget check. `optimize_da` has no cooperative stop, so
+  the adapter truncates the run: every call after the B-th evaluation is
+  answered with `+inf` without evaluating anything, and the guard never sees
+  it. Every decision before the B-th evaluation depends only on earlier
+  values, so the evaluated sequence is exactly the first B evaluations of the
+  library run with `max_evaluations = B`, and DA's result is the best of
+  those B evaluations. The current `optimize_da` stops at the budget after
+  the same first B evaluations, so with it the truncation does not fire and
+  the recorded `da` rows reproduce.
 
 Every point is projected onto the box before evaluation. The core optimizers
 clamp already; the projection only removes last-ulp rounding of the

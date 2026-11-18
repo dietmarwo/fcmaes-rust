@@ -61,6 +61,7 @@ Three tutorials illustrate this isolation:
 | `fitness` | `Objective`, `Fitness`, `NAN_REPLACEMENT` |
 | `rng` | `Rng` |
 | `de` | `De`, `DeParams`, `DeResult` |
+| `jso` | `Jso`, `JsoParams`, `JsoResult` |
 | `cmaes` | `Cmaes`, `CmaesParams`, `AcmaResult` |
 | `crfmnes` | `Crfmnes`, `CrfmnesParams`, `CrfmnesResult` |
 | `pgpe` | `Pgpe`, `PgpeParams`, `PgpeResult` |
@@ -82,7 +83,9 @@ contracts; they remain outside `fcmaes-core` (the experimental
 `fcmaes-surrogate` crate is a separate workspace member) and can be driven
 through the retry closure.
 The [optimizer-boundary decision](optimizer-boundary.md) records the supporting
-experiment and the adapter contract.
+experiment and the adapter contract. Which gradient-free global methods are
+in core, and on what evidence, is in
+[The algorithm portfolio](algorithm-portfolio.md).
 
 ## Objective and fitness flow
 
@@ -136,7 +139,7 @@ plotting, and higher-level result adapters remain downstream concerns.
 
 The following are implemented in Rust:
 
-- DE, active CMA-ES, CR-FM-NES, PGPE, Dual Annealing, and BiteOpt.
+- DE, jSO, active CMA-ES, CR-FM-NES, PGPE, Dual Annealing, and BiteOpt.
 - Basic and coordinated advanced retry.
 - Weighted multi-objective retry, MODE, CVT-MAP-Elites, and Diversifier.
 - GTOP and Mazda objective functions and native GTOP, Mazda MO/QD, trading,

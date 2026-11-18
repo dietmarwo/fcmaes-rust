@@ -8,6 +8,14 @@ phase, with breaking changes called out explicitly.
 
 ### Fixed
 
+- `optimize_da` keeps to `max_evaluations`, as documented. Its local search
+  evaluated the finite-difference gradient (`2 * dim + 1` calls) and the first
+  line-search step without a budget check, and could start a second local
+  search after the first had spent the budget; with 39 variables and a budget
+  of 100 a run made 159 calls. A gradient or line search that no longer fits
+  now ends the run with the best point evaluated, and `DaResult::evaluations`
+  is the true call count. Every point evaluated within the budget is the same
+  as before, so runs that stayed within it are unchanged.
 - The X3 (truss bounds) and X4 (Thomson refinement) tutorial records gain the four report fields of sqp-craft 0.20.0 (`elastic_mode`, `initial_curvature_scale`, `qp_solver`, `step_limited_iterations`), which optimization-jobs' structured-tutorial check now installs. A local run of both presets matched every recorded value within 1e-6; no recorded value changes.
 
 ### Changed
@@ -21,6 +29,23 @@ phase, with breaking changes called out explicitly.
 
 ### Added
 
+- jSO in `fcmaes-core` (`Jso`, `JsoParams`, `JsoResult`; Brest, Maučec and
+  Bošković, CEC 2017): adaptive differential evolution with linear
+  population size reduction, with `optimize`, `optimize_until`,
+  `optimize_parallel` and ask/tell. Its evaluation budget is a hard limit. It
+  is the implementation benchmarked in `benchmarks/candidate-optimizers`; a
+  test there checks that both evaluate the same points bit for bit. Python:
+  `optimize_jso` and the ask/tell class `JSO`. The job worker does not offer
+  it.
+- jSO→CMA sequence in the examples: `jso_cma_run` and `run_jso_cma` in
+  `examples/src/runner.rs`, with the budget split, step sizes and seeds of
+  `de_cma_run`, and `--algo jso_cma` in `benchmark-biteopt-gtop`.
+- Candidate-optimizer benchmark (`benchmarks/candidate-optimizers`): L-SHADE,
+  jSO, L-SRTDE, BIPOP-aCMA-ES, AMaLGaM-IDEA and the jSO→CMA and L-SRTDE→CMA
+  sequences against the core optimizers on 13 real-world problems in two
+  predeclared rounds. Only jSO, as a first stage before CMA-ES, is added to
+  core ([decision](benchmarks/candidate-optimizers/DECISION.md),
+  [the algorithm portfolio](docs/algorithm-portfolio.md)).
 - Experimental, opt-in surrogate `/2`: `fcmaes_surrogate::advanced` and the job profile `fcmaes.surrogate/2` ([guide](docs/surrogate/ADVANCED.md)). Over `/1` it adds:
   - an archive of up to 10,000 observations, of which a GP trains on at most 240 (the incumbent, its neighbours and maximin coverage);
   - asynchronous callbacks with one background proposal;

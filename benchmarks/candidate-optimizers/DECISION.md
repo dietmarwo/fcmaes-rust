@@ -59,8 +59,9 @@ cells. Incumbent mean ranks: DE→CMA 3.60, DE 4.13, BiteOpt 5.02, CR-FM-NES
 
 ## Findings outside the question
 
-- Core `optimize_da` can exceed `max_evaluations` in its gradient and
-  line-search path.
+- Core `optimize_da` could exceed `max_evaluations` in its gradient and
+  line-search path at the time of the campaign; the harness truncated its
+  runs at the budget (see the [README](./README.md)).
 - Four incumbents stop on their own criteria before the budget is spent
   under the single-run protocol: `Cmaes` uses a median of 32% of the budget
   (minimum 0.4%), Dual Annealing 65%, CR-FM-NES 93%, and the DE→CMA sequence

@@ -62,6 +62,9 @@ ONE_SHOT = {
     "optimize_da": lambda lo, up, guess, sigma, ints: fcmaes_rust.optimize_da(
         shifted_sphere, guess, lo, up, seed=3, max_evaluations=600
     ),
+    "optimize_jso": lambda lo, up, guess, sigma, ints: fcmaes_rust.optimize_jso(
+        shifted_sphere, DIM, lo, up, seed=3, max_evaluations=600
+    ),
     "optimize_pgpe": lambda lo, up, guess, sigma, ints: fcmaes_rust.optimize_pgpe(
         batch_sphere, guess, lo, up, sigma, seed=3, max_evaluations=640
     ),
@@ -120,6 +123,7 @@ def test_ask_tell_classes_accept_sequences():
         lambda lo, up, g, s: fcmaes_rust.ACMA(g, lo, up, s, popsize=8, seed=2),
         lambda lo, up, g, s: fcmaes_rust.CRFMNES(g, lo, up, 0.3, 8, seed=2),
         lambda lo, up, g, s: fcmaes_rust.PGPE(g, lo, up, s, 8, seed=2),
+        lambda lo, up, g, s: fcmaes_rust.JSO(DIM, lo, up, 8, seed=2, max_evaluations=100),
     ):
         reference = drive(make(*as_arrays(LOWER, UPPER, GUESS, SIGMA)))
         np.testing.assert_array_equal(reference, drive(make(LOWER, UPPER, GUESS, SIGMA)))
@@ -242,6 +246,16 @@ BUDGETED = {
         lambda f, budget: fcmaes_rust.optimize_da(f, GUESS, LOWER, UPPER, seed=9, max_evaluations=budget),
         0,
     ),
+    "optimize_jso": (
+        lambda f, budget: fcmaes_rust.optimize_jso(f, DIM, LOWER, UPPER, seed=9, max_evaluations=budget),
+        0,
+    ),
+    "optimize_jso workers=2": (
+        lambda f, budget: fcmaes_rust.optimize_jso(
+            f, DIM, LOWER, UPPER, seed=9, max_evaluations=budget, workers=2
+        ),
+        0,
+    ),
 }
 
 
@@ -312,6 +326,9 @@ def _invalid_inputs():
         yield f"PGPE {label}", lambda lo=lo, up=up: fcmaes_rust.PGPE([0.0, 0.0], lo, up, [0.3, 0.3], 8, seed=1)
         yield f"optimize_da {label}", lambda lo=lo, up=up: fcmaes_rust.optimize_da(
             f, [0.0, 0.0], lo, up, seed=1, max_evaluations=50)
+        yield f"optimize_jso {label}", lambda lo=lo, up=up: fcmaes_rust.optimize_jso(
+            f, 2, lo, up, seed=1, max_evaluations=50)
+        yield f"JSO {label}", lambda lo=lo, up=up: fcmaes_rust.JSO(2, lo, up, seed=1)
     yield "optimize_de without bounds or guess", lambda: fcmaes_rust.optimize_de(
         f, 2, empty, empty, empty, empty, no_ints, seed=1, max_evaluations=50)
     yield "optimize_de guess without sigma", lambda: fcmaes_rust.optimize_de(
@@ -325,6 +342,11 @@ def _invalid_inputs():
         batch_sphere, [0.0], good_lo, good_up, [0.3], seed=1, max_evaluations=64)
     yield "optimize_da empty guess", lambda: fcmaes_rust.optimize_da(
         f, empty, empty, empty, seed=1, max_evaluations=50)
+    yield "optimize_jso without bounds", lambda: fcmaes_rust.optimize_jso(
+        f, 2, empty, empty, seed=1, max_evaluations=50)
+    yield "optimize_jso zero budget", lambda: fcmaes_rust.optimize_jso(
+        f, 2, good_lo, good_up, seed=1, max_evaluations=0)
+    yield "JSO zero budget", lambda: fcmaes_rust.JSO(2, good_lo, good_up, seed=1, max_evaluations=0)
 
 
 INVALID = dict(_invalid_inputs())
@@ -368,6 +390,7 @@ FAILING_RUNS = {
     "optimize_da": lambda f, b: fcmaes_rust.optimize_da(f, GUESS, LOWER, UPPER, seed=1, max_evaluations=400),
     "optimize_crfmnes": lambda f, b: fcmaes_rust.optimize_crfmnes(b, GUESS, LOWER, UPPER, 0.3, seed=1, max_evaluations=400),
     "optimize_pgpe": lambda f, b: fcmaes_rust.optimize_pgpe(b, GUESS, LOWER, UPPER, SIGMA, seed=1, max_evaluations=400),
+    "optimize_jso": lambda f, b: fcmaes_rust.optimize_jso(f, DIM, LOWER, UPPER, seed=1, max_evaluations=400),
 }
 
 

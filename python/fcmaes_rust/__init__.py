@@ -18,6 +18,7 @@ Archive = native.Archive
 Bite = native.Bite
 CRFMNES = native.CRFMNES
 DE = native.DE
+JSO = native.JSO
 MODE = native.MODE
 PGPE = native.PGPE
 
@@ -26,6 +27,7 @@ optimize_bite = native.optimize_bite
 optimize_crfmnes = native.optimize_crfmnes
 optimize_da = native.optimize_da
 optimize_de = native.optimize_de
+optimize_jso = native.optimize_jso
 optimize_pgpe = native.optimize_pgpe
 
 minimize_retry = native.minimize_retry
@@ -51,6 +53,7 @@ __all__ = [
     "Bite",
     "CRFMNES",
     "DE",
+    "JSO",
     "MODE",
     "PGPE",
     "gtop_cassini1",
@@ -73,6 +76,7 @@ __all__ = [
     "optimize_crfmnes",
     "optimize_da",
     "optimize_de",
+    "optimize_jso",
     "optimize_pgpe",
     "phase1_build_info",
 ]
