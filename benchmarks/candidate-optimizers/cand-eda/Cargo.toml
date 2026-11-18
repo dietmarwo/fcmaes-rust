@@ -1,0 +1,11 @@
+[package]
+name = "cand-eda"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+fcmaes-core = { workspace = true }
+solver-api = { workspace = true }
+nalgebra = "0.33"
