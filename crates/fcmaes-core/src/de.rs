@@ -154,8 +154,13 @@ pub struct De {
     improves_p: VecDeque<usize>,
     asked_x: Vec<Vec<f64>>,
     asked_p: Vec<usize>,
+    /// Whether `asked_x` holds a batch from [`De::ask`] not told yet.
+    pending: bool,
     external_evaluations: u64,
 }
+
+const DE_NOT_PENDING: &str = "DE tell called without a pending ask batch";
+const DE_BATCH_LENGTH: &str = "DE tell batch length must equal popsize";
 
 impl De {
     /// Build a DE optimizer. `guess`/`sigma` empty ⇒ uniform sampling in the
@@ -232,6 +237,7 @@ impl De {
             improves_p: VecDeque::new(),
             asked_x: vec![],
             asked_p: vec![],
+            pending: false,
             external_evaluations: 0,
             rng: Rng::new(p.seed.wrapping_add(p.runid as u64)),
             fitfun,
@@ -670,24 +676,53 @@ impl De {
 
     // ---- ask/tell interface (mirrors DeState::Impl) ----
 
-    /// Ask for a full population of candidate rows.
+    /// Ask for a full population of `popsize` candidate rows.
+    ///
+    /// The batch stays pending until it is told. Calling `ask` again before
+    /// that draws a new batch that replaces the pending one; the replaced
+    /// batch can no longer be told.
     pub fn ask(&mut self) -> Vec<Vec<f64>> {
         for i in 0..self.popsize {
             let (p, x) = self.ask_one();
             self.asked_p[i] = p;
             self.asked_x[i] = x;
         }
+        self.pending = true;
         self.asked_x.clone()
     }
 
-    /// Tell fitness values for the population returned by [`ask`](De::ask).
+    /// Tell one fitness value per row of the batch returned by
+    /// [`ask`](De::ask), in the same order. Returns the termination code.
+    ///
+    /// # Panics
+    ///
+    /// Panics if no batch is pending or if `ys` does not have `popsize`
+    /// values. Use [`De::try_tell`] to receive these as errors instead.
     pub fn tell(&mut self, ys: &[f64]) -> i32 {
+        self.try_tell(ys).expect("invalid DE tell call")
+    }
+
+    /// Fallible tell variant validating call order and batch length. A
+    /// rejected call changes no optimizer state.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if no batch is pending (no [`ask`](De::ask) since the
+    /// last successful tell) or if `ys` does not have `popsize` values.
+    pub fn try_tell(&mut self, ys: &[f64]) -> Result<i32, &'static str> {
+        if !self.pending {
+            return Err(DE_NOT_PENDING);
+        }
+        if ys.len() != self.popsize {
+            return Err(DE_BATCH_LENGTH);
+        }
+        self.pending = false;
         for (i, &y) in ys.iter().enumerate() {
             let x = self.asked_x[i].clone();
             self.tell_one(y, &x, self.asked_p[i]);
         }
         self.external_evaluations += ys.len() as u64;
-        self.stop
+        Ok(self.stop)
     }
 
     /// Return a decoded snapshot of the current population.
@@ -826,6 +861,93 @@ mod tests {
             }
         }
         assert!(de.result().y < 1e-3, "ask/tell did not converge");
+    }
+
+    fn summary(r: &DeResult) -> (Vec<f64>, f64, u64, i32, i32) {
+        (r.x.clone(), r.y, r.evaluations, r.iterations, r.stop)
+    }
+
+    /// One ask/tell pair is one batch of the `ask_one`/`tell_one` sequence the
+    /// interface is built from (the serial `optimize` evaluates its
+    /// temporal-locality trials inline and so follows a different path).
+    #[test]
+    fn ask_tell_equals_the_generation_reference() {
+        let mut reference = de(4);
+        let mut driven = de(4);
+        for _ in 0..40 {
+            let batch: Vec<(usize, Vec<f64>)> = (0..reference.popsize)
+                .map(|_| reference.ask_one())
+                .collect();
+            let xs = driven.ask();
+            assert_eq!(xs, batch.iter().map(|(_, x)| x.clone()).collect::<Vec<_>>());
+            let ys: Vec<f64> = xs.iter().map(|x| rosen(x)).collect();
+            for ((p, x), &y) in batch.iter().zip(&ys) {
+                reference.tell_one(y, x, *p);
+            }
+            assert_eq!(driven.tell(&ys), reference.stop);
+        }
+        assert_eq!(driven.population(), reference.population());
+        assert_eq!(
+            summary(&driven.result()),
+            summary(&reference.make_result(40 * 16))
+        );
+    }
+
+    /// Rejected tells (none pending, short, long, repeated) change nothing:
+    /// the run continues exactly as one without them.
+    #[test]
+    fn rejected_tells_leave_the_state_unchanged() {
+        let run = |reject: bool| {
+            let mut de = de(5);
+            if reject {
+                assert_eq!(de.try_tell(&[]), Err(DE_NOT_PENDING));
+                assert_eq!(de.try_tell(&[1.0; 16]), Err(DE_NOT_PENDING));
+            }
+            let mut asked = Vec::new();
+            for _ in 0..5 {
+                let xs = de.ask();
+                let ys: Vec<f64> = xs.iter().map(|x| rosen(x)).collect();
+                if reject {
+                    assert_eq!(de.try_tell(&ys[..15]), Err(DE_BATCH_LENGTH));
+                    let long = [ys.as_slice(), &[0.0]].concat();
+                    assert_eq!(de.try_tell(&long), Err(DE_BATCH_LENGTH));
+                    assert_eq!(de.try_tell(&[]), Err(DE_BATCH_LENGTH));
+                }
+                assert_eq!(de.try_tell(&ys), Ok(0));
+                if reject {
+                    assert_eq!(de.try_tell(&ys), Err(DE_NOT_PENDING));
+                }
+                asked.push(xs);
+            }
+            asked.push(de.ask());
+            (asked, de.population(), summary(&de.result()))
+        };
+        assert_eq!(run(true), run(false));
+    }
+
+    #[test]
+    #[should_panic(expected = "DE tell batch length must equal popsize")]
+    fn tell_panics_on_a_short_batch() {
+        let mut de = de(1);
+        let xs = de.ask();
+        de.tell(&vec![0.0; xs.len() - 1]);
+    }
+
+    #[test]
+    #[should_panic(expected = "DE tell batch length must equal popsize")]
+    fn tell_panics_on_a_long_batch() {
+        let mut de = de(1);
+        let xs = de.ask();
+        de.tell(&vec![0.0; xs.len() + 1]);
+    }
+
+    #[test]
+    #[should_panic(expected = "DE tell called without a pending ask batch")]
+    fn tell_panics_without_a_pending_ask() {
+        let mut de = de(1);
+        let xs = de.ask();
+        de.tell(&vec![0.0; xs.len()]);
+        de.tell(&vec![0.0; xs.len()]);
     }
 
     #[test]

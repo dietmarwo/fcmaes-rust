@@ -102,8 +102,16 @@ best point observed by Python and that the evaluation counts agree.
 | MAP-Elites / Diversifier | Archive methods | `Archive` |
 
 Stateful scalar classes expose `ask`, `tell`, `population`, and `result` where
-the underlying optimizer supports them. ACMA also exposes `tell_x`. BiteOpt
-and JSO enforce pending-batch call order and exact feedback lengths.
+the underlying optimizer supports them. ACMA also exposes `tell_x`. Every
+class checks `tell` against the pending batch, the one returned by the most
+recent `ask` and not told yet: a `tell` without a pending batch or with a
+different number of values raises `ValueError` (`Bite` raises `RuntimeError`
+for a `tell` before `ask`), and the optimizer is unchanged. A second `ask`
+before `tell` raises in `Bite` (`RuntimeError`), `JSO` and `MODE`
+(`ValueError`); in `DE`, `ACMA`, `CRFMNES` and `PGPE` it draws a new batch
+that replaces the pending one. `ACMA.tell_x(ys, xs)` needs no pending `ask`;
+it raises `ValueError` unless `ys` has `popsize` values and `xs` the shape
+`(popsize, dim)`.
 
 `JSO` differs from `DE` in two ways. Its constructor takes `max_evaluations`,
 because jSO's population size and parameter schedule follow the fraction of

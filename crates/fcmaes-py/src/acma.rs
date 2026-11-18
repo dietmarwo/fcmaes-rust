@@ -3,6 +3,7 @@
 
 use fcmaes_core::{Cmaes, CmaesParams, Fitness};
 use numpy::PyArray2;
+use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3::types::PyTuple;
 
@@ -165,7 +166,9 @@ pub fn optimize_acma<'py>(
 /// one-dimensional raises ``TypeError``, values NumPy cannot convert to
 /// ``float64`` raise ``ValueError``. :meth:`tell` raises ``ValueError`` if it
 /// does not receive exactly one value per row returned by the most recent
-/// :meth:`ask`.
+/// :meth:`ask`, or if no :meth:`ask` is pending; :meth:`tell_x` raises it
+/// unless ``ys`` has ``popsize`` values and ``xs`` shape ``(popsize, dim)``.
+/// A second :meth:`ask` before :meth:`tell` replaces the pending batch.
 #[allow(clippy::upper_case_acronyms)]
 #[pyclass]
 pub struct ACMA {
@@ -230,20 +233,30 @@ impl ACMA {
     /// Update the distribution with values for the most recent :meth:`ask`.
     ///
     /// ``ys`` must contain one minimized scalar value per offspring. Returns
-    /// the current stop code.
-    fn tell(&mut self, ys: F64Vec<'_>) -> i32 {
-        self.inner.tell(&slice_or_vec(&ys))
+    /// the current stop code. Raises ``ValueError`` if no batch is pending
+    /// (no :meth:`ask` since the last :meth:`tell` or :meth:`tell_x`) or if
+    /// ``ys`` does not have ``popsize`` values; the optimizer is then
+    /// unchanged.
+    fn tell(&mut self, ys: F64Vec<'_>) -> PyResult<i32> {
+        self.inner
+            .try_tell(&slice_or_vec(&ys))
+            .map_err(PyValueError::new_err)
     }
 
     /// Update with externally supplied candidate rows and their objective values.
     ///
     /// ``xs`` has shape ``(popsize, dim)`` and ``ys`` has length ``popsize``.
-    /// This supports evaluators that repair or otherwise modify candidates.
-    fn tell_x(&mut self, ys: F64Vec<'_>, xs: F64Mat<'_>) -> i32 {
+    /// This supports evaluators that repair or otherwise modify candidates;
+    /// it needs no pending :meth:`ask` and consumes one that is pending.
+    /// Raises ``ValueError`` for any other shape; the optimizer is then
+    /// unchanged.
+    fn tell_x(&mut self, ys: F64Vec<'_>, xs: F64Mat<'_>) -> PyResult<i32> {
         let ys = slice_or_vec(&ys);
         let arr = xs.as_array();
         let rows: Vec<Vec<f64>> = arr.outer_iter().map(|r| r.to_vec()).collect();
-        self.inner.tell_x(&ys, &rows)
+        self.inner
+            .try_tell_x(&ys, &rows)
+            .map_err(PyValueError::new_err)
     }
 
     /// Return the current decoded offspring population.

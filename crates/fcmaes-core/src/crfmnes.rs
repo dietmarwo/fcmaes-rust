@@ -140,8 +140,13 @@ pub struct Crfmnes {
     stop: i32,
     f_best: f64,
     x_best: DVector<f64>,
+    /// Whether `x` holds a batch from [`Crfmnes::ask_pop`] not told yet.
+    pending: bool,
     external_evaluations: u64,
 }
+
+const NES_NOT_PENDING: &str = "CR-FM-NES tell_pop called without a pending ask_pop batch";
+const NES_BATCH_LENGTH: &str = "CR-FM-NES tell_pop batch length must equal popsize";
 
 impl Crfmnes {
     /// Create an optimizer centered on `guess` with global step size `sigma`.
@@ -213,6 +218,7 @@ impl Crfmnes {
             stop: 0,
             f_best: f64::INFINITY,
             x_best: DVector::zeros(dim),
+            pending: false,
             external_evaluations: 0,
             rng,
             fitfun,
@@ -551,16 +557,50 @@ impl Crfmnes {
 
     // ---- ask/tell interface (mirrors CrfmnesState::Impl) ----
 
-    /// Ask for a decoded, in-bounds population (rows = individuals).
+    /// Ask for a decoded, in-bounds population of `popsize` rows
+    /// (rows = individuals).
+    ///
+    /// The batch stays pending until it is told. Calling `ask_pop` again
+    /// before that draws a new batch that replaces the pending one; the
+    /// replaced batch can no longer be told.
     pub fn ask_pop(&mut self) -> Vec<Vec<f64>> {
         self.ask();
+        self.pending = true;
         self.decode_columns(&self.x)
     }
 
-    /// Tell fitness values for the population from [`ask_pop`](Crfmnes::ask_pop).
+    /// Tell one fitness value per row of the population from
+    /// [`ask_pop`](Crfmnes::ask_pop), in the same order. Returns the
+    /// termination code.
+    ///
+    /// # Panics
+    ///
+    /// Panics if no batch is pending or if `ys` does not have `popsize`
+    /// values. Use [`Crfmnes::try_tell_pop`] to receive these as errors
+    /// instead.
     pub fn tell_pop(&mut self, ys: &[f64]) -> i32 {
+        self.try_tell_pop(ys)
+            .expect("invalid CR-FM-NES tell_pop call")
+    }
+
+    /// Fallible tell variant validating call order and batch length. A
+    /// rejected call changes no optimizer state.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if no batch is pending (no
+    /// [`ask_pop`](Crfmnes::ask_pop) since the last successful tell) or if
+    /// `ys` does not have `popsize` values.
+    pub fn try_tell_pop(&mut self, ys: &[f64]) -> Result<i32, &'static str> {
+        if !self.pending {
+            return Err(NES_NOT_PENDING);
+        }
+        if ys.len() != self.lamb {
+            return Err(NES_BATCH_LENGTH);
+        }
+        self.pending = false;
         self.iterations += 1;
-        self.tell(ys)
+        Ok(self.tell(ys))
     }
 
     /// Return the most recently evaluated decoded population.
@@ -646,6 +686,112 @@ mod tests {
             "ask/tell did not converge: {}",
             opt.result().y
         );
+    }
+
+    fn nes(seed: u64, max_evaluations: u64) -> Crfmnes {
+        let fit = Fitness::bounded(4, 1, &[-5.0; 4], &[5.0; 4]);
+        let params = CrfmnesParams {
+            popsize: 8,
+            max_evaluations,
+            seed,
+            ..Default::default()
+        };
+        Crfmnes::new(fit, &[2.0, -1.0, 0.5, 3.0], 1.0, &params)
+    }
+
+    fn rosen(x: &[f64]) -> f64 {
+        (0..x.len() - 1)
+            .map(|i| 100.0 * (x[i + 1] - x[i] * x[i]).powi(2) + (1.0 - x[i]).powi(2))
+            .sum()
+    }
+
+    fn summary(r: &CrfmnesResult) -> (Vec<f64>, f64, u64, i32, i32) {
+        (r.x.clone(), r.y, r.evaluations, r.iterations, r.stop)
+    }
+
+    /// Ask/tell evaluates the same points and reaches the same result as the
+    /// one-shot `optimize_batch` for the same number of generations.
+    #[test]
+    fn ask_tell_equals_optimize_batch() {
+        let mut one_shot = nes(6, 50 * 8);
+        let mut evaluated = Vec::new();
+        let expected = one_shot.optimize_batch(|rows| {
+            evaluated.extend_from_slice(rows);
+            rows.iter().map(|x| rosen(x)).collect()
+        });
+        assert_eq!(expected.evaluations, 50 * 8);
+        let mut driven = nes(6, 50 * 8);
+        let mut asked = Vec::new();
+        for _ in 0..50 {
+            let xs = driven.ask_pop();
+            let ys: Vec<f64> = xs.iter().map(|x| rosen(x)).collect();
+            asked.extend(xs);
+            driven.tell_pop(&ys);
+        }
+        assert_eq!(asked, evaluated);
+        let r = driven.result();
+        assert_eq!(
+            (&r.x, r.y, r.evaluations),
+            (&expected.x, expected.y, 50 * 8)
+        );
+        assert_eq!(driven.population(), one_shot.population());
+    }
+
+    /// Rejected tells (none pending, short, long, repeated) change nothing:
+    /// the run continues exactly as one without them.
+    #[test]
+    fn rejected_tells_leave_the_state_unchanged() {
+        let run = |reject: bool| {
+            let mut nes = nes(5, 10_000);
+            if reject {
+                assert_eq!(nes.try_tell_pop(&[]), Err(NES_NOT_PENDING));
+                assert_eq!(nes.try_tell_pop(&[1.0; 8]), Err(NES_NOT_PENDING));
+            }
+            let mut asked = Vec::new();
+            for _ in 0..5 {
+                let xs = nes.ask_pop();
+                let ys: Vec<f64> = xs.iter().map(|x| rosen(x)).collect();
+                if reject {
+                    assert_eq!(nes.try_tell_pop(&ys[..7]), Err(NES_BATCH_LENGTH));
+                    let long = [ys.as_slice(), &[0.0]].concat();
+                    assert_eq!(nes.try_tell_pop(&long), Err(NES_BATCH_LENGTH));
+                    assert_eq!(nes.try_tell_pop(&[]), Err(NES_BATCH_LENGTH));
+                }
+                assert_eq!(nes.try_tell_pop(&ys), Ok(0));
+                if reject {
+                    assert_eq!(nes.try_tell_pop(&ys), Err(NES_NOT_PENDING));
+                }
+                asked.push(xs);
+            }
+            asked.push(nes.ask_pop());
+            (asked, nes.population(), summary(&nes.result()))
+        };
+        assert_eq!(run(true), run(false));
+    }
+
+    #[test]
+    #[should_panic(expected = "CR-FM-NES tell_pop batch length must equal popsize")]
+    fn tell_pop_panics_on_a_short_batch() {
+        let mut nes = nes(1, 1000);
+        let xs = nes.ask_pop();
+        nes.tell_pop(&vec![0.0; xs.len() - 1]);
+    }
+
+    #[test]
+    #[should_panic(expected = "CR-FM-NES tell_pop batch length must equal popsize")]
+    fn tell_pop_panics_on_a_long_batch() {
+        let mut nes = nes(1, 1000);
+        let xs = nes.ask_pop();
+        nes.tell_pop(&vec![0.0; xs.len() + 1]);
+    }
+
+    #[test]
+    #[should_panic(expected = "CR-FM-NES tell_pop called without a pending ask_pop batch")]
+    fn tell_pop_panics_without_a_pending_ask() {
+        let mut nes = nes(1, 1000);
+        let xs = nes.ask_pop();
+        nes.tell_pop(&vec![0.0; xs.len()]);
+        nes.tell_pop(&vec![0.0; xs.len()]);
     }
 
     #[test]
