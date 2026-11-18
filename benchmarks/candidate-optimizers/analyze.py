@@ -31,6 +31,9 @@ from scipy.stats import mannwhitneyu, rankdata
 
 INCUMBENTS = ["bite", "de", "cma", "crfmnes", "da", "de_cma"]
 CANDIDATES = ["lshade", "jso", "lsrtde", "lsrtde_b", "bipop", "amalgam"]
+# Reported with all statistics but excluded from the inclusion decision
+# (DEVIATIONS.md, entry 6).
+INFORMATIONAL = ["lsrtde"]
 PROBLEMS = [
     "cassini1", "gtoc1", "sagas", "messenger", "tandem", "cassini2", "rosetta",
     "messenger_full", "optical_lens", "bandpass", "phased_array", "lj13", "lj38",
@@ -275,6 +278,8 @@ def main(argv: list[str]) -> int:
             decision = "Watch"
         else:
             decision = "Reject"
+        if candidate in INFORMATIONAL and decision != "not run":
+            decision = f"informational only (gates alone would give: {decision})"
         decisions[candidate] = {
             "wins": len(wins),
             "losses": sum(1 for e in tests[candidate] if e["outcome"] == "loss"),
@@ -329,7 +334,8 @@ def main(argv: list[str]) -> int:
     w("")
     w("G1: at least 3 winning cells on at least 2 problems. G2: mean rank strictly "
       "better than the best incumbent's mean rank. Include: G1 or G2 and no contract "
-      "violation. Watch: at least one winning cell but neither gate. Reject: no "
+      "violation. Watch: at least one winning cell but neither gate. `lsrtde` is "
+      "informational only (DEVIATIONS.md, entry 6). Reject: no "
       "winning cell.\n")
 
     w("## Mean ranks\n")

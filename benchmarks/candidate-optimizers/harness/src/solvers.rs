@@ -441,10 +441,10 @@ pub fn registry() -> Vec<Box<dyn Solver>> {
 /// L-SRTDE with the p-best difference taken from the base vector
 /// (`pbest_difference_from_base`), the form of the predecessor LL-NADE.
 ///
-/// The open descriptions of L-SRTDE print the difference from the current
-/// vector, which is what `"lsrtde"` runs; that form does not converge on a
-/// 30-variable rotated ellipsoid, while this one does. Both forms are
-/// benchmarked because open sources cannot settle which one the authors ran.
+/// The paper prints the difference from the current vector, which is what
+/// `"lsrtde"` runs. Only this form reproduces the results the paper reports
+/// (see `DEVIATIONS.md`), so it is the L-SRTDE candidate; `"lsrtde"` is kept
+/// for information.
 #[cfg(feature = "candidates")]
 struct LSrtdeBase;
 

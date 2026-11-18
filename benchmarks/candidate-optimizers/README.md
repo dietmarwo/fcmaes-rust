@@ -3,12 +3,14 @@
 This workspace runs the experiment declared in [PROTOCOL.md](PROTOCOL.md):
 which gradient-free algorithms missing from `fcmaes-core` should be added to
 it. `PROTOCOL.md` is binding; this file describes how the harness implements
-it.
+it. [DEVIATIONS.md](DEVIATIONS.md) lists the departures from the protocol and
+[DECISION.md](DECISION.md) the outcome of the recorded campaign, which used
+12 repetitions.
 
 | Crate or file | Content |
 |---|---|
 | `solver-api` | `Solver` trait, `Outcome`, `Guard` (budget and box enforcement) |
-| `cand-de` | L-SHADE, jSO, L-SRTDE candidates |
+| `cand-de` | L-SHADE, jSO, L-SRTDE candidates (L-SRTDE runs in two forms, `lsrtde` and `lsrtde_b`; see [DEVIATIONS.md](DEVIATIONS.md)) |
 | `cand-eda` | AMaLGaM-IDEA candidate |
 | `harness` (`candidate-harness`) | incumbent adapters, BIPOP-aCMA-ES, problems, campaign runner |
 | `analyze.py` | statistics, gates and decisions (protocol sections 3.5 to 3.7) |
