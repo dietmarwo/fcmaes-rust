@@ -349,8 +349,9 @@ counters differ between solvers; never compare or add them across profiles.
      jSO→CMA ranked about as well as DE→CMA over ten problems, significantly
      better on GTOC1 and Tandem and worse on Cassini1, Sagas and Messenger
      full; jSO alone lost most cells against the core optimizers. It needs
-     finite bounds and a budget fixed in advance, and `fcmaes.retry/1` does
-     not offer it.
+     finite bounds and a budget fixed in advance. `fcmaes.retry/1` offers it
+     as `kind: jso` (hard limit, no `guess`) for the jSO stage alone; the job
+     worker has no jSO→CMA sequence.
    - Use active CMA-ES when a useful guess exists, variables are continuous,
      and correlations or ill-conditioning are important (in
      `fcmaes.retry/1`, pass it as `guess` with a matching `sigma`). A plain CMA-ES
@@ -390,7 +391,7 @@ counters differ between solvers; never compare or add them across profiles.
 
 Use the common job API for agent-driven experiments when its worker supports
 the problem and algorithm. Its fcmaes profiles expose independent BiteOpt
-and DE (serial or in parallel delayed-feedback batches), CMA-ES (with
+and DE (serial or in parallel delayed-feedback batches), jSO, CMA-ES (with
 optional IPOP/BIPOP restarts), CR-FM-NES and PGPE retries,
 independent MODE runs and independent MAP-Elites runs (grid or CVT archives,
 optional CMA-ME/CMA-MAE emitters), and experimental surrogate runs, each on
@@ -461,7 +462,7 @@ is no agent, Python, or network round trip for each objective evaluation.
 | `optimization-job-api` (from optimization-jobs) | Strict envelopes, result contracts, hashes, durable journals and worker SDK. |
 | `optimization-runner` / `optimization-run` (from optimization-jobs) | Worker registration, staging, idempotency, CPU admission, process supervision and recovery. |
 | `optimization-runner` / `optimization-mcp` (from optimization-jobs) | MCP server over stdio: tools and tasks over `optimization-run` for agents. |
-| `crates/fcmaes-job-worker` | Native adapter for `fcmaes.retry/1` (BiteOpt, DE, CMA-ES with restarts, CR-FM-NES, PGPE retries), `fcmaes.mode/1` (MODE), `fcmaes.map-elites/1` (MAP-Elites, CVT, CMA-ME/CMA-MAE), `fcmaes.evaluate/1` (given points) and `fcmaes.surrogate/1` (experimental exact GP), on the models of a `Registry`; a library, a thin binary with the benchmarks, and `examples/custom_worker.rs` and `examples/simulation_worker.rs` for application models. |
+| `crates/fcmaes-job-worker` | Native adapter for `fcmaes.retry/1` (BiteOpt, DE, jSO, CMA-ES with restarts, CR-FM-NES, PGPE retries), `fcmaes.mode/1` (MODE), `fcmaes.map-elites/1` (MAP-Elites, CVT, CMA-ME/CMA-MAE), `fcmaes.evaluate/1` (given points) and `fcmaes.surrogate/1` (experimental exact GP), on the models of a `Registry`; a library, a thin binary with the benchmarks, and `examples/custom_worker.rs` and `examples/simulation_worker.rs` for application models. |
 | `crates/fcmaes-surrogate` | Experimental GP optimization library behind `fcmaes.surrogate/1`; independent of the job API. |
 | `crates/fcmaes-runner` / `fcmaes-run` | Compatibility CLI entry point into the common runner. |
 | `crates/fcmaes-native-worker` | Original worker for `fcmaes.job/0.1` specifications. |
@@ -507,6 +508,7 @@ python3 tutorials/job-api/run.py --root /tmp/fcmaes-job-tutorial
 
 The tutorial runs BiteOpt on Sphere, Rosenbrock and Cassini1, CMA-ES on
 Rosenbrock, BIPOP-CMA-ES on Cassini1, CR-FM-NES on 50-dimensional Rosenbrock,
+jSO on 10-dimensional Rosenbrock (its exact hard budget),
 MODE on ZDT1 and the constrained Binh–Korn problem, MAP-Elites on the
 Rastrigin projection benchmark and, on a CVT archive with CMA-MAE, on the
 sphere projection, and a curve fit to a data file in the example application
@@ -663,7 +665,7 @@ parallel, on threads of that task's own:
 | Two runs with expensive evaluations | 8 | 2 | 4 |
 | Serial fcmaes comparison | 1 | 1 | 1 |
 
-CMA-ES, CR-FM-NES, PGPE, MODE and MAP-Elites accept `inner_threads > 1`, and
+jSO, CMA-ES, CR-FM-NES, PGPE, MODE and MAP-Elites accept `inner_threads > 1`, and
 their results do not depend on it: populations are evaluated in parallel and
 returned in order, while the optimizer state stays serial. BiteOpt and DE
 accept it with `optimizer.parameters.batch`: BiteOpt evaluates batches of
@@ -711,7 +713,16 @@ budget is spent; the overshoot is then at most `max_population-1` (default
 CMA-ES accepts at most 3,162 variables; CR-FM-NES and PGPE scale further. CR-FM-NES (`kind: crfmnes`, for high
 dimensions) and PGPE (`kind: pgpe`) also need `soft` and an even
 `population` (default 32), with `sigma` defaults 0.3 and 0.1; PGPE also takes
-`center_learning_rate` and `stdev_learning_rate`. BiteOpt and DE payloads are
+`center_learning_rate` and `stdev_learning_rate`. jSO (`kind: jso`) requires
+`hard`: it never exceeds `evaluations_per_retry` (a generation that would is
+cut) and spends it exactly unless stopped. Its only parameter is `population`,
+the initial population (default `round(25 ln(D) √D)`, at least 4, as
+published), which shrinks linearly to 4 over the retry's budget; it draws
+that population uniformly from the bounds and rejects a `guess`. Its default
+population exceeds `population × dimension <= 10⁷` from dimension 1,446 on.
+In the [candidate-optimizer benchmark](benchmarks/candidate-optimizers/DECISION.md)
+jSO alone lost most cells; it is meant as a first stage before CMA-ES, which
+the worker does not chain. BiteOpt and DE payloads are
 unchanged by these additions, so their job digests are too.
 
 MODE and MAP-Elites budgets are exact: `generations × population` and
@@ -741,7 +752,7 @@ and paths, and keep using the same `JOB_NODE`:
 ./target/release/optimization-run --root "$JOB_NODE" jobs cancel JOB_ID
 ```
 
-Since 0.3.0, every retry model observes cancel/deadline while it runs: serial BiteOpt/DE stop between evaluations; batched/delayed methods drain in-flight work; CMA-ES, CR-FM-NES and PGPE stop between populations. Simulation models also stop at `SimContext` checkpoints. Results retain exact evaluation counts. A stopped plain model has `cancelled_evaluations=0`; simulation attempts cancelled at checkpoints are counted separately. The best point is not rechecked after a stop, and retains `claimed` evidence. MODE and MAP-Elites runs check it between generations
+Since 0.3.0, every retry model observes cancel/deadline while it runs: serial BiteOpt/DE stop between evaluations; batched/delayed methods drain in-flight work; jSO, CMA-ES, CR-FM-NES and PGPE stop between populations. Simulation models also stop at `SimContext` checkpoints. Results retain exact evaluation counts. A stopped plain model has `cancelled_evaluations=0`; simulation attempts cancelled at checkpoints are counted separately. The best point is not rechecked after a stop, and retains `claimed` evidence. MODE and MAP-Elites runs check it between generations
 and return their current front or archive with `termination: "cancelled"`; at
 the wall deadline the SDK uses the same signal, so the job state says whether
 it was `cancelled` or `timed_out`. Surrogate runs stop before the next
@@ -1391,7 +1402,7 @@ There are two distinct levels:
 
 These are core-library capabilities. The fcmaes job adapter maps them onto
 the envelope: `outer_workers` independent retries or runs, each evaluating its
-populations on `inner_threads` threads of its own (CMA-ES, CR-FM-NES, PGPE,
+populations on `inner_threads` threads of its own (jSO, CMA-ES, CR-FM-NES, PGPE,
 MODE, MAP-Elites, and BiteOpt and DE with `batch`; serial BiteOpt and DE need
 `inner_threads=1`; the surrogate needs
 `concurrent * evaluation_threads <= inner_threads <= 8`). Its resource
@@ -1447,7 +1458,7 @@ Use a staged budget:
 Some population algorithms check limits at generation boundaries, so reported
 evaluations can exceed the configured limit. Use the reported count for
 comparisons. In the core library, BiteOpt, jSO, Dual Annealing and
-`De::optimize_delayed` never exceed `max_evaluations`. In `fcmaes.retry/1`, BiteOpt and batched DE never exceed the
+`De::optimize_delayed` never exceed `max_evaluations`. In `fcmaes.retry/1`, BiteOpt, jSO and batched DE never exceed the
 budget, while serial DE, CMA-ES, CR-FM-NES and PGPE have the explicit soft
 allowances described above; do not apply a generic overshoot rule to all of
 them.

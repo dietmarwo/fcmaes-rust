@@ -1,12 +1,15 @@
-//! CR-FM-NES and PGPE retries, CMA-ES restarts, CVT archives and CMA-ES
+//! jSO, CR-FM-NES and PGPE retries, CMA-ES restarts, CVT archives and CMA-ES
 //! emitters, and the independence of every population-based run from the
 //! number of evaluation threads.
 mod common;
 use common::{envelope, execute, problem, results, validate};
-use fcmaes_core::{Archive, MapElitesParams, RetryBounds, Rng, map_elites_batch, retry_run_seed};
+use fcmaes_core::{
+    Archive, Fitness, Jso, JsoParams, MapElitesParams, RetryBounds, Rng, map_elites_batch,
+    retry_run_seed,
+};
 use fcmaes_job_worker::{
     problems,
-    retry::{EsKind, EsSettings, Restarts, batch_retry, es_retry},
+    retry::{EsKind, EsSettings, Restarts, batch_retry, es_retry, jso_population, jso_retry},
     threads::Threads,
 };
 use fcmaes_native_worker::objective_by_id;
@@ -144,6 +147,120 @@ fn crfmnes_and_pgpe_retries_report_their_best_evaluated_points() {
     let mut hard = retry("crfmnes", json!({}), 6, 100, 1);
     hard["payload"]["evaluation_limit_mode"] = json!("hard");
     assert!(validate(dir.path(), &hard).unwrap_err().contains("soft"));
+}
+
+/// A jSO retry job: a hard limit.
+fn jso(parameters: Value, dim: usize, evaluations: u64, inner: usize) -> Value {
+    let mut spec = retry("jso", parameters, dim, evaluations, inner);
+    spec["payload"]["evaluation_limit_mode"] = json!("hard");
+    spec
+}
+
+#[test]
+fn jso_default_population_is_the_published_one_of_fcmaes_core() {
+    for dim in (1..=64).chain([100, 1000, 1445, 1446, 10_000]) {
+        let core = Jso::new(
+            Fitness::new(dim, 1, vec![-1.0; dim], vec![1.0; dim]),
+            &JsoParams::default(),
+        );
+        assert_eq!(jso_population(dim), core.popsize(), "dimension {dim}");
+    }
+    assert_eq!(jso_population(1), 4);
+    assert_eq!(jso_population(6), 110);
+}
+
+#[test]
+fn jso_retries_match_the_library_and_spend_exactly_their_budget() {
+    let dir = tempfile::tempdir().unwrap();
+    let resolved = validate(dir.path(), &jso(json!({}), 6, 4000, 1)).unwrap();
+    assert_eq!(
+        resolved["payload"]["optimizer"],
+        json!({"kind": "jso", "parameters": {"population": 110}})
+    );
+    assert_eq!(resolved["payload"]["evaluation_limit_mode"], "hard");
+    assert!(resolved["payload"].get("guess").is_none());
+    let bounds = RetryBounds::new(vec![-5.0; 6], vec![5.0; 6]).unwrap();
+    let objective = objective_by_id("benchmark.rosenbrock");
+    // 50 evaluations end the run inside the initial population.
+    for (parameters, population, evaluations) in [
+        (json!({}), 110, 4000),
+        (json!({"population": 20}), 20, 3001),
+        (json!({}), 110, 50),
+    ] {
+        let run = execute(&jso(parameters, 6, evaluations, 1));
+        assert_eq!(run["status"], "completed");
+        let mut total = 0;
+        for r in results(&run) {
+            let seed = retry_run_seed(5, r["task_id"].as_u64().unwrap() as usize);
+            let direct = jso_retry(
+                population,
+                &bounds,
+                seed,
+                evaluations,
+                &objective,
+                &Threads::new(1).unwrap(),
+            );
+            let o = &r["outcome"];
+            assert_eq!(o["objective"], json!(direct.result.y));
+            assert_eq!(o["x"], json!(direct.result.x));
+            assert_eq!(o["claim"], "best_found", "{o}");
+            assert_eq!(
+                o["evidence"],
+                json!({"level": "rechecked", "checks": ["objective", "bounds"]})
+            );
+            assert_eq!(o["termination"], "evaluation_limit");
+            assert_eq!(o["details"]["stop_code"], direct.stop);
+            assert_eq!(o["details"]["generations"], direct.generations);
+            assert_eq!(o["details"]["run_seed"], seed);
+            // A hard limit: exactly the budget, never more.
+            assert_eq!(direct.result.evaluations, evaluations);
+            assert_eq!(r["work"]["evaluations"], evaluations);
+            assert_eq!(r["work"]["validation_evaluations"], 1);
+            total += evaluations;
+        }
+        assert_eq!(run["work"]["evaluations"], total);
+    }
+    let mut soft = jso(json!({}), 6, 100, 1);
+    soft["payload"]["evaluation_limit_mode"] = json!("soft");
+    for (spec, message) in [
+        (soft, "use evaluation_limit_mode hard"),
+        (
+            jso(json!({"sigma": 0.3}), 6, 100, 1),
+            "sigma does not apply to jso",
+        ),
+        (
+            jso(json!({"batch": 8}), 6, 100, 1),
+            "batch applies only to biteopt and de",
+        ),
+        (
+            jso(json!({"restarts": "ipop"}), 6, 100, 1),
+            "restarts does not apply to jso",
+        ),
+        (
+            jso(json!({"max_population": 64}), 6, 100, 1),
+            "max_population does not apply to jso",
+        ),
+        (
+            jso(json!({"center_learning_rate": 0.1}), 6, 100, 1),
+            "center_learning_rate does not apply to jso",
+        ),
+        (
+            jso(json!({"stdev_learning_rate": 0.1}), 6, 100, 1),
+            "stdev_learning_rate does not apply to jso",
+        ),
+        (jso(json!({"population": 3}), 6, 100, 1), "population"),
+        (
+            jso(json!({"population": 1_000_001}), 6, 100, 1),
+            "population",
+        ),
+        (
+            retry("lshade", json!({}), 6, 100, 1),
+            "biteopt, de, jso, cmaes, crfmnes or pgpe",
+        ),
+    ] {
+        let err = validate(dir.path(), &spec).unwrap_err();
+        assert!(err.contains(message), "{message}: {err}");
+    }
 }
 
 #[test]
@@ -302,6 +419,11 @@ fn population_runs_do_not_depend_on_inner_threads() {
         (
             "pgpe",
             Box::new(|inner| retry("pgpe", json!({}), 6, 3000, inner)),
+        ),
+        ("jso", Box::new(|inner| jso(json!({}), 6, 3000, inner))),
+        (
+            "jso cut generation",
+            Box::new(|inner| jso(json!({"population": 17}), 6, 2999, inner)),
         ),
         ("mode", Box::new(mode)),
         (
@@ -541,4 +663,29 @@ fn population_runs_respect_memory_limits() {
         resolved["payload"]["optimizer"]["parameters"]["max_population"],
         5000
     );
+    // jSO's default population, round(25 ln(D) sqrt(D)), fits up to 1445.
+    let resolved = validate(dir.path(), &jso(json!({}), 1445, 100, 1)).unwrap();
+    assert_eq!(
+        resolved["payload"]["optimizer"]["parameters"]["population"],
+        6914
+    );
+    let err = validate(dir.path(), &jso(json!({}), 1446, 100, 1)).unwrap_err();
+    assert!(
+        err.contains("population * dimension must be at most 1e7")
+            && err.contains("smaller optimizer.parameters.population"),
+        "{err}"
+    );
+    assert!(
+        validate(
+            dir.path(),
+            &jso(json!({"population": 1000}), 10_000, 100, 1)
+        )
+        .is_ok()
+    );
+    let err = validate(
+        dir.path(),
+        &jso(json!({"population": 1001}), 10_000, 100, 1),
+    )
+    .unwrap_err();
+    assert!(err.contains("population * dimension"), "{err}");
 }

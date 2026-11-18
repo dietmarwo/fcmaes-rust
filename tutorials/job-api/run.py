@@ -12,7 +12,7 @@ WORKER='fcmaes'
 BINARY='fcmaes-job-worker'
 # An application worker with a model of its own (examples/custom_worker.rs).
 APPLICATION=('curve-fit','examples/custom_worker')
-EXAMPLES=['sphere', 'rosenbrock', 'cassini1', 'rosenbrock-cmaes', 'cassini1-bipop', 'rosenbrock-crfmnes',
+EXAMPLES=['sphere', 'rosenbrock', 'cassini1', 'rosenbrock-cmaes', 'cassini1-bipop', 'rosenbrock-crfmnes', 'rosenbrock-jso',
           'zdt1-mode', 'binh-korn-mode', 'rastrigin-map-elites', 'sphere-cvt-cma-mae', 'binh-korn-evaluate',
           'exponential-fit']
 sys.path.insert(0,str(REPO/'scripts/job-api'))
@@ -53,6 +53,10 @@ def check_retry(spec,record,outcome):
         population=optimizer['parameters'].get('population',{'cmaes':31,'crfmnes':32,'pgpe':32}[optimizer['kind']])
         largest=optimizer['parameters'].get('max_population',512*population) if 'restarts' in optimizer['parameters'] else population
         limit+=largest-1
+    if optimizer['kind']=='jso':
+        # A hard limit that jSO's shrinking population schedule spends exactly.
+        assert record['work']['evaluations']==limit and outcome['termination']=='evaluation_limit',record
+        assert outcome['details']['generations']>0,outcome
     if 'restarts' in optimizer['parameters']:
         assert outcome['details']['restarts']>=1 and record['work']['evaluations']>=payload['evaluations_per_retry'],outcome
     if payload['problem']['id']=='app.exponential-fit':
@@ -130,6 +134,15 @@ for worker_id in (WORKER,APPLICATION[0]):
     description=call('problems','describe',worker_id)
     payloads=[(example,s['payload_schema'],s['payload']) for example,s in specs.items() if s['worker']==worker_id]
     discovery['validated']+=payload_schemas.check(description,payloads)
+    if worker_id==WORKER:
+        # jSO takes no guess, no settings of other kinds and only the hard limit.
+        jso=specs['rosenbrock-jso']['payload']
+        edits=[{'guess':[1.0]*10},{'evaluation_limit_mode':'soft'}]
+        edits+=[{'optimizer':{'kind':'jso','parameters':{name:value}}} for name,value in
+                [('sigma',.3),('batch',8),('restarts','ipop'),('max_population',64),
+                 ('center_learning_rate',.1),('stdev_learning_rate',.1),('population',3)]]
+        discovery['validated']+=payload_schemas.check_rejected(
+            description,[(f'jso {edit}','fcmaes.retry/1',{**jso,**edit}) for edit in edits])
     discovery['runs']+=payload_schemas.run_examples(call,root/'discovery',worker_id,description,conforms)
 report=[]
 for example in EXAMPLES:

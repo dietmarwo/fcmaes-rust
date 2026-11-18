@@ -1,7 +1,8 @@
 //! `fcmaes.retry/1` with a `guess`: every retry starts there, for the
 //! distribution optimizers and for BiteOpt and DE, which take an initial
 //! point in fcmaes-core too; a guess of the wrong length or outside the
-//! bounds is rejected.
+//! bounds is rejected, and jSO, which draws its initial population
+//! uniformly, rejects any guess.
 use fcmaes_job_worker::Adapter;
 use optimization_job_api::{
     JobSpec,
@@ -12,7 +13,11 @@ use std::fs;
 
 /// Sphere on a box whose centre (3, ..., 3) is not the optimum (the origin).
 fn payload(kind: &str, parameters: Value, guess: Option<Vec<f64>>, evaluations: u64) -> Value {
-    let mode = if kind == "biteopt" { "hard" } else { "soft" };
+    let mode = if kind == "biteopt" || kind == "jso" {
+        "hard"
+    } else {
+        "soft"
+    };
     let mut p = json!({"problem": {"id": "benchmark.sphere", "version": "1", "config": {"dimension": 8},
             "bounds": {"lower": [-2.0], "upper": [8.0], "broadcast": true}},
         "optimizer": {"kind": kind, "parameters": parameters},
@@ -126,6 +131,19 @@ fn guesses_are_checked_and_de_resolves_its_spread() {
             "guess[5] = 9 lies outside the bounds [-2, 8]",
         );
     }
+    check(
+        payload("jso", json!({}), Some(vec![0.0; 8]), 100),
+        "guess does not apply to jso",
+    );
+    check(
+        payload("jso", json!({}), Some(vec![0.0; 7]), 100),
+        "guess has 7 entries",
+    );
+    // Without a guess, jSO resolves; a null guess is an absent one.
+    let mut null = payload("jso", json!({}), None, 100);
+    null["guess"] = Value::Null;
+    let resolved = resolve(null).unwrap();
+    assert!(resolved.payload.get("guess").is_none());
     check(
         payload("de", json!({"sigma": 0.1}), None, 100),
         "sigma applies to de only with a guess",

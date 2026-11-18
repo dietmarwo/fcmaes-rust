@@ -33,6 +33,10 @@ phase, with breaking changes called out explicitly.
   now ends the run with the best point evaluated, and `DaResult::evaluations`
   is the true call count. Every point evaluated within the budget is the same
   as before, so runs that stayed within it are unchanged.
+- `describe`'s `cancellation` entry for `fcmaes.retry/1` and the job
+  tutorial state the stop behavior of 0.3.0: active retries stop between
+  evaluations, batches or generations. Both still said that retries stop
+  only between retries.
 - The X3 (truss bounds) and X4 (Thomson refinement) tutorial records gain the four report fields of sqp-craft 0.20.0 (`elastic_mode`, `initial_curvature_scale`, `qp_solver`, `step_limited_iterations`), which optimization-jobs' structured-tutorial check now installs. A local run of both presets matched every recorded value within 1e-6; no recorded value changes.
 
 ### Changed
@@ -52,8 +56,20 @@ phase, with breaking changes called out explicitly.
   `optimize_parallel` and ask/tell. Its evaluation budget is a hard limit. It
   is the implementation benchmarked in `benchmarks/candidate-optimizers`; a
   test there checks that both evaluate the same points bit for bit. Python:
-  `optimize_jso` and the ask/tell class `JSO`. The job worker does not offer
-  it.
+  `optimize_jso` and the ask/tell class `JSO`.
+- `fcmaes.retry/1` accepts `optimizer.kind: "jso"`: jSO retries with a hard
+  limit (`evaluation_limit_mode: hard`; a retry spends exactly
+  `evaluations_per_retry` unless stopped), the published initial population
+  `round(25 · ln(D) · √D)` (at least 4) as the default `population`, and each
+  generation evaluated on `inner_threads` threads with results that do not
+  depend on their number. jSO rejects `guess`, `sigma`, `batch`, `restarts`,
+  `max_population` and the PGPE learning rates, in the worker and in the
+  payload schema of `describe`; it stops between generations on a cancel or
+  deadline. Results add `details.stop_code` and `details.generations`. The
+  profile stays `fcmaes.retry/1`: payloads of the other kinds validate and
+  run as before. jSO is meant as a first stage before CMA-ES and lost most
+  benchmark cells alone; the worker has no jSO→CMA sequence. The job
+  tutorial runs `rosenbrock-jso.json`.
 - jSO→CMA sequence in the examples: `jso_cma_run` and `run_jso_cma` in
   `examples/src/runner.rs`, with the budget split, step sizes and seeds of
   `de_cma_run`, and `--algo jso_cma` in `benchmark-biteopt-gtop`.
