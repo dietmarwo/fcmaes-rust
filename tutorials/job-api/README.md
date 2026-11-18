@@ -6,7 +6,7 @@ the experimental `fcmaes.surrogate/1`, which has
 
 | Profile | One task is | Result claim |
 | --- | --- | --- |
-| `fcmaes.retry/1` | one BiteOpt, DE, CMA-ES (optionally with IPOP or BIPOP restarts), CR-FM-NES or PGPE retry on a registered scalar model | `best_found` |
+| `fcmaes.retry/1` | one BiteOpt, DE, jSO, CMA-ES (optionally with IPOP or BIPOP restarts), CR-FM-NES or PGPE retry on a registered scalar model | `best_found` |
 | `fcmaes.mode/1` | one MODE run on a registered multi-objective model | `non_dominated_set` |
 | `fcmaes.map-elites/1` | one MAP-Elites run on a grid or CVT archive of a registered quality-diversity model, optionally followed by CMA-ME or CMA-MAE emitters | `elite_archive` |
 | `fcmaes.evaluate/1` | one given point, evaluated on any of these models | `feasible` or `none` |
@@ -50,6 +50,7 @@ existing attempts.
 | `rosenbrock-cmaes.json` | CMA-ES, 16 × 20,000 evaluations | `best_found`, the soft budget, best value below 1e-10 |
 | `cassini1-bipop.json` | CMA-ES with BIPOP restarts, 8 × 50,000 evaluations, 2 workers × 4 threads | at least one restart per retry, the soft budget, best value below 5.4 (the best known is 4.9307) |
 | `rosenbrock-crfmnes.json` | CR-FM-NES on 50 dimensions, 8 × 100,000 evaluations, 4 workers × 2 threads | `best_found`, best value below 1e-20 |
+| `rosenbrock-jso.json` | jSO on 10 dimensions, 8 × 50,000 evaluations, 4 workers × 2 threads | `best_found`, exactly 50,000 evaluations per retry (the hard budget); the payload schema rejects a `guess`, a soft limit and other kinds' parameters for jSO |
 | `zdt1-mode.json` | MODE, 8 runs × 250 generations × 64 | the recomputed ZDT1 values, non-dominance, nothing below the true front, hypervolume above 0.85 (the true front has 0.8767) |
 | `binh-korn-mode.json` | MODE, 8 runs × 100 generations × 64 | feasibility of every front point and non-dominance |
 | `rastrigin-map-elites.json` | MAP-Elites, 8 runs × 1,000 generations × 20, 400 niches | the recomputed fitness and descriptors of every elite, coverage above 50% |
@@ -123,7 +124,7 @@ result. See [Agents and MCP](https://github.com/dietmarwo/optimization-jobs/blob
 `outer_workers` runs tasks (retries, runs, points) concurrently.
 `inner_threads` evaluates the population of one task in parallel, on threads
 of that task's own; `outer_workers * inner_threads` must not exceed
-`cpu_slots`. Use `inner_threads > 1` for CMA-ES, CR-FM-NES, PGPE, MODE and
+`cpu_slots`. Use `inner_threads > 1` for jSO, CMA-ES, CR-FM-NES, PGPE, MODE and
 MAP-Elites, and for BiteOpt and DE with `batch`, when there are fewer tasks
 than slots or one evaluation is expensive. A run's result does not depend on
 `inner_threads`: populations are evaluated in parallel but returned in order,
@@ -131,7 +132,7 @@ and the optimizer's state stays serial. Serial BiteOpt and DE evaluate one
 point at a time and `fcmaes.evaluate/1` one point per task, so they require
 `inner_threads=1`.
 
-## Scalar retries: BiteOpt, DE, CMA-ES, CR-FM-NES and PGPE
+## Scalar retries: BiteOpt, DE, jSO, CMA-ES, CR-FM-NES and PGPE
 
 `problem` selects a registered scalar model: `benchmark.sphere`,
 `benchmark.rosenbrock`, `gtop.cassini1`, `benchmark.branin` or
@@ -154,6 +155,21 @@ entire batch after admission.
   evaluation, more for DE than for BiteOpt; keep `batch` small against the
   population (DE's default is 31) and use it when evaluations are expensive.
   Without `batch`, both run the serial algorithm of `fcmaes.job/0.1`.
+- **jSO** (`kind: jso`, Brest, Maučec and Bošković 2017) is adaptive DE with
+  a linearly shrinking population. It uses a hard limit
+  (`evaluation_limit_mode: hard`): it never exceeds `evaluations_per_retry`
+  and spends it exactly unless stopped, the last generation cut at the
+  budget. Its one parameter is `population`, the initial population (default
+  `round(25 · ln(D) · √D)`, at least 4, the published value), which shrinks
+  to 4 over the retry's budget, so the budget shapes the whole search. It
+  draws that population uniformly from the bounds and takes no `guess`.
+  Each generation is evaluated on `inner_threads` threads. `details.stop_code`
+  and `details.generations` report the run. jSO is meant as a first stage
+  before CMA-ES: in the
+  [candidate-optimizer benchmark](../../benchmarks/candidate-optimizers/DECISION.md)
+  jSO→CMA ranked about as well as DE→CMA, while jSO alone lost most cells.
+  The worker runs it alone and has no jSO→CMA sequence; prefer BiteOpt or
+  CMA-ES for a single retry kind.
 - **CMA-ES** (`kind: cmaes`) needs `soft` too: it evaluates whole generations,
   so it may spend at most `population-1` extra evaluations. Its parameters are
   `population` (default 31) and `sigma` (default 0.3), the initial step size in
@@ -186,10 +202,11 @@ entire batch after admission.
   BiteOpt builds its initial population around it, and DE samples its
   population around it with `sigma` (default 0.3, normalized box; DE takes
   `sigma` only with a guess). Without a guess, BiteOpt and DE run as in
-  `fcmaes.job/0.1`.
+  `fcmaes.job/0.1`. jSO rejects a guess.
 
 Settings of another optimizer are rejected, never ignored: `sigma` for
-BiteOpt, `restarts` for CR-FM-NES, `center_learning_rate` for CMA-ES. CMA-ES,
+BiteOpt, `restarts` for CR-FM-NES, `center_learning_rate` for CMA-ES, `sigma`,
+`batch` or a `guess` for jSO. CMA-ES,
 CR-FM-NES and PGPE use a soft limit (`evaluation_limit_mode: soft`) and may
 spend `population-1` extra evaluations. CR-FM-NES adds a bound penalty to the
 values it ranks and keeps unclamped points, so for CR-FM-NES and PGPE the
@@ -200,7 +217,8 @@ restarts `max_population × dimension`, and `batch × dimension`) is at most
 10⁷ for every optimizer, BiteOpt and DE included: they allocate their
 population tables before the first evaluation, so the evaluation budget does
 not bound that memory. BiteOpt's default population, `9 + 3 × dimension`,
-exceeds the limit from dimension 1,825 on; set a smaller `population` there.
+exceeds the limit from dimension 1,825 on, jSO's from dimension 1,446 on;
+set a smaller `population` there.
 
 BiteOpt and DE jobs without `batch` resolve through the same definitions as
 legacy `fcmaes.job/0.1` jobs, so both give identical retries.
@@ -334,11 +352,13 @@ below that (about 100,000 two-dimensional points).
 
 ## Cancellation and deadlines
 
-Retries check cancellation between retries; an active retry may continue until
-its evaluation budget, except on a `Scalar::simulation` model, which stops at
-its next `SimContext` checkpoint: the retry's remaining evaluations then
-return `+inf` at once (`cancelled_evaluations`), and its best point is
-reported without a recheck. MODE and MAP-Elites runs check it between generations,
+Active retries stop too: serial BiteOpt and DE between evaluations, batched
+BiteOpt and DE after the batches in flight, jSO, CMA-ES, CR-FM-NES and PGPE
+between generations. A stopped retry reports `termination: "cancelled"`, the
+evaluations it made and its best point without a recheck (`claimed`
+evidence). A `Scalar::simulation` model also stops at its next `SimContext`
+checkpoint: the retry's remaining evaluations then return `+inf` at once
+(`cancelled_evaluations`). MODE and MAP-Elites runs check it between generations,
 in both MAP-Elites phases:
 an active run stops and returns its current front or archive, re-evaluated as
 usual, with `termination: "cancelled"`. The SDK uses the same signal at the wall

@@ -1,11 +1,12 @@
-//! `fcmaes.retry/1`: independent retries of BiteOpt, DE, CMA-ES, CR-FM-NES or
-//! PGPE on registered scalar models. Without a `guess`, BiteOpt and DE run
-//! the shared native solver of the legacy `fcmaes.job/0.1` profile, so both
-//! profiles run identical retries on the built-in models. CMA-ES, CR-FM-NES
-//! and PGPE evaluate whole populations, in parallel with `inner_threads > 1`;
-//! CMA-ES can restart with growing populations (IPOP) or alternate large and
-//! small ones (BIPOP) inside the retry's budget. A `guess` starts every
-//! retry there. A `Scalar::simulation` model's failed evaluations count as
+//! `fcmaes.retry/1`: independent retries of BiteOpt, DE, jSO, CMA-ES,
+//! CR-FM-NES or PGPE on registered scalar models. Without a `guess`, BiteOpt
+//! and DE run the shared native solver of the legacy `fcmaes.job/0.1`
+//! profile, so both profiles run identical retries on the built-in models.
+//! jSO, CMA-ES, CR-FM-NES and PGPE evaluate whole populations, in parallel
+//! with `inner_threads > 1`; jSO keeps a hard evaluation limit. CMA-ES can
+//! restart with growing populations (IPOP) or alternate large and small ones
+//! (BIPOP) inside the retry's budget. A `guess` starts every retry there
+//! (jSO takes none). A `Scalar::simulation` model's failed evaluations count as
 //! `+inf`; its evaluations stop at its `SimContext` checkpoints on a cancel.
 use crate::{
     Control,
@@ -15,8 +16,8 @@ use crate::{
     threads::Threads,
 };
 use fcmaes_core::{
-    BiteOpt, BiteParams, Cmaes, CmaesParams, Crfmnes, CrfmnesParams, De, DeParams, Fitness, Pgpe,
-    PgpeParams, RetryBounds, RetryRunResult, Rng, retry_run_seed,
+    BiteOpt, BiteParams, Cmaes, CmaesParams, Crfmnes, CrfmnesParams, De, DeParams, Fitness, Jso,
+    JsoParams, Pgpe, PgpeParams, RetryBounds, RetryRunResult, Rng, retry_run_seed,
 };
 use fcmaes_native_worker::solve_until;
 use optimization_job_api::{
@@ -42,6 +43,13 @@ pub const CRFMNES_SIGMA: f64 = 0.3;
 pub const PGPE_POPULATION: usize = 32;
 /// Default initial PGPE standard deviation in the normalized box.
 pub const PGPE_SIGMA: f64 = 0.1;
+/// The default initial jSO population, the published `round(25 · ln(D) · √D)`
+/// of Brest, Maučec and Bošković (2017) that `fcmaes-core` uses, at least 4
+/// (jSO's final population).
+pub fn jso_population(dimension: usize) -> usize {
+    let d = dimension as f64;
+    ((25.0 * d.ln() * d.sqrt()).round() as usize).max(4)
+}
 /// Default largest restart population as a multiple of the first one:
 /// nine doublings, as in BIPOP-CMA-ES (Hansen 2009).
 pub const MAX_POPULATION_FACTOR: usize = 512;
@@ -65,7 +73,7 @@ pub struct Payload {
     /// Initial point of every retry, inside the bounds: the start of the
     /// first CMA-ES, CR-FM-NES or PGPE run (restarts start at random points),
     /// the centre of BiteOpt's initial population, the mean DE samples
-    /// around with `sigma`. Absent: random starts.
+    /// around with `sigma`. Absent: random starts. jSO rejects it.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub guess: Option<Vec<f64>>,
 }
@@ -172,6 +180,10 @@ enum Engine {
         start: Option<Start>,
     },
     Es(EsSettings),
+    /// jSO with this initial population and the retry's budget.
+    Jso {
+        population: usize,
+    },
 }
 pub struct Run {
     engine: Engine,
@@ -218,8 +230,12 @@ pub fn describe() -> Value {
             "ranges":{"population":"even, 4..1000000; population * dimension <= 1e7","sigma":"(0,2]","center_learning_rate":"(0,1]","stdev_learning_rate":"(0,1]"},
             "start":"guess, or a uniform random point in the bounds from the retry seed; initial standard deviation sigma",
             "inner_threads":"evaluates each population on inner_threads threads"},
+        "jso":{"profile":PROFILE,"limit":"hard",
+            "defaults":{"population":"round(25 ln(D) sqrt(D)), >= 4; shrinks to 4 over the budget"},
+            "ranges":{"population":"4..1000000; population * dimension <= 1e7"},
+            "start":"uniform in the bounds; no guess"},
         "best":"every optimizer reports the best point it evaluated; for CR-FM-NES and PGPE it is tracked from the evaluated populations",
-        "guess":"optional payload field: the problem's dimension of numbers inside its bounds; every retry starts there (different seeds still make retries differ)",
+        "guess":"optional payload field: the problem's dimension of numbers inside its bounds; every retry starts there (different seeds still make retries differ); not for jso",
         "simulation":"Scalar::simulation models: SimContext with threads() 1, a seed from the retry's run_seed and the point, the remaining time and the job's cancellation; a failed evaluation is +inf, counted in work and details (failed_evaluations, failures); after a cancel, evaluations return +inf without calling the model (cancelled_evaluations, termination cancelled) and the best point is not rechecked (evidence claimed)"
     })
 }
@@ -284,7 +300,17 @@ pub fn prepare(registry: &Registry, s: &mut JobSpec, base: &Path) -> Result<Box<
                 .ok_or("evaluation budget overflow")?;
             (Engine::Es(settings), limit)
         }
-        _ => return Err("optimizer.kind must be biteopt, de, cmaes, crfmnes or pgpe".into()),
+        "jso" => {
+            let population = jso_settings(&mut p)?;
+            // A hard limit: the last generation is cut at the budget.
+            p.evaluations_per_retry
+                .checked_mul(p.retries as u64)
+                .ok_or("evaluation budget overflow")?;
+            (Engine::Jso { population }, p.evaluations_per_retry)
+        }
+        _ => {
+            return Err("optimizer.kind must be biteopt, de, jso, cmaes, crfmnes or pgpe".into());
+        }
     };
     let bounds = RetryBounds::new(
         p.problem.bounds.lower.clone(),
@@ -426,6 +452,130 @@ fn in_range(name: &str, value: f64, low: f64, high: f64) -> Result<f64> {
         Ok(value)
     } else {
         Err(format!("{name} must lie in ({low}, {high}]").into())
+    }
+}
+
+/// Validates a jSO request and resolves its population.
+fn jso_settings(p: &mut Payload) -> Result<usize> {
+    if p.evaluation_limit_mode != "hard" {
+        return Err(
+            "jso never exceeds its evaluation budget; use evaluation_limit_mode hard".into(),
+        );
+    }
+    if p.guess.is_some() {
+        return Err(
+            "guess does not apply to jso: it draws its initial population uniformly from the bounds"
+                .into(),
+        );
+    }
+    let q = &p.optimizer.parameters;
+    if q.batch.is_some() {
+        return Err(
+            "optimizer.parameters.batch applies only to biteopt and de; jso evaluates whole generations (on inner_threads threads)"
+                .into(),
+        );
+    }
+    for (name, given) in [
+        ("sigma", q.sigma.is_some()),
+        ("restarts", q.restarts.is_some()),
+        ("max_population", q.max_population.is_some()),
+        ("center_learning_rate", q.center_learning_rate.is_some()),
+        ("stdev_learning_rate", q.stdev_learning_rate.is_some()),
+    ] {
+        if given {
+            return Err(format!("optimizer.parameters.{name} does not apply to jso").into());
+        }
+    }
+    let n = p.problem.config.dimension;
+    let population = q.population.unwrap_or_else(|| jso_population(n));
+    if !(4..=POPULATION_LIMIT).contains(&population) {
+        return Err("population must be 4..1000000".into());
+    }
+    // jSO holds its population and an archive of the same size.
+    if population.saturating_mul(n) > MAX_CELLS {
+        return Err(format!(
+            "population * dimension must be at most 1e7 (population {population}, dimension {n}); set a smaller optimizer.parameters.population"
+        )
+        .into());
+    }
+    p.optimizer.parameters = Parameters {
+        population: Some(population),
+        ..Parameters::default()
+    };
+    Ok(population)
+}
+
+/// One jSO retry and what it did.
+pub struct JsoRun {
+    /// The best point evaluated, its value and the evaluations made.
+    pub result: RetryRunResult,
+    /// jSO's stop code (0: budget spent or stopped).
+    pub stop: i32,
+    /// Completed generations after the initial population.
+    pub generations: i32,
+}
+
+/// One jSO retry of at most `evaluations` evaluations (a hard limit) from
+/// `population` uniform random points drawn from a stream derived from
+/// `seed`. Each generation is evaluated on `threads` and the result does not
+/// depend on their number.
+pub fn jso_retry(
+    population: usize,
+    bounds: &RetryBounds,
+    seed: u64,
+    evaluations: u64,
+    objective: &(dyn Fn(&[f64]) -> f64 + Send + Sync),
+    threads: &Threads,
+) -> JsoRun {
+    jso_retry_until(
+        population,
+        bounds,
+        seed,
+        evaluations,
+        objective,
+        threads,
+        &|| false,
+    )
+}
+
+/// [`jso_retry`] that stops before the next generation once `stopped`; a
+/// generation in flight is evaluated and told in full.
+pub fn jso_retry_until(
+    population: usize,
+    bounds: &RetryBounds,
+    seed: u64,
+    evaluations: u64,
+    objective: &(dyn Fn(&[f64]) -> f64 + Send + Sync),
+    threads: &Threads,
+    stopped: &(dyn Fn() -> bool + Sync),
+) -> JsoRun {
+    let fitness = Fitness::new(
+        bounds.dim(),
+        1,
+        bounds.lower().to_vec(),
+        bounds.upper().to_vec(),
+    );
+    let mut jso = Jso::new(
+        fitness,
+        &JsoParams {
+            popsize: i32::try_from(population).expect("population <= 1e6"),
+            max_evaluations: evaluations,
+            seed,
+            runid: 0,
+            ..Default::default()
+        },
+    );
+    let workers = threads.core_workers();
+    let r = threads
+        .install(|| jso.optimize_parallel_until(&|x: &[f64]| objective(x), workers, &|| stopped()));
+    JsoRun {
+        result: RetryRunResult {
+            x: r.x,
+            y: r.y,
+            evaluations: r.evaluations,
+        },
+        stop: r.stop,
+        generations: r.iterations,
     }
 }
 
@@ -1098,7 +1248,8 @@ impl Prepared for Run {
         self.payload.retries
     }
     /// Stop every optimizer between evaluations (between batches for batch
-    /// engines). Simulations also see the signal at their checkpoints.
+    /// engines, between generations for jSO, CMA-ES, CR-FM-NES and PGPE).
+    /// Simulations also see the signal at their checkpoints.
     fn cancel(&self) {
         self.control.cancel();
     }
@@ -1158,6 +1309,20 @@ impl Run {
                     details["restarts"] = json!(run.restarts);
                     details["largest_population"] = json!(run.largest_population);
                 }
+                run.result
+            }
+            Engine::Jso { population } => {
+                let run = jso_retry_until(
+                    *population,
+                    &self.bounds,
+                    seed,
+                    self.payload.evaluations_per_retry,
+                    &objective,
+                    threads,
+                    &stop,
+                );
+                details["stop_code"] = json!(run.stop);
+                details["generations"] = json!(run.generations);
                 run.result
             }
         };
@@ -1243,7 +1408,7 @@ impl Run {
 
 /// JSON Schema of the payload, with `problem` the schema of its problems.
 pub fn payload_schema(problem: Value) -> Value {
-    use crate::schema::{absent, integer, number, numbers, or_null, payload, u64};
+    use crate::schema::{absent, integer, null, number, numbers, or_null, payload, u64};
     let limit = POPULATION_LIMIT as u64;
     let parameters = json!({"type":"object","additionalProperties":false,"properties":{
         "population":or_null(integer(4, limit)),
@@ -1266,13 +1431,28 @@ pub fn payload_schema(problem: Value) -> Value {
     let all = |a: Value, b: Value| json!({"allOf":[a, b]});
     let even = json!({"properties":{"population":{"multipleOf":2}}});
     let es = ["batch", "center_learning_rate", "stdev_learning_rate"];
+    // jSO takes no guess: its initial population is uniform in the bounds.
+    let mut jso = kind(
+        "jso",
+        "hard",
+        absent(&[
+            "sigma",
+            "batch",
+            "restarts",
+            "max_population",
+            "center_learning_rate",
+            "stdev_learning_rate",
+        ]),
+        json!([]),
+    );
+    jso["then"]["properties"]["guess"] = null();
     payload(
         PROFILE,
         json!({"type":"object","additionalProperties":false,
         "required":["problem","optimizer","seed","retries","evaluations_per_retry","evaluation_limit_mode"],
         "properties":{"problem":problem,
             "optimizer":{"type":"object","additionalProperties":false,"required":["kind","parameters"],
-                "properties":{"kind":{"enum":["biteopt","de","cmaes","crfmnes","pgpe"]},"parameters":parameters}},
+                "properties":{"kind":{"enum":["biteopt","de","jso","cmaes","crfmnes","pgpe"]},"parameters":parameters}},
             "seed":u64(),"retries":integer(1, 1_000_000),"evaluations_per_retry":integer(1, u64::MAX),
             "evaluation_limit_mode":{"enum":["hard","soft"]},"guess":or_null(numbers())},
         "allOf":[
@@ -1284,7 +1464,8 @@ pub fn payload_schema(problem: Value) -> Value {
                 json!({"if":{"required":["restarts"],"properties":{"restarts":{"enum":["ipop","bipop"]}}},
                     "else":absent(&["max_population"])})),json!([])),
             kind("crfmnes","soft",all(absent(&["batch","restarts","max_population","center_learning_rate","stdev_learning_rate"]),even.clone()),json!([])),
-            kind("pgpe","soft",all(absent(&["batch","restarts","max_population"]),even),json!([]))],
+            kind("pgpe","soft",all(absent(&["batch","restarts","max_population"]),even),json!([])),
+            jso],
         "$comment":"inner_threads: 1 for biteopt and de without parameters.batch, otherwise the threads evaluating a population (results do not depend on them). population, batch and (with restarts) max_population times dimension <= 1e7; cmaes: dimension <= 3162 and max_population >= population. guess: one value per variable inside the bounds. de: sigma only with a guess. retries times the per-retry maximum must not overflow."}),
     )
 }

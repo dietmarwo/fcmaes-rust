@@ -1,6 +1,6 @@
 //! fcmaes adapters for the common job protocol (`optimization.job/0.1`).
 //!
-//! - `fcmaes.retry/1`: independent BiteOpt, DE, CMA-ES (optionally with
+//! - `fcmaes.retry/1`: independent BiteOpt, DE, jSO, CMA-ES (optionally with
 //!   IPOP or BIPOP restarts), CR-FM-NES or PGPE retries on registered scalar
 //!   models;
 //! - `fcmaes.mode/1`: independent MODE runs on registered multi-objective
@@ -194,7 +194,7 @@ impl Worker for Adapter {
             MAX_INNER_THREADS,
         );
         d["resources"]["inner_threads"] = json!(
-            "population evaluation threads per task for cmaes, crfmnes, pgpe, mode, map_elites, and biteopt and de with optimizer.parameters.batch (results do not depend on their number); 1 for serial biteopt and de and for fcmaes.evaluate/1"
+            "population evaluation threads per task for jso, cmaes, crfmnes, pgpe, mode, map_elites, and biteopt and de with optimizer.parameters.batch (results do not depend on their number); 1 for serial biteopt and de and for fcmaes.evaluate/1"
         );
         d["inputs"] = json!(
             "files a registered model reads, by name, checked against their SHA-256; a job may name only inputs its model reads"
@@ -220,7 +220,7 @@ impl Worker for Adapter {
             "none":"no usable answer (claimed evidence: a penalty value, a failed simulation, an empty front or archive); with evidence.refuted, a best_found claim that failed its re-check"
         });
         d["cancellation"] = json!({
-            retry::PROFILE: "between retries; active retries run until their budget or process deadline; Scalar::simulation models stop at SimContext checkpoints, and the rest of the retry's evaluations return +inf at once",
+            retry::PROFILE: "active retries stop between evaluations, batches or generations (best point claimed); Scalar::simulation models also at SimContext checkpoints, later evaluations return +inf",
             mode::PROFILE: "between generations; the run returns what it has",
             map_elites::PROFILE: "between generations; the run returns what it has",
             evaluate::PROFILE: "between points; Scalar::simulation models also at SimContext checkpoints"
