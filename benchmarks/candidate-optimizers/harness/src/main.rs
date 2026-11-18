@@ -18,13 +18,16 @@ const USAGE: &str = "usage:
   candidate-harness run --budgets results/budgets.tsv --out results/raw.tsv
       [--problems a,b] [--solvers x,y] [--protocols S,R] [--reps 20]
       [--threads 2] [--budget-scale 1.0]
+  candidate-harness survey --out results/round3 [--problems a,b]
   candidate-harness run --protocols T --out results/round2/raw.tsv
       [--problems round2|a,b] [--solvers round2|x,y] [--reps 20] [--threads 2]
       [--root-seed 1] [--total 400000] [--run-cap 100000] [--min-run 1000]
 
   --problems round2 and --solvers round2 select the round-2 sets
   (ROUND2.md); they are the defaults for protocol T. Round 2 uses
-  --root-seed 2.";
+  --root-seed 2.
+  survey examines the round-3 problems (ROUND3.md sections 3 and 4) and
+  writes problems.tsv and types/<problem>.json.";
 
 fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
@@ -32,6 +35,7 @@ fn main() {
         Some("list") => list(),
         Some("measure") => measure(&args[1..]),
         Some("run") => run(&args[1..]),
+        Some("survey") => survey(&args[1..]),
         Some("--help" | "-h" | "help") => {
             println!("{USAGE}");
             Ok(())
@@ -349,5 +353,115 @@ fn run_t(parsed: &[(String, String)], protocols: Vec<Protocol>) -> Result<(), St
     };
     let written = run_campaign_t(&config, &settings, &out)?;
     println!("wrote {written} rows to {}", out.display());
+    Ok(())
+}
+
+/// `survey`: the round-3 problem survey (ROUND3.md sections 3 and 4).
+fn survey(args: &[String]) -> Result<(), String> {
+    use candidate_harness::round3::{
+        self, ENTRY_LIMIT_US, EXAMINED, Kind, NOT_BUILT, deterministic_on, measure_capped,
+        type_table,
+    };
+    let parsed = options(args, &["--out", "--problems"])?;
+    let out = PathBuf::from(option(&parsed, "--out").ok_or("survey needs --out")?);
+    let names: Vec<String> = split_list(option(&parsed, "--problems"))
+        .unwrap_or_else(|| EXAMINED.iter().map(|s| (*s).to_owned()).collect());
+    let types_dir = out.join("types");
+    std::fs::create_dir_all(&types_dir).map_err(|e| e.to_string())?;
+    if let Ok(load) = std::fs::read_to_string("/proc/loadavg") {
+        println!("load average before measuring: {}", load.trim());
+    }
+    let mut tsv = String::from(
+        "problem\tdomain\tdim\tcontinuous\tinteger\tcategorical\tmean_eval_us\ttimed_points\t\
+         deterministic\tde_mask\tentered\treason\n",
+    );
+    let mut entered = Vec::new();
+    for name in &names {
+        let problem = problems::by_name(name).ok_or_else(|| format!("unknown problem '{name}'"))?;
+        let table = type_table(name).ok_or_else(|| format!("no type table for '{name}'"))?;
+        if table.dim() != problem.dim() {
+            return Err(format!("{name}: type table has D={}", table.dim()));
+        }
+        let timing = measure_capped(&problem, ENTRY_LIMIT_US);
+        // 200 points twice (ROUND3 survey); 10 for problems already out by timing.
+        let det_points = if timing.complete { 200 } else { 10 };
+        let deterministic = deterministic_on(&problem, det_points);
+        let mask = round3::de_mask(name).is_some();
+        let discrete = table.count(Kind::Integer) + table.count(Kind::Categorical);
+        let fast = timing.complete && timing.mean_us <= ENTRY_LIMIT_US;
+        let ok = deterministic && discrete > 0 && fast;
+        let mut reasons = Vec::new();
+        if !deterministic {
+            reasons.push("not deterministic".to_owned());
+        }
+        if discrete == 0 {
+            reasons.push("no discrete coordinate in its single-objective cost".to_owned());
+        }
+        if !fast {
+            reasons.push(if timing.complete {
+                format!(
+                    "mean evaluation time {:.1} us above 2,000 us",
+                    timing.mean_us
+                )
+            } else {
+                format!(
+                    "stopped after {} of 2,000 points: their time alone exceeds 2,000 x 2 ms",
+                    timing.points
+                )
+            });
+        }
+        let reason = if ok {
+            "meets the entry rule".to_owned()
+        } else {
+            reasons.join("; ")
+        };
+        println!(
+            "{name:<22} D={:<5} cont={:<4} int={:<4} cat={:<3} mean {:>12.3} us ({} pts) det={deterministic} ({det_points}) mask={mask} entered={}",
+            problem.dim(),
+            table.count(Kind::Continuous),
+            table.count(Kind::Integer),
+            table.count(Kind::Categorical),
+            timing.mean_us,
+            timing.points,
+            if ok { "yes" } else { "no" }
+        );
+        tsv.push_str(&format!(
+            "{name}\t{}\t{}\t{}\t{}\t{}\t{:.3}\t{}\t{}\t{}\t{}\t{reason}\n",
+            problem.domain,
+            problem.dim(),
+            table.count(Kind::Continuous),
+            table.count(Kind::Integer),
+            table.count(Kind::Categorical),
+            timing.mean_us,
+            timing.points,
+            if deterministic { "yes" } else { "no" },
+            if mask { "yes" } else { "no" },
+            if ok { "yes" } else { "no" }
+        ));
+        std::fs::write(types_dir.join(format!("{name}.json")), table.to_json())
+            .map_err(|e| e.to_string())?;
+        if ok {
+            entered.push((name.clone(), table.count(Kind::Categorical) > 0));
+        }
+    }
+    if option(&parsed, "--problems").is_none() {
+        for (name, domain, reason) in NOT_BUILT {
+            tsv.push_str(&format!(
+                "{name}\t{domain}\t-\t-\t-\t-\t-\t-\t-\t-\tno\t{reason}\n"
+            ));
+        }
+    }
+    std::fs::write(out.join("problems.tsv"), tsv).map_err(|e| e.to_string())?;
+    let with_categorical = entered.iter().filter(|(_, c)| *c).count();
+    println!(
+        "entered: {} ({} with a categorical coordinate); ROUND3.md needs at least 5 and 3: {}",
+        entered.len(),
+        with_categorical,
+        if entered.len() >= 5 && with_categorical >= 3 {
+            "met"
+        } else {
+            "NOT met, the round stops"
+        }
+    );
     Ok(())
 }

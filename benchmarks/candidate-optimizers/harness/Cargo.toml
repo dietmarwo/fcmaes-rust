@@ -26,6 +26,15 @@ phased-array-codebook = { path = "../../../tutorials/phased-array-codebook" }
 # Round-2 optional problems (ROUND2.md section 3).
 truss-sizing = { path = "../../../tutorials/truss-sizing" }
 dispersion-source-localization = { path = "../../../tutorials/dispersion-source-localization" }
+# Round-3 problems examined under ROUND3.md section 3. The examples crate
+# (jobshop, UAV task assignment, material flow) is not a dependency, because
+# it pulls in tokio and a finance client; its self-contained problem modules
+# are compiled from their source files instead (`round3_examples.rs`).
+energy-hub-bilevel = { path = "../../../tutorials/energy-hub-bilevel", default-features = false }
+water-network-scheduling = { path = "../../../tutorials/water-network-scheduling" }
+field-service-routing = { path = "../../../tutorials/field-service-routing" }
+network-coverage = { path = "../../../tutorials/network-coverage" }
+ml-hyperparameter-tuning = { path = "../../../tutorials/ml-hyperparameter-tuning" }
 # sindr 0.1.0-alpha.6 accepts sindr-devices ^0.1.0-alpha.6 but does not compile
 # against alpha.7; pin the version that the tutorial's own lockfile uses.
 sindr-devices = "=0.1.0-alpha.6"

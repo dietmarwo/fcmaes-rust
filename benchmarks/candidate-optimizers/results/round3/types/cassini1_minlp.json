@@ -1,0 +1,15 @@
+{
+  "problem": "cassini1_minlp",
+  "dimension": 6,
+  "source": "examples/src/problems.rs: cassini1_minlp (fixed_sequence) over crates/fcmaes-gtop cassini1_minlp",
+  "counts": {"continuous": 6, "integer": 0, "categorical": 0},
+  "notes": ["The repository's single-objective registry entry appends the fixed flyby sequence [2, 2, 3, 5]; the planet coordinates x[6..10] of fcmaes_gtop::cassini1_minlp are not decision variables of any single-objective code in the repository."],
+  "coordinates": [
+    {"index": 0, "kind": "continuous", "lower": -1000.0, "upper": 0.0, "meaning": "launch date or leg time of flight"},
+    {"index": 1, "kind": "continuous", "lower": 30.0, "upper": 400.0, "meaning": "launch date or leg time of flight"},
+    {"index": 2, "kind": "continuous", "lower": 100.0, "upper": 470.0, "meaning": "launch date or leg time of flight"},
+    {"index": 3, "kind": "continuous", "lower": 30.0, "upper": 400.0, "meaning": "launch date or leg time of flight"},
+    {"index": 4, "kind": "continuous", "lower": 400.0, "upper": 2000.0, "meaning": "launch date or leg time of flight"},
+    {"index": 5, "kind": "continuous", "lower": 1000.0, "upper": 6000.0, "meaning": "launch date or leg time of flight"}
+  ]
+}

@@ -1,0 +1,20 @@
+problem	domain	dim	continuous	integer	categorical	mean_eval_us	timed_points	deterministic	de_mask	entered	reason
+truss_sizing	structures	171	95	76	0	37.091	2000	yes	no	yes	meets the entry rule
+energy_hub	energy	10	7	3	0	27147.302	148	yes	no	no	stopped after 148 of 2,000 points: their time alone exceeds 2,000 x 2 ms
+energy_hub_annual	energy	10	6	4	0	313332.889	13	yes	no	no	stopped after 13 of 2,000 points: their time alone exceeds 2,000 x 2 ms
+phased_array	antennas	96	48	48	0	985.125	2000	yes	no	yes	meets the entry rule
+phased_array_beam	antennas	32	0	32	0	6156.202	650	yes	no	no	stopped after 650 of 2,000 points: their time alone exceeds 2,000 x 2 ms
+bandpass	circuits	5	5	0	0	415.705	2000	yes	no	no	no discrete coordinate in its single-objective cost
+water_network	water	28	3	24	1	4265.758	939	yes	no	no	stopped after 939 of 2,000 points: their time alone exceeds 2,000 x 2 ms
+field_service	logistics	104	52	0	52	25.827	2000	yes	no	yes	meets the entry rule
+coverage_cardinality	networks	4000	0	4000	0	47.760	2000	yes	yes	yes	meets the entry rule
+coverage_weighted	networks	4000	0	4000	0	63.952	2000	yes	yes	yes	meets the entry rule
+cassini1_minlp	space	6	6	0	0	5.924	2000	yes	no	no	no discrete coordinate in its single-objective cost
+ml_tuning	machine learning	8	3	4	1	10136379.896	1	yes	no	no	stopped after 1 of 2,000 points: their time alone exceeds 2,000 x 2 ms
+jobshop	scheduling	8	5	0	3	0.207	2000	yes	no	yes	meets the entry rule
+uav_assignment	logistics	34	30	4	0	0.529	2000	yes	no	yes	meets the entry rule
+material_flow	manufacturing	2	0	2	0	173.636	2000	yes	no	yes	meets the entry rule
+cassini2_minlp	space	-	-	-	-	-	-	-	-	no	fcmaes_gtop::cassini2_minlp decodes x[22..26] to flyby planets, but no single-objective code in the repository minimizes it and the repository defines no search box for the planet coordinates
+tandem_free_sequence	space	-	-	-	-	-	-	-	-	no	fcmaes_gtop::tandem takes the flyby sequence as a separate argument, not from x; every single-objective use fixes it ([3, 2, 3, 3, 6]), so no free-sequence form exists
+dyson_scheduling	space	-	-	-	-	-	-	-	-	no	examples/src/scheduling.rs: trajectory_selection repairs collisions by moving to the next unused trajectory (couples coordinates 0..10), station order and timings are sorted keys: no clean typed form
+bandpass_e12	circuits	-	-	-	-	-	-	-	-	no	tutorials/sindr-circuit-design: the E12 catalogue decoding is used only by the MAP-Elites arm (qd.rs); no single-objective code minimizes it

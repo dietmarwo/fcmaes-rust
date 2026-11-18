@@ -405,3 +405,116 @@ reported as a smoke test.
 
 `results/round2/smoke/` and `results/round2/timing/` hold the smoke run (raw
 rows, report, runner log) and the timing repetition (raw rows, runner log).
+
+## Round 3: problem survey
+
+[ROUND3.md](ROUND3.md) declares a mixed-variable screening of CatCMA with
+Margin. Its problems enter under a rule fixed in section 3 (deterministic,
+at least one discrete coordinate with a clean per-coordinate decoding, mean
+evaluation time at most 2 ms), and the round needs at least five entered
+problems, at least three of them with a categorical coordinate.
+
+```sh
+$BIN survey --out results/round3
+cargo test -p candidate-harness --features candidates --test round3
+```
+
+`survey` builds every examined problem, times it over the 2,000-point
+measurement sample of `measure` (single thread; it stops early once the
+elapsed time exceeds 2,000 × 2 ms, which already decides the rule), checks
+determinism by evaluating 200 points twice (10 points for problems that the
+timing excludes), and writes `results/round3/problems.tsv` and one type table
+per problem, `results/round3/types/<problem>.json`. `survey.log` holds the
+console output of the recorded run (load average 0.76 before measuring).
+
+### Outcome
+
+Eight problems meet the entry rule, but only two of them have a categorical
+coordinate. The requirement of ROUND3.md section 3 is not met, so the round
+stops here: no round-3 solver configuration, candidate driver or analysis
+was built.
+
+| Problem | Domain | D | Continuous | Integer | Categorical | Mean evaluation time (µs) | Entered |
+|---|---|---:|---:|---:|---:|---:|---|
+| `truss_sizing` | structures | 171 | 95 | 76 | 0 | 37.1 | yes |
+| `phased_array` | antennas | 96 | 48 | 48 | 0 | 985 | yes |
+| `field_service` | logistics | 104 | 52 | 0 | 52 | 25.8 | yes |
+| `coverage_cardinality` | networks | 4,000 | 0 | 4,000 | 0 | 47.8 | yes |
+| `coverage_weighted` | networks | 4,000 | 0 | 4,000 | 0 | 64.0 | yes |
+| `jobshop` | scheduling | 8 | 5 | 0 | 3 | 0.21 | yes |
+| `uav_assignment` | logistics | 34 | 30 | 4 | 0 | 0.53 | yes |
+| `material_flow` | manufacturing | 2 | 0 | 2 | 0 | 174 | yes |
+| `energy_hub` | energy | 10 | 7 | 3 | 0 | > 2,000 (27,100 over 148 points) | no |
+| `energy_hub_annual` | energy | 10 | 6 | 4 | 0 | > 2,000 (313,000 over 13 points) | no |
+| `phased_array_beam` | antennas | 32 | 0 | 32 | 0 | > 2,000 (6,160 over 650 points) | no |
+| `water_network` | water | 28 | 3 | 24 | 1 | > 2,000 (4,270 over 939 points) | no |
+| `ml_tuning` | machine learning | 8 | 3 | 4 | 1 | > 2,000 (10.1 s for 1 point) | no |
+| `bandpass` | circuits | 5 | 5 | 0 | 0 | 416 | no: no discrete coordinate |
+| `cassini1_minlp` | space | 6 | 6 | 0 | 0 | 5.9 | no: no discrete coordinate |
+
+Objectives and sources:
+
+| Problem | Scalar cost (invalid value) | Box |
+|---|---|---|
+| `truss_sizing` | as in round 2 | unit box |
+| `phased_array` | as in round 1 | unit box |
+| `field_service` | `scenarios::evaluate_training(x, &instance::load_primary())`, the cost of `so::optimize` (`INVALID_OBJECTIVE` = 1e99) | unit box |
+| `coverage_cardinality`, `coverage_weighted` | `so.rs` `objective_value` (private there, restated exactly) of `decode::decode(x)` on the publication instance `reference-4k` (`+inf` for a non-finite input) | `[0, UPPER]`, `UPPER` = 1.999999999999 |
+| `jobshop` | `JobShop::mini().fitness(x)`, the default instance of `examples/src/bin/jobshop.rs` | `[1e-7, 0.9999999]` |
+| `uav_assignment` | `UavProblem::generate(5, 30, 5000, 65).fitness(x)`, the defaults of `examples/src/bin/uav_task_assignment.rs` | unit box |
+| `material_flow` | `Plant::original().fitness(x)` | `[1, 50]` |
+| `energy_hub` | `evaluate::evaluate_training(x, Preset::Publication)` (`INVALID_OBJECTIVE` = 1e6) | unit box |
+| `energy_hub_annual` | `annual::evaluate_annual(x, 6)` (1e6, a private constant there, restated) | unit box |
+| `phased_array_beam` | `so::evaluate_beam(x, &BeamContext::stage_a(4001), 20.0)` (`INVALID_COST` = 1e12) | unit box |
+| `water_network` | `evaluate::evaluate_training(x, &network::load())` (`INVALID_OBJECTIVE` = 1e12) | unit box |
+| `ml_tuning` | `Evaluator::evaluate(x).scalar_fitness`, publication dataset, minimum recall 0.25, model seed `stream_seed(42, 50)` | unit box |
+| `bandpass`, `cassini1_minlp` | as in round 1; the examples registry fixes the Cassini 1 MINLP flyby sequence to `[2, 2, 3, 5]` | as there |
+
+The examples crate is not a dependency (it pulls in tokio and a finance
+client); `harness/src/examples.rs` compiles its self-contained modules
+`jobshop.rs`, `uav.rs` and `material_flow_planning.rs` from their source
+files, unchanged.
+
+Examined and not built:
+
+| Problem | Reason |
+|---|---|
+| `cassini2_minlp` | decodes `x[22..26]` to flyby planets, but no single-objective code in the repository minimizes it and the repository defines no search box for the planet coordinates |
+| Tandem with free sequence | `fcmaes_gtop::tandem` takes the sequence as a separate argument; every use fixes it |
+| Dyson-ring scheduling (`examples/src/scheduling.rs`) | trajectory selection repairs collisions across coordinates; order and timing are sorted keys: no clean typed form |
+| E12 band-pass (`sindr-circuit-design`) | used only by the MAP-Elites arm, no single-objective code |
+| Mazda, voltage control, gate driver, production line | multi-objective or quality-diversity only |
+
+Integer masks of the problems' own DE calls: only the network-coverage
+tutorial passes one (`Some(vec![true; dimension])`); every other DE call of
+an examined problem passes `None`.
+
+### Type tables
+
+Each JSON file holds `problem`, `dimension`, `source` (file and function the
+classification came from), `counts`, `notes` and one entry per coordinate:
+`index`, `kind`, `lower`, `upper`, `meaning` and, for a discrete coordinate,
+`levels` (the real-vector interval centers a typed point maps to), `values`
+(integer coordinates: the integer the decoder computes), `labels` and
+`intervals` (per level, the half-open intervals `[lo, hi)` that decode to it;
+an interval ending at the upper bound includes it). Classification remarks:
+
+- Random keys (truss member ranking, phased-array slot activation, route and
+  visit-order priorities) act only jointly and stay continuous; the
+  coordinates of those problems with a per-coordinate discrete decoding are
+  typed.
+- Truss sections and energy-hub grid tiers are catalogs sorted by size:
+  integer. Phase codes are quantized values (integer), although the phase is
+  cyclic.
+- A field-service assignment coordinate is binned twice when vehicle 7 can
+  serve the task (nominal and vehicle-7-unavailable scenarios); its levels are
+  the cells of both partitions, each a pair of vehicles. The water-network
+  pump priority (a choice between two pumps) and the ML split criterion are
+  two-level categorical coordinates.
+
+`tests/round3.rs` checks every entered problem against its own decoder:
+every level decodes to itself at its center, points just below and above
+every interval boundary decode to the neighboring levels, and moving every
+discrete coordinate of 50 random points to its level center leaves the
+objective bit-identical. For `material_flow` the decoder is inside `fitness`;
+the test identifies the level by replaying the simulation.

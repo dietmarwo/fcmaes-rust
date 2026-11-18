@@ -1,0 +1,19 @@
+{
+  "problem": "energy_hub",
+  "dimension": 10,
+  "source": "tutorials/energy-hub-bilevel/src/decode.rs: decode_outer(values, false) (via evaluate::evaluate_training)",
+  "counts": {"continuous": 7, "integer": 3, "categorical": 0},
+  "notes": ["The decoder calls the tier coordinate categorical_index, but the six grid tiers are sorted by capacity (500 to 4,000 kW): sorted catalogue sizes, integer by the rule. The architecture flags are binary switches: integer."],
+  "coordinates": [
+    {"index": 0, "kind": "continuous", "lower": 0.0, "upper": 1.0, "meaning": "PV kWp (linear)"},
+    {"index": 1, "kind": "continuous", "lower": 0.0, "upper": 1.0, "meaning": "wind kW (linear, used when wind is included)"},
+    {"index": 2, "kind": "continuous", "lower": 0.0, "upper": 1.0, "meaning": "battery kWh (logarithmic, used when included)"},
+    {"index": 3, "kind": "continuous", "lower": 0.0, "upper": 1.0, "meaning": "battery kW (logarithmic, used when included)"},
+    {"index": 4, "kind": "continuous", "lower": 0.0, "upper": 1.0, "meaning": "electrolyser kW: not decoded by this objective (annual_hydrogen = false)"},
+    {"index": 5, "kind": "continuous", "lower": 0.0, "upper": 1.0, "meaning": "hydrogen storage kWh: not decoded by this objective (annual_hydrogen = false)"},
+    {"index": 6, "kind": "integer", "lower": 0.0, "upper": 1.0, "meaning": "grid-connection tier (categorical_index over a catalogue sorted by kW)", "levels": [0.08333333333333333, 0.25, 0.41666666666666663, 0.5833333333333333, 0.75, 0.9166666666666666], "values": [0, 1, 2, 3, 4, 5], "labels": ["grid tier 500 kW", "grid tier 850 kW", "grid tier 1250 kW", "grid tier 1800 kW", "grid tier 2600 kW", "grid tier 4000 kW"], "intervals": [[[0.0, 0.16666666666666666]], [[0.16666666666666666, 0.3333333333333333]], [[0.3333333333333333, 0.5]], [[0.5, 0.6666666666666666]], [[0.6666666666666666, 0.8333333333333333]], [[0.8333333333333333, 1.0]]]},
+    {"index": 7, "kind": "integer", "lower": 0.0, "upper": 1.0, "meaning": "wind on/off switch", "levels": [0.25, 0.75], "values": [0, 1], "labels": ["no wind", "wind"], "intervals": [[[0.0, 0.5]], [[0.5, 1.0]]]},
+    {"index": 8, "kind": "integer", "lower": 0.0, "upper": 1.0, "meaning": "battery on/off switch", "levels": [0.25, 0.75], "values": [0, 1], "labels": ["no battery", "battery"], "intervals": [[[0.0, 0.5]], [[0.5, 1.0]]]},
+    {"index": 9, "kind": "continuous", "lower": 0.0, "upper": 1.0, "meaning": "hydrogen switch: not decoded by this objective (annual_hydrogen && ... short-circuits)"}
+  ]
+}

@@ -17,6 +17,8 @@
 
 pub mod bipop;
 pub mod campaign;
+pub mod examples;
 pub mod problems;
+pub mod round3;
 pub mod seeds;
 pub mod solvers;
