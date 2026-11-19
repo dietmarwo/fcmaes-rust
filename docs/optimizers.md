@@ -191,8 +191,10 @@ Key `CmaesParams` defaults:
 moved into the bounds enters the update with the `z` of the point that was
 evaluated (`true`), or with the `z` of the unmoved sample (`false`, the
 update of 0.3.0). `true` keeps the step size from growing when samples keep
-reaching the bounds; on some problems `false` does better, for example in
-some coordinated-retry runs, whose bounds narrow around good solutions.
+reaching the bounds. In first comparisons `false` did better on some
+problems: the CMA-based sequences on a 171-variable truss, and coordinated
+retry, whose bounds narrow around good solutions, on the Messenger
+trajectories. Compare both settings where samples reach the bounds.
 Runs that stay inside the bounds, unbounded runs and `tell_x` give the same
 results with either value.
 

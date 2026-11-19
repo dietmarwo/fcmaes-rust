@@ -85,10 +85,11 @@ pub struct CmaesParams {
     /// inside the bounds, unbounded runs and runs that tell their own points
     /// ([`Cmaes::tell_x`]) give identical results with either value. `true`
     /// keeps the step size from growing on problems whose samples keep
-    /// reaching the bounds (for example optima on or outside the bounds);
-    /// `false` has done better on some problems where the bounds are hit
-    /// only occasionally, such as some coordinated-retry runs, whose bounds
-    /// narrow around good solutions.
+    /// reaching the bounds (for example optima on or outside the bounds).
+    /// In first comparisons `false` did better on some problems: the
+    /// CMA-based sequences on a 171-variable truss, and coordinated retry,
+    /// whose bounds narrow around good solutions, on the Messenger
+    /// trajectories. Compare both settings where samples reach the bounds.
     pub repair_z: bool,
 }
 
