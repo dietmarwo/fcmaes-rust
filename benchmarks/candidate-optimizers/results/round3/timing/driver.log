@@ -1,0 +1,16 @@
+1.78 1.27 0.61 1/101 1846
+catcmawm (cmaes 0.13.1), protocol T, totals 2000,20000: root seed 999, run cap = total, min run 100 (not the declared round-3 settings)
+12 runs to do (84 rows already present), 2 worker process(es)
+done catcmawm truss_sizing 2000 rep 0 (1/12, elapsed 2.6s)
+done catcmawm phased_array 2000 rep 0 (2/12, elapsed 5.7s)
+done catcmawm truss_sizing 20000 rep 0 (3/12, elapsed 20.2s)
+done catcmawm field_service 2000 rep 0 (4/12, elapsed 20.8s)
+done catcmawm field_service 20000 rep 0 (5/12, elapsed 26.6s)
+done catcmawm jobshop 2000 rep 0 (6/12, elapsed 26.8s)
+done catcmawm jobshop 20000 rep 0 (7/12, elapsed 28.3s)
+done catcmawm uav_assignment 2000 rep 0 (8/12, elapsed 28.5s)
+done catcmawm uav_assignment 20000 rep 0 (9/12, elapsed 31.1s)
+done catcmawm material_flow 2000 rep 0 (10/12, elapsed 31.7s)
+done catcmawm phased_array 20000 rep 0 (11/12, elapsed 37.4s)
+done catcmawm material_flow 20000 rep 0 (12/12, elapsed 38.4s)
+wrote 12 rows to results/round3/timing/raw.tsv

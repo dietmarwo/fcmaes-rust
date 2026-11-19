@@ -12,20 +12,9 @@
 
 use candidate_harness::problems;
 use candidate_harness::round3::{
-    self, Coordinate, ENTERED, EXAMINED, Kind, TypeTable, de_mask, type_table,
+    self, Coordinate, ENTERED, EXAMINED, Kind, Probe, TypeTable, de_mask, level_probe, type_table,
 };
 use fcmaes_core::Rng;
-
-/// Level index of `coordinate` at value `value`, read from the problem's own
-/// decoder with every other coordinate at a fixed base point.
-type Probe = Box<dyn Fn(usize, f64) -> usize>;
-
-fn level_named(c: &Coordinate, label: &str) -> usize {
-    c.levels
-        .iter()
-        .position(|l| l.label == label)
-        .unwrap_or_else(|| panic!("coordinate {}: no level '{label}'", c.index))
-}
 
 /// Level whose intervals contain `v` according to the table.
 fn table_level(c: &Coordinate, v: f64) -> usize {
@@ -49,7 +38,7 @@ fn check_levels(table: &TypeTable, probe: &Probe) {
         for (level, l) in c.levels.iter().enumerate() {
             assert!(l.center >= c.lower && l.center <= c.upper);
             assert_eq!(
-                probe(c.index, l.center),
+                probe(c.index, l.center).unwrap(),
                 level,
                 "{} coordinate {} level {} ({}) at center {}",
                 table.problem,
@@ -75,7 +64,7 @@ fn check_levels(table: &TypeTable, probe: &Probe) {
             assert_eq!(left.1, right.0, "{} {}: gap", table.problem, c.index);
             let b = left.1;
             assert_eq!(
-                probe(c.index, b - delta),
+                probe(c.index, b - delta).unwrap(),
                 left.2,
                 "{} {} below {b}",
                 table.problem,
@@ -87,7 +76,7 @@ fn check_levels(table: &TypeTable, probe: &Probe) {
                 b + delta
             };
             assert_eq!(
-                probe(c.index, above),
+                probe(c.index, above).unwrap(),
                 right.2,
                 "{} {} above {b}",
                 table.problem,
@@ -117,165 +106,6 @@ fn check_snapping(name: &str, table: &TypeTable, points: usize) {
             "{name}: snapping discrete coordinates changed the objective"
         );
     }
-}
-
-// ------------------------------------------------------------------ probes
-
-fn truss_probe() -> Probe {
-    use truss_sizing::decode::{MIN_ACTIVE, decode, dimension};
-    use truss_sizing::ground::GroundStructure;
-    let ground = GroundStructure::reference();
-    let members = ground.members.len();
-    Box::new(move |index, value| {
-        let mut x = vec![0.5; dimension(&ground)];
-        if index == 0 {
-            x[0] = value;
-            decode(&x, &ground).unwrap().active.len() - MIN_ACTIVE
-        } else {
-            let member = index - 1 - members;
-            x[0] = 1.0;
-            x[1 + member] = 0.0; // lowest ranking key: always active
-            x[index] = value;
-            let decoded = decode(&x, &ground).unwrap();
-            decoded
-                .active
-                .iter()
-                .find(|a| a.member_index == member)
-                .unwrap()
-                .section_index
-        }
-    })
-}
-
-fn phased_array_probe() -> Probe {
-    use phased_array_codebook::geometry::{DIMENSION, SLOTS, evaluate_geometry};
-    Box::new(move |index, value| {
-        let phase = index < 3 * SLOTS;
-        let slot = if phase {
-            index - 2 * SLOTS
-        } else {
-            index - 3 * SLOTS
-        };
-        let mut x = vec![0.5; DIMENSION];
-        x[slot] = 0.0; // selected
-        x[index] = value;
-        let evaluation = evaluate_geometry(&x, 101).unwrap();
-        // Selected: the slot (key 0) and the first 15 other slots (key 0.5,
-        // ties by index), in index order.
-        let position = slot.min(15);
-        let codes = if phase {
-            &evaluation.excitation.phase_codes
-        } else {
-            &evaluation.excitation.attenuator_codes
-        };
-        codes[position] as usize
-    })
-}
-
-fn field_service_probe(table: TypeTable) -> Probe {
-    use field_service_routing::decode::decode_active;
-    use field_service_routing::scenarios::training;
-    let instance = round3::field_service_instance();
-    let scenarios = training(&instance);
-    Box::new(move |index, value| {
-        let mut x = vec![0.5; 2 * instance.tasks.len()];
-        x[index] = value;
-        let mut seen: Vec<Vec<bool>> = Vec::new();
-        let mut chosen = Vec::new();
-        for case in &scenarios {
-            if !case.active[index] || seen.contains(&case.available) {
-                continue;
-            }
-            seen.push(case.available.clone());
-            let decoded = decode_active(&x, &case.instance, &case.active, &case.available).unwrap();
-            let route = decoded
-                .routes
-                .iter()
-                .find(|r| r.tasks.contains(&index))
-                .unwrap();
-            chosen.push(route.vehicle.to_string());
-        }
-        level_named(
-            &table.coordinates[index],
-            &format!("vehicle {}", chosen.join(" / ")),
-        )
-    })
-}
-
-fn coverage_probe() -> Probe {
-    Box::new(|_, value| usize::from(network_coverage::decode::decode(&[value]).unwrap()[0]))
-}
-
-fn jobshop_probe() -> Probe {
-    use candidate_harness::examples::jobshop::JobShop;
-    let problem = JobShop::mini();
-    Box::new(move |index, value| {
-        let mut x = vec![0.5; problem.dimension()];
-        x[index] = value;
-        let alternatives = &problem.operations[index];
-        let task = problem
-            .decode(&x)
-            .into_iter()
-            .find(|t| t.job == alternatives[0].job && t.operation == alternatives[0].operation)
-            .unwrap();
-        alternatives
-            .iter()
-            .position(|a| a.machine == task.machine)
-            .unwrap()
-    })
-}
-
-fn uav_probe() -> Probe {
-    use candidate_harness::examples::uav::UavProblem;
-    let base = round3::uav_instance();
-    // Same instance without a horizon, so every target appears in a route.
-    let open = UavProblem::try_new(base.speeds().to_vec(), base.targets().to_vec(), 1e300).unwrap();
-    let separators = base.vehicle_count() - 1;
-    let targets = base.target_count();
-    Box::new(move |index, value| {
-        let mut x = vec![0.999; separators + targets];
-        for t in 0..targets {
-            x[separators + t] = t as f64 / targets as f64;
-        }
-        x[index] = value;
-        open.solution(&x).assignments[0].len()
-    })
-}
-
-fn material_flow_probe() -> Probe {
-    use candidate_harness::examples::material_flow_planning::{DAY_SECONDS, Plant};
-    let plant = Plant::original();
-    Box::new(move |index, value| {
-        let mut x = vec![17.5; 2];
-        x[index] = value;
-        let fitness = plant.fitness(&x);
-        // `fitness` is the only decoder; identify the level by replaying the
-        // simulation for each candidate batch size (unique match required).
-        let matches: Vec<usize> = (1..=50)
-            .filter(|&k| {
-                let mut batches = [17, 17];
-                batches[index] = k;
-                let mut sim = plant.clone();
-                -(sim.simulate(DAY_SECONDS, &batches) as f64) == fitness
-            })
-            .collect();
-        let expected = (value.clamp(1.0, 50.0) as usize).max(1);
-        assert!(matches.contains(&expected));
-        expected - 1
-    })
-}
-
-fn probe_for(name: &str, table: &TypeTable) -> Option<Probe> {
-    Some(match name {
-        "truss_sizing" => truss_probe(),
-        "phased_array" => phased_array_probe(),
-        "field_service" => field_service_probe(table.clone()),
-        "coverage_cardinality" | "coverage_weighted" => coverage_probe(),
-        "jobshop" => jobshop_probe(),
-        "uav_assignment" => uav_probe(),
-        "material_flow" => material_flow_probe(),
-        _ => return None,
-    })
 }
 
 // ------------------------------------------------------------------- tests
@@ -311,7 +141,7 @@ fn every_examined_problem_has_a_consistent_table() {
 fn entered_problems_decode_every_level_to_itself() {
     for name in ENTERED {
         let table = type_table(name).unwrap();
-        let probe = probe_for(name, &table).expect("probe for every entered problem");
+        let probe = level_probe(name).expect("probe for every entered problem");
         check_levels(&table, &probe);
     }
 }

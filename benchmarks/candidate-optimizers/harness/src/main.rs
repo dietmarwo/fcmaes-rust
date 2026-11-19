@@ -1,4 +1,5 @@
-//! Command-line entry point: `list`, `measure` and `run`.
+//! Command-line entry point: `list`, `measure`, `run`, `survey`, `serve` and
+//! `seeds`.
 
 #![forbid(unsafe_code)]
 
@@ -6,11 +7,12 @@ use std::path::PathBuf;
 
 use candidate_harness::campaign::{
     BudgetRow, CampaignConfig, Protocol, T_MIN_RUN, T_RUN_CAP, T_TOTAL, TSettings, budget_for,
-    is_deterministic, measure_problem, read_budgets, run_campaign, run_campaign_t, write_budgets,
+    is_deterministic, measure_problem, read_budgets, run_campaign, run_campaign_t,
+    run_campaign_t_totals, t_run_seed, write_budgets,
 };
 use candidate_harness::problems::Problem;
 use candidate_harness::seeds::ROOT_SEED;
-use candidate_harness::{problems, solvers};
+use candidate_harness::{problems, round3, serve, solvers};
 
 const USAGE: &str = "usage:
   candidate-harness list
@@ -20,14 +22,27 @@ const USAGE: &str = "usage:
       [--threads 2] [--budget-scale 1.0]
   candidate-harness survey --out results/round3 [--problems a,b]
   candidate-harness run --protocols T --out results/round2/raw.tsv
-      [--problems round2|a,b] [--solvers round2|x,y] [--reps 20] [--threads 2]
-      [--root-seed 1] [--total 400000] [--run-cap 100000] [--min-run 1000]
+      [--problems round2|round3|a,b] [--solvers round2|round3|x,y] [--reps 20]
+      [--threads 2] [--root-seed 1] [--total 400000] [--run-cap 100000]
+      [--min-run 1000] [--totals 2000,20000]
+  candidate-harness serve
+  candidate-harness seeds [--root-seed 3] [--problems round3|a,b]
+      [--totals 2000,20000] [--reps 3] [--restarts 4]
 
   --problems round2 and --solvers round2 select the round-2 sets
   (ROUND2.md); they are the defaults for protocol T. Round 2 uses
   --root-seed 2.
+  --problems round3 and --solvers round3 select the round-3 sets
+  (ROUND3.md, DEVIATIONS.md round 3). --totals runs one set of cells per
+  total, each with run cap equal to the total, into one file (round 3:
+  --totals 2000,20000 --root-seed 3 --min-run 100); it excludes --total and
+  --run-cap.
   survey examines the round-3 problems (ROUND3.md sections 3 and 4) and
-  writes problems.tsv and types/<problem>.json.";
+  writes problems.tsv and types/<problem>.json.
+  serve answers objective requests on stdin (protocol in src/serve.rs) for
+  run_catcmawm.py.
+  seeds prints the protocol-T run seeds of a grid (problem, total,
+  repetition, restart), tab-separated.";
 
 fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
@@ -36,6 +51,15 @@ fn main() {
         Some("measure") => measure(&args[1..]),
         Some("run") => run(&args[1..]),
         Some("survey") => survey(&args[1..]),
+        Some("serve") => {
+            if args.len() > 1 {
+                Err("serve takes no options".to_owned())
+            } else {
+                let stdin = std::io::stdin();
+                serve::serve(stdin.lock(), std::io::stdout().lock())
+            }
+        }
+        Some("seeds") => seeds(&args[1..]),
         Some("--help" | "-h" | "help") => {
             println!("{USAGE}");
             Ok(())
@@ -95,11 +119,16 @@ fn list() -> Result<(), String> {
         "round-2 solvers: {}",
         solvers::round2_solver_names().join(",")
     );
+    println!("round-3 problems: {}", round3::PROBLEMS.join(","));
+    println!(
+        "round-3 solvers: {} (candidate catcmawm runs through run_catcmawm.py)",
+        round3::SOLVERS.join(",")
+    );
     Ok(())
 }
 
-/// Problems named by `--problems` (`round2` expands to the round-2 set;
-/// default: the thirteen round-1 problems).
+/// Problems named by `--problems` (`round2` and `round3` expand to the
+/// sets of those rounds; default: the thirteen round-1 problems).
 fn select_problems(value: Option<&str>) -> Result<Vec<Problem>, String> {
     let Some(names) = split_list(value) else {
         return Ok(problems::all());
@@ -108,6 +137,8 @@ fn select_problems(value: Option<&str>) -> Result<Vec<Problem>, String> {
     for name in names {
         if name == "round2" {
             expanded.extend(problems::round2_names().into_iter().map(str::to_owned));
+        } else if name == "round3" {
+            expanded.extend(round3::PROBLEMS.iter().map(|s| (*s).to_owned()));
         } else {
             expanded.push(name);
         }
@@ -176,6 +207,7 @@ fn run(args: &[String]) -> Result<(), String> {
             "--total",
             "--run-cap",
             "--min-run",
+            "--totals",
         ],
     )?;
     let protocols = split_list(option(&parsed, "--protocols"))
@@ -186,7 +218,13 @@ fn run(args: &[String]) -> Result<(), String> {
     if protocols.contains(&Protocol::T) {
         return run_t(&parsed, protocols);
     }
-    for flag in ["--root-seed", "--total", "--run-cap", "--min-run"] {
+    for flag in [
+        "--root-seed",
+        "--total",
+        "--run-cap",
+        "--min-run",
+        "--totals",
+    ] {
         if option(&parsed, flag).is_some() {
             return Err(format!("{flag} applies to protocol T only"));
         }
@@ -216,8 +254,11 @@ fn run(args: &[String]) -> Result<(), String> {
     let all_problems = problems::all();
     let problem_names = split_list(option(&parsed, "--problems"))
         .unwrap_or_else(|| all_problems.iter().map(|p| p.name.to_owned()).collect());
-    if problem_names.iter().any(|name| name == "round2") {
-        return Err("--problems round2 belongs to protocol T".into());
+    if problem_names
+        .iter()
+        .any(|name| name == "round2" || name == "round3")
+    {
+        return Err("--problems round2 and round3 belong to protocol T".into());
     }
     let mut selected_problems = Vec::new();
     for name in &problem_names {
@@ -290,14 +331,34 @@ fn run_t(parsed: &[(String, String)], protocols: Vec<Protocol>) -> Result<(), St
     if repetitions == 0 || threads == 0 {
         return Err("--reps and --threads must be positive".into());
     }
-    let settings = TSettings {
-        root_seed: parse_u64(parsed, "--root-seed", ROOT_SEED)?,
-        total: parse_u64(parsed, "--total", T_TOTAL)?,
-        run_cap: parse_u64(parsed, "--run-cap", T_RUN_CAP)?,
-        min_run: parse_u64(parsed, "--min-run", T_MIN_RUN)?,
+    let root_seed = parse_u64(parsed, "--root-seed", ROOT_SEED)?;
+    let min_run = parse_u64(parsed, "--min-run", T_MIN_RUN)?;
+    let totals = parse_totals(option(parsed, "--totals"))?;
+    if totals.is_some() {
+        for flag in ["--total", "--run-cap"] {
+            if option(parsed, flag).is_some() {
+                return Err(format!(
+                    "{flag} does not combine with --totals (run cap = total)"
+                ));
+            }
+        }
+    }
+    let all_settings: Vec<TSettings> = match &totals {
+        Some(totals) => totals
+            .iter()
+            .map(|&total| round3::settings_for(root_seed, total, min_run))
+            .collect(),
+        None => vec![TSettings {
+            root_seed,
+            total: parse_u64(parsed, "--total", T_TOTAL)?,
+            run_cap: parse_u64(parsed, "--run-cap", T_RUN_CAP)?,
+            min_run,
+        }],
     };
-    if settings.total == 0 || settings.run_cap == 0 || settings.min_run == 0 {
-        return Err("--total, --run-cap and --min-run must be positive".into());
+    for settings in &all_settings {
+        if settings.total == 0 || settings.run_cap == 0 || settings.min_run == 0 {
+            return Err("--total(s), --run-cap and --min-run must be positive".into());
+        }
     }
     let selected_problems =
         select_problems(Some(option(parsed, "--problems").unwrap_or("round2")))?;
@@ -314,6 +375,8 @@ fn run_t(parsed: &[(String, String)], protocols: Vec<Protocol>) -> Result<(), St
                 .into_iter()
                 .map(str::to_owned)
                 .collect()
+        } else if name == "round3" {
+            round3::SOLVERS.iter().map(|s| (*s).to_owned()).collect()
         } else {
             vec![name]
         }
@@ -327,23 +390,26 @@ fn run_t(parsed: &[(String, String)], protocols: Vec<Protocol>) -> Result<(), St
             .ok_or_else(|| format!("unknown solver '{name}' (see `list`)"))?;
         selected_solvers.push(solver.as_ref());
     }
-
-    println!(
-        "protocol T: root seed {}, total {}, run cap {}, min run {}{}",
-        settings.root_seed,
-        settings.total,
-        settings.run_cap,
-        settings.min_run,
-        if settings.is_declared() {
-            ""
-        } else {
-            " (not the declared round-2 settings)"
+    // ROUND3.md section 2: `de` and `de_cma` would need the problem's own DE
+    // integer mask. No round-3 problem passes one (round3::MASK_SOURCES); the
+    // runner has no mask wiring and refuses a problem that has one.
+    for problem in &selected_problems {
+        if round3::de_mask(problem.name).is_some()
+            && solver_names.iter().any(|s| s == "de" || s == "de_cma")
+        {
+            return Err(format!(
+                "{}: its own DE call passes an integer mask, which `de` and `de_cma` \
+                 would have to use; the runner does not wire masks (no round-3 problem \
+                 has one)",
+                problem.name
+            ));
         }
-    );
+    }
+
     let config = CampaignConfig {
         problems: selected_problems
             .iter()
-            .map(|problem| (problem, settings.total))
+            .map(|problem| (problem, all_settings[0].total))
             .collect(),
         solvers: selected_solvers,
         protocols,
@@ -351,8 +417,111 @@ fn run_t(parsed: &[(String, String)], protocols: Vec<Protocol>) -> Result<(), St
         threads,
         budget_scale: 1.0,
     };
-    let written = run_campaign_t(&config, &settings, &out)?;
+    let written = if totals.is_some() {
+        let declared = all_settings == round3::declared_settings();
+        println!(
+            "protocol T, totals {}: root seed {root_seed}, run cap = total, min run {min_run}{}",
+            all_settings
+                .iter()
+                .map(|s| s.total.to_string())
+                .collect::<Vec<_>>()
+                .join(","),
+            if declared {
+                " (the declared round-3 settings)"
+            } else {
+                " (not the declared round-3 settings)"
+            }
+        );
+        run_campaign_t_totals(&config, &all_settings, &out)?
+    } else {
+        let settings = all_settings[0];
+        println!(
+            "protocol T: root seed {}, total {}, run cap {}, min run {}{}",
+            settings.root_seed,
+            settings.total,
+            settings.run_cap,
+            settings.min_run,
+            if settings.is_declared() {
+                ""
+            } else {
+                " (not the declared round-2 settings)"
+            }
+        );
+        run_campaign_t(&config, &settings, &out)?
+    };
     println!("wrote {written} rows to {}", out.display());
+    Ok(())
+}
+
+/// `--totals a,b`: distinct positive totals.
+fn parse_totals(value: Option<&str>) -> Result<Option<Vec<u64>>, String> {
+    let Some(list) = split_list(value) else {
+        return Ok(None);
+    };
+    let totals = list
+        .iter()
+        .map(|t| {
+            t.parse::<u64>()
+                .ok()
+                .filter(|t| *t > 0)
+                .ok_or_else(|| format!("--totals: bad total '{t}'"))
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+    if totals.is_empty() {
+        return Err("--totals needs at least one total".into());
+    }
+    let mut distinct = totals.clone();
+    distinct.sort_unstable();
+    distinct.dedup();
+    if distinct.len() != totals.len() {
+        return Err("--totals must be distinct".into());
+    }
+    Ok(Some(totals))
+}
+
+/// `seeds`: protocol-T run seeds of a grid, as the runner derives them.
+fn seeds(args: &[String]) -> Result<(), String> {
+    let parsed = options(
+        args,
+        &[
+            "--root-seed",
+            "--problems",
+            "--totals",
+            "--reps",
+            "--restarts",
+        ],
+    )?;
+    let root_seed = parse_u64(&parsed, "--root-seed", round3::ROOT_SEED)?;
+    let names: Vec<String> = split_list(Some(option(&parsed, "--problems").unwrap_or("round3")))
+        .unwrap_or_default()
+        .into_iter()
+        .flat_map(|name| {
+            if name == "round3" {
+                round3::PROBLEMS.iter().map(|s| (*s).to_owned()).collect()
+            } else {
+                vec![name]
+            }
+        })
+        .collect();
+    let totals = parse_totals(option(&parsed, "--totals"))?.unwrap_or(round3::TOTALS.to_vec());
+    let reps = parse_u64(&parsed, "--reps", 3)?;
+    let restarts = parse_u64(&parsed, "--restarts", 4)?;
+    let reps = u32::try_from(reps).map_err(|_| "--reps too large")?;
+    let restarts = u32::try_from(restarts).map_err(|_| "--restarts too large")?;
+    println!("problem\ttotal\trep\trestart\tseed");
+    for name in &names {
+        for &total in &totals {
+            let settings = round3::settings_for(root_seed, total, round3::MIN_RUN);
+            for rep in 0..reps {
+                for restart in 0..restarts {
+                    println!(
+                        "{name}\t{total}\t{rep}\t{restart}\t{}",
+                        t_run_seed(&settings, name, rep, restart)
+                    );
+                }
+            }
+        }
+    }
     Ok(())
 }
 

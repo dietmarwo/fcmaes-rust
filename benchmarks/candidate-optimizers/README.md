@@ -430,9 +430,12 @@ console output of the recorded run (load average 0.76 before measuring).
 ### Outcome
 
 Eight problems meet the entry rule, but only two of them have a categorical
-coordinate. The requirement of ROUND3.md section 3 is not met, so the round
-stops here: no round-3 solver configuration, candidate driver or analysis
-was built.
+coordinate, so the requirement of ROUND3.md section 3 is not met.
+[DEVIATIONS.md](DEVIATIONS.md) (round 3) records how the round continues: as
+a narrower screening on six problems (the two network-coverage problems are
+left out by a dimension cap of 200), with binary switches typed integer and
+the candidate seeded with the low 32 bits of the shared seed. The campaign
+machinery is described in the next section.
 
 | Problem | Domain | D | Continuous | Integer | Categorical | Mean evaluation time (µs) | Entered |
 |---|---|---:|---:|---:|---:|---:|---|
@@ -518,3 +521,297 @@ every interval boundary decode to the neighboring levels, and moving every
 discrete coordinate of 50 random points to its level center leaves the
 objective bit-identical. For `material_flow` the decoder is inside `fitness`;
 the test identifies the level by replaying the simulation.
+
+## Round 3: campaign
+
+This section describes how the harness and the candidate driver implement
+[ROUND3.md](ROUND3.md) under the round-3 entries of
+[DEVIATIONS.md](DEVIATIONS.md).
+
+### Reproduce
+
+From this directory, with Python 3, NumPy, SciPy and the pinned `cmaes`
+package. The steps must run in this order, and the Rust runner and the
+driver must never write the raw file at the same time (see "Writer lock"):
+
+```sh
+python3 -m pip install --break-system-packages cmaes==0.13.1
+cargo build --release -p candidate-harness --features candidates
+BIN=target/release/candidate-harness   # or $CARGO_TARGET_DIR/release/...
+
+python3 run_catcmawm.py verify           # bridge check, must print "bridge verified"
+python3 run_catcmawm.py spaces           # variable spaces and population sizes
+
+# 1. the seven incumbents (Rust runner)
+$BIN run --protocols T --problems round3 --solvers round3 \
+    --totals 2000,20000 --root-seed 3 --min-run 100 --reps 20 --threads 2 \
+    --out results/round3/raw.tsv
+# 2. the candidate (Python driver), after step 1 has finished
+python3 run_catcmawm.py run --out results/round3/raw.tsv \
+    --totals 2000,20000 --root-seed 3 --min-run 100 --reps 20 --workers 2
+# 3. the report
+python3 analyze.py --round 3 --raw results/round3/raw.tsv \
+    --out results/round3/report.md --reps 20
+```
+
+Both writers are resumable: an interrupted step is restarted with the same
+command. If the compute rule of ROUND3.md section 5 lowers the repetitions,
+`--reps` changes in all three commands. The driver finds the harness binary
+through `$CARGO_TARGET_DIR` (else `target/`), or through `--harness PATH`.
+
+Smoke run and timing repetition, as used before the campaign:
+
+```sh
+$BIN run --protocols T --problems round3 --solvers round3 --totals 200,2000 \
+    --root-seed 3 --min-run 20 --reps 2 --out results/round3/smoke/raw.tsv
+python3 run_catcmawm.py run --out results/round3/smoke/raw.tsv \
+    --totals 200,2000 --root-seed 3 --min-run 20 --reps 2 --workers 2
+python3 analyze.py --round 3 --raw results/round3/smoke/raw.tsv \
+    --out results/round3/smoke/report.md --reps 2
+
+$BIN run --protocols T --problems round3 --solvers round3 --totals 2000,20000 \
+    --root-seed 999 --min-run 100 --reps 1 --out results/round3/timing/raw.tsv
+python3 run_catcmawm.py run --out results/round3/timing/raw.tsv \
+    --totals 2000,20000 --root-seed 999 --min-run 100 --reps 1 --workers 2
+```
+
+Tests:
+
+```sh
+cargo test --workspace --features candidate-harness/candidates
+cargo clippy --workspace --all-targets --features candidate-harness/candidates -- -D warnings
+cargo fmt --all --check
+python3 -m unittest -v test_catcmawm     # needs the release binary
+```
+
+`harness/tests/round3_runner.rs` covers the round-3 sets, the two-total
+campaign (cells, resume key, refused settings), the writer lock, the seed rule
+and the `serve` protocol (bit-identical values on all six problems, decoder
+levels, refusals). `test_catcmawm.py` covers the Python seeds against the
+`seeds` subcommand, the wire format and the float format against Rust, the
+guard, the restart protocol on a toy problem, the type mapping, the bridge
+check, resumption and the lock shared with the Rust runner, and the
+resampling of G2.
+
+### Solvers
+
+`--solvers round3` selects the seven incumbents `bite`, `de`, `cma`,
+`crfmnes`, `da`, `de_cma` and `jso_cma`, configured as in round 2 (sections
+"Incumbent configuration" and "Sequence arms"; `jso_cma` is the harness arm
+benchmarked in round 2 and needs `--features candidates`). The candidate
+`catcmawm` runs through `run_catcmawm.py`.
+
+**Integer masks (ROUND3.md section 2).** None of the six problems' own
+optimization code passes an integer mask to DE, so `de` and the DE stage of
+`de_cma` run without one, as in round 2. The runner refuses a problem whose
+own DE call passes a mask (the network-coverage problems, which are outside
+the round-3 set).
+
+| Problem | Own optimization code | DE mask |
+|---|---|---|
+| `truss_sizing` | `tutorials/truss-sizing/src/so.rs`: `De::new(.., None, ..)` | none |
+| `phased_array` | `tutorials/phased-array-codebook/src/geometry.rs`: `optimize_geometry`, BiteOpt only | none (no DE call) |
+| `field_service` | `tutorials/field-service-routing/src/so.rs`: `De::new(.., None, ..)` | none |
+| `jobshop` | `examples/src/bin/jobshop.rs` through `examples/src/bin/common/mod.rs`: BiteOpt only | none (no DE call) |
+| `uav_assignment` | `examples/src/bin/uav_task_assignment.rs`: BiteOpt retry, MODE with `None` | none (no DE call) |
+| `material_flow` | `examples/src/bin/material_flow_planning.rs`: BiteOpt ask/tell only | none (no DE call) |
+
+**Candidate.** `cmaes.CatCMAwM` of the Python package `cmaes` 0.13.1 (MIT
+license, CyberAgent), the authors' reference implementation. The driver
+refuses to run with another installed version or a non-MIT license. It
+constructs `CatCMAwM(x_space=..., z_space=..., c_space=..., seed=...)` with
+every other argument at its default:
+
+- population `4 + ⌊3 ln N⌋`, N the number of all variables; initial mean at
+  the center of the box (integer coordinates: the middle of the value
+  range), initial step size 1 and a diagonal covariance whose standard
+  deviations are half the range divided by 6 (continuous) or 5 (integer);
+  uniform categorical distributions;
+- continuous variables are bounded by `x_space`: the Gaussian sample can
+  leave the box, but `ask()` clips the solution's `x` to `x_space` and `tell`
+  adds a quadratic box penalty for the raw sample, so every evaluated point
+  lies in the box and the driver does not clip;
+- `should_stop()` checks the CMA-ES criteria of the Gaussian part only
+  (function-value range below 1e-12 over a history, step size below
+  `tolx`, divergence, no-effect coordinate or axis, condition number above
+  1e14); there is no criterion for the categorical part;
+- `seed` initializes `numpy.random.RandomState`, which accepts 32-bit seeds;
+  the driver passes the low 32 bits of the run seed (DEVIATIONS.md, round 3,
+  entry 4);
+- `tell` accepts only whole populations. If the remaining allowance is
+  smaller than one population, the driver evaluates only the first samples
+  that fit and ends the run without a `tell`.
+
+### Problems
+
+`--problems round3`, with the type counts of `results/round3/types/` and the
+mean evaluation times of `results/round3/problems.tsv` (2,000 uniform random
+points, one thread):
+
+| Problem | Domain | D | Continuous | Integer | Categorical | Mean evaluation time (µs) | CatCMAwM population |
+|---|---|---:|---:|---:|---:|---:|---:|
+| `truss_sizing` | structures | 171 | 95 | 76 | 0 | 37.1 | 19 |
+| `phased_array` | antennas | 96 | 48 | 48 | 0 | 985 | 17 |
+| `field_service` | logistics | 104 | 52 | 0 | 52 | 25.8 | 17 |
+| `jobshop` | scheduling | 8 | 5 | 0 | 3 | 0.21 | 10 |
+| `uav_assignment` | logistics | 34 | 30 | 4 | 0 | 0.53 | 14 |
+| `material_flow` | manufacturing | 2 | 0 | 2 | 0 | 174 | 6 |
+
+The two network-coverage problems stay registered (`survey`, `measure`,
+tests) but are outside the set.
+
+**Type mapping.** The driver builds the variable spaces from the type
+tables: a continuous coordinate gives an `x_space` row `[lower, upper]`, an
+integer coordinate a `z_space` row with the integers the decoder computes
+(`values`; for example batch sizes 1 to 50, catalog indices 0 to 11, phase
+codes 0 to 63), a categorical coordinate a `c_space` entry with its number
+of categories. A typed sample maps to the real vector by placing every
+discrete coordinate at the center of the interval that decodes to the chosen
+level (`levels` of the table) and taking continuous values as sampled. The
+driver checks that the table bounds equal the harness box bit for bit.
+
+### Protocol and seeds
+
+Protocol T (section "Protocol T" of round 2) with two totals per problem,
+2,000 and 20,000 evaluations, each with run cap equal to the total, minimum
+run 100 and root seed 3. `--totals 2000,20000` runs both into one file; each
+(problem, total) is a cell, and the resume key is (solver, problem,
+protocol, repetition, total). A file accepts only rows whose settings are
+among the current ones, so a file never mixes root seeds or minimum runs, and
+resumption passes the same `--totals`.
+
+The seed of run `k` of repetition `r` on problem `p` is
+`run_seed_from(root, p, 'T', r, k)` (the round-2 derivation). The total does
+not enter it, so the cells at 2,000 and at 20,000 evaluations use the same run
+seeds. The candidate gets the low 32 bits of the same value. `candidate-harness
+seeds` prints the seeds of a grid; `run_catcmawm.py` restates the derivation,
+and the tests compare both for six problems, two totals, three repetitions,
+four restarts and root seeds 3 and 999.
+
+The driver follows the Rust runner: run `k` gets `min(total, remaining)`
+evaluations behind its own guard (the semantics of `solver_api::Guard`:
+points outside the box or beyond the allowance are refused, counted and
+answered with `+inf`; the guard records the best value). A run ends when
+`should_stop()` fires after a generation or when the allowance is spent;
+restarting ends when fewer than 100 evaluations remain or after a run
+without evaluations. Evaluations, violations and wall time are summed over
+the runs; the best value over all runs counts.
+
+### Objective bridge (`serve`)
+
+`candidate-harness serve` reads requests on standard input and answers on
+standard output; the driver starts it once per process. A request is a
+header line followed by the data lines it announces; every response starts
+with `ok` (or is a single `err <message>` line, after which the process
+exits) and is flushed as a whole. Every `f64` travels as its IEEE-754 bit
+pattern in 16 lowercase hex digits, so values round-trip exactly.
+
+| Request | Data lines | Response |
+|---|---|---|
+| `info P` | none | `ok D domain`, then the lower and the upper bounds |
+| `eval P N` | N vectors | `ok N NS`, then N values; NS is the objective time of the batch in nanoseconds |
+| `check P N` | N vectors, each followed by an expected value | `ok M`, M mismatches against the in-process evaluation of a separately built instance |
+| `levels P N` | N vectors | `ok N`, then per vector the level index of every discrete coordinate under the problem's own decoder (`-` for continuous) |
+| `echo N`, `fmt N` | N lines | the values re-encoded, or in the raw-file float format |
+| `quit` | none | the process exits |
+
+`eval` refuses vectors of the wrong length or outside the box. The driver
+sends one generation per `eval` request.
+
+`python3 run_catcmawm.py verify` checks the bridge: for 1,000 uniform random
+vectors per problem (plus the two box corners), the values returned by
+`eval` equal bit for bit the in-process evaluation of a separately built
+instance and the vectors survive the wire unchanged; for 200 uniform random
+typed points and 50 samples of a fresh `CatCMAwM` per problem, the mapped real
+vector decodes with the problem's own decoder to the chosen level of every
+discrete coordinate. The decoder probes are those of `tests/round3.rs`
+(`round3::level_probe`).
+
+### Writer lock
+
+The Rust runner (every `run`) and the driver take the lock file
+`<out>.lock`, holding the process id, before they read the raw file, and
+remove it when they finish. A second writer is refused while the lock is
+held. A lock whose process no longer exists is replaced with a warning. The
+driver's `--workers 2` runs repetitions in two worker processes, each with its
+own `serve`; only the parent process holds the lock and writes the file.
+
+### Smoke run and compute projection
+
+The smoke run (totals 200 and 2,000, minimum run 20, two repetitions, all
+eight solvers) recorded no contract violation; its report marks itself as a
+smoke test.
+
+One full-scale repetition (totals 2,000 and 20,000, root seed 999, two
+threads for the Rust runner, two worker processes for the driver; not a
+campaign row) gave these summed run wall times:
+
+| Solver | Wall time (s) | Runs per repetition, total 2,000 | Runs per repetition, total 20,000 |
+|---|---:|---|---|
+| `bite` | 32.1 | 1 on every problem | 1 on every problem |
+| `de` | 31.4 | 1 | 1 |
+| `cma` | 37.9 | 1 to 4 | 1 to 33 |
+| `crfmnes` | 31.4 | 1 | 1 |
+| `da` | 31.4 | 1 | 1 to 5 |
+| `de_cma` | 33.9 | 1 to 2 | 1 to 6 |
+| `jso_cma` | 35.1 | 1 to 2 | 1 to 6 |
+| `catcmawm` | 74.4 | 1 to 2 | 1 to 20 |
+
+`phased_array` takes 187 s of the 233 s of the seven Rust solvers. Of the
+candidate's 74.4 s, 29.2 s are objective time inside `serve` and 2.4 s the
+bridge (encoding, pipe, decoding), so 61% of its wall time is spent outside
+objective evaluation, almost all of it in the Python implementation.
+`catcmawm` ended runs by `should_stop()` on `jobshop` at 20,000 (one run) and
+on `material_flow` (one run at 2,000, 19 at 20,000); every other run ended
+at its allowance. Evaluations left unused are the rest of a last generation
+that did not fit or a remainder below the minimum run (at most 76 per
+repetition, `jso_cma` on `material_flow` at 2,000).
+
+Projection (summed run wall time × repetitions / 2): for 20 repetitions,
+233.3 s × 20 / 2 ≈ 39 minutes for the Rust runner and 74.4 s × 20 / 2 ≈ 12
+minutes for the driver with two workers (25 minutes serially), about 51
+minutes in all; for 15 repetitions about 29 + 9 = 38 minutes. That is below
+the 180 minutes of the compute rule, so the campaign keeps 20 repetitions.
+The load average before the runs was 1.5 and 1.8 (a build had just finished).
+
+### File formats
+
+`results/round3/raw.tsv`: the protocol-T format of round 2 (`RAW_HEADER_T`);
+`budget`, `total` and `run_cap` equal the cell's total, `root_seed` is 3 and
+`min_run` 100. The Rust runner and the driver write the same columns; floats
+use Rust's shortest round-trip exponent form (`{:e}`), which the driver
+reproduces (tested against `serve fmt`), and `wall_ms` has three decimals.
+Every row is appended with a single write and flushed; an incomplete last
+line left by an interrupted writer is dropped and recomputed by either
+writer.
+
+`results/round3/raw.catcmawm.tsv` (next to any raw file the driver writes):
+one informational line per candidate row with `problem`, `total`, `rep`,
+`popsize`, `runs`, `stopped_by_criterion`, `ended_by_allowance`,
+`evaluations`, `objective_ms` (inside `serve`), `bridge_ms` (request round
+trips including objective time) and `wall_ms`. The analysis does not read it.
+
+`results/round3/report.md`: written by `analyze.py --round 3`. Cells are
+(problem, total); incumbents `bite`, `de`, `cma`, `crfmnes`, `da`, `de_cma`,
+`jso_cma`; candidate `catcmawm`. The best incumbent per cell has the lowest
+median (ties: lower mean). The candidate is compared with it by a two-sided
+Mann–Whitney U test (SciPy default method; a NaN p-value counts as 1),
+Holm-corrected over the candidate's complete cells, α = 0.05. Ranks are by
+median among the eight solvers per cell (average ranks for ties). G1 needs at
+least 3 winning cells on at least 2 problems. G2 needs a mean rank strictly
+better than the best incumbent's and, in at least 95% of 10,000 resamples
+(NumPy `default_rng(3)`; repetitions drawn with replacement within each cell
+and solver, all mean ranks recomputed), a mean rank strictly below every
+incumbent's; the report gives the share. Include, Watch and Reject follow
+ROUND3.md section 6, with Include requiring no contract violation. The
+report lists the decision, mean ranks, win/loss/tie per cell with adjusted p,
+per-cell medians, the descriptive split (cells of `field_service` and
+`jobshop` against the other four problems), runs and evaluations per solver
+and total, violations, incomplete cells (excluded) and the limits of
+DEVIATIONS.md round 3. A file whose settings differ from the declared ones
+(root seed 3, totals 2,000 and 20,000, minimum run 100) is reported as a smoke
+test.
+
+`results/round3/smoke/` and `results/round3/timing/` hold the smoke run (raw
+rows, driver details, report, logs) and the timing repetition (raw rows,
+driver details, logs).

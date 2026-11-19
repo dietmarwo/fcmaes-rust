@@ -22,6 +22,14 @@
 //! `budget = total`, `budget_scale = 1`, `seed` = seed of run 0, and
 //! `evaluations`, violations and `wall_ms` summed over its `runs` runs. A file
 //! holds either S/R rows (round-1 format, unchanged) or T rows, never both.
+//!
+//! Round 3 (`ROUND3.md`) runs protocol T with two totals (2,000 and 20,000,
+//! run cap equal to the total) into one file ([`run_campaign_t_totals`]). The
+//! two totals are separate cells: the resume key is (solver, problem,
+//! protocol, repetition, total) ([`RowKey`]). The candidate driver
+//! `run_catcmawm.py` appends to the same file in the same format; the runner
+//! and the driver never write concurrently, which [`RunLock`] enforces with a
+//! lock file next to the output.
 
 use std::collections::{BTreeMap, HashSet};
 use std::fs::{File, OpenOptions};
@@ -271,6 +279,22 @@ impl TSettings {
     }
 }
 
+/// Seed of run `restart` of repetition `repetition` of a protocol-T row:
+/// `run_seed_from(root_seed, problem, 'T', repetition, restart)`. The total,
+/// run cap and minimum run do not enter the derivation, so in round 3 the
+/// cells at 2,000 and at 20,000 evaluations use the same run seeds. The
+/// candidate driver (`run_catcmawm.py`) replicates this function; the
+/// `seeds` subcommand prints it for a grid.
+pub fn t_run_seed(settings: &TSettings, problem: &str, repetition: u32, restart: u32) -> u64 {
+    run_seed_from(
+        settings.root_seed,
+        problem,
+        Protocol::T.letter(),
+        repetition,
+        restart,
+    )
+}
+
 /// Result of one protocol-T repetition.
 #[derive(Clone, Debug, PartialEq)]
 pub struct TResult {
@@ -299,15 +323,7 @@ pub fn run_repetition_t(
     settings: &TSettings,
 ) -> TResult {
     let objective = &problem.objective;
-    let seed_of = |restart: u32| {
-        run_seed_from(
-            settings.root_seed,
-            problem.name,
-            Protocol::T.letter(),
-            repetition,
-            restart,
-        )
-    };
+    let seed_of = |restart: u32| t_run_seed(settings, problem.name, repetition, restart);
     let mut result = RunResult {
         seed: seed_of(0),
         budget: settings.total,
@@ -401,8 +417,12 @@ pub fn run_repetition(
     result
 }
 
-/// Key of a raw row: solver, problem, protocol, repetition.
-pub type RowKey = (String, String, char, u32);
+/// Key of a raw row: solver, problem, protocol, repetition and, for a
+/// protocol-T row, its total (0 for S and R rows). Within a round-1 or
+/// round-2 file the last component is constant, so the key is the
+/// (solver, problem, protocol, repetition) key of those rounds; in a round-3
+/// file the two totals are separate cells.
+pub type RowKey = (String, String, char, u32, u64);
 
 /// One parsed raw row (the fields the runner needs on resumption).
 #[derive(Clone, Debug)]
@@ -535,24 +555,26 @@ fn load_or_create(path: &Path, expected_header: &str) -> Result<Vec<RawRow>, Str
         }
         let bad = |name: &str| format!("{}: bad {name} in '{line}'", path.display());
         let protocol = fields[4].chars().next().ok_or_else(|| bad("protocol"))?;
+        let t_settings = if field_count > 14 {
+            Some(TSettings {
+                root_seed: fields[15].parse().map_err(|_| bad("root_seed"))?,
+                total: fields[16].parse().map_err(|_| bad("total"))?,
+                run_cap: fields[17].parse().map_err(|_| bad("run_cap"))?,
+                min_run: fields[18].parse().map_err(|_| bad("min_run"))?,
+            })
+        } else {
+            None
+        };
         rows.push(RawRow {
             key: (
                 fields[0].to_owned(),
                 fields[1].to_owned(),
                 protocol,
                 fields[5].parse().map_err(|_| bad("rep"))?,
+                t_settings.map_or(0, |t| t.total),
             ),
             budget_scale: fields[8].parse().map_err(|_| bad("budget_scale"))?,
-            t_settings: if field_count > 14 {
-                Some(TSettings {
-                    root_seed: fields[15].parse().map_err(|_| bad("root_seed"))?,
-                    total: fields[16].parse().map_err(|_| bad("total"))?,
-                    run_cap: fields[17].parse().map_err(|_| bad("run_cap"))?,
-                    min_run: fields[18].parse().map_err(|_| bad("min_run"))?,
-                })
-            } else {
-                None
-            },
+            t_settings,
         });
     }
     Ok(rows)
@@ -578,8 +600,77 @@ struct Task {
     solver: usize,
     problem: usize,
     protocol: Protocol,
+    /// Index into the protocol-T settings (0 for S and R).
+    settings: usize,
     repetition: u32,
     cell: usize,
+}
+
+/// Exclusive writer lock of a raw file: the file `<out>.lock`, created with
+/// `create_new` and holding the process id. The Rust runner and the
+/// candidate driver (`run_catcmawm.py`, same lock rule) take it before they
+/// read the file for resumption and release it when they finish, so the two
+/// never append to one file at the same time. A lock whose process no longer
+/// exists (`/proc/<pid>` missing, after a crash) is stale and is replaced.
+pub struct RunLock {
+    path: std::path::PathBuf,
+}
+
+impl RunLock {
+    /// Path of the lock file of `out`.
+    pub fn path_for(out: &Path) -> std::path::PathBuf {
+        let mut name = out.as_os_str().to_owned();
+        name.push(".lock");
+        std::path::PathBuf::from(name)
+    }
+
+    /// Take the lock of `out`.
+    ///
+    /// # Errors
+    /// Returns a message if another live process holds it or on I/O errors.
+    pub fn acquire(out: &Path) -> Result<Self, String> {
+        let path = Self::path_for(out);
+        if let Some(parent) = path.parent().filter(|p| !p.as_os_str().is_empty()) {
+            std::fs::create_dir_all(parent).map_err(|e| format!("{}: {e}", parent.display()))?;
+        }
+        for _ in 0..2 {
+            match OpenOptions::new().write(true).create_new(true).open(&path) {
+                Ok(mut file) => {
+                    file.write_all(format!("{}\n", std::process::id()).as_bytes())
+                        .map_err(|e| format!("{}: {e}", path.display()))?;
+                    return Ok(Self { path });
+                }
+                Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => {
+                    let holder = std::fs::read_to_string(&path).unwrap_or_default();
+                    let pid: Option<u32> = holder.trim().parse().ok();
+                    let alive = pid.is_some_and(|pid| Path::new(&format!("/proc/{pid}")).exists());
+                    if alive || pid.is_none() {
+                        return Err(format!(
+                            "{} is locked by process '{}' (the Rust runner or run_catcmawm.py); \
+                             they must not write one file concurrently. Remove the lock file \
+                             only if no such process runs.",
+                            out.display(),
+                            holder.trim()
+                        ));
+                    }
+                    eprintln!(
+                        "warning: removing stale lock {} of process {}",
+                        path.display(),
+                        holder.trim()
+                    );
+                    std::fs::remove_file(&path).map_err(|e| format!("{}: {e}", path.display()))?;
+                }
+                Err(error) => return Err(format!("{}: {error}", path.display())),
+            }
+        }
+        Err(format!("{}: could not take the lock", path.display()))
+    }
+}
+
+impl Drop for RunLock {
+    fn drop(&mut self) {
+        let _ = std::fs::remove_file(&self.path);
+    }
 }
 
 /// Run the campaign (protocols S and R), appending rows to `out`. Returns
@@ -606,16 +697,45 @@ pub fn run_campaign_t(
     settings: &TSettings,
     out: &Path,
 ) -> Result<usize, String> {
+    run_campaign_with(config, Some(std::slice::from_ref(settings)), out)
+}
+
+/// Run a protocol-T campaign with several settings into one file (round 3:
+/// totals 2,000 and 20,000, each with run cap equal to the total). Each
+/// settings entry is its own set of cells; the resume key includes the total
+/// ([`RowKey`]). The totals must be distinct, and every row already in the
+/// file must carry one of the given settings, so a file never mixes root
+/// seeds or minimum runs. Tasks run problem by problem, then total by total.
+///
+/// # Errors
+/// As [`run_campaign_t`], and for an empty list or repeated totals.
+pub fn run_campaign_t_totals(
+    config: &CampaignConfig<'_>,
+    settings: &[TSettings],
+    out: &Path,
+) -> Result<usize, String> {
+    if settings.is_empty() {
+        return Err("no protocol-T settings given".into());
+    }
+    let mut totals: Vec<u64> = settings.iter().map(|s| s.total).collect();
+    totals.sort_unstable();
+    totals.dedup();
+    if totals.len() != settings.len() {
+        return Err("protocol-T totals must be distinct".into());
+    }
     run_campaign_with(config, Some(settings), out)
 }
 
 fn run_campaign_with(
     config: &CampaignConfig<'_>,
-    t_settings: Option<&TSettings>,
+    t_settings: Option<&[TSettings]>,
     out: &Path,
 ) -> Result<usize, String> {
-    let existing = if let Some(settings) = t_settings {
-        settings.validate()?;
+    let _lock = RunLock::acquire(out)?;
+    let existing = if let Some(all_settings) = t_settings {
+        for settings in all_settings {
+            settings.validate()?;
+        }
         if config.protocols != [Protocol::T] {
             return Err("a protocol-T campaign runs protocol T only".into());
         }
@@ -623,12 +743,13 @@ fn run_campaign_with(
             return Err("protocol T has no budget scale; use --total for smoke runs".into());
         }
         let existing = load_or_create_raw_t(out)?;
-        if let Some(row) = existing
-            .iter()
-            .find(|row| row.t_settings.as_ref() != Some(settings))
-        {
+        if let Some(row) = existing.iter().find(|row| {
+            !row.t_settings
+                .as_ref()
+                .is_some_and(|s| all_settings.contains(s))
+        }) {
             return Err(format!(
-                "{} holds rows with protocol-T settings {:?} (current {settings:?}); \
+                "{} holds rows with protocol-T settings {:?} (current {all_settings:?}); \
                  use another output file",
                 out.display(),
                 row.t_settings
@@ -674,36 +795,50 @@ fn run_campaign_with(
     let mut tasks = Vec::new();
     let mut cell_names = Vec::new();
     let mut remaining_per_cell = Vec::new();
+    // S/R: one pass with key total 0; T: one pass per settings entry.
+    let passes: Vec<(usize, u64)> = match t_settings {
+        Some(all) => all.iter().enumerate().map(|(i, s)| (i, s.total)).collect(),
+        None => vec![(0, 0)],
+    };
+    let several_totals = passes.len() > 1;
     for (problem_index, &(problem, _)) in config.problems.iter().enumerate() {
         for &protocol in &config.protocols {
-            for (solver_index, solver) in config.solvers.iter().enumerate() {
-                let cell = cell_names.len();
-                cell_names.push(format!(
-                    "{} {} {}",
-                    solver.name(),
-                    problem.name,
-                    protocol.letter()
-                ));
-                let mut pending = 0;
-                for repetition in 0..config.repetitions {
-                    let key = (
-                        solver.name().to_owned(),
-                        problem.name.to_owned(),
-                        protocol.letter(),
-                        repetition,
-                    );
-                    if !done.contains(&key) {
-                        tasks.push(Task {
-                            solver: solver_index,
-                            problem: problem_index,
-                            protocol,
+            for &(settings_index, key_total) in &passes {
+                for (solver_index, solver) in config.solvers.iter().enumerate() {
+                    let cell = cell_names.len();
+                    cell_names.push(if several_totals {
+                        format!(
+                            "{} {} {} {key_total}",
+                            solver.name(),
+                            problem.name,
+                            protocol.letter()
+                        )
+                    } else {
+                        format!("{} {} {}", solver.name(), problem.name, protocol.letter())
+                    });
+                    let mut pending = 0;
+                    for repetition in 0..config.repetitions {
+                        let key = (
+                            solver.name().to_owned(),
+                            problem.name.to_owned(),
+                            protocol.letter(),
                             repetition,
-                            cell,
-                        });
-                        pending += 1;
+                            key_total,
+                        );
+                        if !done.contains(&key) {
+                            tasks.push(Task {
+                                solver: solver_index,
+                                problem: problem_index,
+                                protocol,
+                                settings: settings_index,
+                                repetition,
+                                cell,
+                            });
+                            pending += 1;
+                        }
                     }
+                    remaining_per_cell.push(AtomicUsize::new(pending));
                 }
-                remaining_per_cell.push(AtomicUsize::new(pending));
             }
         }
     }
@@ -747,7 +882,8 @@ fn run_campaign_with(
                         .get_or_insert_with(Instant::now);
                     let (problem, budget) = config.problems[task.problem];
                     let solver = config.solvers[task.solver];
-                    let line = if let Some(settings) = t_settings {
+                    let line = if let Some(all_settings) = t_settings {
+                        let settings = &all_settings[task.settings];
                         let t = run_repetition_t(solver, problem, task.repetition, settings);
                         if t.stopped_empty {
                             eprintln!(
@@ -822,7 +958,7 @@ fn run_campaign_with(
 pub fn count_cells(path: &Path) -> Result<BTreeMap<(String, String, char), usize>, String> {
     let mut counts = BTreeMap::new();
     for row in load_or_create_raw(path)? {
-        let (solver, problem, protocol, _) = row.key;
+        let (solver, problem, protocol, _, _) = row.key;
         *counts.entry((solver, problem, protocol)).or_insert(0) += 1;
     }
     Ok(counts)

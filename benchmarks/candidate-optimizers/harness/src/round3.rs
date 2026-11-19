@@ -28,7 +28,16 @@
 //! that decode to it and the interval center the candidate's typed point is
 //! mapped to. Intervals are half-open `[lo, hi)` as the floor-type decoders
 //! define them; an interval ending at the upper bound includes it. The tests
-//! in `tests/round3.rs` check every level against the problem's own decoder.
+//! in `tests/round3.rs` check every level against the problem's own decoder
+//! ([`level_probe`]).
+//!
+//! # Campaign sets
+//!
+//! [`PROBLEMS`] and [`SOLVERS`] are the round-3 sets (`--problems round3`,
+//! `--solvers round3`), [`TOTALS`], [`MIN_RUN`] and [`ROOT_SEED`] the
+//! declared protocol-T settings ([`declared_settings`]). The DE integer masks
+//! of the six problems are listed in [`MASK_SOURCES`]: none of them passes
+//! one, so `de` and `de_cma` run without a mask.
 
 use std::sync::Arc;
 
@@ -307,6 +316,90 @@ pub const ENTERED: [&str; 8] = [
     "jobshop",
     "uav_assignment",
     "material_flow",
+];
+
+/// The six round-3 campaign problems (`DEVIATIONS.md`, round 3, entry 2):
+/// the entered problems without the two network-coverage problems (4,000
+/// variables, above the dimension cap of 200). Campaign order.
+pub const PROBLEMS: [&str; 6] = [
+    "truss_sizing",
+    "phased_array",
+    "field_service",
+    "jobshop",
+    "uav_assignment",
+    "material_flow",
+];
+
+/// Round-3 problems with a categorical coordinate (descriptive split of
+/// ROUND3.md section 6).
+pub const CATEGORICAL_PROBLEMS: [&str; 2] = ["field_service", "jobshop"];
+
+/// The seven round-3 incumbents (ROUND3.md section 2), configured as in
+/// round 2; `jso_cma` is the benchmarked harness arm (needs the
+/// `candidates` feature). The candidate `catcmawm` runs through
+/// `run_catcmawm.py`.
+pub const SOLVERS: [&str; 7] = ["bite", "de", "cma", "crfmnes", "da", "de_cma", "jso_cma"];
+
+/// Totals of the two cells per problem (ROUND3.md section 5).
+pub const TOTALS: [u64; 2] = [2_000, 20_000];
+
+/// No run starts with fewer remaining evaluations (ROUND3.md section 5).
+pub const MIN_RUN: u64 = 100;
+
+/// Root seed of round 3.
+pub const ROOT_SEED: u64 = 3;
+
+/// Protocol-T settings of one total: run cap equal to the total.
+pub fn settings_for(root_seed: u64, total: u64, min_run: u64) -> crate::campaign::TSettings {
+    crate::campaign::TSettings {
+        root_seed,
+        total,
+        run_cap: total,
+        min_run,
+    }
+}
+
+/// The declared round-3 settings, one per total.
+pub fn declared_settings() -> Vec<crate::campaign::TSettings> {
+    TOTALS
+        .iter()
+        .map(|&total| settings_for(ROOT_SEED, total, MIN_RUN))
+        .collect()
+}
+
+/// DE call of each round-3 problem's own optimization code and the integer
+/// mask it passes (ROUND3.md section 2), from code inspection.
+pub const MASK_SOURCES: [(&str, &str, &str); 6] = [
+    (
+        "truss_sizing",
+        "tutorials/truss-sizing/src/so.rs: De::new(fitness, &guess, &sigma, None, ..)",
+        "none",
+    ),
+    (
+        "phased_array",
+        "tutorials/phased-array-codebook/src/geometry.rs: optimize_geometry uses BiteOpt only (no DE call)",
+        "none",
+    ),
+    (
+        "field_service",
+        "tutorials/field-service-routing/src/so.rs: De::new(fitness, &guess, &[0.2; DIMENSION], None, ..)",
+        "none",
+    ),
+    (
+        "jobshop",
+        "examples/src/bin/jobshop.rs via examples/src/bin/common/mod.rs: DeepBiteOpt only (no DE call)",
+        "none",
+    ),
+    (
+        "uav_assignment",
+        "examples/src/bin/uav_task_assignment.rs: BiteOpt retry and Mode::try_new(.., None, ..) (no DE call)",
+        "none",
+    ),
+    (
+        "material_flow",
+        "examples/src/bin/material_flow_planning.rs: DeepBiteOpt ask/tell only (no DE call)",
+        "none",
+    ),
 ];
 
 /// Integer mask of the DE call in the problem's own single-objective code,
@@ -1315,6 +1408,191 @@ pub fn type_table(name: &str) -> Option<TypeTable> {
         "jobshop" => jobshop_table(),
         "uav_assignment" => uav_table(),
         "material_flow" => material_flow_table(),
+        _ => return None,
+    })
+}
+
+// ------------------------------------------------------------ level probes
+
+/// Level index of coordinate `index` at value `value`, read from the
+/// problem's own decoder with every other coordinate at a fixed base point
+/// (see [`level_probe`]).
+pub type Probe = Box<dyn Fn(usize, f64) -> Result<usize, String>>;
+
+fn level_named(c: &Coordinate, label: &str) -> Result<usize, String> {
+    c.levels
+        .iter()
+        .position(|l| l.label == label)
+        .ok_or_else(|| format!("coordinate {}: no level '{label}'", c.index))
+}
+
+fn truss_probe() -> Probe {
+    use truss_sizing::decode::{MIN_ACTIVE, decode, dimension};
+    use truss_sizing::ground::GroundStructure;
+    let ground = GroundStructure::reference();
+    let members = ground.members.len();
+    Box::new(move |index, value| {
+        let mut x = vec![0.5; dimension(&ground)];
+        if index == 0 {
+            x[0] = value;
+            let decoded = decode(&x, &ground).map_err(|e| format!("truss decode: {e:?}"))?;
+            Ok(decoded.active.len() - MIN_ACTIVE)
+        } else {
+            let member = index - 1 - members;
+            x[0] = 1.0;
+            x[1 + member] = 0.0; // lowest ranking key: always active
+            x[index] = value;
+            let decoded = decode(&x, &ground).map_err(|e| format!("truss decode: {e:?}"))?;
+            decoded
+                .active
+                .iter()
+                .find(|a| a.member_index == member)
+                .map(|a| a.section_index)
+                .ok_or_else(|| format!("truss member {member} not active"))
+        }
+    })
+}
+
+fn phased_array_probe() -> Probe {
+    use phased_array_codebook::geometry::{DIMENSION, SLOTS, evaluate_geometry};
+    Box::new(move |index, value| {
+        let phase = index < 3 * SLOTS;
+        let slot = if phase {
+            index - 2 * SLOTS
+        } else {
+            index - 3 * SLOTS
+        };
+        let mut x = vec![0.5; DIMENSION];
+        x[slot] = 0.0; // selected
+        x[index] = value;
+        let evaluation =
+            evaluate_geometry(&x, 101).ok_or("phased-array geometry does not decode")?;
+        // Selected: the slot (key 0) and the first 15 other slots (key 0.5,
+        // ties by index), in index order.
+        let position = slot.min(15);
+        let codes = if phase {
+            &evaluation.excitation.phase_codes
+        } else {
+            &evaluation.excitation.attenuator_codes
+        };
+        Ok(codes[position] as usize)
+    })
+}
+
+fn field_service_probe(table: TypeTable) -> Probe {
+    use field_service_routing::decode::decode_active;
+    use field_service_routing::scenarios::training;
+    let instance = field_service_instance();
+    let scenarios = training(&instance);
+    Box::new(move |index, value| {
+        let mut x = vec![0.5; 2 * instance.tasks.len()];
+        x[index] = value;
+        let mut seen: Vec<Vec<bool>> = Vec::new();
+        let mut chosen = Vec::new();
+        for case in &scenarios {
+            if !case.active[index] || seen.contains(&case.available) {
+                continue;
+            }
+            seen.push(case.available.clone());
+            let decoded = decode_active(&x, &case.instance, &case.active, &case.available)
+                .map_err(|e| format!("field-service decode: {e:?}"))?;
+            let route = decoded
+                .routes
+                .iter()
+                .find(|r| r.tasks.contains(&index))
+                .ok_or_else(|| format!("task {index} in no route"))?;
+            chosen.push(route.vehicle.to_string());
+        }
+        level_named(
+            &table.coordinates[index],
+            &format!("vehicle {}", chosen.join(" / ")),
+        )
+    })
+}
+
+fn coverage_probe() -> Probe {
+    Box::new(|_, value| {
+        network_coverage::decode::decode(&[value])
+            .map(|selected| usize::from(selected[0]))
+            .ok_or_else(|| format!("coverage: {value} does not decode"))
+    })
+}
+
+fn jobshop_probe() -> Probe {
+    use crate::examples::jobshop::JobShop;
+    let problem = JobShop::mini();
+    Box::new(move |index, value| {
+        let mut x = vec![0.5; problem.dimension()];
+        x[index] = value;
+        let alternatives = &problem.operations[index];
+        let task = problem
+            .decode(&x)
+            .into_iter()
+            .find(|t| t.job == alternatives[0].job && t.operation == alternatives[0].operation)
+            .ok_or_else(|| format!("operation {index} not scheduled"))?;
+        alternatives
+            .iter()
+            .position(|a| a.machine == task.machine)
+            .ok_or_else(|| format!("operation {index}: machine {} unknown", task.machine))
+    })
+}
+
+fn uav_probe() -> Probe {
+    use crate::examples::uav::UavProblem;
+    let base = uav_instance();
+    // Same instance without a horizon, so every target appears in a route.
+    let open = UavProblem::try_new(base.speeds().to_vec(), base.targets().to_vec(), 1e300)
+        .expect("open UAV instance");
+    let separators = base.vehicle_count() - 1;
+    let targets = base.target_count();
+    Box::new(move |index, value| {
+        let mut x = vec![0.999; separators + targets];
+        for t in 0..targets {
+            x[separators + t] = t as f64 / targets as f64;
+        }
+        x[index] = value;
+        Ok(open.solution(&x).assignments[0].len())
+    })
+}
+
+fn material_flow_probe() -> Probe {
+    use crate::examples::material_flow_planning::{DAY_SECONDS, Plant};
+    let plant = Plant::original();
+    Box::new(move |index, value| {
+        let mut x = vec![17.5; 2];
+        x[index] = value;
+        let fitness = plant.fitness(&x);
+        // `fitness` is the only decoder; identify the level by replaying the
+        // simulation for each candidate batch size (unique match required).
+        let matches: Vec<usize> = (1..=50)
+            .filter(|&k| {
+                let mut batches = [17, 17];
+                batches[index] = k;
+                let mut sim = plant.clone();
+                -(sim.simulate(DAY_SECONDS, &batches) as f64) == fitness
+            })
+            .collect();
+        let expected = (value.clamp(1.0, 50.0) as usize).max(1);
+        if !matches.contains(&expected) {
+            return Err(format!(
+                "material_flow {index} at {value}: replay matches {matches:?}, not {expected}"
+            ));
+        }
+        Ok(expected - 1)
+    })
+}
+
+/// Probe of an entered problem's own decoder, or `None` for a problem that
+/// did not enter round 3.
+pub fn level_probe(name: &str) -> Option<Probe> {
+    Some(match name {
+        "truss_sizing" => truss_probe(),
+        "phased_array" => phased_array_probe(),
+        "field_service" => field_service_probe(type_table(name)?),
+        "coverage_cardinality" | "coverage_weighted" => coverage_probe(),
+        "jobshop" => jobshop_probe(),
+        "uav_assignment" => uav_probe(),
+        "material_flow" => material_flow_probe(),
         _ => return None,
     })
 }
