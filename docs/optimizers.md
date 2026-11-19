@@ -212,6 +212,61 @@ in-bound rows; `tell_pop` consumes exactly one value per row and rejects
 any other length or a call without a pending `ask_pop` (`try_tell_pop`
 returns the error instead of panicking).
 
+## Staged CR-FM-NES and BiteOpt
+
+`crfmnes_bite` composes CR-FM-NES and serial DeepBiteOpt within one
+`RetryContext`. It passes the best evaluated decision vector to BiteOpt and
+returns the best finite observation across both stages. Use `retry` to run
+the sequence independently on several workers.
+
+| `CrfmnesBiteParams` field | Default |
+|---|---|
+| `crfmnes_share` | 0.30 of each retry's evaluation cap |
+| `popsize` | 500 for both stages, rounded up to even for CR-FM-NES |
+| `sigma` | Seeded draw in `[0.05, 0.10)`, a fraction of each variable's range |
+| `bite_depth` | 4 |
+| `stop_fitness` | Negative infinity |
+
+CR-FM-NES evaluates only whole populations that fit its share. BiteOpt gets
+every remaining call, including any remainder from that share. A small cap
+that cannot fit one CR-FM-NES population goes entirely to BiteOpt. A target
+stops CR-FM-NES after the current population and BiteOpt after the current
+evaluation. Deriving the sequence's random streams from `RetryContext::run_seed`
+makes each retry reproducible across worker counts.
+
+CR-FM-NES works in normalized coordinates, so `sigma` is a fraction of each
+variable's range and one default suits a unit box of random keys, a box of
+item indices `[0, 10)` and a box of launch dates alike. On a unit box this
+is the step of the Python recipe in the OneForAll tutorial, which measures it
+in decision units. CR-FM-NES's bound penalty is still measured in decision
+units.
+
+```rust
+use fcmaes_core::{CrfmnesBiteParams, RetryBounds, RetryConfig, crfmnes_bite, retry};
+
+let sphere = |x: &[f64]| x.iter().map(|v| v * v).sum::<f64>();
+let bounds = RetryBounds::new(vec![-1.0; 4], vec![1.0; 4]).unwrap();
+let settings = CrfmnesBiteParams { popsize: 16, ..Default::default() };
+settings.validate(&bounds, None).unwrap();
+let config = RetryConfig {
+    num_retries: 4,
+    workers: 2,
+    max_evaluations: 2_000,
+    seed: 42,
+    ..Default::default()
+};
+let result = retry(&sphere, &bounds, &config, |objective, context| {
+    crfmnes_bite(objective, context, &settings).unwrap()
+});
+assert_eq!(result.evaluations, 8_000);
+assert!(result.y < 1e-6);
+```
+
+The same example is a doctest of `crfmnes_bite`.
+
+See the [routing evidence](algorithm-portfolio.md#cr-fm-nes-to-biteopt-for-routing)
+and the [example CLI](examples.md#benchmarks).
+
 ## PGPE
 
 `Pgpe` uses mirrored sampling, ranking, and ADAM updates for the distribution

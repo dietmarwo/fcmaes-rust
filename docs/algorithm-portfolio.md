@@ -51,7 +51,7 @@ lowest median among the core optimizers.
 | DE→CMA sequence (core DE, then core CMA-ES) | 3.60, 6 of 26 | 3.9, 6 of 10 | The strongest generalist in both rounds. |
 | DE | 4.13, 10 of 26 | 5.6, 2 of 10 | Best single optimizer; best in 8 of 13 single-run cells of round 1. |
 | BiteOpt | 5.02, 4 of 26 | 8.1, 0 of 10 | Strong with small run budgets: three of its four best cells are restarts of 2,000 to 25,000 evaluations. Behind at 100,000 evaluations per run. |
-| Active CMA-ES | 7.38, 3 of 26 | 6.6, 1 of 10 | Best core optimizer on Tandem under restarts in both rounds, and the second stage of every sequence. |
+| Active CMA-ES | 7.38, 3 of 26 | 6.6, 1 of 10 | Best core optimizer on Tandem under restarts in both rounds, and the second stage of the sequences in those rounds. |
 | CR-FM-NES | 6.79, 0 of 26 | 8.0, 0 of 10 | Never the best here. Its purpose, high-dimensional problems, is outside this benchmark (114 variables at most). |
 | Dual Annealing | 8.08, 3 of 26 | 9.1, 1 of 10 | A specialist: best core optimizer in three of the six Lennard-Jones cells, where its gradient-based local search fits the smooth landscape, and last on average. |
 | jSO | as a candidate, see below | as a candidate, see below | Included as a first stage before CMA-ES, beside DE. |
@@ -101,6 +101,49 @@ first stage of a sequence with CMA-ES, in the same role DE has in DE→CMA.
 So jSO widens the first-stage choice; it does not replace DE. DE→CMA stays
 the default sequence, and jSO→CMA is a reasonable second attempt when
 DE→CMA stalls.
+
+### CR-FM-NES to BiteOpt for routing
+
+The [OneForAll tutorial](https://github.com/dietmarwo/fast-cma-es/blob/master/tutorials/OneForAll.adoc)
+uses CR-FM-NES to find a starting point for DeepBiteOpt. The native Rust
+composition is available through [`crfmnes_bite`](optimizers.md#staged-cr-fm-nes-and-biteopt)
+and `--algo crfmnes_bite` in [`benchmark-biteopt-gtop`](examples.md#benchmarks).
+The opt-in recipe uses a hard cap per retry, a 30/70 split, population 500,
+and BiteOpt depth 4 by default. Each stage works on the continuous encoding
+accepted by the objective, such as random keys for a permutation.
+
+The implemented recipe was checked on four Solomon instances at 500,000
+evaluations per retry with eight paired seeds per instance. All BiteOpt
+arms used population 500 and depth 4. Scores are feasible medians of
+Euclidean distance plus ten times the vehicle count. Replay checked fleet
+size, capacity, customer time windows and return to the depot.
+
+| Instance | CR-FM-NES → BiteOpt | CR-FM-NES | DeepBiteOpt | DE → BiteOpt |
+|---|---:|---:|---:|---:|
+| `c101` | **1,070.1** | 1,174.2 | 1,769.9 | 1,835.6 |
+| `r101` | **2,005.8** | 2,119.7 | 2,159.4 | 2,192.7 |
+| `r105` | **1,703.3** | 1,908.2 | 1,900.2 | 1,934.5 |
+| `rc101` | **1,998.2** | 2,297.7 | 2,378.5 | 2,372.7 |
+
+The sequence returned 32 of 32 feasible routes. It won all 32 pairs against
+standalone DeepBiteOpt and DE → BiteOpt, and 30 against CR-FM-NES. Standalone
+DeepBiteOpt returned six feasible routes on `r101`, and all other arms in
+the table returned eight per instance. At 100,000 calls, standalone
+DeepBiteOpt led on `c101`, and all `r101` trials exceeded the fleet limit.
+On the 400-group knapsack `I13`, standalone CR-FM-NES ended 1.94% below the
+supplied bound at 500,000 calls in the median, compared with 3.84% for the
+sequence. These results support the sequence as an opt-in routing recipe.
+
+The native recipe sets CR-FM-NES's initial step as a fraction of each
+variable's range. On the unit random-key box of the routing table, this is
+the decision-unit step of the Python recipe. A paired check compared the two
+conventions on other boxes, with one 100,000-call retry for each of 16 seeds
+per case. The range fraction won 15 of 16 pairs on Rosetta and 14 of 16 on
+Tandem, whose intervals span hundreds to thousands of units. MMKP `I07` and
+`I13` (also at 500,000 calls), Cassini2, GTOC1 and Messenger showed no clear
+difference. On Cassini1 and Sagas, the decision-unit step reached the deepest
+basins in more seeds (6 against 1 and 3 against 1), without a significant
+paired difference.
 
 ## What is not in core, and why
 

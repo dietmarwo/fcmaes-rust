@@ -4,16 +4,18 @@ use std::io::{BufWriter, Write};
 use std::path::PathBuf;
 use std::time::Instant;
 
+use fcmaes_core::CrfmnesBiteParams;
 use fcmaes_examples::benchmark_gtop::{
     BenchmarkCase, ProblemSummary, RunRecord, mean_sdev, run_seed, selected_bite_cases, summarize,
 };
-use fcmaes_examples::runner::{Cli, run_basic, run_bite, run_jso_cma};
+use fcmaes_examples::runner::{Cli, run_basic, run_bite, run_crfmnes_bite, run_jso_cma};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Algorithm {
     Biteopt,
     DeCma,
     JsoCma,
+    CrfmnesBite,
 }
 
 impl Algorithm {
@@ -22,7 +24,8 @@ impl Algorithm {
             "biteopt" => Ok(Self::Biteopt),
             "de_cma" => Ok(Self::DeCma),
             "jso_cma" => Ok(Self::JsoCma),
-            _ => Err("--algo must be 'biteopt', 'de_cma' or 'jso_cma'".to_owned()),
+            "crfmnes_bite" => Ok(Self::CrfmnesBite),
+            _ => Err("--algo must be 'biteopt', 'de_cma', 'jso_cma' or 'crfmnes_bite'".to_owned()),
         }
     }
 
@@ -31,6 +34,7 @@ impl Algorithm {
             Self::Biteopt => "biteopt",
             Self::DeCma => "de_cma",
             Self::JsoCma => "jso_cma",
+            Self::CrfmnesBite => "crfmnes_bite",
         }
     }
 
@@ -39,6 +43,7 @@ impl Algorithm {
             Self::Biteopt => "BiteOpt",
             Self::DeCma => "DE-CMA",
             Self::JsoCma => "jSO-CMA",
+            Self::CrfmnesBite => "CR-FM-NES → BiteOpt",
         }
     }
 }
@@ -104,6 +109,7 @@ fn render_markdown(algorithm: Algorithm, summaries: &[BenchmarkSummary]) -> Stri
 #[derive(Debug)]
 struct BenchmarkCli {
     algorithm: Algorithm,
+    crfmnes_bite: CrfmnesBiteParams,
     runs: usize,
     workers: usize,
     retries: usize,
@@ -119,6 +125,7 @@ impl Default for BenchmarkCli {
     fn default() -> Self {
         Self {
             algorithm: Algorithm::Biteopt,
+            crfmnes_bite: CrfmnesBiteParams::default(),
             runs: 100,
             workers: 24,
             retries: 24,
@@ -134,7 +141,11 @@ impl Default for BenchmarkCli {
 
 impl BenchmarkCli {
     const USAGE: &str = "options:\n\
-      --algo NAME              biteopt, de_cma or jso_cma (default biteopt)\n\
+      --algo NAME              biteopt, de_cma, jso_cma or crfmnes_bite (default biteopt)\n\
+      --crfmnes-bite-share N   first-stage budget fraction (default 0.30)\n\
+      --crfmnes-bite-popsize N population size for both stages (default 500)\n\
+      --crfmnes-bite-sigma N   initial CR-FM-NES step as a fraction of each range (default seeded 0.05–0.10)\n\
+      --crfmnes-bite-depth N   DeepBiteOpt depth (default 4)\n\
       --runs N                 independent experiments per problem (default 100)\n\
       --workers N              basic-retry worker threads (default 24)\n\
       --retries N              optimizer retries per experiment (default 24)\n\
@@ -146,6 +157,7 @@ impl BenchmarkCli {
       --table-output PATH      update the Markdown table after every problem\n\
       --help                   show this help\n\
 \n\
+The --crfmnes-bite-* options require --algo crfmnes_bite.\n\
 Messenger Full is always excluded; Tandem is included by default.";
 
     fn from_env() -> Result<Option<Self>, String> {
@@ -158,6 +170,7 @@ Messenger Full is always excluded; Tandem is included by default.";
         S: AsRef<str>,
     {
         let mut cli = Self::default();
+        let mut sequence_option = None;
         let mut args = args.into_iter();
         while let Some(argument) = args.next() {
             let argument = argument.as_ref();
@@ -168,8 +181,33 @@ Messenger Full is always excluded; Tandem is included by default.";
                 .next()
                 .ok_or_else(|| format!("{argument} requires a value"))?;
             let value = value.as_ref();
+            if argument.starts_with("--crfmnes-bite-") {
+                sequence_option = Some(argument.to_owned());
+            }
             match argument {
                 "--algo" => cli.algorithm = Algorithm::parse(value)?,
+                "--crfmnes-bite-share" => {
+                    cli.crfmnes_bite.crfmnes_share = value
+                        .parse()
+                        .map_err(|_| "--crfmnes-bite-share requires a number".to_owned())?;
+                }
+                "--crfmnes-bite-popsize" => {
+                    cli.crfmnes_bite.popsize = value
+                        .parse()
+                        .map_err(|_| "--crfmnes-bite-popsize requires an integer".to_owned())?;
+                }
+                "--crfmnes-bite-sigma" => {
+                    cli.crfmnes_bite.sigma = Some(
+                        value
+                            .parse()
+                            .map_err(|_| "--crfmnes-bite-sigma requires a number".to_owned())?,
+                    );
+                }
+                "--crfmnes-bite-depth" => {
+                    cli.crfmnes_bite.bite_depth = value
+                        .parse()
+                        .map_err(|_| "--crfmnes-bite-depth requires an integer".to_owned())?;
+                }
                 "--runs" => {
                     cli.runs = value
                         .parse()
@@ -206,6 +244,11 @@ Messenger Full is always excluded; Tandem is included by default.";
                 _ => return Err(format!("unknown option '{argument}'")),
             }
         }
+        if let Some(option) = sequence_option
+            && cli.algorithm != Algorithm::CrfmnesBite
+        {
+            return Err(format!("{option} requires --algo crfmnes_bite"));
+        }
         if cli.runs == 0 || cli.workers == 0 || cli.retries == 0 || cli.evaluations == 0 {
             return Err(
                 "--runs, --workers, --retries and --evaluations must be positive".to_owned(),
@@ -234,6 +277,22 @@ fn main() {
         eprintln!("{message}");
         std::process::exit(2);
     });
+    if cli.algorithm == Algorithm::CrfmnesBite {
+        for case in &cases {
+            if let Err(message) = cli.crfmnes_bite.validate(&case.problem.bounds, None) {
+                eprintln!("invalid crfmnes_bite settings: {message}");
+                std::process::exit(2);
+            }
+        }
+        let settings = cli.crfmnes_bite;
+        let sigma = settings
+            .sigma
+            .map_or_else(|| "seeded 0.05–0.10".to_owned(), |sigma| sigma.to_string());
+        println!(
+            "crfmnes_bite settings: share {}, popsize {}, sigma {sigma} of each range, depth {}",
+            settings.crfmnes_share, settings.popsize, settings.bite_depth
+        );
+    }
     let mut raw_output = cli.raw_output.as_ref().map(|path| {
         let file = File::create(path)
             .unwrap_or_else(|error| panic!("failed to create {}: {error}", path.display()));
@@ -276,6 +335,10 @@ fn main() {
                 Algorithm::Biteopt => run_bite(&case.problem, &run_cli),
                 Algorithm::DeCma => run_basic(&case.problem, &run_cli),
                 Algorithm::JsoCma => run_jso_cma(&case.problem, &run_cli),
+                Algorithm::CrfmnesBite => {
+                    run_crfmnes_bite(&case.problem, &run_cli, cli.crfmnes_bite)
+                        .expect("validated CR-FM-NES → BiteOpt configuration")
+                }
             };
             let wall_seconds = started.elapsed().as_secs_f64();
             let success = result.success && result.y <= case.stop_value;
@@ -388,6 +451,41 @@ mod tests {
             .unwrap();
         assert_eq!(jso.algorithm, Algorithm::JsoCma);
         assert_eq!(jso.algorithm.key(), "jso_cma");
+    }
+
+    #[test]
+    fn parses_crfmnes_bite_settings() {
+        let cli = BenchmarkCli::from_args([
+            "--algo",
+            "crfmnes_bite",
+            "--crfmnes-bite-share",
+            "0.4",
+            "--crfmnes-bite-popsize",
+            "65",
+            "--crfmnes-bite-sigma",
+            "0.125",
+            "--crfmnes-bite-depth",
+            "2",
+        ])
+        .unwrap()
+        .unwrap();
+        assert_eq!(cli.algorithm, Algorithm::CrfmnesBite);
+        assert_eq!(cli.algorithm.key(), "crfmnes_bite");
+        assert_eq!(cli.crfmnes_bite.crfmnes_share, 0.4);
+        assert_eq!(cli.crfmnes_bite.popsize, 65);
+        assert_eq!(cli.crfmnes_bite.sigma, Some(0.125));
+        assert_eq!(cli.crfmnes_bite.bite_depth, 2);
+        assert!(
+            BenchmarkCli::from_args(["--algo", "crfmnes_bite", "--crfmnes-bite-depth", "deep"])
+                .is_err()
+        );
+        let error = BenchmarkCli::from_args(["--crfmnes-bite-share", "0.4"]).unwrap_err();
+        assert!(error.contains("requires --algo crfmnes_bite"), "{error}");
+        assert!(
+            BenchmarkCli::from_args(["--crfmnes-bite-popsize", "64", "--algo", "crfmnes_bite"])
+                .unwrap()
+                .is_some()
+        );
     }
 
     #[test]
