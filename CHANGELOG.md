@@ -85,6 +85,10 @@ phase, with breaking changes called out explicitly.
   categorical problems from the literature. The outcome is *watch*: it is not
   implemented in core. A convergence test with budgets up to 200,000
   evaluations found it superior on none of three problems.
+- The algorithm portfolio records an eight-worker deadline benchmark against
+  Minion, libcmaes and NOMAD. No decision changes; ARRDE on structural sizing
+  and the BIPOP settings of the job worker are open follow-ups
+  ([the algorithm portfolio](docs/algorithm-portfolio.md)).
 - Experimental, opt-in surrogate `/2`: `fcmaes_surrogate::advanced` and the job profile `fcmaes.surrogate/2` ([guide](docs/surrogate/ADVANCED.md)). Over `/1` it adds:
   - an archive of up to 10,000 observations, of which a GP trains on at most 240 (the incumbent, its neighbours and maximin coverage);
   - asynchronous callbacks with one background proposal;

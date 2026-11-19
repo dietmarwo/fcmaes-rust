@@ -35,6 +35,11 @@ mixed-variable optimizer on nine problems at 2,000 and 20,000 evaluations
 and [ROUND3B.md](../benchmarks/candidate-optimizers/ROUND3B.md)), is
 described with its candidate below.
 
+A second source is the
+[eight-worker deadline benchmark](#the-eight-worker-deadline-benchmark). It
+compares by wall-clock time on eight CPUs, includes external libraries, and
+has its own section.
+
 *Mean rank* below is the average rank among the twelve solvers of a round
 (1 is best). *Best in n cells* counts the cells in which an optimizer has the
 lowest median among the core optimizers.
@@ -64,7 +69,9 @@ Three observations follow from the table:
   has a mean rank of 2.98 in round 1 and 4.2 in round 2.
 
 BiteOpt ran with its default depth. `DeepBiteOpt` was not part of the
-benchmark.
+rounds. CR-FM-NES on a high-dimensional problem, PGPE, `DeepBiteOpt` and
+coordinated retry were measured in the
+[eight-worker deadline benchmark](#the-eight-worker-deadline-benchmark).
 
 ### Why jSO is in
 
@@ -103,7 +110,7 @@ DE→CMA stalls.
 |---|---|---|---|
 | L-SHADE (Tanabe and Fukunaga, 2014) | 1/17/8, 7.58 | 0/7/3, 7.6 | Out. Same family as jSO and behind it in both rounds. |
 | L-SRTDE (Stanovov and Semenkin, 2024) | 1/13/12, 5.94 | alone 0/5/5, 6.2; before CMA-ES 0/3/7, 4.4 | Out. Close to DE→CMA as a first stage, never significantly better than it, and the published equation does not reproduce the published results (see the [deviations](../benchmarks/candidate-optimizers/DEVIATIONS.md)). |
-| BIPOP-aCMA-ES (Hansen, 2009) | 1/5/20, 4.88 | 0/6/4, 7.7 | Out of core. Third of twelve with small budgets, ninth with large ones. A BIPOP schedule is available in the job worker. |
+| BIPOP-aCMA-ES (Hansen, 2009) | 1/5/20, 4.88 | 0/6/4, 7.7 | Out of core. Third of twelve with small budgets, ninth with large ones. A BIPOP schedule is available in the job worker; the eight-worker benchmark points at its settings, not at a missing algorithm. |
 | AMaLGaM-IDEA (Bosman, Grahl and Thierens, 2013) | 0/15/11, 7.60 | not run | Out. No winning cell; its published population rule leaves few generations above about 100 variables. |
 
 Wins, losses and ties are against the best core optimizer of each cell.
@@ -148,13 +155,13 @@ out of reach of this screening and would be the place to look again.
 
 | Algorithm | Reason |
 |---|---|
-| NL-SHADE-RSP, NL-SHADE-LBC, RDE, RDEx | Incremental over L-SHADE and jSO; worth a run only as first stages. |
+| NL-SHADE-LBC, RDE, RDEx | Incremental over L-SHADE and jSO; worth a run only as first stages. NL-SHADE-RSP, of the same group, was screened in the eight-worker benchmark. |
 | LRA-CMA-ES | Aims at noisy and multimodal problems; needs changes inside `Cmaes` and a noisy benchmark. |
 | sep-CMA-ES, VD-CMA, LM-CMA, LM-MA-ES | Large-scale covariance models; CR-FM-NES covers that niche. |
 | xNES, SNES | Predecessors of CR-FM-NES. |
 | CMA-ES with margin, CatCMA | Predecessors of CatCMAwM, which was screened instead. |
 | Particle swarm variants | Last on all seven GTOP problems in the [earlier comparison](../benchmarks/optimizer-comparison/comparison.md). |
-| MADS, DIRECT, MCS | Local or low-dimensional by design; usable through the retry adapter. |
+| DIRECT, MCS | Local or low-dimensional by design; usable through the retry adapter. MADS was measured as NOMAD in the eight-worker benchmark. |
 | Niching methods (HillVallEA, RS-CMSA) | A different task; MAP-Elites and the Diversifier cover diversity. |
 | Metaphor-based swarm heuristics | No consistent evidence of an advantage over DE or CMA-ES baselines. |
 
@@ -166,6 +173,144 @@ references.
 Nelder–Mead and other local derivative-free refiners, Bayesian and surrogate
 optimization, and gradient-based solvers are covered by
 [The optimizer boundary](optimizer-boundary.md) and its own experiments.
+
+## The eight-worker deadline benchmark
+
+A separate campaign of 17 to 19 November 2026 asked a different question
+from the three rounds: with eight CPUs and a wall-clock deadline, does an
+external optimizer deliver more than fcmaes as it is used today? Solvers are
+compared by time, not by evaluations, so the speed of an implementation and
+its use of the eight workers count. Every policy called the same Rust
+objectives.
+
+| | Screening | Confirmation |
+|---|---|---|
+| Policies | 20: nine fcmaes policies and eleven external ones | 5: the fcmaes chooser, BiteOpt in eight independent searches, three finalists |
+| Problems | 6 development cases | 10 cases in 7 application families |
+| Deadline per run | 15 s | 60 s |
+| Seeds | 5 | 30, in blocks that share problem, seed and host |
+| Runs | 600 | 1,500 |
+
+The cases are four GTOP trajectories, a Cooke lens, a circuit, room
+ventilation (CFD), a reaction network, a neural controller with 118
+variables and a truss with 171, at 0.01 ms to 90 ms per evaluation. Between
+the stages, 522 runs at 10 s fixed how each policy divides the eight CPUs
+and its settings.
+
+The *fcmaes chooser* is one fixed policy per family, selected on the
+development cases: coordinated DE→CMA retry for the trajectories and the
+reaction network, CMA-ES with BIPOP restarts for the lens, CMA-ES for
+ventilation, CR-FM-NES for the controller, DE for the circuit and BiteOpt
+for the truss. Circuit and truss were held out of tuning, so their policies
+are untuned defaults.
+
+A gain counts as material at 1.25 times the speed to a preset target, or at
+most 0.80 of the remaining loss at the deadline, each with a simultaneous
+confidence interval clear of 1. A broad nomination needs material gains in
+two unrelated families and risk flags in fewer than two.
+
+The campaign ran revision `1241e52` of this repository, from before jSO
+entered core: `Jso` and the jSO→CMA sequence are not in it. Its run records
+are not part of this repository; the numbers here are from its final report.
+
+### What it says about the core optimizers
+
+Screening, 15 seconds, five seeds, six cases. The ranks are descriptive.
+
+| fcmaes policy | Mean rank among the 20 policies |
+|---|---:|
+| CMA-ES | 7.10, the best of all 20 |
+| Coordinated DE→CMA retry | 8.26 |
+| CR-FM-NES | 8.60 |
+| CMA-ES with BIPOP restarts (job worker) | 9.26 |
+| BiteOpt | 9.46 |
+| CMA-ES with IPOP restarts (job worker) | 9.96 |
+| DeepBiteOpt | 10.86 |
+| DE | 11.26 |
+| PGPE | 12.48 |
+
+- **The case for a portfolio holds under deadlines.** The chooser uses six
+  different policies for seven families. Against it, BiteOpt alone has worse
+  medians at 60 seconds on Cassini2 (9.47 against 8.41), Messenger (9.23
+  against 8.70), Tandem (−1208 against −1364), the controller (0.287 against
+  0.134) and the reaction network (1.65 against 1.46). On ventilation it is
+  marginally ahead (1.594 against 1.599). Both returned a usable result in
+  all 300 runs.
+- **CR-FM-NES and PGPE have their place.** On the 118-variable controller
+  the screening medians are CR-FM-NES 0.149, PGPE 0.157, CMA-ES 0.186, DE
+  0.227 and BiteOpt 0.368. The three rounds have no such problem.
+- **Coordinated retry**, which the rounds do not cover, has the best Tandem
+  median of all 20 policies (−1337.6).
+- **DE**, the best single optimizer of the rounds, is eighth of the nine
+  fcmaes policies here. The measures differ: 15 seconds in eight independent
+  searches against a fixed evaluation budget in one.
+
+### What it says about the candidates
+
+Three finalists went to confirmation, one per group: a modern DE, an
+external CMA-ES and MADS.
+
+| Finalist | Usable at 60 s | Material gain against the chooser | Risk flags | Outcome |
+|---|---:|---|---|---|
+| ARRDE (Minion 2.0.1) | 300/300 | Ventilation: 6.59 times the speed to target. Truss: 0.763 of the remaining loss. | Controller, trajectories | Deferred |
+| BIPOP-CMA-ES (libcmaes) | 270/300 | Circuit: 1.72 times the speed to target. | Truss, trajectories | Deferred |
+| MADS (NOMAD 4.6.0, poll only) | 240/300 | None | Five of seven families | Deferred |
+
+No finalist passes the broad nomination.
+
+- **ARRDE** (Muzakka, Shali, Suhendar, Möller and Finsterbusch, 2025) is a
+  differential evolution in the line of L-SHADE and jSO with a nonlinear
+  population reduction and restarts. On the truss its median is 396 kg
+  against 520 kg. It reaches the preset target more slowly (0.058 times the
+  speed), so the gain is in the final design, not in an early lead. The
+  comparison is with BiteOpt only: BiteOpt is the chooser's policy for the
+  truss, and no other core optimizer ran there. The ventilation gain is in
+  speed against CMA-ES; against BiteOpt there is none (0.53 times, with an
+  interval that reaches 1). On
+  the controller it leaves 1.61 times the chooser's remaining loss and on
+  the trajectories 2.52 times. Over all families it reaches targets at 0.29
+  of the chooser's speed and leaves 15% more remaining loss.
+- **libcmaes BIPOP** reaches the circuit target sooner than DE (1.72 times)
+  and BiteOpt (1.92 times); the final loss is at the floor of the measure
+  for every policy.
+  It returns no feasible truss in 30 runs, and on the trajectories it leaves
+  94 times the chooser's remaining loss. BIPOP restarts already exist in the
+  job worker, so this is a finding about settings: on the controller at
+  screening, libcmaes BIPOP reaches 0.148 where the job worker's BIPOP
+  reaches 0.532 with three times the evaluations.
+- **NOMAD** shows no material gain in any family. A 4 GiB memory guard
+  stopped all 60 controller and truss runs, and on the trajectories it
+  leaves several hundred times the chooser's remaining loss. It ran on a
+  scalar penalty; its native constraint handling was not tested.
+
+Screened only, with the mean rank among the 20 policies: libcmaes IPOP
+8.07, RCMAES (Minion) 8.60, L-SRTDE (Minion) 9.30, jSO (Minion) 9.62,
+L-SHADE (author's code) 10.38, L-SRTDE (author's code) 12.84, NL-SHADE-RSP
+(Minion) 14.18, NOMAD with defaults 17.79.
+
+This agrees with the rounds where the two overlap. L-SHADE, L-SRTDE and jSO
+alone stay behind CMA-ES, coordinated retry and CR-FM-NES, and NL-SHADE-RSP
+is third from last. One difference: jSO and L-SRTDE from Minion rank ahead
+of fcmaes DE at 15 seconds, where DE is ahead of both in the rounds.
+
+### Decision and follow-ups
+
+**No decision changes.** Nothing is added to core and no default changes.
+Two findings are open:
+
+1. **ARRDE on structural sizing.** The truss result is a better final design
+   on a real problem, measured against BiteOpt only. The test that would
+   settle it runs ARRDE against every core optimizer, including jSO→CMA,
+   its closest relative in core, on the truss by evaluations, under the
+   rules of the candidate benchmark.
+2. **BIPOP settings in the job worker.** Initial step size, bounds handling
+   and restart schedule should be compared with libcmaes on the circuit and
+   the controller.
+
+A third observation needs a look: on the reaction network, with evaluations
+of 90 ms and tails above a second, fcmaes CMA-ES and its IPOP and BIPOP
+variants each lost one of five screening runs to the deadline. The cause is
+not established.
 
 ## Limits of the evidence
 
@@ -182,8 +327,14 @@ optimization, and gradient-based solvers are covered by
 - **Mixed-variable screening.** Round 3 ran the candidate as a Python
   reference implementation with default parameters, compared by evaluations,
   on problems of at most 171 variables and 2 ms per evaluation.
-- **Not covered.** Noisy objectives, more than 171 variables,
+- **Not covered by the rounds.** Noisy objectives, more than 171 variables,
   multi-objective optimization, coordinated retry.
+- **The eight-worker benchmark.** Wall-clock results depend on hosts and
+  implementations: it ran on three cloud hosts, with every block on one
+  host, and its conclusions hold for the tested libraries, settings and
+  deadlines. Screening has five seeds. The reaction network uses a fixed
+  panel and is deterministic. Longer deadlines, noisy objectives and the
+  jSO→CMA sequence were not run. Its records are outside this repository.
 
 ## Challenging a decision
 

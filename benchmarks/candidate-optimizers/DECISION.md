@@ -271,3 +271,26 @@ to implement it in core.
   benchmarks, reaction optimization, the energy hub on a larger machine.
 - A win on such problems that the core solvers cannot match with the
   repository's real-vector encodings.
+
+# Related evidence: the eight-worker deadline benchmark
+
+A separate campaign of 17 to 19 November 2026 compared fcmaes with external
+libraries by wall-clock time on eight CPUs: 20 policies screened at 15
+seconds, three finalists confirmed in 1,500 runs at 60 seconds on ten cases.
+It was not run under the rules of this benchmark, its records are not in
+this repository, and it changes none of the outcomes above.
+[The algorithm portfolio](../../docs/algorithm-portfolio.md#the-eight-worker-deadline-benchmark)
+summarizes it. Where it meets this benchmark:
+
+- **L-SHADE, L-SRTDE, jSO alone.** Screened from their authors' code or
+  from Minion, all rank behind fcmaes CMA-ES, coordinated DE→CMA retry and
+  CR-FM-NES. That agrees with rounds 1 and 2. jSO→CMA was not in the
+  campaign, which ran a revision from before jSO entered core.
+- **BIPOP.** The libcmaes implementation reaches a circuit target 1.72 times
+  sooner than the fcmaes policy and returns no feasible truss. The job
+  worker already has BIPOP restarts; the finding is about their settings.
+- **New candidate: ARRDE.** On a 171-variable truss it reaches a median of
+  396 kg where BiteOpt reaches 520 kg at the deadline. BiteOpt was the only
+  core optimizer in that comparison. A run of ARRDE against all core solvers
+  on `truss_sizing` under a declared protocol here would decide it.
+- **MADS.** NOMAD 4.6.0 shows no gain in any of seven families.
