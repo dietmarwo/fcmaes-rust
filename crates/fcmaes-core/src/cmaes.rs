@@ -74,6 +74,22 @@ pub struct CmaesParams {
     pub seed: u64,
     /// Additional run identifier mixed into [`seed`](Self::seed).
     pub runid: i64,
+    /// How a sample that was moved into the bounds enters the update
+    /// (`REPAIR-Z`). With `true` (the default) it enters with the `z` of the
+    /// point that was evaluated, so the evolution paths and the covariance
+    /// follow the same points as the mean. With `false` it enters with the
+    /// `z` of the unmoved sample, which reproduces the update of fcmaes-core
+    /// 0.3.0 exactly.
+    ///
+    /// The setting matters only when samples reach the bounds: runs that stay
+    /// inside the bounds, unbounded runs and runs that tell their own points
+    /// ([`Cmaes::tell_x`]) give identical results with either value. `true`
+    /// keeps the step size from growing on problems whose samples keep
+    /// reaching the bounds (for example optima on or outside the bounds);
+    /// `false` has done better on some problems where the bounds are hit
+    /// only occasionally, such as some coordinated-retry runs, whose bounds
+    /// narrow around good solutions.
+    pub repair_z: bool,
 }
 
 impl Default for CmaesParams {
@@ -88,6 +104,7 @@ impl Default for CmaesParams {
             update_gap: -1,
             seed: 0,
             runid: 0,
+            repair_z: true,
         }
     }
 }
@@ -167,6 +184,8 @@ pub struct Cmaes {
     /// Columns of the asked population that were moved into the bounds; their
     /// `arz` is recomputed from the repaired point before the update.
     repaired: Vec<bool>,
+    /// [`CmaesParams::repair_z`]: whether `repair_arz` runs before the update.
+    repair_z: bool,
 
     // ask/tell bookkeeping (mirrors AcmaState::Impl)
     asked_x: DMatrix<f64>,
@@ -305,6 +324,7 @@ impl Cmaes {
             told: 0,
             compute_arz: true,
             repaired: vec![false; popsize],
+            repair_z: p.repair_z,
             asked_x: DMatrix::zeros(dim, popsize),
             population_decoded: DMatrix::zeros(dim, popsize),
             pending: false,
@@ -346,7 +366,7 @@ impl Cmaes {
             let delta = (&self.bd * col(&self.arz, k)) * self.sigma;
             let cand = &self.xmean + delta;
             let feasible = self.fitfun.closest_feasible_normed(cand.as_slice());
-            // REPAIR-Z: read only by `repair_arz`.
+            // REPAIR-Z: read only by `repair_arz` (`CmaesParams::repair_z`).
             self.repaired[k] = feasible.as_slice() != cand.as_slice();
             for i in 0..self.dim {
                 xs[(i, k)] = feasible[i];
@@ -375,11 +395,10 @@ impl Cmaes {
                     Some(inv) => inv * diff,
                     None => self.normal_matrix(self.dim, self.popsize),
                 };
-            } else {
-                // REPAIR-Z: the one call that enables the repaired-sample
-                // update. Removing it restores the update of 0.3.0 and
-                // earlier (z of the unrepaired samples). To make the change
-                // optional, guard this call with a parameter.
+            } else if self.repair_z {
+                // REPAIR-Z: the one call of the repaired-sample update,
+                // selected by `CmaesParams::repair_z`. Skipping it (`false`)
+                // keeps the z of the unrepaired samples, the update of 0.3.0.
                 self.repair_arz();
             }
             self.update_cma();
@@ -396,10 +415,11 @@ impl Cmaes {
     /// unrepaired samples; on problems whose samples hit the bounds that
     /// mismatch inflates the step size until the run stops (`stop_tol_upx`).
     ///
-    /// REPAIR-Z: this changes results on every problem whose samples reach
-    /// the bounds, including coordinated retry, which narrows the bounds
-    /// around good solutions. It has one call site, in `tell_one`, and may
-    /// become an option after wider tests; see CHANGELOG.md.
+    /// REPAIR-Z: runs only with [`CmaesParams::repair_z`] (the default);
+    /// with `false` the update uses the `z` of the unrepaired samples, as in
+    /// 0.3.0. It changes results on every problem whose samples reach the
+    /// bounds, including coordinated retry, which narrows the bounds around
+    /// good solutions. It has one call site, in `tell_one`.
     fn repair_arz(&mut self) {
         for k in 0..self.popsize {
             if !self.repaired[k] {
@@ -925,13 +945,9 @@ mod tests {
     }
 
     /// Half of the optimum of this sphere lies outside the box, so samples
-    /// keep being moved onto the bounds. With the unrepaired `z`, the
-    /// evolution path kept reporting steps beyond the bounds that the mean
-    /// could not make; the step size grew until the run stopped
-    /// (`stop_tol_upx`) after about 1000 evaluations, 4 to 6 above the
-    /// optimum.
-    #[test]
-    fn repaired_samples_do_not_inflate_the_step_size() {
+    /// keep being moved onto the bounds. The constrained optimum is 10
+    /// (`x_i = 1` for `i < 10`).
+    fn sphere_beyond_the_bounds(seed: u64, repair_z: bool) -> AcmaResult {
         let dim = 20;
         let sphere = |x: &[f64]| {
             x.iter()
@@ -939,21 +955,80 @@ mod tests {
                 .map(|(i, v)| (v - if i < 10 { 2.0 } else { 0.3 }).powi(2))
                 .sum::<f64>()
         };
+        let mut fit = Fitness::bounded(dim, 1, &vec![-1.0; dim], &vec![1.0; dim]);
+        fit.set_normalize(true);
+        let params = CmaesParams {
+            popsize: 16,
+            max_evaluations: 20_000,
+            seed,
+            repair_z,
+            ..Default::default()
+        };
+        let mut es = Cmaes::new(fit, &vec![0.0; dim], &[0.3], &params);
+        es.optimize(&sphere, 1)
+    }
+
+    /// With the `z` of the evaluated points (`repair_z: true`) the run keeps
+    /// improving until it is close to the constrained optimum.
+    #[test]
+    fn repaired_samples_do_not_inflate_the_step_size() {
         for seed in 1..=5 {
-            let mut fit = Fitness::bounded(dim, 1, &vec![-1.0; dim], &vec![1.0; dim]);
-            fit.set_normalize(true);
-            let params = CmaesParams {
-                popsize: 16,
-                max_evaluations: 20_000,
-                seed,
-                ..Default::default()
-            };
-            let mut es = Cmaes::new(fit, &vec![0.0; dim], &[0.3], &params);
-            let r = es.optimize(&sphere, 1);
-            // The constrained optimum is 10 (x_i = 1 for i < 10).
+            let r = sphere_beyond_the_bounds(seed, true);
             assert!(r.y < 11.0, "seed {seed}: {} (stop {})", r.y, r.stop);
             assert!(r.evaluations > 2000, "seed {seed}: stopped early");
         }
+    }
+
+    /// With the unrepaired `z` (`repair_z: false`, the update of 0.3.0) the
+    /// evolution path keeps reporting steps beyond the bounds that the mean
+    /// cannot make; the step size grows until the run stops (`stop_tol_upx`)
+    /// after about 1000 evaluations, 4 to 6 above the optimum. The thresholds
+    /// lie between both settings: with `true` these seeds end below 10.8
+    /// after more than 2300 evaluations.
+    #[test]
+    fn without_repair_z_the_step_size_grows_until_the_run_stops() {
+        for seed in 1..=5 {
+            let r = sphere_beyond_the_bounds(seed, false);
+            assert!(r.y > 12.5, "seed {seed}: {} (stop {})", r.y, r.stop);
+            assert!(r.evaluations < 1800, "seed {seed}: {}", r.evaluations);
+        }
+    }
+
+    #[test]
+    fn repair_z_is_on_by_default() {
+        assert!(CmaesParams::default().repair_z);
+    }
+
+    /// Runs whose samples never reach the bounds do not depend on
+    /// `repair_z`: no sample is repaired, so `repair_arz` changes nothing.
+    #[test]
+    fn repair_z_does_not_change_runs_inside_the_bounds() {
+        let run = |repair_z: bool| {
+            let mut fit = Fitness::bounded(4, 1, &[-1e3; 4], &[1e3; 4]);
+            fit.set_normalize(true);
+            let params = CmaesParams {
+                popsize: 10,
+                max_evaluations: 3000,
+                seed: 5,
+                repair_z,
+                ..Default::default()
+            };
+            let mut es = Cmaes::new(fit, &[1.0, -2.0, 0.5, 3.0], &[1e-3], &params);
+            loop {
+                let pop = es.ask();
+                assert!(es.repaired.iter().all(|&r| !r), "a sample was repaired");
+                let ys: Vec<f64> = pop.iter().map(|x| sphere(x)).collect();
+                if es.tell(&ys) != 0 {
+                    break;
+                }
+            }
+            let r = es.result();
+            let bits: Vec<u64> = r.x.iter().map(|v| v.to_bits()).collect();
+            (bits, r.y.to_bits(), r.evaluations, r.iterations, r.stop)
+        };
+        let on = run(true);
+        assert!(on.2 > 500, "the run stopped after {} evaluations", on.2);
+        assert_eq!(on, run(false));
     }
 
     #[test]
