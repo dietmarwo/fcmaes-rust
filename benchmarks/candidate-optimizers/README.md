@@ -424,8 +424,10 @@ measurement sample of `measure` (single thread; it stops early once the
 elapsed time exceeds 2,000 × 2 ms, which already decides the rule), checks
 determinism by evaluating 200 points twice (10 points for problems that the
 timing excludes), and writes `results/round3/problems.tsv` and one type table
-per problem, `results/round3/types/<problem>.json`. `survey.log` holds the
-console output of the recorded run (load average 0.76 before measuring).
+per problem, `results/round3/types/<problem>.json`. The tables of the two
+coverage problems (4,000 coordinates each, about 1 MB) are not stored;
+`survey` regenerates them. `survey.log` holds the console output of the
+recorded run (load average 0.76 before measuring).
 
 ### Outcome
 
