@@ -29,8 +29,9 @@ phase, with breaking changes called out explicitly.
   Messenger (6 of 8 seeds, final values 8.7032 against 8.7016 in the
   median) and Messenger full (5 of 7, 6.30 against 6.12). Wider tests at
   equal evaluations are pending. The change is marked `REPAIR-Z` in
-  `crates/fcmaes-core/src/cmaes.rs` and has one call site, so it can be
-  made optional. The Foundations lesson L2 (Rastrigin-10, 1,500
+  `crates/fcmaes-core/src/cmaes.rs` and is optional: `CmaesParams::repair_z`
+  (default `true`) selects it, and `repair_z: false` restores the update of
+  0.3.0 exactly (see Added). The Foundations lesson L2 (Rastrigin-10, 1,500
   evaluations, one seed) reports 7.38 for CMA-ES where it reported 35.2.
 - `Cmaes::tell_x` after an `ask` updated from the asked samples instead of
   the supplied points, because the flag that selects the supplied points
@@ -85,6 +86,20 @@ phase, with breaking changes called out explicitly.
 
 ### Added
 
+- `CmaesParams::repair_z` (default `true`) selects how active CMA-ES updates
+  from a sample that it moved into the bounds: `true` uses the `z` of the
+  evaluated point (the fix under Fixed), `false` the `z` of the unmoved
+  sample, which reproduces the results of 0.3.0 bit for bit (checked on
+  coordinated retry for Cassini1 and Messenger, single worker). It matters
+  only when samples reach the bounds, and both settings can now be compared
+  in wider tests. Python: keyword `repair_z=True` of `optimize_acma` and
+  `ACMA`. Examples: `--no-repair-z` sets it to `false` for every CMA-ES
+  that `gtop-examples` and `gtop-advexamples` build (the CMA-ES stage of
+  DE→CMA and jSO→CMA, basic and advanced retry), and for the CMA-ES stage of
+  `benchmark-gtop` and of `benchmark-biteopt-gtop` with `--algo de_cma` or
+  `jso_cma`. The `fcmaes.retry/1` job worker always uses the default
+  `true`; a payload parameter would change the job schema and is left to a
+  separate change.
 - jSO in `fcmaes-core` (`Jso`, `JsoParams`, `JsoResult`; Brest, Maučec and
   Bošković, CEC 2017): adaptive differential evolution with linear
   population size reduction, with `optimize`, `optimize_until`,
