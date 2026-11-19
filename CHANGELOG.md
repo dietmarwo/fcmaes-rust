@@ -8,6 +8,33 @@ phase, with breaking changes called out explicitly.
 
 ### Fixed
 
+- Active CMA-ES (`Cmaes`, and every sequence, retry and job-worker policy
+  built on it) updated its evolution paths and covariance from samples that
+  it had moved onto the bounds as if they had not been moved, while the mean
+  followed the moved points. On problems whose samples keep reaching the
+  bounds the step size then grew until the run stopped early with
+  `stop_tol_upx`. A moved sample now enters the update with the `z` of the
+  point that was evaluated. Examples at 110,000 evaluations: the
+  118-variable neural controller of `tutorials/neural-controller-policy-search`
+  goes from a median loss of 1.13 to 0.137 (libcmaes reached 0.148 there in
+  the eight-worker benchmark); a
+  20-variable linear function on a box stops near -19.8 where it stopped
+  near -13 (optimum -20). **Results change on every bounded problem whose
+  samples reach the bounds**; runs that stay inside the bounds, and unbounded
+  runs, are unchanged. Coordinated retry narrows the bounds around good
+  solutions and is affected: in a preliminary check on the eight GTOP
+  problems (300 retries, 7 to 8 seeds, single worker) the fixed version
+  spent 8% to 32% fewer evaluations for the same number of retries, was
+  better more often on Cassini1 and Cassini2, and worse more often on
+  Messenger (6 of 8 seeds, final values 8.7032 against 8.7016 in the
+  median) and Messenger full (5 of 7, 6.30 against 6.12). Wider tests at
+  equal evaluations are pending. The change is marked `REPAIR-Z` in
+  `crates/fcmaes-core/src/cmaes.rs` and has one call site, so it can be
+  made optional. The Foundations lesson L2 (Rastrigin-10, 1,500
+  evaluations, one seed) reports 7.38 for CMA-ES where it reported 35.2.
+- `Cmaes::tell_x` after an `ask` updated from the asked samples instead of
+  the supplied points, because the flag that selects the supplied points
+  was set after the update had run. It is now set first.
 - The ask/tell `tell` of DE (`De::tell`), active CMA-ES (`Cmaes::tell`,
   `Cmaes::tell_x`), CR-FM-NES (`Crfmnes::tell_pop`) and PGPE
   (`Pgpe::tell_pop`) did not check the batch length. Depending on the

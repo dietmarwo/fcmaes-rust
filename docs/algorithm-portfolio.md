@@ -371,6 +371,11 @@ not established.
 - **Mixed-variable screening.** Round 3 ran the candidate as a Python
   reference implementation with default parameters, compared by evaluations,
   on problems of at most 171 variables and 2 ms per evaluation.
+- **CMA-ES and the bounds.** All rounds and the eight-worker benchmark ran
+  with an active CMA-ES that updated from unrepaired samples when a sample
+  was moved onto a bound (`CHANGELOG.md` describes the correction). Their
+  numbers for CMA-ES, DE→CMA and jSO→CMA may not hold on problems whose
+  solutions lie on or near a bound.
 - **Not covered by the rounds.** Noisy objectives, more than 171 variables,
   multi-objective optimization, coordinated retry.
 - **The eight-worker benchmark.** Wall-clock results depend on hosts and
