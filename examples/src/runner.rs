@@ -6,9 +6,9 @@ use std::thread::JoinHandle;
 use std::time::{Duration, Instant};
 
 use fcmaes_core::{
-    AdvancedRetryConfig, BiteParams, Cmaes, CmaesParams, De, DeParams, Fitness, Jso, JsoParams,
-    RetryConfig, RetryContext, RetryResult, RetryRunResult, Rng, advanced_retry, optimize_bite,
-    retry,
+    AdvancedRetryConfig, BiteParams, Cmaes, CmaesParams, CrfmnesBiteParams, De, DeParams, Fitness,
+    Jso, JsoParams, RetryConfig, RetryContext, RetryResult, RetryRunResult, Rng, advanced_retry,
+    crfmnes_bite, optimize_bite, retry,
 };
 
 use crate::problems::Problem;
@@ -414,6 +414,7 @@ where
 enum Sequence {
     DeCma,
     JsoCma,
+    CrfmnesBite(CrfmnesBiteParams),
 }
 
 impl Sequence {
@@ -424,6 +425,8 @@ impl Sequence {
         match self {
             Self::DeCma => de_cma_run(objective, context),
             Self::JsoCma => jso_cma_run(objective, context),
+            Self::CrfmnesBite(params) => crfmnes_bite(objective, context, &params)
+                .expect("validated settings and bounds for independent retries"),
         }
     }
 }
@@ -435,6 +438,21 @@ pub fn run_basic(problem: &Problem, cli: &Cli) -> RetryResult {
 /// Run independent jSO→CMA restarts through the basic retry coordinator.
 pub fn run_jso_cma(problem: &Problem, cli: &Cli) -> RetryResult {
     run_basic_sequence(problem, cli, Sequence::JsoCma)
+}
+
+/// Run independent CR-FM-NES → BiteOpt sequences with the example's target.
+pub fn run_crfmnes_bite(
+    problem: &Problem,
+    cli: &Cli,
+    mut params: CrfmnesBiteParams,
+) -> Result<RetryResult, String> {
+    params.stop_fitness = cli.stop_fitness;
+    params.validate(&problem.bounds, None)?;
+    Ok(run_basic_sequence(
+        problem,
+        cli,
+        Sequence::CrfmnesBite(params),
+    ))
 }
 
 /// Basic retry with one two-stage sequence per restart.

@@ -1107,6 +1107,17 @@ The repository's canonical DE-to-CMA restart implementation is
 advanced-retry fractional standard deviations to DE's physical units, and
 uses normalized standard deviations for CMA-ES.
 
+### Random-key routing
+
+At larger retry budgets, include `crfmnes_bite` as an opt-in scalar arm.
+The [routing pilot](docs/algorithm-portfolio.md#cr-fm-nes-to-biteopt-for-routing)
+compares it with the individual optimizers and DE→BiteOpt. Use the same
+decoder and feasibility checks for all arms. Start with a 30/70 budget split,
+population 500, depth 4, and a seeded CR-FM-NES initial step size in
+`[0.05, 0.10)` in the objective's decision units. The
+[core recipe](docs/optimizers.md#staged-cr-fm-nes-and-biteopt) implements a
+hard cap and passes the best evaluated point between stages.
+
 ### Known good continuous guess
 
 Use normalized CMA-ES first. Compare against CR-FM-NES for larger dimensions.

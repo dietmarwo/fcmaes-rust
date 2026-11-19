@@ -113,6 +113,7 @@ between the two layers to avoid oversubscription.
 | General bounded scalar optimization | [`De`](https://docs.rs/fcmaes-core/latest/fcmaes_core/de/struct.De.html), [`Cmaes`](https://docs.rs/fcmaes-core/latest/fcmaes_core/cmaes/struct.Cmaes.html), or [`BiteOpt`](https://docs.rs/fcmaes-core/latest/fcmaes_core/biteopt/struct.BiteOpt.html) |
 | First stage of a sequence before CMA-ES, as an alternative to DE | [`Jso`](https://docs.rs/fcmaes-core/latest/fcmaes_core/jso/struct.Jso.html) |
 | High-dimensional or noisy search | [`Pgpe`](https://docs.rs/fcmaes-core/latest/fcmaes_core/pgpe/struct.Pgpe.html) or [`Crfmnes`](https://docs.rs/fcmaes-core/latest/fcmaes_core/crfmnes/struct.Crfmnes.html) |
+| Random-key routing with larger retry budgets | [`crfmnes_bite`](https://dietmarwo.github.io/fcmaes-rust/docs/optimizers.html#staged-cr-fm-nes-and-biteopt) |
 | Independent or adaptive restarts | [`retry`](https://docs.rs/fcmaes-core/latest/fcmaes_core/retry/index.html) |
 | Several competing objectives | [`mode`](https://docs.rs/fcmaes-core/latest/fcmaes_core/mode/index.html) and [`moretry`](https://docs.rs/fcmaes-core/latest/fcmaes_core/moretry/index.html) |
 | Audit a multi-objective front | [`indicators`](https://docs.rs/fcmaes-core/latest/fcmaes_core/indicators/index.html) |

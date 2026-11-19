@@ -428,6 +428,24 @@ stage (same 4,000/6,000 split, step sizes and seeds; `jso_cma_run` in
 `examples/src/runner.rs`). jSO stops exactly at its share; its initial
 population is uniform in the box.
 
+`--algo crfmnes_bite` runs the opt-in CR-FM-NES → DeepBiteOpt sequence.
+The defaults allocate 30% of the retry budget to CR-FM-NES, use population
+500 for both stages, and run BiteOpt at depth 4. The example below uses a
+fixed step size in the decision variables' units. Omit the sigma flag to
+draw a step size from the retry's seed.
+
+```bash
+cargo run --release -p fcmaes-examples --bin benchmark-biteopt-gtop -- \
+  --algo crfmnes_bite --problem cassini1 --runs 1 --workers 8 --retries 8 \
+  --evaluations 10000 --seed 1 --crfmnes-bite-share 0.30 \
+  --crfmnes-bite-popsize 500 --crfmnes-bite-sigma 0.075 --crfmnes-bite-depth 4
+```
+
+The [optimizer guide](optimizers.md#staged-cr-fm-nes-and-biteopt) shows how
+to use the same sequence with a custom objective. The
+[algorithm portfolio](algorithm-portfolio.md#cr-fm-nes-to-biteopt-for-routing)
+records the routing cases that motivated the option.
+
 Each table reports success rate, wall-time statistics, and the mean and
 population standard deviation of the final optimum across all runs. See the
 [native benchmark index](../benchmarks/README.md) for recorded output and

@@ -73,6 +73,10 @@ phase, with breaking changes called out explicitly.
 - jSO→CMA sequence in the examples: `jso_cma_run` and `run_jso_cma` in
   `examples/src/runner.rs`, with the budget split, step sizes and seeds of
   `de_cma_run`, and `--algo jso_cma` in `benchmark-biteopt-gtop`.
+- Opt-in CR-FM-NES → DeepBiteOpt sequence in `fcmaes-core` through
+  `crfmnes_bite` and `CrfmnesBiteParams`. It retains the best evaluated
+  point across both stages within one hard retry budget. Select it in
+  `benchmark-biteopt-gtop` with `--algo crfmnes_bite`.
 - Candidate-optimizer benchmark (`benchmarks/candidate-optimizers`): L-SHADE,
   jSO, L-SRTDE, BIPOP-aCMA-ES, AMaLGaM-IDEA and the jSO→CMA and L-SRTDE→CMA
   sequences against the core optimizers on 13 real-world problems in two

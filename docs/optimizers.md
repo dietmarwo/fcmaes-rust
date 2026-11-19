@@ -212,6 +212,51 @@ in-bound rows; `tell_pop` consumes exactly one value per row and rejects
 any other length or a call without a pending `ask_pop` (`try_tell_pop`
 returns the error instead of panicking).
 
+## Staged CR-FM-NES and BiteOpt
+
+`crfmnes_bite` composes CR-FM-NES and serial DeepBiteOpt within one
+`RetryContext`. It passes the best evaluated decision vector to BiteOpt and
+returns the best finite observation across both stages. Use `retry` to run
+the sequence independently on several workers.
+
+| `CrfmnesBiteParams` field | Default |
+|---|---|
+| `crfmnes_share` | 0.30 of each retry's evaluation cap |
+| `popsize` | 500 for both stages, rounded up to even for CR-FM-NES |
+| `sigma` | Seeded draw in `[0.05, 0.10)` in the objective's decision units |
+| `bite_depth` | 4 |
+| `stop_fitness` | Negative infinity |
+
+CR-FM-NES evaluates only whole populations that fit its share. BiteOpt gets
+every remaining call, including any remainder from that share. A small cap
+that cannot fit one CR-FM-NES population goes entirely to BiteOpt. A target
+stops CR-FM-NES after the current population and BiteOpt after the current
+evaluation. Deriving the sequence's random streams from `RetryContext::run_seed`
+makes each retry reproducible across worker counts.
+
+```rust
+use fcmaes_core::{CrfmnesBiteParams, RetryBounds, RetryConfig, crfmnes_bite, retry};
+
+let objective = |x: &[f64]| x.iter().map(|v| v * v).sum::<f64>();
+let bounds = RetryBounds::new(vec![-1.0; 4], vec![1.0; 4]).unwrap();
+let settings = CrfmnesBiteParams { popsize: 64, ..Default::default() };
+let config = RetryConfig {
+    num_retries: 8,
+    workers: 8,
+    max_evaluations: 10_000,
+    seed: 42,
+    ..Default::default()
+};
+settings.validate(&bounds, None).unwrap();
+let result = retry(&objective, &bounds, &config, |objective, context| {
+    crfmnes_bite(objective, context, &settings).unwrap()
+});
+assert!(result.evaluations <= 80_000);
+```
+
+See the [routing evidence](algorithm-portfolio.md#cr-fm-nes-to-biteopt-for-routing)
+and the [example CLI](examples.md#benchmarks).
+
 ## PGPE
 
 `Pgpe` uses mirrored sampling, ranking, and ADAM updates for the distribution
