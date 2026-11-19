@@ -73,6 +73,20 @@ phase, with breaking changes called out explicitly.
 - jSO→CMA sequence in the examples: `jso_cma_run` and `run_jso_cma` in
   `examples/src/runner.rs`, with the budget split, step sizes and seeds of
   `de_cma_run`, and `--algo jso_cma` in `benchmark-biteopt-gtop`.
+- `fcmaes.retry/1` accepts `optimizer.kind: "crfmnes_bite"`: the
+  CR-FM-NES → DeepBiteOpt sequence with a hard limit (each retry spends
+  exactly `evaluations_per_retry` unless stopped) and `inner_threads=1`.
+  New parameters `crfmnes_share` (default 0.3) and `bite_depth` (default 4)
+  apply to it alone; `population` defaults to 500, `sigma` is in the
+  normalized box like that of the other kinds and is drawn per retry when
+  absent, and a `guess` starts CR-FM-NES. A cancel or deadline stops it
+  between evaluations. The worker and the payload schema of `describe`
+  reject the other kinds' parameters for it, and `crfmnes_share` and
+  `bite_depth` for every other kind. Payloads of the other kinds validate
+  and run as before. The job tutorial runs `cassini1-crfmnes-bite.json`.
+- `fcmaes_core::crfmnes_bite_until`: the CR-FM-NES → BiteOpt sequence on
+  explicit bounds, guess, seed and budget, with a stop predicate checked
+  before every evaluation. `crfmnes_bite` calls it with its `RetryContext`.
 - Opt-in CR-FM-NES → DeepBiteOpt sequence in `fcmaes-core` through
   `crfmnes_bite` and `CrfmnesBiteParams`. It retains the best evaluated
   point across both stages within one hard retry budget. CR-FM-NES runs in

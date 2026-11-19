@@ -2,7 +2,8 @@
 //! distribution optimizers and for BiteOpt and DE, which take an initial
 //! point in fcmaes-core too; a guess of the wrong length or outside the
 //! bounds is rejected, and jSO, which draws its initial population
-//! uniformly, rejects any guess.
+//! uniformly, rejects any guess. The CR-FM-NES → BiteOpt sequence starts its
+//! first stage there.
 use fcmaes_job_worker::Adapter;
 use optimization_job_api::{
     JobSpec,
@@ -13,7 +14,7 @@ use std::fs;
 
 /// Sphere on a box whose centre (3, ..., 3) is not the optimum (the origin).
 fn payload(kind: &str, parameters: Value, guess: Option<Vec<f64>>, evaluations: u64) -> Value {
-    let mode = if kind == "biteopt" || kind == "jso" {
+    let mode = if ["biteopt", "jso", "crfmnes_bite"].contains(&kind) {
         "hard"
     } else {
         "soft"
@@ -82,6 +83,7 @@ fn a_guess_at_the_optimum_converges_within_a_small_budget() {
         ("pgpe", json!({"sigma": 0.02})),
         ("de", json!({"sigma": 0.02})),
         ("biteopt", json!({})),
+        ("crfmnes_bite", json!({"population": 8, "sigma": 0.02})),
     ] {
         let guided = bests(payload(kind, parameters.clone(), Some(origin.clone()), 300));
         let mut random_parameters = parameters.clone();
@@ -119,7 +121,7 @@ fn guesses_are_checked_and_de_resolves_its_spread() {
         let err = resolve(payload).unwrap_err();
         assert!(err.contains(message), "{message}: {err}");
     };
-    for kind in ["cmaes", "crfmnes", "pgpe", "biteopt", "de"] {
+    for kind in ["cmaes", "crfmnes", "pgpe", "biteopt", "de", "crfmnes_bite"] {
         check(
             payload(kind, json!({}), Some(vec![0.0; 7]), 100),
             "guess has 7 entries; the problem has dimension 8",

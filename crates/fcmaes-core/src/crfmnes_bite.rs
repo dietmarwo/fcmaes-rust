@@ -122,14 +122,43 @@ pub fn crfmnes_bite(
     context: &RetryContext,
     params: &CrfmnesBiteParams,
 ) -> Result<RetryRunResult, String> {
+    crfmnes_bite_until(
+        objective,
+        &context.bounds,
+        context.guess.as_deref(),
+        context.run_seed,
+        context.max_evaluations,
+        params,
+        &|| false,
+    )
+}
+
+/// [`crfmnes_bite`] on explicit inputs that stops once `stop` returns true.
+///
+/// `seed` plays the role of [`RetryContext::run_seed`]: it fixes the initial
+/// point without a `guess`, the drawn step size and both stages' streams.
+/// `stop` is checked before every evaluation. Once it fires, the run makes
+/// no further evaluation, skips BiteOpt if CR-FM-NES was running, and returns
+/// the best finite observation so far. Use it for cancellation and deadlines.
+///
+/// # Errors
+///
+/// As [`crfmnes_bite`].
+pub fn crfmnes_bite_until(
+    objective: &impl Objective,
+    bounds: &RetryBounds,
+    guess: Option<&[f64]>,
+    seed: u64,
+    max_evaluations: u64,
+    params: &CrfmnesBiteParams,
+    stop: &dyn Fn() -> bool,
+) -> Result<RetryRunResult, String> {
     if objective.nobj() != 1 {
         return Err("CR-FM-NES → BiteOpt requires a scalar objective".into());
     }
-    let bounds = &context.bounds;
-    let guess = context.guess.as_deref();
     params.validate(bounds, guess)?;
     let mut fit = Fitness::bounded(bounds.dim(), 1, bounds.lower(), bounds.upper());
-    let mut rng = Rng::new(context.run_seed);
+    let mut rng = Rng::new(seed);
     let initial = match guess {
         Some(point) => fit.closest_feasible(point),
         None => fit.sample(&mut rng),
@@ -167,9 +196,9 @@ pub fn crfmnes_bite(
     };
 
     let population = params.popsize + params.popsize % 2;
-    let first_cap = ((context.max_evaluations as f64 * params.crfmnes_share) as u64)
-        .min(context.max_evaluations);
+    let first_cap = ((max_evaluations as f64 * params.crfmnes_share) as u64).min(max_evaluations);
     let generations = first_cap / population as u64;
+    let mut stopped = false;
     if generations > 0 {
         let mut nes = Crfmnes::new(
             fit,
@@ -191,14 +220,17 @@ pub fn crfmnes_bite(
             {
                 break;
             }
-            let values = points
-                .iter()
-                .map(|point| {
-                    let y = observe(point);
-                    if y.is_finite() { y } else { NAN_REPLACEMENT }
-                })
-                .collect::<Vec<_>>();
-            if reached_target() || nes.tell_pop(&values) != 0 {
+            let mut values = Vec::with_capacity(points.len());
+            for point in &points {
+                if stop() {
+                    stopped = true;
+                    break;
+                }
+                let y = observe(point);
+                values.push(if y.is_finite() { y } else { NAN_REPLACEMENT });
+            }
+            // A stopped population is not told: no stage runs after it.
+            if stopped || reached_target() || nes.tell_pop(&values) != 0 {
                 break;
             }
         }
@@ -206,9 +238,9 @@ pub fn crfmnes_bite(
 
     let (remaining, start) = {
         let best = lock_best();
-        (context.max_evaluations - best.evaluations, best.x.clone())
+        (max_evaluations - best.evaluations, best.x.clone())
     };
-    if remaining > 0 && !reached_target() {
+    if !stopped && remaining > 0 && !reached_target() {
         let mut bite = DeepBiteOpt::new(
             bounds.lower(),
             bounds.upper(),
@@ -221,7 +253,7 @@ pub fn crfmnes_bite(
             },
             params.bite_depth,
         );
-        bite.optimize_until(&observe, &reached_target);
+        bite.optimize_until(&observe, &|| reached_target() || stop());
     }
     Ok(best.into_inner().unwrap_or_else(PoisonError::into_inner))
 }
@@ -354,6 +386,37 @@ mod tests {
             records
         };
         assert_eq!(run(1), run(4));
+    }
+
+    #[test]
+    fn a_stop_ends_the_run_before_the_next_evaluation() {
+        use std::sync::atomic::{AtomicU64, Ordering};
+        let bounds = RetryBounds::new(vec![0.0; 2], vec![1.0; 2]).unwrap();
+        let params = CrfmnesBiteParams {
+            popsize: 8,
+            ..Default::default()
+        };
+        // 100 calls: three CR-FM-NES populations (24 calls), then BiteOpt.
+        for limit in [0, 5, 20, 24, 30, 60, 100] {
+            let calls = AtomicU64::new(0);
+            let run = crfmnes_bite_until(
+                &|x: &[f64]| {
+                    calls.fetch_add(1, Ordering::Relaxed);
+                    x.iter().sum()
+                },
+                &bounds,
+                None,
+                3,
+                100,
+                &params,
+                &|| calls.load(Ordering::Relaxed) >= limit,
+            )
+            .unwrap();
+            assert_eq!(run.evaluations, limit, "stop after {limit}");
+            assert_eq!(calls.load(Ordering::Relaxed), limit);
+            assert_eq!(run.y.is_finite(), limit > 0);
+            assert!(run.x.iter().all(|x| (0.0..=1.0).contains(x)));
+        }
     }
 
     /// One retry starting at the center of the box.

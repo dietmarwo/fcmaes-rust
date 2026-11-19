@@ -1,8 +1,8 @@
 //! fcmaes adapters for the common job protocol (`optimization.job/0.1`).
 //!
 //! - `fcmaes.retry/1`: independent BiteOpt, DE, jSO, CMA-ES (optionally with
-//!   IPOP or BIPOP restarts), CR-FM-NES or PGPE retries on registered scalar
-//!   models;
+//!   IPOP or BIPOP restarts), CR-FM-NES, PGPE or CR-FM-NES → BiteOpt retries
+//!   on registered scalar models;
 //! - `fcmaes.mode/1`: independent MODE runs on registered multi-objective
 //!   models, each returning a re-evaluated non-dominated set;
 //! - `fcmaes.map-elites/1`: independent MAP-Elites runs on registered
@@ -194,7 +194,7 @@ impl Worker for Adapter {
             MAX_INNER_THREADS,
         );
         d["resources"]["inner_threads"] = json!(
-            "population evaluation threads per task for jso, cmaes, crfmnes, pgpe, mode, map_elites, and biteopt and de with optimizer.parameters.batch (results do not depend on their number); 1 for serial biteopt and de and for fcmaes.evaluate/1"
+            "population evaluation threads per task for jso, cmaes, crfmnes, pgpe, mode, map_elites, and biteopt and de with optimizer.parameters.batch (results do not depend on their number); 1 for serial biteopt and de, for crfmnes_bite and for fcmaes.evaluate/1"
         );
         d["inputs"] = json!(
             "files a registered model reads, by name, checked against their SHA-256; a job may name only inputs its model reads"

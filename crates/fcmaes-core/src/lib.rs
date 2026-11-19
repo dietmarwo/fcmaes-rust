@@ -31,7 +31,7 @@ pub use biteopt::{
 };
 pub use cmaes::{AcmaResult, Cmaes, CmaesParams};
 pub use crfmnes::{Crfmnes, CrfmnesParams, CrfmnesResult};
-pub use crfmnes_bite::{CrfmnesBiteParams, crfmnes_bite};
+pub use crfmnes_bite::{CrfmnesBiteParams, crfmnes_bite, crfmnes_bite_until};
 pub use da::{DaParams, DaResult, optimize_da};
 pub use de::{De, DeParams, DeResult};
 pub use fitness::{Fitness, NAN_REPLACEMENT, Objective, parallel_batch};
