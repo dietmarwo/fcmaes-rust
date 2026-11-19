@@ -182,3 +182,17 @@ before any run of ROUND4.md. No result of the test existed.
    results of the order 4e8. A marginally infeasible design with a smaller
    penalty is counted as feasible. The count is informational and does not
    enter the decision.
+6. **Restart on the corrected CMA-ES.** The first start of this round ran
+   the early stage, the one-run shape of stage 1 and 53 core rows of the
+   eight-run shape on the core as it was before active CMA-ES was corrected
+   for samples moved onto the bounds (`REPAIR-Z` in
+   `crates/fcmaes-core/src/cmaes.rs`). That correction changes the arms
+   `cma`, `de_cma` and `jso_cma`; BiteOpt, DE, CR-FM-NES, Dual Annealing and
+   ARRDE do not use the changed code. On the maintainer's instruction the
+   round is restarted from the beginning on the corrected core, with the
+   declared seeds, budgets, arms and decision rule unchanged. The rows of
+   the first start are kept in `results/round4/before-cma-fix/` and do not
+   enter the decision. No decision had been computed from them; their
+   one-run medians had been looked at (jSO→CMA 453, ARRDE 481, DE→CMA 543,
+   BiteOpt 560). Arms that do not use the changed code must reproduce
+   their first-start rows exactly; the report states whether they do.
