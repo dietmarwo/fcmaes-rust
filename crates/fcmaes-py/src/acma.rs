@@ -54,6 +54,7 @@ fn make_params(
     popsize: i32,
     accuracy: f64,
     update_gap: i32,
+    repair_z: bool,
 ) -> CmaesParams {
     CmaesParams {
         popsize,
@@ -65,6 +66,7 @@ fn make_params(
         update_gap,
         seed,
         runid,
+        repair_z,
     }
 }
 
@@ -79,6 +81,11 @@ fn make_params(
 /// Candidate evaluation can use ``workers`` native threads, but Python
 /// callbacks still reacquire the GIL. ``batch_fun`` and ``delayed_update`` are
 /// currently accepted for API compatibility and do not change evaluation.
+///
+/// ``repair_z`` selects how a sample that was moved into the bounds enters the
+/// update: ``True`` (the default) uses the ``z`` of the evaluated point,
+/// ``False`` the ``z`` of the unmoved sample, which reproduces fcmaes-rust
+/// 0.3.0. It changes results only when samples reach the bounds.
 ///
 /// Returns ``(x, fun, evaluations, iterations, stop)``.
 ///
@@ -101,7 +108,7 @@ fn make_params(
 #[pyo3(signature = (fun, batch_fun, guess, lower, upper, sigma, *, seed, runid=0,
     max_evaluations=100000, stop_fitness=f64::NEG_INFINITY, stop_hist=-1.0, mu=0,
     popsize=31, accuracy=1.0, normalize=true, delayed_update=true, update_gap=-1,
-    workers=1))]
+    workers=1, repair_z=true))]
 pub fn optimize_acma<'py>(
     py: Python<'py>,
     fun: Py<PyAny>,
@@ -122,6 +129,7 @@ pub fn optimize_acma<'py>(
     delayed_update: bool,
     update_gap: i32,
     workers: i32,
+    repair_z: bool,
 ) -> PyResult<Bound<'py, PyTuple>> {
     let _ = (batch_fun, delayed_update); // accepted for API compatibility
     let guess = slice_or_vec(&guess);
@@ -142,6 +150,7 @@ pub fn optimize_acma<'py>(
         popsize,
         accuracy,
         update_gap,
+        repair_z,
     );
     let obj = PyObjective::new(fun);
 
@@ -157,6 +166,12 @@ pub fn optimize_acma<'py>(
 /// Construct the search distribution from ``guess`` and ``sigma``, then
 /// alternate :meth:`ask` with :meth:`tell` or :meth:`tell_x`. Bounds may be
 /// empty for an unbounded search.
+///
+/// ``repair_z`` selects how a sample of :meth:`ask` that was moved into the
+/// bounds enters the update: ``True`` (the default) uses the ``z`` of the
+/// evaluated point, ``False`` the ``z`` of the unmoved sample, which
+/// reproduces fcmaes-rust 0.3.0. It changes results only when samples reach
+/// the bounds; :meth:`tell_x` does not depend on it.
 ///
 /// Raises ``ValueError`` if ``lower`` and ``upper`` do not have one entry per
 /// element of ``guess`` (both may be empty for an unbounded search) or do not
@@ -182,7 +197,7 @@ impl ACMA {
     #[pyo3(signature = (guess, lower, upper, sigma, *, max_evaluations=100000,
         stop_fitness=f64::NEG_INFINITY, stop_hist=-1.0, mu=0, popsize=31,
         accuracy=1.0, seed, runid=0, normalize=true, delayed_update=true,
-        update_gap=-1))]
+        update_gap=-1, repair_z=true))]
     fn new(
         guess: F64Vec<'_>,
         lower: F64Vec<'_>,
@@ -199,6 +214,7 @@ impl ACMA {
         normalize: bool,
         delayed_update: bool,
         update_gap: i32,
+        repair_z: bool,
     ) -> PyResult<Self> {
         let _ = delayed_update;
         let guess = slice_or_vec(&guess);
@@ -218,6 +234,7 @@ impl ACMA {
             popsize,
             accuracy,
             update_gap,
+            repair_z,
         );
         Ok(ACMA {
             inner: Cmaes::new(fitness, &guess, &sigma, &params),
