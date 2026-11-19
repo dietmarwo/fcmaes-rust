@@ -322,6 +322,7 @@ def main():
     print(f"stage 1: ARRDE arm {name(best_arrde1)} median "
           f"{fmt(statistics.median(arrde1[best_arrde1]))}, best core arm {name(best_core1)} "
           f"median {fmt(statistics.median(core1[best_core1]))}, p {p1:.4g}")
+    print("stage2-arms: " + " ".join(name(a) for a in s2_arms))
     print("outcome: " + outcome)
 
 
