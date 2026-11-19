@@ -74,6 +74,14 @@ phase, with breaking changes called out explicitly.
   jobs (`jobs progress`), which experiment-craft uses to prune adaptive
   trials, and guide entries; the job envelope, the worker protocol and the
   result contract are unchanged.
+- `docs/repositories.md` covers 20 repositories: BO-craft (Bayesian
+  optimization proposals for experiment-craft campaigns) as entry 7, with a
+  "Where to start" row, and inlet-craft (aerosol inlet and sampling-line
+  design) as entry 20 under Applications. The later entries are renumbered,
+  so their anchors change (for example `#9-crn-craft` is now
+  `#10-crn-craft`). Both are in the relationship diagram
+  (`docs/images/repositories.dot`, SVG regenerated with Graphviz 2.43.0);
+  the README, the documentation map and the learning paths count 20.
 
 ### Added
 

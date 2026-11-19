@@ -4,7 +4,7 @@
 
 # fcmaes-rust
 
-> **One of 18 related repositories.** The [repository overview](docs/repositories.md) shows what each one does and how they connect.
+> **One of 20 related repositories.** The [repository overview](docs/repositories.md) shows what each one does and how they connect.
 
 **Choosing an optimization tool?** Start with the
 [shared solver-selection and agent guide](https://github.com/dietmarwo/optimization-jobs/blob/main/ai-context.md) or the

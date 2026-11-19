@@ -1,9 +1,10 @@
 # Recent GitHub repositories of dietmarwo
 
-This overview covers 18 public repositories (forks excluded): the 16 with
+This overview covers 20 public repositories (forks excluded): the 18 with
 default-branch commits since 1 August 2026 and two earlier split-brain
 research projects from April 2026. Status: 6 November 2026; the CRN-craft
-and population-epidemiology entries as of 8 November 2026.
+and population-epidemiology entries as of 8 November 2026, the BO-craft and
+inlet-craft entries as of 19 November 2026.
 
 Together they connect Python and Rust optimizers, durable job execution,
 experiment campaigns, simulators and bounded domain models. Native
@@ -20,12 +21,12 @@ optimization-jobs.
 | Group | Repositories |
 |---|---|
 | 1. Optimizers | [fast-cma-es](#1-fast-cma-es), [fcmaes-rust](#2-fcmaes-rust), [LP-IP-craft](#3-lp-ip-craft), [SQP-craft](#4-sqp-craft) |
-| 2. Running optimization for agents | [optimization-jobs](#5-optimization-jobs), [experiment-craft](#6-experiment-craft) |
-| 3. Split-brain research loops | [autoresearch-trading](#7-autoresearch-trading), [autoresearch-circuit](#8-autoresearch-circuit) |
-| 4. Simulators | [CRN-craft](#9-crn-craft), [CFD-craft](#10-cfd-craft) |
-| 5. Astrodynamics | [pykep-core-rust](#11-pykep-core-rust), [pykep-lambert](#12-pykep-lambert) |
+| 2. Running optimization for agents | [optimization-jobs](#5-optimization-jobs), [experiment-craft](#6-experiment-craft), [BO-craft](#7-bo-craft) |
+| 3. Split-brain research loops | [autoresearch-trading](#8-autoresearch-trading), [autoresearch-circuit](#9-autoresearch-circuit) |
+| 4. Simulators | [CRN-craft](#10-crn-craft), [CFD-craft](#11-cfd-craft) |
+| 5. Astrodynamics | [pykep-core-rust](#12-pykep-core-rust), [pykep-lambert](#13-pykep-lambert) |
 | 6. Domain evaluators | [thermo-craft, hydro-craft, robotics-control-craft, rail-craft, population-epidemiology](#6-domain-evaluators) |
-| 7. Application | [budel-craft](#18-budel-craft) |
+| 7. Applications | [budel-craft](#19-budel-craft), [inlet-craft](#20-inlet-craft) |
 
 ## Where to start
 
@@ -38,6 +39,7 @@ optimization-jobs.
 | A larger smooth constrained model with small overlapping cliques | [SQP-craft structured mode](#4-sqp-craft), experimental, from 0.18.0 |
 | Solver runs that must be durable, or an AI agent that drives them over MCP | [optimization-jobs](#5-optimization-jobs) |
 | Parameter sweeps or solver comparisons with reports | [experiment-craft](#6-experiment-craft) |
+| Expensive experiments that are noisy, mixed-integer or categorical, constrained or multi-objective | [BO-craft](#7-bo-craft), experimental, inside experiment-craft campaigns |
 
 ### By reader
 
@@ -99,7 +101,8 @@ original.
 
 **Relations:** the job worker depends on the optimization-jobs crates.
 CRN-craft and CFD-craft build their optional workers on it. budel-craft,
-pykep-lambert and the pykep-core-rust gym benchmark use `fcmaes-core`. The
+pykep-lambert and the pykep-core-rust gym benchmark use `fcmaes-core`, and
+inlet-craft vendors a source snapshot of it. The
 two GTOC1 tutorials use `pykep-core` 0.1.5. The oscillator-topology-search
 tutorial is a Rust port and extension of autoresearch-circuit, and the
 GTOC1 route search applies the same split-brain pattern to planet orders.
@@ -158,7 +161,8 @@ the ecosystem page. Version 0.4.0; the solver repositories pin it by Git
 revision.
 
 **Relations:** fcmaes-rust, LP-IP-craft and SQP-craft provide job workers
-built on its API. experiment-craft drives it through the command line,
+built on its API, and inlet-craft's worker uses a vendored copy of its
+`optimization-job-api` crate. experiment-craft drives it through the command line,
 budel-craft runs as a trusted command job, and CRN-craft and CFD-craft are
 listed as simulation models.
 
@@ -176,7 +180,31 @@ and reports. Local acceptance uses the real runner and three real Rust
 workers; automatic placement and real-host commissioning are still gated.
 
 **Relations:** runs entirely through the optimization-jobs command line
-and its solver workers.
+and its solver workers. Its adaptive campaigns import BO-craft, an optional
+dependency, for their proposals.
+
+### 7. BO-craft
+
+**Bayesian optimization proposals for expensive experiments.**
+[github.com/dietmarwo/BO-craft](https://github.com/dietmarwo/BO-craft)
+
+A Python package (`bo-craft` 0.1.0, an experimental source release, not on
+PyPI) that proposes typed trials for expensive experiments with noise,
+integer, categorical or conditional parameters, black-box constraints or
+several objectives. BoTorch supplies the Gaussian-process models, Optuna
+supplies TPE for mixed and conditional spaces and a GP sampler for
+unconditional ones, and an optional Vizier adapter keeps one study per
+campaign. The caller executes the candidates and returns typed
+observations; recommendations are labelled as best observed, model-ranked
+or posterior predictions. Its median pruning rule supports experiment-craft's
+opt-in live pruning. An experimental scalar multifidelity knowledge gradient
+lost clearly to target-fidelity BO at equal cost.
+
+**Relations:** experiment-craft's adaptive campaigns call it and own trial
+IDs, budgets and continuation; optimization-jobs executes the trials.
+fcmaes-rust's native surrogate profile remains the lightweight baseline for
+deterministic continuous boxes, where it reached far lower regret than
+BoTorch at a fraction of the proposal time. BO-craft does not depend on it.
 
 ## 3. Split-brain research loops
 
@@ -187,7 +215,7 @@ is scored. This reduces the dependence on arbitrary parameter guesses;
 comparisons still depend on the search budget, seeds, simulation fidelity
 and validation design.
 
-### 7. autoresearch-trading
+### 8. autoresearch-trading
 
 **LLM-designed trading strategies with fcmaes parameter tuning.**
 [github.com/dietmarwo/autoresearch-trading](https://github.com/dietmarwo/autoresearch-trading)
@@ -205,7 +233,7 @@ results of several models. Python package 0.1.4, MIT license.
 **Relations:** the first split-brain project. It uses the Python `fcmaes`
 package from fast-cma-es, and autoresearch-circuit is its sister project.
 
-### 8. autoresearch-circuit
+### 9. autoresearch-circuit
 
 **Split-brain design of stochastic biochemical circuits.**
 [github.com/dietmarwo/autoresearch-circuit](https://github.com/dietmarwo/autoresearch-circuit)
@@ -225,7 +253,7 @@ compares itself with GillesPy2.
 
 ## 4. Simulators
 
-### 9. CRN-craft
+### 10. CRN-craft
 
 **Chemical reaction network simulation in native Rust.**
 [github.com/dietmarwo/CRN-craft](https://github.com/dietmarwo/CRN-craft)
@@ -248,7 +276,7 @@ worker, and the optional `fit` extra installs fcmaes-rust and sqp-craft.
 population-epidemiology depends on the `crn-craft` crate. Listed as a simulation model on
 the optimization-jobs page.
 
-### 10. CFD-craft
+### 11. CFD-craft
 
 **CFD experiment and validation workbench.**
 [github.com/dietmarwo/CFD-craft](https://github.com/dietmarwo/CFD-craft)
@@ -266,7 +294,7 @@ the optimization-jobs page.
 
 ## 5. Astrodynamics
 
-### 11. pykep-core-rust
+### 12. pykep-core-rust
 
 **Pure-Rust astrodynamics ported from ESA's pykep 3.**
 [github.com/dietmarwo/pykep-core-rust](https://github.com/dietmarwo/pykep-core-rust)
@@ -283,7 +311,7 @@ programmers and benchmarks against PyKEP and heyoka.
 **Relations:** fcmaes-rust's GTOC1 tutorials use `pykep-core`, and its gym
 benchmark tool uses `fcmaes-core`. pykep-lambert consumes it.
 
-### 12. pykep-lambert
+### 13. pykep-lambert
 
 **Fast Lambert transfer tables for the ESA SpOC 4 competition.**
 [github.com/dietmarwo/pykep-lambert](https://github.com/dietmarwo/pykep-lambert)
@@ -308,11 +336,11 @@ repository's `packages/` folder and are not on PyPI.
 
 | # | Repository | Domain | Model |
 |---|---|---|---|
-| 13 | [thermo-craft](https://github.com/dietmarwo/thermo-craft) | Thermodynamics | IAPWS-IF97 water and steam properties (regions 1, 2 and 4); a fixed steam Rankine cycle, simple or with two open feedwater heaters |
-| 14 | [hydro-craft](https://github.com/dietmarwo/hydro-craft) | Hydrology | Synthetic HBV-style daily catchment and a one-reservoir release rule |
-| 15 | [robotics-control-craft](https://github.com/dietmarwo/robotics-control-craft) | Control | Mass–spring–damper with held-force schedules and sampled saturated PD controllers |
-| 16 | [rail-craft](https://github.com/dietmarwo/rail-craft) | Rail operations | Dispatch policies on synthetic fixed-route corridors with blocking, clearance and entry closures |
-| 17 | [population-epidemiology](https://github.com/dietmarwo/population-epidemiology) | Epidemiology | Fixed-population SIR via finite state projection, neutral Moran drift and two-state rate calendars |
+| 14 | [thermo-craft](https://github.com/dietmarwo/thermo-craft) | Thermodynamics | IAPWS-IF97 water and steam properties (regions 1, 2 and 4); a fixed steam Rankine cycle, simple or with two open feedwater heaters |
+| 15 | [hydro-craft](https://github.com/dietmarwo/hydro-craft) | Hydrology | Synthetic HBV-style daily catchment and a one-reservoir release rule |
+| 16 | [robotics-control-craft](https://github.com/dietmarwo/robotics-control-craft) | Control | Mass–spring–damper with held-force schedules and sampled saturated PD controllers |
+| 17 | [rail-craft](https://github.com/dietmarwo/rail-craft) | Rail operations | Dispatch policies on synthetic fixed-route corridors with blocking, clearance and entry closures |
+| 18 | [population-epidemiology](https://github.com/dietmarwo/population-epidemiology) | Epidemiology | Fixed-population SIR via finite state projection, neutral Moran drift and two-state rate calendars |
 
 **Relations:** their optimization examples use the Python `fcmaes` package
 from fast-cma-es. hydro-craft grew out of the fast-cma-es Water/HBV
@@ -323,9 +351,9 @@ no dedicated optimization-jobs workers. The executed
 wraps evaluation, optimization and a checked campaign; thermo-craft runs
 through the same shared driver.
 
-## 7. Application
+## 7. Applications
 
-### 18. budel-craft
+### 19. budel-craft
 
 **2D irregular nesting.**
 [github.com/dietmarwo/budel-craft](https://github.com/dietmarwo/budel-craft)
@@ -337,6 +365,26 @@ optional or mandatory stock, and exports placement JSON (0.2.0).
 BiteOpt, random search) and an experimental DE neighborhood operator,
 based on `fcmaes-core` 0.1.3. It runs as a trusted command job through the
 `optimization-run` command line, exercised with optimization-runner 0.4.0.
+
+### 20. inlet-craft
+
+**Aerosol inlet and sampling-line design for a moving platform.**
+[github.com/dietmarwo/inlet-craft](https://github.com/dietmarwo/inlet-craft)
+
+A native Rust library and command line for an aerosol inlet, sampling line,
+mixing volume and sensor on a moving platform such as a bicycle. It
+evaluates published correlations with SI inputs and explicit validity
+diagnostics: aspiration, transport losses per element and mechanism, PM
+mass bias, response time and distance. It sweeps riding-speed and crosswind
+scenarios and searches designs with DE (scalar) or MODE (Pareto front).
+Python bindings build locally with maturin. Version 0.1.0 is a provisional
+source candidate: software verification is included, but the evidence gates
+against the original sources and an independent comparison are incomplete,
+no on-bike validation is claimed, and nothing is tagged or published.
+
+**Relations:** vendors pinned source snapshots of `fcmaes-core` 0.2.1 for
+its design search and of `optimization-job-api` 0.4.0 for
+`inlet-craft-worker`, which runs a study as an optimization-jobs task.
 
 ## Not included
 
