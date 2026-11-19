@@ -5,19 +5,24 @@ Runs `cmaes.CatCMAwM` (the authors' reference implementation, pinned below,
 default parameters) on the round-3 problems under protocol T and appends rows
 with solver name `catcmawm` to the raw file of the Rust runner, in the same
 format and with the same resume key (ROUND3.md sections 2, 4 and 5;
-DEVIATIONS.md, round 3).
+DEVIATIONS.md, round 3). `--problems round3b` selects the second batch
+(ROUND3B.md) with the same settings; its type tables are in
+`results/round3b/types/`.
 
 Subcommands:
 
     python3 run_catcmawm.py run --out results/round3/raw.tsv [--reps 20]
-        [--problems round3|a,b] [--totals 2000,20000] [--root-seed 3]
+        [--problems round3|round3b|a,b] [--totals 2000,20000] [--root-seed 3]
         [--min-run 100] [--workers 1] [--harness PATH]
-    python3 run_catcmawm.py verify [--vectors 1000] [--typed 200]
-    python3 run_catcmawm.py spaces
+    python3 run_catcmawm.py verify [--problems round3|round3b|a,b]
+        [--vectors 1000] [--typed 200]
+    python3 run_catcmawm.py spaces [--problems round3|round3b|a,b]
 
 How it works:
 
-- Variable spaces come from `results/round3/types/<problem>.json`:
+- Variable spaces come from `results/round3/types/<problem>.json`
+  (`results/round3b/types/` for the round-3b problems, unless `--types`
+  names a directory):
   continuous coordinates become `x_space` bounds, integer coordinates
   `z_space` rows with the integer values the decoder computes (`values`),
   categorical coordinates `c_space` category counts.
@@ -83,11 +88,14 @@ CMAES_VERSION = "0.13.1"
 SOLVER = "catcmawm"
 HERE = Path(__file__).resolve().parent
 TYPES_DIR = HERE / "results" / "round3" / "types"
+TYPES_DIR_3B = HERE / "results" / "round3b" / "types"
 
 # Round-3 sets and declared settings (ROUND3.md section 5; DEVIATIONS.md,
 # round 3). They mirror `harness/src/round3.rs`.
 PROBLEMS = ["truss_sizing", "phased_array", "field_service", "jobshop",
             "uav_assignment", "material_flow"]
+# Round 3, second batch (ROUND3B.md); mirrors `harness/src/round3b.rs`.
+PROBLEMS_3B = ["welded_beam_mixed", "cantilever_mixed", "pest_control"]
 TOTALS = [2_000, 20_000]
 MIN_RUN = 100
 ROOT_SEED = 3
@@ -382,7 +390,12 @@ class TypedSpace:
 
     @classmethod
     def load(cls, problem: str, info: dict | None = None,
-             types_dir: Path = TYPES_DIR) -> "TypedSpace":
+             types_dir: Path | None = None) -> "TypedSpace":
+        """Type table of `problem` from `types_dir`, by default
+        `results/round3b/types/` for a round-3b problem and
+        `results/round3/types/` otherwise."""
+        if types_dir is None:
+            types_dir = default_types_dir(problem)
         with open(types_dir / f"{problem}.json") as handle:
             return cls(json.load(handle), info)
 
@@ -443,6 +456,16 @@ class TypedSpace:
     def discrete_order(self) -> list[int]:
         """Coordinate indices in the order of `to_real`'s chosen levels."""
         return self.integer + self.categorical
+
+
+def default_types_dir(problem: str) -> Path:
+    """Type-table directory of a problem: round 3b or round 3."""
+    return TYPES_DIR_3B if problem in PROBLEMS_3B else TYPES_DIR
+
+
+def types_override(value: str | None) -> Path | None:
+    """`--types`: a directory for all problems, or None for the defaults."""
+    return None if value is None else Path(value)
 
 
 # -------------------------------------------------------------------- guard
@@ -670,10 +693,10 @@ def detail_path(out: Path) -> Path:
 _WORKER: dict = {}
 
 
-def _worker_init(harness: str, types_dir: str):
+def _worker_init(harness: str, types_dir: str | None):
     _WORKER["class"] = check_cmaes()
     _WORKER["serve"] = Serve(harness)
-    _WORKER["types_dir"] = Path(types_dir)
+    _WORKER["types_dir"] = types_override(types_dir)
     _WORKER["spaces"] = {}
 
 
@@ -716,7 +739,12 @@ def expand_problems(value: str) -> list[str]:
     for name in (v.strip() for v in value.split(",")):
         if not name:
             continue
-        names.extend(PROBLEMS if name == "round3" else [name])
+        if name == "round3":
+            names.extend(PROBLEMS)
+        elif name == "round3b":
+            names.extend(PROBLEMS_3B)
+        else:
+            names.append(name)
     if len(set(names)) != len(names):
         raise DriverError("duplicate problem")
     return names
@@ -783,7 +811,7 @@ def command_run(args) -> int:
 
         harness = args.harness or default_harness()
         if args.workers == 1:
-            _worker_init(harness, str(args.types))
+            _worker_init(harness, args.types)
             try:
                 for task in tasks:
                     record(_worker_task(task))
@@ -792,7 +820,7 @@ def command_run(args) -> int:
         else:
             context = multiprocessing.get_context("spawn")
             with context.Pool(args.workers, initializer=_worker_init,
-                              initargs=(harness, str(args.types))) as pool:
+                              initargs=(harness, args.types)) as pool:
                 for item in pool.imap_unordered(_worker_task, tasks, chunksize=1):
                     record(item)
     print(f"wrote {written} rows to {out}")
@@ -805,7 +833,7 @@ def command_spaces(args) -> int:
     try:
         print("problem\tD\tcontinuous\tinteger\tcategorical\tpopsize")
         for problem in expand_problems(args.problems):
-            space = TypedSpace.load(problem, serve.info(problem), Path(args.types))
+            space = TypedSpace.load(problem, serve.info(problem), types_override(args.types))
             optimizer = optimizer_class(seed=0, **space.constructor_arguments())
             if optimizer.population_size != space.default_popsize():
                 raise DriverError(f"{problem}: population {optimizer.population_size}")
@@ -831,7 +859,7 @@ def random_typed_solution(space: TypedSpace, optimizer_class, rng):
 
 
 def verify_bridge(harness: str, problems: list[str], vectors: int, typed: int,
-                  types_dir: Path = TYPES_DIR, verbose: bool = True) -> list[str]:
+                  types_dir: Path | None = None, verbose: bool = True) -> list[str]:
     """Bridge checks; returns the failures (empty when exact).
 
     1. `vectors` uniform random real vectors per problem (plus the two box
@@ -889,7 +917,7 @@ def verify_bridge(harness: str, problems: list[str], vectors: int, typed: int,
 def command_verify(args) -> int:
     failures = verify_bridge(args.harness or default_harness(),
                              expand_problems(args.problems), args.vectors, args.typed,
-                             Path(args.types))
+                             types_override(args.types))
     if failures:
         for failure in failures:
             print(f"FAILED {failure}", file=sys.stderr)
@@ -904,11 +932,13 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     for name in ("run", "verify", "spaces"):
         p = sub.add_parser(name)
         p.add_argument("--problems", default="round3",
-                       help="round3 (default) or a comma-separated list")
+                       help="round3 (default), round3b or a comma-separated list")
         p.add_argument("--harness", default=None,
                        help="candidate-harness binary (default $CARGO_TARGET_DIR/release/"
                             "candidate-harness, else target/release/candidate-harness)")
-        p.add_argument("--types", default=str(TYPES_DIR), help="type-table directory")
+        p.add_argument("--types", default=None,
+                       help="type-table directory (default results/round3/types, "
+                            "results/round3b/types for the round-3b problems)")
         if name == "run":
             p.add_argument("--out", required=True, help="raw TSV shared with the Rust runner")
             p.add_argument("--totals", default=",".join(map(str, TOTALS)))

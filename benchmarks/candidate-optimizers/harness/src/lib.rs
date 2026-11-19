@@ -15,6 +15,8 @@
 //!   formats;
 //! - [`round3`]: the round-3 problems, type tables, decoder probes and
 //!   campaign sets;
+//! - [`round3b`]: the second round-3 batch (`ROUND3B.md`): welded beam,
+//!   cantilever beam and pest control, with type tables and decoders;
 //! - [`serve`]: the line protocol through which the round-3 candidate driver
 //!   evaluates the harness objectives.
 
@@ -25,6 +27,7 @@ pub mod campaign;
 pub mod examples;
 pub mod problems;
 pub mod round3;
+pub mod round3b;
 pub mod seeds;
 pub mod serve;
 pub mod solvers;

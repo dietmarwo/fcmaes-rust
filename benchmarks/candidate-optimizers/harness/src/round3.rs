@@ -232,7 +232,12 @@ fn json_string(text: &str) -> String {
     out
 }
 
-fn continuous(index: usize, lower: f64, upper: f64, meaning: impl Into<String>) -> Coordinate {
+pub(crate) fn continuous(
+    index: usize,
+    lower: f64,
+    upper: f64,
+    meaning: impl Into<String>,
+) -> Coordinate {
     Coordinate {
         index,
         kind: Kind::Continuous,
@@ -246,7 +251,7 @@ fn continuous(index: usize, lower: f64, upper: f64, meaning: impl Into<String>) 
 /// `count` equal-width bins of the unit interval (the `floor(u · count)`
 /// decoders), with integer values `first, first + 1, ...` when `kind` is
 /// integer.
-fn equal_bins(
+pub(crate) fn equal_bins(
     index: usize,
     kind: Kind,
     count: usize,

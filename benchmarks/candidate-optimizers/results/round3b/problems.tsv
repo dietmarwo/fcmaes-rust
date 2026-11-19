@@ -1,0 +1,4 @@
+problem	domain	dim	continuous	integer	categorical	mean_eval_us	timed_points	deterministic	de_mask	entered	reason
+welded_beam_mixed	structures	6	1	4	1	0.055	2000	yes	no	yes	verified definition, deterministic, categorical coordinate
+cantilever_mixed	structures	3	2	0	1	0.021	2000	yes	no	yes	verified definition, deterministic, categorical coordinate
+pest_control	agriculture	25	0	0	25	1.377	2000	yes	no	yes	verified definition, deterministic, categorical coordinate

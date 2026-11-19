@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
-"""Tests of the round-3 candidate driver `run_catcmawm.py` and of
-`analyze.py --round 3`.
+"""Tests of the round-3 candidate driver `run_catcmawm.py`, of
+`analyze.py --round 3`, `--round 3b` and `--round 3u`, and of the round-3b
+reference check `round3b_reference.py`.
 
 Needs the release harness binary (`cargo build --release -p candidate-harness
 --features candidates`; found through $CARGO_TARGET_DIR or target/). Run from
@@ -23,6 +24,7 @@ from pathlib import Path
 import numpy as np
 
 import analyze
+import round3b_reference as reference
 import run_catcmawm as driver
 
 HERE = Path(__file__).resolve().parent
@@ -390,6 +392,201 @@ class DriverFile(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         result = self.rust("--min-run", "11", check=False)
         self.assertNotEqual(result.returncode, 0)
+
+
+class Round3b(unittest.TestCase):
+    """The second round-3 batch (ROUND3B.md) through the driver and `serve`."""
+
+    def test_python_seeds_equal_the_harness_seeds(self):
+        text = harness("seeds", "--root-seed", "3", "--problems", "round3b",
+                       "--totals", "2000,20000", "--reps", "3", "--restarts", "4")
+        lines = text.strip().split("\n")[1:]
+        self.assertEqual(len(lines), 3 * 2 * 3 * 4)
+        self.assertEqual({line.split("\t")[0] for line in lines}, set(driver.PROBLEMS_3B))
+        for line in lines:
+            problem, _total, rep, restart, seed = line.split("\t")
+            self.assertEqual(driver.run_seed(3, problem, int(rep), int(restart)), int(seed))
+
+    def test_sets_and_type_tables(self):
+        import json
+        self.assertEqual(driver.expand_problems("round3b"), driver.PROBLEMS_3B)
+        self.assertEqual(driver.expand_problems("round3"), driver.PROBLEMS)
+        self.assertEqual(analyze.PROBLEMS_R3B, driver.PROBLEMS_3B)
+        self.assertEqual(set(analyze.CATEGORICAL_R3B), set(driver.PROBLEMS_3B))
+        listed = harness("list")
+        self.assertIn("round-3b problems: " + ",".join(driver.PROBLEMS_3B), listed)
+        optimizer_class = driver.check_cmaes()
+        serve = driver.Serve(HARNESS)
+        try:
+            for problem in driver.PROBLEMS_3B:
+                self.assertEqual(driver.default_types_dir(problem), driver.TYPES_DIR_3B)
+                info = serve.info(problem)
+                space = driver.TypedSpace.load(problem, info)
+                table = json.loads((driver.TYPES_DIR_3B / f"{problem}.json").read_text())
+                self.assertGreater(table["counts"]["categorical"], 0)
+                self.assertEqual((len(space.continuous), len(space.integer),
+                                  len(space.categorical)),
+                                 (table["counts"]["continuous"], table["counts"]["integer"],
+                                  table["counts"]["categorical"]))
+                optimizer = optimizer_class(seed=1, **space.constructor_arguments())
+                self.assertEqual(optimizer.population_size, space.default_popsize())
+                for _ in range(100):
+                    x, _ = space.to_real(optimizer.ask())
+                    self.assertTrue(np.all(x >= space.lower) and np.all(x <= space.upper))
+        finally:
+            serve.close()
+        for problem in driver.PROBLEMS:
+            self.assertEqual(driver.default_types_dir(problem), driver.TYPES_DIR)
+        # The welded beam: weld type integer {0, 1}, material categorical,
+        # h, t, b integer in sixteenths of an inch.
+        space = driver.TypedSpace.load("welded_beam_mixed")
+        self.assertEqual(space.z_space[0], [0, 1])
+        self.assertEqual(space.z_space[1], list(range(1, 33)))
+        self.assertEqual(space.z_space[2], list(range(32, 321)))
+        self.assertEqual(space.c_space, [4])
+        self.assertEqual(space.x_space, [[0.1, 10.0]])
+
+    def test_bridge_is_exact(self):
+        failures = driver.verify_bridge(HARNESS, driver.PROBLEMS_3B, 1000, 200, verbose=False)
+        self.assertEqual(failures, [])
+
+    def test_rust_ports_equal_the_reference_code(self):
+        self.assertEqual(reference.verify(HARNESS, 500, 200, verbose=False), [])
+
+    def test_driver_runs_the_batch(self):
+        directory = Path(tempfile.mkdtemp(prefix="catcmawm-3b-"))
+        try:
+            out = directory / "raw.tsv"
+            command = [sys.executable, str(HERE / "run_catcmawm.py"), "run", "--out", str(out),
+                       "--problems", "round3b", "--totals", "60,150", "--min-run", "20",
+                       "--reps", "1"]
+            subprocess.run(command, check=True, capture_output=True, text=True)
+            subprocess.run([HARNESS, "run", "--protocols", "T", "--out", str(out),
+                            "--problems", "round3b", "--solvers", "bite,de", "--totals",
+                            "60,150", "--min-run", "20", "--root-seed", "3", "--reps", "1"],
+                           check=True, capture_output=True, text=True)
+            rows = read_rows(out)
+            self.assertEqual(len(rows), 3 * 2 * 3)
+            for row in rows:
+                self.assertEqual((row[11], row[12]), ("0", "0"))
+                self.assertLessEqual(int(row[9]), int(row[16]))
+                self.assertTrue(math.isfinite(float(row[10])))
+        finally:
+            shutil.rmtree(directory, ignore_errors=True)
+
+
+SOLVERS_R3 = analyze.INCUMBENTS_R3 + [analyze.CANDIDATE_R3]
+
+
+def synthetic_raw(path: Path, problems: list[str], reps: int, candidate_gain: dict,
+                  seed: int, root_seed: int = 3, totals=(2000, 20000), skip=None):
+    """A protocol-T raw file with normal values: solver i has mean i/10; the
+    candidate has its listed gain below 0 on a listed problem and mean 0.3,
+    behind the best incumbents, on every other problem."""
+    rng = np.random.default_rng(seed)
+    lines = [driver.RAW_HEADER_T]
+    for problem in problems:
+        for total in totals:
+            for index, solver in enumerate(SOLVERS_R3):
+                for rep in range(reps):
+                    if skip == (solver, problem, total, rep):
+                        continue
+                    loc = index / 10.0
+                    if solver == analyze.CANDIDATE_R3:
+                        loc = -candidate_gain[problem] if problem in candidate_gain else 0.3
+                    value = rng.normal(loc, 0.2)
+                    lines.append("\t".join(map(str, [
+                        solver, problem, "x", 5, "T", rep, 1000 + rep, total, "1e0", total,
+                        driver.format_float(value), 0, 0, "1.000", 1, root_seed, total, total,
+                        100])))
+    path.write_text("\n".join(lines) + "\n")
+
+
+class UnionAnalysis(unittest.TestCase):
+    def setUp(self):
+        self.directory = Path(tempfile.mkdtemp(prefix="analyze-3u-"))
+
+    def tearDown(self):
+        shutil.rmtree(self.directory, ignore_errors=True)
+
+    def analyze(self, round_id: str, raw: list[Path], name: str, reps: int = 20) -> str:
+        out = self.directory / name
+        analyze.main(["--round", round_id, "--raw", ",".join(map(str, raw)),
+                      "--out", str(out), "--reps", str(reps)])
+        return out.read_text()
+
+    @staticmethod
+    def decision(text: str) -> list[str]:
+        line = next(line for line in text.splitlines() if line.startswith("| catcmawm |"))
+        return [cell.strip() for cell in line.strip("|").split("|")]
+
+    def test_union_gates_use_the_cells_of_both_files(self):
+        # Round 3: a clear win on one problem only; round 3b: a clear win on
+        # one more problem. G1 needs 3 winning cells on 2 problems: neither
+        # file alone meets it, the union does.
+        r3 = self.directory / "r3.tsv"
+        r3b = self.directory / "r3b.tsv"
+        synthetic_raw(r3, analyze.PROBLEMS_R3, 20, {"jobshop": 2.0}, 1)
+        synthetic_raw(r3b, analyze.PROBLEMS_R3B, 20, {"pest_control": 2.0}, 2)
+        alone3 = self.decision(self.analyze("3", [r3], "r3.md"))
+        alone3b = self.decision(self.analyze("3b", [r3b], "r3b.md"))
+        union_text = self.analyze("3u", [r3, r3b], "union.md")
+        union = self.decision(union_text)
+        # Columns: candidate, wins, losses, ties, problems won, mean rank,
+        # share, G1, G2, no violation, decision.
+        self.assertEqual((alone3[1], alone3[4], alone3[7]), ("2", "1", "no"))
+        self.assertEqual((alone3b[1], alone3b[4], alone3b[7]), ("2", "1", "no"))
+        self.assertEqual((union[1], union[4], union[7], union[10]), ("4", "2", "yes", "Include"))
+        self.assertIn("complete: 18", union_text)
+        # Holm over all 18 union cells.
+        rows = [line for line in union_text.split("## Win / loss / tie")[1].split("##")[0]
+                .splitlines() if line.startswith("| ") and not line.startswith("| Cell")]
+        self.assertEqual(len(rows), 18)
+        self.assertIn("Categorical: cells of field_service, jobshop, welded_beam_mixed, "
+                      "cantilever_mixed, pest_control", union_text)
+        self.assertIn("| categorical | 10 |", union_text)
+        self.assertIn("| other | 8 |", union_text)
+        self.assertNotIn("smoke test", union_text)
+
+    def test_the_union_needs_the_resampling_share(self):
+        # Mean rank 1 on every cell gives G2 with share 1.
+        r3 = self.directory / "r3.tsv"
+        r3b = self.directory / "r3b.tsv"
+        gains3 = {p: 0.05 for p in analyze.PROBLEMS_R3}
+        gains3b = {p: 0.05 for p in analyze.PROBLEMS_R3B}
+        synthetic_raw(r3, analyze.PROBLEMS_R3, 20, gains3, 3)
+        synthetic_raw(r3b, analyze.PROBLEMS_R3B, 20, gains3b, 4)
+        union = self.decision(self.analyze("3u", [r3, r3b], "u.md"))
+        self.assertEqual(union[8], "yes" if float(union[6]) >= 0.95 else "no")
+
+    def test_batch_report_and_refusals(self):
+        r3 = self.directory / "r3.tsv"
+        r3b = self.directory / "r3b.tsv"
+        synthetic_raw(r3, analyze.PROBLEMS_R3, 2, {}, 5)
+        synthetic_raw(r3b, analyze.PROBLEMS_R3B, 2, {}, 6, root_seed=999)
+        text = self.analyze("3b", [r3b], "b.md", reps=2)
+        self.assertTrue(text.startswith("# Candidate optimizers, round 3, second batch"))
+        self.assertIn("this is a smoke test", text)
+        self.assertIn("The decision on CatCMAwM is taken on the union", text)
+        self.assertIn("| other | 0 |", text)
+        with self.assertRaises(analyze.AnalysisError):     # mixed root seeds
+            self.analyze("3u", [r3, r3b], "x.md", reps=2)
+        with self.assertRaises(analyze.AnalysisError):     # one file only
+            self.analyze("3u", [r3], "x.md", reps=2)
+        with self.assertRaises(analyze.AnalysisError):     # same problems twice
+            self.analyze("3u", [r3, r3], "x.md", reps=2)
+        with self.assertRaises(analyze.AnalysisError):     # two files for 3b
+            self.analyze("3b", [r3b, r3b], "x.md", reps=2)
+
+    def test_round_three_report_is_unchanged_by_the_batch(self):
+        # `--round 3` ignores round-3b rows and keeps its texts.
+        r3 = self.directory / "r3.tsv"
+        synthetic_raw(r3, analyze.PROBLEMS_R3, 3, {}, 7)
+        text = self.analyze("3", [r3], "r3.md", reps=3)
+        self.assertTrue(text.startswith(
+            "# Candidate optimizers, round 3: mixed-variable screening report"))
+        self.assertIn("Categorical: cells of field_service, jobshop; other", text)
+        self.assertNotIn("union", text)
 
 
 class Resampling(unittest.TestCase):

@@ -815,3 +815,268 @@ test.
 `results/round3/smoke/` and `results/round3/timing/` hold the smoke run (raw
 rows, driver details, report, logs) and the timing repetition (raw rows,
 driver details, logs).
+
+## Round 3, second batch
+
+[ROUND3B.md](ROUND3B.md) adds three published problems with unordered
+categorical variables to round 3. The decision on CatCMAwM is taken on the
+union of the round-3 cells and the cells of this batch (ROUND3B.md section
+4). Solvers, protocol, seeds, the bridge, the driver and the file formats
+are those of "Round 3: campaign"; this section describes what differs. All
+three problems entered; none was dropped.
+
+### Reproduce
+
+From this directory, after the round-3 campaign (the union report needs
+`results/round3/raw.tsv`). The steps run in this order, and the Rust runner
+and the driver never write the raw file at the same time:
+
+```sh
+python3 -m pip install --break-system-packages cmaes==0.13.1
+cargo build --release -p candidate-harness --features candidates
+BIN=target/release/candidate-harness   # or $CARGO_TARGET_DIR/release/...
+
+$BIN survey3b --out results/round3b                    # type tables, timing, determinism
+python3 round3b_reference.py verify                     # must print "round-3b references verified"
+python3 run_catcmawm.py verify --problems round3b       # must print "bridge verified"
+python3 run_catcmawm.py spaces --problems round3b
+
+# 1. the seven incumbents (Rust runner)
+$BIN run --protocols T --problems round3b --solvers round3 \
+    --totals 2000,20000 --root-seed 3 --min-run 100 --reps 20 --threads 2 \
+    --out results/round3b/raw.tsv
+# 2. the candidate (Python driver), after step 1 has finished
+python3 run_catcmawm.py run --problems round3b --out results/round3b/raw.tsv \
+    --totals 2000,20000 --root-seed 3 --min-run 100 --reps 20 --workers 2
+# 3. the batch alone, then the union with round 3 (the decision)
+python3 analyze.py --round 3b --raw results/round3b/raw.tsv \
+    --out results/round3b/report.md --reps 20
+python3 analyze.py --round 3u --raw results/round3/raw.tsv,results/round3b/raw.tsv \
+    --out results/round3b/report-union.md --reps 20
+```
+
+If the compute rule of ROUND3.md section 5 lowers the repetitions, `--reps`
+changes in all four commands. `round3b_reference.py verify --smt DIR
+--bounce FILE` also compares its copies of the reference code with an
+unpacked SMT 2.15.1 package and Bounce's `pest_control.py`.
+
+Tests:
+
+```sh
+cargo test --workspace --features candidate-harness/candidates   # includes tests/round3b.rs
+python3 -m unittest -v test_catcmawm     # classes Round3b and UnionAnalysis; needs the release binary
+```
+
+### Problems
+
+`--problems round3b`, with the type counts of `results/round3b/types/` and
+the mean evaluation times of `results/round3b/problems.tsv` (2,000 uniform
+random points of the measurement sample, one thread; 200 points evaluated
+twice gave identical values for every problem):
+
+| Problem | Domain | D | Continuous | Integer | Categorical | Mean evaluation time (µs) | CatCMAwM population |
+|---|---|---:|---:|---:|---:|---:|---:|
+| `welded_beam_mixed` | structures | 6 | 1 | 4 | 1 | 0.055 | 9 |
+| `cantilever_mixed` | structures | 3 | 2 | 0 | 1 | 0.021 | 7 |
+| `pest_control` | agriculture | 25 | 0 | 0 | 25 | 1.38 | 13 |
+
+The problems come from outside this repository and have no optimization
+code of their own, so no DE integer mask applies; `de` and `de_cma` run
+without one.
+
+**Encoding (ROUND3B.md section 2).** Every discrete coordinate is one real
+coordinate in `[0, 1]` split into equal intervals, one per level, in the
+order of the source: level `k` of `n` decodes from `[k/n, (k+1)/n)`, the
+last level also from 1, by `min(floor(u n), n - 1)`, the rule of
+`categorical_index` in `examples/src/encoding.rs`
+([docs/combinatorial-encodings.md](../../docs/combinatorial-encodings.md)).
+Continuous coordinates keep the bounds of the source. The type tables have
+the format of round 3; the candidate's typed point goes to the interval
+centers (`levels`).
+
+**Constraints (ROUND3B.md section 2).** Only the welded beam is constrained.
+Its cost is `f + 1e6 * sum(max(0, c_i))` over the four constraints of the
+source, each written as `g(x) <= 0` and divided by its limit:
+
+| Source constraint | Normalized form used |
+|---|---|
+| `g1 = S - sigma >= 0` (bending) | `(sigma - S) / S <= 0` |
+| `g2 = Pc - F >= 0` (buckling) | `(F - Pc) / F <= 0` |
+| `g3 = delta_max - delta >= 0` (deflection) | `(delta - 0.25) / 0.25 <= 0` |
+| `g4 = 0.577 S - tau >= 0` (weld shear) | `(tau - 0.577 S) / (0.577 S) <= 0` |
+
+### Welded beam with material and weld-type choice (`welded_beam_mixed`)
+
+**Source.** K. Deb and M. Goyal, "Optimizing engineering designs using a
+combined genetic search", Proceedings of the 7th International Conference
+on Genetic Algorithms (1997), section 4.4, tables 4 and 5: the mixed welded
+beam that the same authors introduced with GeneAS (Computer Science and
+Informatics 26(4), 1996). The paper takes the shear, bending, deflection and
+buckling formulas from G. V. Reklaitis, A. Ravindran and K. M. Ragsdell,
+"Engineering Optimization: Methods and Applications" (1983), the classic
+welded beam. Read as a paper; no code exists.
+
+**Definition** (`harness/src/round3b.rs`, module `welded_beam`):
+
+| Coordinate | Variable | Type | Levels or bounds |
+|---|---|---|---|
+| 0 | `x1` weld type | integer (binary switch) | 0 two-sided, 1 four-sided |
+| 1 | `x2` bar material | categorical | steel, cast iron, aluminum, brass (codes 00, 01, 10, 11) |
+| 2 | `x3 = h` weld thickness | integer | 0.0625 to 2 in step 0.0625 (32 levels, value `16 h`) |
+| 3 | `x4 = t` beam width | integer | 2 to 20 in step 0.0625 (289 levels, value `16 t`) |
+| 4 | `x5 = b` beam thickness | integer | 0.0625 to 2 in step 0.0625 (32 levels, value `16 b`) |
+| 5 | `x6 = l` weld length | continuous | `[0.1, 10]` |
+
+- Cost `f = (1 + c1) h^2 (l + x1 t) + c2 t b (L + l)`.
+- `sigma = 6 F L / (t^2 b)`, `delta = 4 F L^3 / (E t^3 b)`,
+  `Pc = 4.013 sqrt(E G t^2 b^6 / 36) / L^2 (1 - t / (2 L) sqrt(E / (4 G)))`
+  (Reklaitis et al.).
+- Weld: two-sided `A = 1.414 h l`, `J = 1.414 h l ((h + t)^2 / 4 + l^2 / 12)`;
+  four-sided `A = 1.414 h (t + l)`, `J = 1.414 h (h + t + l)^3 / 12`
+  (Deb and Goyal, as printed, with 1.414).
+- `tau' = F / A`, `M = F (L + l / 2)`, `R = sqrt(l^2 / 4 + ((h + t) / 2)^2)`,
+  `tau'' = M R / J`, `tau = sqrt(tau'^2 + 2 tau' tau'' l / (2 R) + tau''^2)`
+  (Reklaitis et al.).
+
+| Constant | Value | Origin |
+|---|---|---|
+| `F`, `L`, `delta_max` | 6,000 lb, 14 in, 0.25 in | Deb and Goyal, section 4.4 |
+| shear limit | `0.577 S` | Deb and Goyal, constraint `g4` |
+| `S`, `E`, `G` (psi), `c1`, `c2` | steel 30e3, 30e6, 12e6, 0.1047, 0.0481; cast iron 8e3, 14e6, 6e6, 0.0489, 0.0224; aluminum 5e3, 10e6, 4e6, 0.5235, 0.2405; brass 8e3, 16e6, 6e6, 0.5584, 0.2566 | Deb and Goyal, table 4 (kpsi and Mpsi there); the same table in Tran, Tran and Wang (2019), table 1 |
+| 1.414, 4.013, step 0.0625 | | Deb and Goyal (1.414, step); Reklaitis et al. (4.013) |
+| ranges of `h`, `t`, `b` | 0.0625..2, 2..20, 0.0625..2 | Deb and Goyal (ranges of the initial population, with the step) |
+| bounds of `l` | 0.1..10 | A. Tran, M. Tran and Y. Wang, "Constrained mixed-integer Gaussian mixture Bayesian optimization and its applications in designing fractal and auxetic metamaterials", Structural and Multidisciplinary Optimization (2019); also the classic welded beam's bounds of `l` |
+
+**Verification** (`tests/round3b.rs`). Deb and Goyal's GeneAS solution
+(table 5: four-sided weld, steel, `h = 0.1875`, `t = 8.25`, `b = 0.25`,
+`l = 1.6849`; printed `g1 = 380.1660`, `g2 = 402.0473`, `g3 = 0.2346`,
+`g4 = 0.1621`, `f = 1.9422`):
+
+| Quantity | Printed | Harness |
+|---|---:|---:|
+| `g1` | 380.1660 | 380.1653 (380.1660 in single precision) |
+| `g2` | 402.0473 | 402.0472 |
+| `g3` | 0.2346 | 0.2344 (not reproduced) |
+| `g4` | 0.1621 | 0.1339 at `l = 1.6849`; 0.1621 at `l = 1.684907`, inside the rounding interval of the printed `l` |
+| `f` | 1.9422 | 1.94188 with table 4's coefficients; 1.94221 with the classic steel coefficients 0.10471 and 0.04811 |
+
+The statements of the text (bending stress 1.3% below its limit, buckling
+load 6.7% above the load, shear stress 9.4e-4 % below its limit) are
+reproduced. The `g4` check discriminates: with `sqrt(2)` instead of 1.414,
+or with `J = 1.414 h (t + l)^3 / 12`, `g4` falls outside the rounding
+interval (2.64 and -957).
+
+**Where the sources disagree.** Tran, Tran and Wang (2019) restate the
+problem "with some slight modifications", and their code in
+`facebookresearch/bo_pr` (MIT, `discrete_mixed_bo/problems/welded_beam.py`)
+differs further. Compared with Deb and Goyal:
+
+| Item | Deb and Goyal (used) | Tran et al. / bo_pr |
+|---|---|---|
+| four-sided `J` | `1.414 h (h + t + l)^3 / 12` | sum of the two-sided `J` of both weld pairs |
+| four-sided `R` | `sqrt(l^2/4 + ((h + t)/2)^2)` | maximum over both weld pairs |
+| constraints | four | five (adds `b - h >= 0`) |
+| `h`, `t`, `b`, `l` | `h`, `t`, `b` multiples of 0.0625, `l` continuous | continuous (paper); bo_pr also quantizes `l` and drops the last level of each |
+| `tau'` | `F / A` | bo_pr: `sqrt(F / A)` |
+| brass `G` | 6e6 | bo_pr: 1e7 (both papers: 6e6) |
+| `sqrt 2` | 1.414 | `sqrt(2)` |
+
+The harness follows Deb and Goyal, whose published solution it reproduces
+(with the exceptions above); only the bounds of `l` come from Tran et al.,
+because the original gives none (its initial range `2 <= l <= 20` excludes
+its own optimum).
+
+### Mixed cantilever beam (`cantilever_mixed`)
+
+**Source.** `MixedCantileverBeam` of the Surrogate Modeling Toolbox, SMT
+2.15.1 (`smt/problems/mixed_cantilever_beam.py`, BSD-3-Clause, Copyright (c)
+2017 SMT developers; author P. Saves), the test case of P. Saves, Y.
+Diouane, N. Bartoli, T. Lefebvre and J. Morlier, "A mixed-categorical
+correlation kernel for Gaussian process", Neurocomputing (2023),
+arXiv:2211.08262.
+
+**Definition** (module `cantilever`): tip deflection
+`y = (P L^3) / (3 E S^2 I)` with `P = 50e3` and `E = 200e9` (SMT option
+defaults), `L` in `[10, 20]` and `S` in `[1, 2]` (SMT `FloatVariable`s),
+and `I` the normalized moment of inertia of one of twelve cross-sections,
+SMT's `listI` = 0.0833, 0.139, 0.380, 0.0796, 0.133, 0.363, 0.0859, 0.136,
+0.360, 0.0922, 0.138, 0.369. Coordinate 0 is categorical (12 levels),
+coordinates 1 and 2 are `L` and `S`. Unconstrained.
+
+SMT evaluates its categorical index `k` (0..11, labels "1".."12") as
+`listI[int(k) - 1]`; for `k = 0` Python's index -1 selects the last entry.
+SMT's labels are therefore shifted by one against the paper, whose levels
+{1, 4, 7, 10} form one thickness group (entries 0, 3, 6, 9 of `listI`). The
+harness follows SMT's design-space order and values; since the categories
+are unordered, the shift only renames them.
+
+**Verification.** `round3b_reference.py verify` (224 points: 200 random and
+the 24 corners of the continuous box per category): the harness equals SMT's
+formula bit for bit when `L**3` is computed with the C library's `pow`, as
+the Rust port does. NumPy computes `L**3` with a SIMD power routine on hosts
+with AVX-512, which differs from `pow` by one unit in the last place at a
+few points; against SMT itself 220 of 224 values are identical and the rest
+differ by one unit in the last place (relative difference at most 2.1e-16).
+The operation order is SMT's: `(P * pow(L, 3)) / (((3 E) * (S * S)) * I)`.
+
+### Pest control (`pest_control`)
+
+**Source.** The pest-control benchmark of C. Oh, J. Tomczak, E. Gavves and
+M. Welling, "Combinatorial Bayesian Optimization using the Graph Cartesian
+Product" (NeurIPS 2019; QUVA-Lab/COMBO, BSD-2-Clause,
+`COMBO/experiments/test_functions/multiple_categorical.py`), in the
+fixed-seed form used by Casmopolitan (X. Wan et al., ICML 2021;
+`test_funcs/pest.py`, MIT) and Bounce (L. Papenmeier, L. Nardi and M.
+Poloczek, NeurIPS 2023; `bounce/util/pest_control.py`, MIT, which credits
+BODi).
+
+**Determinism.** In COMBO every beta draw comes from NumPy's global
+generator, which is never seeded for the evaluation: the published form is
+noisy, and the number of draws depends on the choices (a control-rate draw
+only at stations with a pesticide). Casmopolitan and Bounce pass a seed, and
+then every draw is `np.random.RandomState(seed).beta(...)`, a fresh
+generator per call: each draw array restarts the same uniform stream, the
+initial and spread fractions are the same at every evaluation, and the
+control rates depend on the choices only through the shape parameter
+(`beta_k` after the earlier uses of pesticide `k`). The function is then a
+deterministic function of the 25 choices. Bounce's `PestControl` uses seed
+0 (its default; `configs/default.gin` sets none), Casmopolitan seed 8194
+(the 20th of its sorted seeds). The two implementations give the same
+values (500 random points, seeds 0 and 8194). The harness uses seed 0.
+
+**Definition** (module `pest`): 25 categorical coordinates with 5 levels in
+the source's order (0 no pesticide, 1 to 4 pesticides); 100 simulations,
+threshold 0.1, initial fraction `Beta(1, 30)`, spread `Beta(1, 17/3)`,
+control `Beta(1, beta_k)` with `beta_k` starting at 2/7, 3/7, 3/7, 5/7 and
+growing by `rate_k / 25` per use (`rate_k` = 1/7, 2.5/7, 2/7, 0.5/7), prices
+1.0, 0.8, 0.7, 0.5 and maximal discounts 0.2, 0.3, 0.3, 0; the value is the
+paid price plus the summed share of simulations above the threshold, all as
+in the reference code. Unconstrained.
+
+**Evaluation path.** Ported to Rust with identical values; no Python worker
+is needed. The port includes NumPy's legacy `RandomState` (module
+`legacy_random`: MT19937 with `mt19937_seed`, the polar Gaussian with its
+cached second value, `legacy_standard_gamma` and `legacy_beta` with Johnk's
+algorithm), ported from NumPy 2.5.3 (BSD-3-Clause). The draws are computed
+once per problem instance. `round3b_reference.py` holds a faithful,
+attributed copy of Bounce's function; `verify` compares the harness with it
+at 503 points (500 random, all-none, all-4, a cyclic pattern): bit-identical.
+`tests/round3b.rs` checks NumPy's first draws and reference values for seeds
+0, 8194 and 1.
+
+### Analysis
+
+`analyze.py --round 3b` writes the tables of `--round 3` for this batch
+alone (`results/round3b/report.md`); its decision table notes that the
+decision is taken on the union. `analyze.py --round 3u --raw
+<round 3>,<round 3b>` implements ROUND3B.md section 4: cells of both files,
+best incumbent, Mann–Whitney U tests with Holm correction over all union
+cells of the candidate, ranks and mean ranks over all union cells, G1 (at
+least 3 winning cells on at least 2 problems), G2 (mean rank strictly better
+than the best incumbent's, and below every incumbent's in at least 95% of
+10,000 resamples, NumPy `default_rng(3)`), Include, Watch and Reject, per-cell
+medians, and the descriptive split into cells of problems with a categorical
+coordinate (`field_service`, `jobshop` and the three round-3b problems) and
+the rest (`results/round3b/report-union.md`). The two files must share root
+seed and minimum run and must not hold the same problem. `--round 3` is
+unchanged.

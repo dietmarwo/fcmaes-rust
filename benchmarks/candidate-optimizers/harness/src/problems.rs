@@ -363,12 +363,14 @@ pub fn round2_names() -> Vec<&'static str> {
 }
 
 /// Look up a problem by name in the [`catalog`], then among the round-3
-/// problems ([`crate::round3::by_name`]), which are built only on request.
+/// problems ([`crate::round3::by_name`]) and the round-3b problems
+/// ([`crate::round3b::by_name`]), which are built only on request.
 pub fn by_name(name: &str) -> Option<Problem> {
     catalog()
         .into_iter()
         .find(|problem| problem.name == name)
         .or_else(|| crate::round3::by_name(name))
+        .or_else(|| crate::round3b::by_name(name))
 }
 
 #[cfg(test)]

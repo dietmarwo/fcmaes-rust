@@ -1,0 +1,12 @@
+{
+  "problem": "cantilever_mixed",
+  "dimension": 3,
+  "source": "SMT 2.15.1 smt/problems/mixed_cantilever_beam.py: MixedCantileverBeam._evaluate (BSD-3-Clause); harness/src/round3b.rs: cantilever::objective",
+  "counts": {"continuous": 2, "integer": 0, "categorical": 1},
+  "notes": ["The cross-section is an unordered choice among twelve shapes: categorical. Levels follow SMT's design-space order; SMT evaluates category index k with listI[k - 1] (Python indexing), a shift by one against the paper's numbering."],
+  "coordinates": [
+    {"index": 0, "kind": "categorical", "lower": 0.0, "upper": 1.0, "meaning": "cross-section shape, SMT categorical variable with labels 1..12", "levels": [0.041666666666666664, 0.125, 0.20833333333333331, 0.29166666666666663, 0.375, 0.4583333333333333, 0.5416666666666666, 0.625, 0.7083333333333333, 0.7916666666666666, 0.875, 0.9583333333333333], "labels": ["SMT category 1 (I = 0.369)", "SMT category 2 (I = 0.0833)", "SMT category 3 (I = 0.139)", "SMT category 4 (I = 0.38)", "SMT category 5 (I = 0.0796)", "SMT category 6 (I = 0.133)", "SMT category 7 (I = 0.363)", "SMT category 8 (I = 0.0859)", "SMT category 9 (I = 0.136)", "SMT category 10 (I = 0.36)", "SMT category 11 (I = 0.0922)", "SMT category 12 (I = 0.138)"], "intervals": [[[0.0, 0.08333333333333333]], [[0.08333333333333333, 0.16666666666666666]], [[0.16666666666666666, 0.25]], [[0.25, 0.3333333333333333]], [[0.3333333333333333, 0.41666666666666663]], [[0.41666666666666663, 0.5]], [[0.5, 0.5833333333333333]], [[0.5833333333333333, 0.6666666666666666]], [[0.6666666666666666, 0.75]], [[0.75, 0.8333333333333333]], [[0.8333333333333333, 0.9166666666666666]], [[0.9166666666666666, 1.0]]]},
+    {"index": 1, "kind": "continuous", "lower": 10.0, "upper": 20.0, "meaning": "beam length L (continuous)"},
+    {"index": 2, "kind": "continuous", "lower": 1.0, "upper": 2.0, "meaning": "cross-section area S (continuous)"}
+  ]
+}

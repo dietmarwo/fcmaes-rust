@@ -1,5 +1,5 @@
-//! Command-line entry point: `list`, `measure`, `run`, `survey`, `serve` and
-//! `seeds`.
+//! Command-line entry point: `list`, `measure`, `run`, `survey`,
+//! `survey3b`, `serve` and `seeds`.
 
 #![forbid(unsafe_code)]
 
@@ -12,7 +12,7 @@ use candidate_harness::campaign::{
 };
 use candidate_harness::problems::Problem;
 use candidate_harness::seeds::ROOT_SEED;
-use candidate_harness::{problems, round3, serve, solvers};
+use candidate_harness::{problems, round3, round3b, serve, solvers};
 
 const USAGE: &str = "usage:
   candidate-harness list
@@ -21,12 +21,13 @@ const USAGE: &str = "usage:
       [--problems a,b] [--solvers x,y] [--protocols S,R] [--reps 20]
       [--threads 2] [--budget-scale 1.0]
   candidate-harness survey --out results/round3 [--problems a,b]
+  candidate-harness survey3b --out results/round3b
   candidate-harness run --protocols T --out results/round2/raw.tsv
-      [--problems round2|round3|a,b] [--solvers round2|round3|x,y] [--reps 20]
+      [--problems round2|round3|round3b|a,b] [--solvers round2|round3|x,y] [--reps 20]
       [--threads 2] [--root-seed 1] [--total 400000] [--run-cap 100000]
       [--min-run 1000] [--totals 2000,20000]
   candidate-harness serve
-  candidate-harness seeds [--root-seed 3] [--problems round3|a,b]
+  candidate-harness seeds [--root-seed 3] [--problems round3|round3b|a,b]
       [--totals 2000,20000] [--reps 3] [--restarts 4]
 
   --problems round2 and --solvers round2 select the round-2 sets
@@ -37,8 +38,11 @@ const USAGE: &str = "usage:
   total, each with run cap equal to the total, into one file (round 3:
   --totals 2000,20000 --root-seed 3 --min-run 100); it excludes --total and
   --run-cap.
+  --problems round3b selects the second round-3 batch (ROUND3B.md); it
+  runs with --solvers round3 and the round-3 settings.
   survey examines the round-3 problems (ROUND3.md sections 3 and 4) and
-  writes problems.tsv and types/<problem>.json.
+  writes problems.tsv and types/<problem>.json; survey3b does the same for
+  the round-3b batch (ROUND3B.md section 2).
   serve answers objective requests on stdin (protocol in src/serve.rs) for
   run_catcmawm.py.
   seeds prints the protocol-T run seeds of a grid (problem, total,
@@ -51,6 +55,7 @@ fn main() {
         Some("measure") => measure(&args[1..]),
         Some("run") => run(&args[1..]),
         Some("survey") => survey(&args[1..]),
+        Some("survey3b") => survey3b(&args[1..]),
         Some("serve") => {
             if args.len() > 1 {
                 Err("serve takes no options".to_owned())
@@ -124,11 +129,12 @@ fn list() -> Result<(), String> {
         "round-3 solvers: {} (candidate catcmawm runs through run_catcmawm.py)",
         round3::SOLVERS.join(",")
     );
+    println!("round-3b problems: {}", round3b::PROBLEMS.join(","));
     Ok(())
 }
 
-/// Problems named by `--problems` (`round2` and `round3` expand to the
-/// sets of those rounds; default: the thirteen round-1 problems).
+/// Problems named by `--problems` (`round2`, `round3` and `round3b` expand
+/// to the sets of those rounds; default: the thirteen round-1 problems).
 fn select_problems(value: Option<&str>) -> Result<Vec<Problem>, String> {
     let Some(names) = split_list(value) else {
         return Ok(problems::all());
@@ -139,6 +145,8 @@ fn select_problems(value: Option<&str>) -> Result<Vec<Problem>, String> {
             expanded.extend(problems::round2_names().into_iter().map(str::to_owned));
         } else if name == "round3" {
             expanded.extend(round3::PROBLEMS.iter().map(|s| (*s).to_owned()));
+        } else if name == "round3b" {
+            expanded.extend(round3b::PROBLEMS.iter().map(|s| (*s).to_owned()));
         } else {
             expanded.push(name);
         }
@@ -256,9 +264,9 @@ fn run(args: &[String]) -> Result<(), String> {
         .unwrap_or_else(|| all_problems.iter().map(|p| p.name.to_owned()).collect());
     if problem_names
         .iter()
-        .any(|name| name == "round2" || name == "round3")
+        .any(|name| name == "round2" || name == "round3" || name == "round3b")
     {
-        return Err("--problems round2 and round3 belong to protocol T".into());
+        return Err("--problems round2, round3 and round3b belong to protocol T".into());
     }
     let mut selected_problems = Vec::new();
     for name in &problem_names {
@@ -498,6 +506,8 @@ fn seeds(args: &[String]) -> Result<(), String> {
         .flat_map(|name| {
             if name == "round3" {
                 round3::PROBLEMS.iter().map(|s| (*s).to_owned()).collect()
+            } else if name == "round3b" {
+                round3b::PROBLEMS.iter().map(|s| (*s).to_owned()).collect()
             } else {
                 vec![name]
             }
@@ -630,6 +640,95 @@ fn survey(args: &[String]) -> Result<(), String> {
             "met"
         } else {
             "NOT met, the round stops"
+        }
+    );
+    Ok(())
+}
+
+/// `survey3b`: the round-3b batch (ROUND3B.md section 2): timing over the
+/// 2,000-point measurement sample, determinism over 200 points evaluated
+/// twice, type tables, `problems.tsv`.
+fn survey3b(args: &[String]) -> Result<(), String> {
+    use candidate_harness::campaign::{DETERMINISM_POINTS, MEASURE_POINTS};
+    use candidate_harness::round3::{Kind, deterministic_on};
+    let parsed = options(args, &["--out"])?;
+    let out = PathBuf::from(option(&parsed, "--out").ok_or("survey3b needs --out")?);
+    let types_dir = out.join("types");
+    std::fs::create_dir_all(&types_dir).map_err(|e| e.to_string())?;
+    if let Ok(load) = std::fs::read_to_string("/proc/loadavg") {
+        println!("load average before measuring: {}", load.trim());
+    }
+    let mut tsv = String::from(
+        "problem\tdomain\tdim\tcontinuous\tinteger\tcategorical\tmean_eval_us\ttimed_points\t\
+         deterministic\tde_mask\tentered\treason\n",
+    );
+    let mut entered = 0;
+    for name in round3b::PROBLEMS {
+        let problem = problems::by_name(name).ok_or_else(|| format!("unknown problem '{name}'"))?;
+        let table =
+            round3b::type_table(name).ok_or_else(|| format!("no type table for '{name}'"))?;
+        if table.dim() != problem.dim() {
+            return Err(format!("{name}: type table has D={}", table.dim()));
+        }
+        let mean = measure_problem(&problem);
+        let deterministic = deterministic_on(&problem, DETERMINISM_POINTS);
+        let categorical = table.count(Kind::Categorical);
+        let ok = deterministic && categorical > 0;
+        let reason = if ok {
+            "deterministic, categorical coordinate; definition checked by tests/round3b.rs"
+                .to_owned()
+        } else {
+            let mut reasons = Vec::new();
+            if !deterministic {
+                reasons.push("not deterministic");
+            }
+            if categorical == 0 {
+                reasons.push("no categorical coordinate");
+            }
+            reasons.join("; ")
+        };
+        println!(
+            "{name:<18} D={:<3} cont={:<2} int={:<2} cat={:<2} mean {mean:>10.3} us ({MEASURE_POINTS} pts) det={deterministic} ({DETERMINISM_POINTS}) entered={}",
+            problem.dim(),
+            table.count(Kind::Continuous),
+            table.count(Kind::Integer),
+            categorical,
+            if ok { "yes" } else { "no" }
+        );
+        tsv.push_str(&format!(
+            "{name}\t{}\t{}\t{}\t{}\t{}\t{mean:.3}\t{MEASURE_POINTS}\t{}\t{}\t{}\t{reason}\n",
+            problem.domain,
+            problem.dim(),
+            table.count(Kind::Continuous),
+            table.count(Kind::Integer),
+            categorical,
+            if deterministic { "yes" } else { "no" },
+            if round3b::de_mask(name).is_some() {
+                "yes"
+            } else {
+                "no"
+            },
+            if ok { "yes" } else { "no" }
+        ));
+        std::fs::write(types_dir.join(format!("{name}.json")), table.to_json())
+            .map_err(|e| e.to_string())?;
+        if ok {
+            entered += 1;
+        }
+    }
+    for (name, reason) in round3b::DROPPED {
+        tsv.push_str(&format!(
+            "{name}\t-\t-\t-\t-\t-\t-\t-\t-\t-\tno\t{reason}\n"
+        ));
+    }
+    std::fs::write(out.join("problems.tsv"), tsv).map_err(|e| e.to_string())?;
+    println!(
+        "entered: {entered} of {}; ROUND3B.md needs at least 2: {}",
+        round3b::PROBLEMS.len() + round3b::DROPPED.len(),
+        if entered >= 2 {
+            "met"
+        } else {
+            "NOT met, the batch stops"
         }
     );
     Ok(())

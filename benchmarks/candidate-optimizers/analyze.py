@@ -9,7 +9,10 @@ incomplete cells and timing.
 With `--round 2` it analyzes a protocol-T file instead (ROUND2.md section 5;
 see `main_round2`). With `--round 3` it analyzes the round-3 file (ROUND3.md
 section 6; see `main_round3`): cells are (problem, total), one candidate
-(`catcmawm`), and the generalist gate G2 includes a resampling check.
+(`catcmawm`), and the generalist gate G2 includes a resampling check. With
+`--round 3b` it analyzes the second round-3 batch alone (ROUND3B.md, same
+tables), and with `--round 3u` the union of the round-3 and round-3b files,
+on which the decision on CatCMAwM is taken (ROUND3B.md section 4).
 
 Every consistency check raises an exception; the script never uses `assert`,
 so it behaves identically under `python -O`.
@@ -22,6 +25,11 @@ Usage:
                        --out results/round2/report.md --reps 20
     python3 analyze.py --round 3 --raw results/round3/raw.tsv \
                        --out results/round3/report.md --reps 20
+    python3 analyze.py --round 3b --raw results/round3b/raw.tsv \
+                       --out results/round3b/report.md --reps 20
+    python3 analyze.py --round 3u \
+                       --raw results/round3/raw.tsv,results/round3b/raw.tsv \
+                       --out results/round3b/report-union.md --reps 20
 """
 
 from __future__ import annotations
@@ -75,11 +83,23 @@ DECLARED_T = {"root_seed": 2, "total": 400_000, "run_cap": 100_000, "min_run": 1
 G1_WINS_R2 = 3
 
 
+def parse_round(value: str):
+    """`--round`: 1, 2 and 3 as integers, `3b` and `3u` as strings."""
+    if value in ("1", "2", "3"):
+        return int(value)
+    if value in ("3b", "3u"):
+        return value
+    raise argparse.ArgumentTypeError(f"invalid round {value!r} (1, 2, 3, 3b or 3u)")
+
+
 def parse_args(argv: list[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("--round", type=int, choices=[1, 2, 3], default=1,
+    parser.add_argument("--round", type=parse_round, default=1,
                         help="1: protocols S and R (PROTOCOL.md); 2: protocol T "
-                             "(ROUND2.md); 3: protocol T with two totals (ROUND3.md)")
+                             "(ROUND2.md); 3: protocol T with two totals (ROUND3.md); "
+                             "3b: the second round-3 batch alone (ROUND3B.md); 3u: the "
+                             "union of round 3 and round 3b, comma-separated --raw files "
+                             "(ROUND3B.md section 4)")
     parser.add_argument("--raw", default=None,
                         help="raw TSV (default results/raw.tsv, round 2: "
                              "results/round2/raw.tsv)")
@@ -102,6 +122,19 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
                         help="budgets.tsv; adds an evaluation-time projection "
                              "(round 1 only)")
     args = parser.parse_args(argv)
+    if args.round in ("3b", "3u"):
+        union = args.round == "3u"
+        if args.raw is None:
+            args.raw = ("results/round3/raw.tsv,results/round3b/raw.tsv" if union
+                        else "results/round3b/raw.tsv")
+        if args.out is None:
+            args.out = ("results/round3b/report-union.md" if union
+                        else "results/round3b/report.md")
+        if args.solvers is None:
+            args.solvers = ",".join(INCUMBENTS_R3 + [CANDIDATE_R3])
+        if args.problems is None:
+            args.problems = ",".join((PROBLEMS_R3 + PROBLEMS_R3B) if union else PROBLEMS_R3B)
+        return args
     if args.round == 3:
         if args.raw is None:
             args.raw = "results/round3/raw.tsv"
@@ -175,7 +208,7 @@ def main(argv: list[str]) -> int:
     args = parse_args(argv)
     if args.round == 2:
         return main_round2(args)
-    if args.round == 3:
+    if args.round in (3, "3b", "3u"):
         return main_round3(args)
     if args.reps <= 0 or args.threads <= 0 or args.project_reps <= 0:
         raise AnalysisError("--reps, --threads and --project-reps must be positive")
@@ -907,6 +940,75 @@ G2_RESAMPLES = 10_000
 G2_SHARE = 0.95
 # Seed of the resampling generator (the round's root seed).
 G2_SEED = 3
+# Round 3, second batch (ROUND3B.md): every problem has a categorical
+# coordinate; same solvers, settings, gates and tests as round 3.
+PROBLEMS_R3B = ["welded_beam_mixed", "cantilever_mixed", "pest_control"]
+CATEGORICAL_R3B = list(PROBLEMS_R3B)
+
+
+def round3_spec(round_id) -> dict:
+    """Report texts and problem groups of `--round 3`, `3b` and `3u`."""
+    if round_id == 3:
+        return {
+            "title": "# Candidate optimizers, round 3: mixed-variable screening report\n",
+            "command": "--round 3",
+            "categorical": CATEGORICAL_R3,
+            "split_source": "ROUND3.md section 6",
+            "decision_note": None,
+            "limits": [
+                "- Narrower question than declared (DEVIATIONS.md, round 3, entry 1): only two "
+                "problems under the entry rule have an unordered categorical coordinate "
+                "(field-service routing and the job shop), so the question is limited to "
+                "mixed-integer problems with some categorical structure. A statement about "
+                "categorical variables rests on those two problems alone and is not a verdict "
+                "on CatCMAwM for categorical design problems in general.",
+                "- Six problems (DEVIATIONS.md, round 3, entry 2): the two network-coverage "
+                "problems (4,000 variables) are left out by a dimension cap of 200, and the "
+                "costlier problems with the richest mixed structure (energy hub, water network, "
+                "ML tuning) are outside the 2 ms entry rule on this host.",
+                "- Binary switches are typed integer, as declared, although the `cmaes` library "
+                "recommends categorical for them (DEVIATIONS.md, round 3, entry 3).",
+            ],
+        }
+    if round_id == "3b":
+        return {
+            "title": "# Candidate optimizers, round 3, second batch: categorical problems "
+                     "report\n",
+            "command": "--round 3b",
+            "categorical": CATEGORICAL_R3B,
+            "split_source": "ROUND3B.md section 4",
+            "decision_note": "This table is the second batch alone, reported with the tables "
+                             "of round 3. The decision on CatCMAwM is taken on the union of the "
+                             "round-3 cells and the cells of this batch (ROUND3B.md section 4; "
+                             "`analyze.py --round 3u`).\n",
+            "limits": [
+                "- Three published problems with an unordered categorical coordinate "
+                "(ROUND3B.md section 2): the mixed welded beam of Deb and Goyal, SMT's mixed "
+                "cantilever beam and the pest-control benchmark in the fixed-seed form of the "
+                "Bounce suite. Sources, verification and the encoding are described in "
+                "README.md (\"Round 3, second batch\").",
+                "- Binary switches are typed integer, as declared (the weld type; "
+                "DEVIATIONS.md, round 3, entry 3).",
+            ],
+        }
+    return {
+        "title": "# Candidate optimizers, round 3: union of round 3 and its second batch "
+                 "(decision report)\n",
+        "command": "--round 3u",
+        "categorical": CATEGORICAL_R3 + CATEGORICAL_R3B,
+        "split_source": "ROUND3B.md section 4",
+        "decision_note": "The decision on CatCMAwM is taken on these union cells: the gates of "
+                         "ROUND3.md section 6 over all cells of both files, Holm correction "
+                         "over all union cells of the candidate (ROUND3B.md section 4).\n",
+        "limits": [
+            "- The union holds the six round-3 problems (DEVIATIONS.md, round 3, entry 2) and "
+            "the round-3b batch (ROUND3B.md section 2). Problems with an unordered categorical "
+            "coordinate: field-service routing and the job shop of round 3 and the three "
+            "round-3b problems.",
+            "- Binary switches are typed integer, as declared, although the `cmaes` library "
+            "recommends categorical for them (DEVIATIONS.md, round 3, entry 3).",
+        ],
+    }
 
 
 def resample_share(data: np.ndarray, candidate: int, incumbents: list[int],
@@ -957,11 +1059,27 @@ def main_round3(args: argparse.Namespace) -> int:
     if CANDIDATE_R3 not in solvers:
         raise AnalysisError(f"the candidate {CANDIDATE_R3} is not among the expected solvers")
     candidate = CANDIDATE_R3
+    spec = round3_spec(args.round)
 
-    raw_path = Path(args.raw)
-    rows = load_rows_t(raw_path)
-    if not rows:
-        raise AnalysisError(f"{raw_path}: no rows")
+    raw_paths = [Path(p) for p in args.raw.split(",") if p]
+    if args.round == "3u":
+        if len(raw_paths) != 2:
+            raise AnalysisError("--round 3u needs two raw files: round 3, then round 3b")
+    elif len(raw_paths) != 1:
+        raise AnalysisError(f"--round {args.round} takes one raw file")
+    raw_path = raw_paths[0]
+    file_rows = []
+    for path in raw_paths:
+        part = load_rows_t(path)
+        if not part:
+            raise AnalysisError(f"{path}: no rows")
+        file_rows.append(part)
+    if len(file_rows) > 1:
+        shared_problems = sorted({r["problem"] for r in file_rows[0]}
+                                 & {r["problem"] for r in file_rows[1]})
+        if shared_problems:
+            raise AnalysisError(f"problems {shared_problems} appear in both raw files")
+    rows = [row for part in file_rows for row in part]
     for row in rows:
         if row["run_cap"] != row["total"]:
             raise AnalysisError(f"row {row['solver']} {row['problem']} {row['rep']}: run cap "
@@ -1127,10 +1245,16 @@ def main_round3(args: argparse.Namespace) -> int:
     # ---------------------------------------------------------------- report
     out = []
     w = out.append
-    w("# Candidate optimizers, round 3: mixed-variable screening report\n")
-    w(f"Raw data: `{raw_path.name}` ({len(rows)} rows). Generated by `analyze.py "
-      f"--round 3` with Python {platform.python_version()}, NumPy {np.__version__}, "
-      f"SciPy {scipy.__version__}.\n")
+    w(spec["title"])
+    if args.round == "3u":
+        sources = " and ".join(f"`{path}` ({len(part)} rows)"
+                               for path, part in zip(raw_paths, file_rows))
+        w(f"Raw data: {sources}. Generated by `analyze.py {spec['command']}` with Python "
+          f"{platform.python_version()}, NumPy {np.__version__}, SciPy {scipy.__version__}.\n")
+    else:
+        w(f"Raw data: `{raw_path.name}` ({len(rows)} rows). Generated by `analyze.py "
+          f"{spec['command']}` with Python {platform.python_version()}, NumPy "
+          f"{np.__version__}, SciPy {scipy.__version__}.\n")
     if not declared:
         w(f"**Settings (root seed {root_seed}, totals {', '.join(map(str, totals))}, "
           f"minimum run {min_run}) differ from the declared settings (root seed "
@@ -1165,6 +1289,8 @@ def main_round3(args: argparse.Namespace) -> int:
     w("")
 
     w("## Decision\n")
+    if spec["decision_note"]:
+        w(spec["decision_note"])
     w(f"Best incumbent mean rank: {fmt(best_incumbent_rank)} "
       f"({', '.join(best_rank_incumbents) if complete else 'n/a'}).\n")
     w("| Candidate | Wins | Losses | Ties | Problems won | Mean rank | Resample share | "
@@ -1220,13 +1346,14 @@ def main_round3(args: argparse.Namespace) -> int:
     w("")
 
     w("## Descriptive split: problems with and without a categorical coordinate\n")
-    w("Descriptive only; this split decides nothing (ROUND3.md section 6). "
-      f"Categorical: cells of {', '.join(CATEGORICAL_R3)}; other: cells of the "
+    categorical = spec["categorical"]
+    w(f"Descriptive only; this split decides nothing ({spec['split_source']}). "
+      f"Categorical: cells of {', '.join(categorical)}; other: cells of the "
       "remaining problems. Mean ranks are the full-cell ranks averaged over the "
       "group's complete cells.\n")
     groups = [
-        ("categorical", [c for c in complete if c[0] in CATEGORICAL_R3]),
-        ("other", [c for c in complete if c[0] not in CATEGORICAL_R3]),
+        ("categorical", [c for c in complete if c[0] in categorical]),
+        ("other", [c for c in complete if c[0] not in categorical]),
     ]
     w(f"| Group | Complete cells | {candidate} wins | Losses | Ties | " +
       " | ".join(f"Mean rank {s}" for s in solvers) + " |")
@@ -1291,18 +1418,8 @@ def main_round3(args: argparse.Namespace) -> int:
     w("")
 
     w("## Limits\n")
-    w("- Narrower question than declared (DEVIATIONS.md, round 3, entry 1): only two "
-      "problems under the entry rule have an unordered categorical coordinate "
-      "(field-service routing and the job shop), so the question is limited to "
-      "mixed-integer problems with some categorical structure. A statement about "
-      "categorical variables rests on those two problems alone and is not a verdict "
-      "on CatCMAwM for categorical design problems in general.")
-    w("- Six problems (DEVIATIONS.md, round 3, entry 2): the two network-coverage "
-      "problems (4,000 variables) are left out by a dimension cap of 200, and the "
-      "costlier problems with the richest mixed structure (energy hub, water network, "
-      "ML tuning) are outside the 2 ms entry rule on this host.")
-    w("- Binary switches are typed integer, as declared, although the `cmaes` library "
-      "recommends categorical for them (DEVIATIONS.md, round 3, entry 3).")
+    for line in spec["limits"]:
+        w(line)
     w("- The candidate is the authors' Python reference implementation; it is "
       "compared by objective evaluations only, never by time. Its seed is the low 32 "
       "bits of the shared run seed (entry 4).")

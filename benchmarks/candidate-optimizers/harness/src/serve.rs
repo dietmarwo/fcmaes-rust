@@ -13,7 +13,7 @@
 //! | `info P` | none | `ok D domain` (the domain is the rest of the line), then the lower and the upper bounds (one line each, D values) |
 //! | `eval P N` | N vectors of D values | `ok N NS`, then N lines with one value each; NS is the objective time of the batch in nanoseconds |
 //! | `check P N` | N lines of D values and one expected value | `ok M`: M vectors whose in-process evaluation by a separately built instance of P differs bitwise from the expected value |
-//! | `levels P N` | N vectors of D values | `ok N`, then per vector D tokens: the level index each discrete coordinate decodes to with the problem's own decoder ([`crate::round3::level_probe`]), `-` for a continuous coordinate |
+//! | `levels P N` | N vectors of D values | `ok N`, then per vector D tokens: the level index each discrete coordinate decodes to with the problem's own decoder ([`crate::round3::level_probe`], [`crate::round3b::level_probe`]), `-` for a continuous coordinate |
 //! | `echo N` | N lines of values | `ok N`, then the same values re-encoded |
 //! | `fmt N` | N lines of one value | `ok N`, then each value in the raw-file float format (`{:e}`) |
 //! | `quit` | none | none; the process exits |
@@ -29,6 +29,7 @@ use std::time::Instant;
 
 use crate::problems::{self, Problem};
 use crate::round3::{Kind, Probe, TypeTable, level_probe, type_table};
+use crate::round3b;
 
 /// Wire form of a value: its bit pattern in 16 lowercase hex digits.
 pub fn encode(value: f64) -> String {
@@ -87,10 +88,17 @@ impl Cache {
         self.get(name)?;
         let entry = self.entries.get_mut(name).expect("inserted above");
         if entry.probe.is_none() {
-            entry.table =
-                Some(type_table(name).ok_or_else(|| format!("no type table for '{name}'"))?);
-            entry.probe =
-                Some(level_probe(name).ok_or_else(|| format!("no level probe for '{name}'"))?);
+            // Round-3 problems first, then the round-3b batch (ROUND3B.md).
+            entry.table = Some(
+                type_table(name)
+                    .or_else(|| round3b::type_table(name))
+                    .ok_or_else(|| format!("no type table for '{name}'"))?,
+            );
+            entry.probe = Some(
+                level_probe(name)
+                    .or_else(|| round3b::level_probe(name))
+                    .ok_or_else(|| format!("no level probe for '{name}'"))?,
+            );
         }
         Ok(&self.entries[name])
     }
