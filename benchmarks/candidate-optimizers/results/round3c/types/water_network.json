@@ -1,0 +1,1294 @@
+{
+ "problem": "water_network",
+ "dimension": 28,
+ "source": "tutorials/water-network-scheduling/src/decode.rs: decode (category)",
+ "counts": {
+  "continuous": 3,
+  "integer": 25,
+  "categorical": 0
+ },
+ "notes": [
+  "Speed levels 0, 0.8, 0.9, 1.0 are quantized values: integer.",
+  "The pump priority is a two-way switch. It is typed integer here (levels 0 and 1), as the round-3 rule for binary switches says; the round-3 survey table typed it categorical. With a single two-way categorical variable the reference implementation of CatCMAwM breaks down numerically (see DEVIATIONS.md)."
+ ],
+ "coordinates": [
+  {
+   "index": 0,
+   "kind": "integer",
+   "lower": 0.0,
+   "upper": 1.0,
+   "meaning": "speed level of pump 1 in period 0",
+   "levels": [
+    0.125,
+    0.375,
+    0.625,
+    0.875
+   ],
+   "values": [
+    0,
+    1,
+    2,
+    3
+   ],
+   "labels": [
+    "relative speed 0",
+    "relative speed 0.8",
+    "relative speed 0.9",
+    "relative speed 1"
+   ],
+   "intervals": [
+    [
+     [
+      0.0,
+      0.25
+     ]
+    ],
+    [
+     [
+      0.25,
+      0.5
+     ]
+    ],
+    [
+     [
+      0.5,
+      0.75
+     ]
+    ],
+    [
+     [
+      0.75,
+      1.0
+     ]
+    ]
+   ]
+  },
+  {
+   "index": 1,
+   "kind": "integer",
+   "lower": 0.0,
+   "upper": 1.0,
+   "meaning": "speed level of pump 1 in period 1",
+   "levels": [
+    0.125,
+    0.375,
+    0.625,
+    0.875
+   ],
+   "values": [
+    0,
+    1,
+    2,
+    3
+   ],
+   "labels": [
+    "relative speed 0",
+    "relative speed 0.8",
+    "relative speed 0.9",
+    "relative speed 1"
+   ],
+   "intervals": [
+    [
+     [
+      0.0,
+      0.25
+     ]
+    ],
+    [
+     [
+      0.25,
+      0.5
+     ]
+    ],
+    [
+     [
+      0.5,
+      0.75
+     ]
+    ],
+    [
+     [
+      0.75,
+      1.0
+     ]
+    ]
+   ]
+  },
+  {
+   "index": 2,
+   "kind": "integer",
+   "lower": 0.0,
+   "upper": 1.0,
+   "meaning": "speed level of pump 1 in period 2",
+   "levels": [
+    0.125,
+    0.375,
+    0.625,
+    0.875
+   ],
+   "values": [
+    0,
+    1,
+    2,
+    3
+   ],
+   "labels": [
+    "relative speed 0",
+    "relative speed 0.8",
+    "relative speed 0.9",
+    "relative speed 1"
+   ],
+   "intervals": [
+    [
+     [
+      0.0,
+      0.25
+     ]
+    ],
+    [
+     [
+      0.25,
+      0.5
+     ]
+    ],
+    [
+     [
+      0.5,
+      0.75
+     ]
+    ],
+    [
+     [
+      0.75,
+      1.0
+     ]
+    ]
+   ]
+  },
+  {
+   "index": 3,
+   "kind": "integer",
+   "lower": 0.0,
+   "upper": 1.0,
+   "meaning": "speed level of pump 1 in period 3",
+   "levels": [
+    0.125,
+    0.375,
+    0.625,
+    0.875
+   ],
+   "values": [
+    0,
+    1,
+    2,
+    3
+   ],
+   "labels": [
+    "relative speed 0",
+    "relative speed 0.8",
+    "relative speed 0.9",
+    "relative speed 1"
+   ],
+   "intervals": [
+    [
+     [
+      0.0,
+      0.25
+     ]
+    ],
+    [
+     [
+      0.25,
+      0.5
+     ]
+    ],
+    [
+     [
+      0.5,
+      0.75
+     ]
+    ],
+    [
+     [
+      0.75,
+      1.0
+     ]
+    ]
+   ]
+  },
+  {
+   "index": 4,
+   "kind": "integer",
+   "lower": 0.0,
+   "upper": 1.0,
+   "meaning": "speed level of pump 1 in period 4",
+   "levels": [
+    0.125,
+    0.375,
+    0.625,
+    0.875
+   ],
+   "values": [
+    0,
+    1,
+    2,
+    3
+   ],
+   "labels": [
+    "relative speed 0",
+    "relative speed 0.8",
+    "relative speed 0.9",
+    "relative speed 1"
+   ],
+   "intervals": [
+    [
+     [
+      0.0,
+      0.25
+     ]
+    ],
+    [
+     [
+      0.25,
+      0.5
+     ]
+    ],
+    [
+     [
+      0.5,
+      0.75
+     ]
+    ],
+    [
+     [
+      0.75,
+      1.0
+     ]
+    ]
+   ]
+  },
+  {
+   "index": 5,
+   "kind": "integer",
+   "lower": 0.0,
+   "upper": 1.0,
+   "meaning": "speed level of pump 1 in period 5",
+   "levels": [
+    0.125,
+    0.375,
+    0.625,
+    0.875
+   ],
+   "values": [
+    0,
+    1,
+    2,
+    3
+   ],
+   "labels": [
+    "relative speed 0",
+    "relative speed 0.8",
+    "relative speed 0.9",
+    "relative speed 1"
+   ],
+   "intervals": [
+    [
+     [
+      0.0,
+      0.25
+     ]
+    ],
+    [
+     [
+      0.25,
+      0.5
+     ]
+    ],
+    [
+     [
+      0.5,
+      0.75
+     ]
+    ],
+    [
+     [
+      0.75,
+      1.0
+     ]
+    ]
+   ]
+  },
+  {
+   "index": 6,
+   "kind": "integer",
+   "lower": 0.0,
+   "upper": 1.0,
+   "meaning": "speed level of pump 1 in period 6",
+   "levels": [
+    0.125,
+    0.375,
+    0.625,
+    0.875
+   ],
+   "values": [
+    0,
+    1,
+    2,
+    3
+   ],
+   "labels": [
+    "relative speed 0",
+    "relative speed 0.8",
+    "relative speed 0.9",
+    "relative speed 1"
+   ],
+   "intervals": [
+    [
+     [
+      0.0,
+      0.25
+     ]
+    ],
+    [
+     [
+      0.25,
+      0.5
+     ]
+    ],
+    [
+     [
+      0.5,
+      0.75
+     ]
+    ],
+    [
+     [
+      0.75,
+      1.0
+     ]
+    ]
+   ]
+  },
+  {
+   "index": 7,
+   "kind": "integer",
+   "lower": 0.0,
+   "upper": 1.0,
+   "meaning": "speed level of pump 1 in period 7",
+   "levels": [
+    0.125,
+    0.375,
+    0.625,
+    0.875
+   ],
+   "values": [
+    0,
+    1,
+    2,
+    3
+   ],
+   "labels": [
+    "relative speed 0",
+    "relative speed 0.8",
+    "relative speed 0.9",
+    "relative speed 1"
+   ],
+   "intervals": [
+    [
+     [
+      0.0,
+      0.25
+     ]
+    ],
+    [
+     [
+      0.25,
+      0.5
+     ]
+    ],
+    [
+     [
+      0.5,
+      0.75
+     ]
+    ],
+    [
+     [
+      0.75,
+      1.0
+     ]
+    ]
+   ]
+  },
+  {
+   "index": 8,
+   "kind": "integer",
+   "lower": 0.0,
+   "upper": 1.0,
+   "meaning": "speed level of pump 1 in period 8",
+   "levels": [
+    0.125,
+    0.375,
+    0.625,
+    0.875
+   ],
+   "values": [
+    0,
+    1,
+    2,
+    3
+   ],
+   "labels": [
+    "relative speed 0",
+    "relative speed 0.8",
+    "relative speed 0.9",
+    "relative speed 1"
+   ],
+   "intervals": [
+    [
+     [
+      0.0,
+      0.25
+     ]
+    ],
+    [
+     [
+      0.25,
+      0.5
+     ]
+    ],
+    [
+     [
+      0.5,
+      0.75
+     ]
+    ],
+    [
+     [
+      0.75,
+      1.0
+     ]
+    ]
+   ]
+  },
+  {
+   "index": 9,
+   "kind": "integer",
+   "lower": 0.0,
+   "upper": 1.0,
+   "meaning": "speed level of pump 1 in period 9",
+   "levels": [
+    0.125,
+    0.375,
+    0.625,
+    0.875
+   ],
+   "values": [
+    0,
+    1,
+    2,
+    3
+   ],
+   "labels": [
+    "relative speed 0",
+    "relative speed 0.8",
+    "relative speed 0.9",
+    "relative speed 1"
+   ],
+   "intervals": [
+    [
+     [
+      0.0,
+      0.25
+     ]
+    ],
+    [
+     [
+      0.25,
+      0.5
+     ]
+    ],
+    [
+     [
+      0.5,
+      0.75
+     ]
+    ],
+    [
+     [
+      0.75,
+      1.0
+     ]
+    ]
+   ]
+  },
+  {
+   "index": 10,
+   "kind": "integer",
+   "lower": 0.0,
+   "upper": 1.0,
+   "meaning": "speed level of pump 1 in period 10",
+   "levels": [
+    0.125,
+    0.375,
+    0.625,
+    0.875
+   ],
+   "values": [
+    0,
+    1,
+    2,
+    3
+   ],
+   "labels": [
+    "relative speed 0",
+    "relative speed 0.8",
+    "relative speed 0.9",
+    "relative speed 1"
+   ],
+   "intervals": [
+    [
+     [
+      0.0,
+      0.25
+     ]
+    ],
+    [
+     [
+      0.25,
+      0.5
+     ]
+    ],
+    [
+     [
+      0.5,
+      0.75
+     ]
+    ],
+    [
+     [
+      0.75,
+      1.0
+     ]
+    ]
+   ]
+  },
+  {
+   "index": 11,
+   "kind": "integer",
+   "lower": 0.0,
+   "upper": 1.0,
+   "meaning": "speed level of pump 1 in period 11",
+   "levels": [
+    0.125,
+    0.375,
+    0.625,
+    0.875
+   ],
+   "values": [
+    0,
+    1,
+    2,
+    3
+   ],
+   "labels": [
+    "relative speed 0",
+    "relative speed 0.8",
+    "relative speed 0.9",
+    "relative speed 1"
+   ],
+   "intervals": [
+    [
+     [
+      0.0,
+      0.25
+     ]
+    ],
+    [
+     [
+      0.25,
+      0.5
+     ]
+    ],
+    [
+     [
+      0.5,
+      0.75
+     ]
+    ],
+    [
+     [
+      0.75,
+      1.0
+     ]
+    ]
+   ]
+  },
+  {
+   "index": 12,
+   "kind": "integer",
+   "lower": 0.0,
+   "upper": 1.0,
+   "meaning": "speed level of pump 2 in period 0",
+   "levels": [
+    0.125,
+    0.375,
+    0.625,
+    0.875
+   ],
+   "values": [
+    0,
+    1,
+    2,
+    3
+   ],
+   "labels": [
+    "relative speed 0",
+    "relative speed 0.8",
+    "relative speed 0.9",
+    "relative speed 1"
+   ],
+   "intervals": [
+    [
+     [
+      0.0,
+      0.25
+     ]
+    ],
+    [
+     [
+      0.25,
+      0.5
+     ]
+    ],
+    [
+     [
+      0.5,
+      0.75
+     ]
+    ],
+    [
+     [
+      0.75,
+      1.0
+     ]
+    ]
+   ]
+  },
+  {
+   "index": 13,
+   "kind": "integer",
+   "lower": 0.0,
+   "upper": 1.0,
+   "meaning": "speed level of pump 2 in period 1",
+   "levels": [
+    0.125,
+    0.375,
+    0.625,
+    0.875
+   ],
+   "values": [
+    0,
+    1,
+    2,
+    3
+   ],
+   "labels": [
+    "relative speed 0",
+    "relative speed 0.8",
+    "relative speed 0.9",
+    "relative speed 1"
+   ],
+   "intervals": [
+    [
+     [
+      0.0,
+      0.25
+     ]
+    ],
+    [
+     [
+      0.25,
+      0.5
+     ]
+    ],
+    [
+     [
+      0.5,
+      0.75
+     ]
+    ],
+    [
+     [
+      0.75,
+      1.0
+     ]
+    ]
+   ]
+  },
+  {
+   "index": 14,
+   "kind": "integer",
+   "lower": 0.0,
+   "upper": 1.0,
+   "meaning": "speed level of pump 2 in period 2",
+   "levels": [
+    0.125,
+    0.375,
+    0.625,
+    0.875
+   ],
+   "values": [
+    0,
+    1,
+    2,
+    3
+   ],
+   "labels": [
+    "relative speed 0",
+    "relative speed 0.8",
+    "relative speed 0.9",
+    "relative speed 1"
+   ],
+   "intervals": [
+    [
+     [
+      0.0,
+      0.25
+     ]
+    ],
+    [
+     [
+      0.25,
+      0.5
+     ]
+    ],
+    [
+     [
+      0.5,
+      0.75
+     ]
+    ],
+    [
+     [
+      0.75,
+      1.0
+     ]
+    ]
+   ]
+  },
+  {
+   "index": 15,
+   "kind": "integer",
+   "lower": 0.0,
+   "upper": 1.0,
+   "meaning": "speed level of pump 2 in period 3",
+   "levels": [
+    0.125,
+    0.375,
+    0.625,
+    0.875
+   ],
+   "values": [
+    0,
+    1,
+    2,
+    3
+   ],
+   "labels": [
+    "relative speed 0",
+    "relative speed 0.8",
+    "relative speed 0.9",
+    "relative speed 1"
+   ],
+   "intervals": [
+    [
+     [
+      0.0,
+      0.25
+     ]
+    ],
+    [
+     [
+      0.25,
+      0.5
+     ]
+    ],
+    [
+     [
+      0.5,
+      0.75
+     ]
+    ],
+    [
+     [
+      0.75,
+      1.0
+     ]
+    ]
+   ]
+  },
+  {
+   "index": 16,
+   "kind": "integer",
+   "lower": 0.0,
+   "upper": 1.0,
+   "meaning": "speed level of pump 2 in period 4",
+   "levels": [
+    0.125,
+    0.375,
+    0.625,
+    0.875
+   ],
+   "values": [
+    0,
+    1,
+    2,
+    3
+   ],
+   "labels": [
+    "relative speed 0",
+    "relative speed 0.8",
+    "relative speed 0.9",
+    "relative speed 1"
+   ],
+   "intervals": [
+    [
+     [
+      0.0,
+      0.25
+     ]
+    ],
+    [
+     [
+      0.25,
+      0.5
+     ]
+    ],
+    [
+     [
+      0.5,
+      0.75
+     ]
+    ],
+    [
+     [
+      0.75,
+      1.0
+     ]
+    ]
+   ]
+  },
+  {
+   "index": 17,
+   "kind": "integer",
+   "lower": 0.0,
+   "upper": 1.0,
+   "meaning": "speed level of pump 2 in period 5",
+   "levels": [
+    0.125,
+    0.375,
+    0.625,
+    0.875
+   ],
+   "values": [
+    0,
+    1,
+    2,
+    3
+   ],
+   "labels": [
+    "relative speed 0",
+    "relative speed 0.8",
+    "relative speed 0.9",
+    "relative speed 1"
+   ],
+   "intervals": [
+    [
+     [
+      0.0,
+      0.25
+     ]
+    ],
+    [
+     [
+      0.25,
+      0.5
+     ]
+    ],
+    [
+     [
+      0.5,
+      0.75
+     ]
+    ],
+    [
+     [
+      0.75,
+      1.0
+     ]
+    ]
+   ]
+  },
+  {
+   "index": 18,
+   "kind": "integer",
+   "lower": 0.0,
+   "upper": 1.0,
+   "meaning": "speed level of pump 2 in period 6",
+   "levels": [
+    0.125,
+    0.375,
+    0.625,
+    0.875
+   ],
+   "values": [
+    0,
+    1,
+    2,
+    3
+   ],
+   "labels": [
+    "relative speed 0",
+    "relative speed 0.8",
+    "relative speed 0.9",
+    "relative speed 1"
+   ],
+   "intervals": [
+    [
+     [
+      0.0,
+      0.25
+     ]
+    ],
+    [
+     [
+      0.25,
+      0.5
+     ]
+    ],
+    [
+     [
+      0.5,
+      0.75
+     ]
+    ],
+    [
+     [
+      0.75,
+      1.0
+     ]
+    ]
+   ]
+  },
+  {
+   "index": 19,
+   "kind": "integer",
+   "lower": 0.0,
+   "upper": 1.0,
+   "meaning": "speed level of pump 2 in period 7",
+   "levels": [
+    0.125,
+    0.375,
+    0.625,
+    0.875
+   ],
+   "values": [
+    0,
+    1,
+    2,
+    3
+   ],
+   "labels": [
+    "relative speed 0",
+    "relative speed 0.8",
+    "relative speed 0.9",
+    "relative speed 1"
+   ],
+   "intervals": [
+    [
+     [
+      0.0,
+      0.25
+     ]
+    ],
+    [
+     [
+      0.25,
+      0.5
+     ]
+    ],
+    [
+     [
+      0.5,
+      0.75
+     ]
+    ],
+    [
+     [
+      0.75,
+      1.0
+     ]
+    ]
+   ]
+  },
+  {
+   "index": 20,
+   "kind": "integer",
+   "lower": 0.0,
+   "upper": 1.0,
+   "meaning": "speed level of pump 2 in period 8",
+   "levels": [
+    0.125,
+    0.375,
+    0.625,
+    0.875
+   ],
+   "values": [
+    0,
+    1,
+    2,
+    3
+   ],
+   "labels": [
+    "relative speed 0",
+    "relative speed 0.8",
+    "relative speed 0.9",
+    "relative speed 1"
+   ],
+   "intervals": [
+    [
+     [
+      0.0,
+      0.25
+     ]
+    ],
+    [
+     [
+      0.25,
+      0.5
+     ]
+    ],
+    [
+     [
+      0.5,
+      0.75
+     ]
+    ],
+    [
+     [
+      0.75,
+      1.0
+     ]
+    ]
+   ]
+  },
+  {
+   "index": 21,
+   "kind": "integer",
+   "lower": 0.0,
+   "upper": 1.0,
+   "meaning": "speed level of pump 2 in period 9",
+   "levels": [
+    0.125,
+    0.375,
+    0.625,
+    0.875
+   ],
+   "values": [
+    0,
+    1,
+    2,
+    3
+   ],
+   "labels": [
+    "relative speed 0",
+    "relative speed 0.8",
+    "relative speed 0.9",
+    "relative speed 1"
+   ],
+   "intervals": [
+    [
+     [
+      0.0,
+      0.25
+     ]
+    ],
+    [
+     [
+      0.25,
+      0.5
+     ]
+    ],
+    [
+     [
+      0.5,
+      0.75
+     ]
+    ],
+    [
+     [
+      0.75,
+      1.0
+     ]
+    ]
+   ]
+  },
+  {
+   "index": 22,
+   "kind": "integer",
+   "lower": 0.0,
+   "upper": 1.0,
+   "meaning": "speed level of pump 2 in period 10",
+   "levels": [
+    0.125,
+    0.375,
+    0.625,
+    0.875
+   ],
+   "values": [
+    0,
+    1,
+    2,
+    3
+   ],
+   "labels": [
+    "relative speed 0",
+    "relative speed 0.8",
+    "relative speed 0.9",
+    "relative speed 1"
+   ],
+   "intervals": [
+    [
+     [
+      0.0,
+      0.25
+     ]
+    ],
+    [
+     [
+      0.25,
+      0.5
+     ]
+    ],
+    [
+     [
+      0.5,
+      0.75
+     ]
+    ],
+    [
+     [
+      0.75,
+      1.0
+     ]
+    ]
+   ]
+  },
+  {
+   "index": 23,
+   "kind": "integer",
+   "lower": 0.0,
+   "upper": 1.0,
+   "meaning": "speed level of pump 2 in period 11",
+   "levels": [
+    0.125,
+    0.375,
+    0.625,
+    0.875
+   ],
+   "values": [
+    0,
+    1,
+    2,
+    3
+   ],
+   "labels": [
+    "relative speed 0",
+    "relative speed 0.8",
+    "relative speed 0.9",
+    "relative speed 1"
+   ],
+   "intervals": [
+    [
+     [
+      0.0,
+      0.25
+     ]
+    ],
+    [
+     [
+      0.25,
+      0.5
+     ]
+    ],
+    [
+     [
+      0.5,
+      0.75
+     ]
+    ],
+    [
+     [
+      0.75,
+      1.0
+     ]
+    ]
+   ]
+  },
+  {
+   "index": 24,
+   "kind": "continuous",
+   "lower": 0.0,
+   "upper": 1.0,
+   "meaning": "low tank threshold"
+  },
+  {
+   "index": 25,
+   "kind": "continuous",
+   "lower": 0.0,
+   "upper": 1.0,
+   "meaning": "high tank threshold (offset above the low one)"
+  },
+  {
+   "index": 26,
+   "kind": "continuous",
+   "lower": 0.0,
+   "upper": 1.0,
+   "meaning": "PRV setpoint"
+  },
+  {
+   "index": 27,
+   "kind": "integer",
+   "lower": 0.0,
+   "upper": 1.0,
+   "meaning": "pump priority under the low-tank override",
+   "levels": [
+    0.25,
+    0.75
+   ],
+   "labels": [
+    "pump 1 first",
+    "pump 2 first"
+   ],
+   "intervals": [
+    [
+     [
+      0.0,
+      0.5
+     ]
+    ],
+    [
+     [
+      0.5,
+      1.0
+     ]
+    ]
+   ],
+   "values": [
+    0,
+    1
+   ]
+  }
+ ]
+}
