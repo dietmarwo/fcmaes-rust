@@ -30,7 +30,8 @@ phase, with breaking changes called out explicitly.
   median) and Messenger full (5 of 7, 6.30 against 6.12). Wider tests at
   equal evaluations are pending. The change is marked `REPAIR-Z` in
   `crates/fcmaes-core/src/cmaes.rs` and has one call site, so it can be
-  made optional.
+  made optional. The Foundations lesson L2 (Rastrigin-10, 1,500
+  evaluations, one seed) reports 7.38 for CMA-ES where it reported 35.2.
 - `Cmaes::tell_x` after an `ask` updated from the asked samples instead of
   the supplied points, because the flag that selects the supplied points
   was set after the update had run. It is now set first.
