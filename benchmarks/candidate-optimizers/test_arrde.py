@@ -108,5 +108,58 @@ class Bridge(unittest.TestCase):
         self.assertEqual(float(rows[0]["best_value"]), result["best_value"])
 
 
+def fake_file(path, solvers, total, cap, root, rng, shift=None):
+    shift = shift or {}
+    lines = [base.RAW_HEADER_T]
+    for solver in solvers:
+        for rep in range(10):
+            value = 1000.0 + shift.get(solver, 0.0) + 10.0 * rng.random()
+            fields = [solver, PROBLEM, "structures", "171", "T", str(rep), "1", str(total),
+                      "1e0", str(total), base.format_float(value), "0", "0", "1.0", "1",
+                      str(root), str(total), str(cap), "1000"]
+            lines.append("\t".join(fields))
+    path.write_text("\n".join(lines) + "\n")
+
+
+class Decision(unittest.TestCase):
+    def run_script(self, directory):
+        return subprocess.run(["python3", str(Path(__file__).with_name("decide_round4.py")),
+                               "--dir", str(directory)], capture_output=True, text=True)
+
+    def test_stage1_only_then_stage2(self):
+        import random
+        rng = random.Random(5)
+        core = ["bite", "de", "cma", "crfmnes", "da", "de_cma", "jso_cma"]
+        allsolvers = core + ["arrde"]
+        with tempfile.TemporaryDirectory() as tmp:
+            d = Path(tmp)
+            fake_file(d / "early.tsv", allsolvers, 100000, 100000, 9, rng)
+            fake_file(d / "stage1-cap1000000.tsv", allsolvers, 1000000, 1000000, 7, rng,
+                      {"arrde": -100.0, "de": 5.0})
+            fake_file(d / "stage1-cap125000.tsv", allsolvers, 1000000, 125000, 7, rng,
+                      {"arrde": -50.0})
+            done = self.run_script(d)
+            self.assertEqual(done.returncode, 0, done.stderr)
+            report = (d / "report.md").read_text()
+            self.assertIn("Pending", report)
+            self.assertIn("arrde/one", report)
+            self.assertIn("(bound)", report)
+            # Stage 2 arms: arrde/one and the two best core arms (one shape each).
+            fake_file(d / "stage2-cap4000000.tsv", ["arrde"], 4000000, 4000000, 8, rng,
+                      {"arrde": -100.0})
+            partial = self.run_script(d)
+            self.assertEqual(partial.returncode, 0, partial.stderr)
+            self.assertIn("pending", (d / "report.md").read_text())
+
+    def test_wrong_root_seed_is_refused(self):
+        import random
+        rng = random.Random(6)
+        with tempfile.TemporaryDirectory() as tmp:
+            d = Path(tmp)
+            fake_file(d / "stage1-cap1000000.tsv", ["bite"], 1000000, 1000000, 7, rng)
+            fake_file(d / "stage1-cap125000.tsv", ["bite"], 1000000, 125000, 3, rng)
+            self.assertNotEqual(self.run_script(d).returncode, 0)
+
+
 if __name__ == "__main__":
     unittest.main()
