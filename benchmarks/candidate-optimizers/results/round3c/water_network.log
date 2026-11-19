@@ -1,0 +1,37 @@
+protocol T, totals 20000: root seed 5, run cap = total, min run 100 (not the declared round-3 settings)
+70 runs to do (0 already present), 2 threads
+protocol T, totals 20000: root seed 5, run cap = total, min run 100 (not the declared round-3 settings)
+warning: removing stale lock results/round3c/water_network.tsv.lock of process 261
+64 runs to do (6 already present), 2 threads
+done bite water_network T (4/64 runs, cell 320.1s, elapsed 320.1s)
+protocol T, totals 20000: root seed 5, run cap = total, min run 100 (not the declared round-3 settings)
+warning: removing stale lock results/round3c/water_network.tsv.lock of process 290
+58 runs to do (12 already present), 2 threads
+protocol T, totals 20000: root seed 5, run cap = total, min run 100 (not the declared round-3 settings)
+warning: removing stale lock results/round3c/water_network.tsv.lock of process 307
+51 runs to do (19 already present), 2 threads
+done de water_network T (2/51 runs, cell 157.6s, elapsed 157.6s)
+protocol T, totals 20000: root seed 5, run cap = total, min run 100 (not the declared round-3 settings)
+warning: removing stale lock results/round3c/water_network.tsv.lock of process 327
+41 runs to do (29 already present), 2 threads
+done cma water_network T (3/41 runs, cell 103.4s, elapsed 103.4s)
+done crfmnes water_network T (11/41 runs, cell 348.2s, elapsed 348.2s)
+protocol T, totals 20000: root seed 5, run cap = total, min run 100 (not the declared round-3 settings)
+warning: removing stale lock results/round3c/water_network.tsv.lock of process 358
+28 runs to do (42 already present), 2 threads
+protocol T, totals 20000: root seed 5, run cap = total, min run 100 (not the declared round-3 settings)
+warning: removing stale lock results/round3c/water_network.tsv.lock of process 390
+22 runs to do (48 already present), 2 threads
+done da water_network T (2/22 runs, cell 200.0s, elapsed 200.0s)
+protocol T, totals 20000: root seed 5, run cap = total, min run 100 (not the declared round-3 settings)
+warning: removing stale lock results/round3c/water_network.tsv.lock of process 419
+16 runs to do (54 already present), 2 threads
+done de_cma water_network T (6/16 runs, cell 537.9s, elapsed 537.9s)
+protocol T, totals 20000: root seed 5, run cap = total, min run 100 (not the declared round-3 settings)
+warning: removing stale lock results/round3c/water_network.tsv.lock of process 447
+10 runs to do (60 already present), 2 threads
+protocol T, totals 20000: root seed 5, run cap = total, min run 100 (not the declared round-3 settings)
+warning: removing stale lock results/round3c/water_network.tsv.lock of process 475
+4 runs to do (66 already present), 2 threads
+done jso_cma water_network T (4/4 runs, cell 311.6s, elapsed 311.6s)
+wrote 4 rows to results/round3c/water_network.tsv

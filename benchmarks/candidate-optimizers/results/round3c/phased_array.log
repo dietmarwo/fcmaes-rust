@@ -1,0 +1,34 @@
+protocol T, totals 100000: root seed 5, run cap = total, min run 100 (not the declared round-3 settings)
+70 runs to do (0 already present), 2 threads
+protocol T, totals 100000: root seed 5, run cap = total, min run 100 (not the declared round-3 settings)
+warning: removing stale lock results/round3c/phased_array.tsv.lock of process 698
+62 runs to do (8 already present), 2 threads
+done bite phased_array T (2/62 runs, cell 117.8s, elapsed 117.8s)
+protocol T, totals 100000: root seed 5, run cap = total, min run 100 (not the declared round-3 settings)
+warning: removing stale lock results/round3c/phased_array.tsv.lock of process 723
+54 runs to do (16 already present), 2 threads
+done de phased_array T (4/54 runs, cell 243.3s, elapsed 243.3s)
+protocol T, totals 100000: root seed 5, run cap = total, min run 100 (not the declared round-3 settings)
+warning: removing stale lock results/round3c/phased_array.tsv.lock of process 744
+46 runs to do (24 already present), 2 threads
+done cma phased_array T (6/46 runs, cell 372.5s, elapsed 372.5s)
+protocol T, totals 100000: root seed 5, run cap = total, min run 100 (not the declared round-3 settings)
+warning: removing stale lock results/round3c/phased_array.tsv.lock of process 765
+38 runs to do (32 already present), 2 threads
+done crfmnes phased_array T (8/38 runs, cell 484.8s, elapsed 484.8s)
+protocol T, totals 100000: root seed 5, run cap = total, min run 100 (not the declared round-3 settings)
+warning: removing stale lock results/round3c/phased_array.tsv.lock of process 785
+30 runs to do (40 already present), 2 threads
+protocol T, totals 100000: root seed 5, run cap = total, min run 100 (not the declared round-3 settings)
+warning: removing stale lock results/round3c/phased_array.tsv.lock of process 809
+22 runs to do (48 already present), 2 threads
+done da phased_array T (2/22 runs, cell 125.8s, elapsed 125.8s)
+protocol T, totals 100000: root seed 5, run cap = total, min run 100 (not the declared round-3 settings)
+warning: removing stale lock results/round3c/phased_array.tsv.lock of process 829
+14 runs to do (56 already present), 2 threads
+done de_cma phased_array T (4/14 runs, cell 251.7s, elapsed 251.7s)
+protocol T, totals 100000: root seed 5, run cap = total, min run 100 (not the declared round-3 settings)
+warning: removing stale lock results/round3c/phased_array.tsv.lock of process 854
+10 runs to do (60 already present), 2 threads
+done jso_cma phased_array T (10/10 runs, cell 608.3s, elapsed 608.3s)
+wrote 10 rows to results/round3c/phased_array.tsv

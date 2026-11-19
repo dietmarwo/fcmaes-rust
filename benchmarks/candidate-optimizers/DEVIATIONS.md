@@ -123,3 +123,23 @@ No deviation from [ROUND3B.md](ROUND3B.md). All three problems entered.
   numbers. The batch uses the fixed-seed form of the Bounce and Casmopolitan
   suites (seed 0), which is a deterministic function of the 25 choices, and
   reproduces the reference code bit for bit.
+
+## Round 3, convergence test
+
+Recorded on 19 November 2026, after the Rust solvers and before the
+candidate had run on `water_network`. No candidate result on that problem
+existed and no result of the test had been examined.
+
+1. **The pump priority of `water_network` is typed integer for the
+   candidate.** The round-3 survey table types this two-way switch as
+   categorical. With it as the only categorical variable, the reference
+   implementation of CatCMAwM breaks down: its step-size adaptation for the
+   categorical part leaves its valid range (a square root of a negative
+   number), the category probabilities become undefined, and a sample selects
+   no category. The convergence test therefore uses the table
+   `results/round3c/types/water_network.json`, in which the switch is an
+   integer with levels 0 and 1, as the round-3 rule for binary switches says.
+   The objective and the encoding of the core solvers are unchanged. The
+   table was checked on 496 points (300 random, 196 next to interval
+   boundaries): moving every discrete coordinate to its level center leaves
+   the objective bit-identical.

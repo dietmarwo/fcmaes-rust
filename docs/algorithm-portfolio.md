@@ -132,6 +132,11 @@ the decoded real vector.
 - On the ten cells with categorical variables it has no win and four losses.
   On the welded beam with material choice, DE, CMA-ES and both sequences
   reach the published optimum in the median; CatCMAwM does not.
+- A [convergence test](../benchmarks/candidate-optimizers/ROUND3C.md) with
+  budgets of 20,000 to 200,000 evaluations asked whether it solves any of
+  three problems better than every core solver. It does not: on the phased
+  array its lead at 20,000 evaluations is gone at 100,000, where jSO→CMA is
+  significantly better.
 
 The repository's real-vector encodings, described in
 [Combinatorial encodings](combinatorial-encodings.md), were sufficient on
