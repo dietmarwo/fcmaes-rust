@@ -25,6 +25,9 @@ pub struct Cli {
     pub stop_fitness: f64,
     pub problem: Option<String>,
     pub progress_interval: f64,
+    /// [`CmaesParams::repair_z`] of every CMA-ES the runner builds;
+    /// `--no-repair-z` sets it to `false`.
+    pub repair_z: bool,
 }
 
 impl Default for Cli {
@@ -40,6 +43,7 @@ impl Default for Cli {
             stop_fitness: f64::NEG_INFINITY,
             problem: None,
             progress_interval: 0.0,
+            repair_z: true,
         }
     }
 }
@@ -56,6 +60,7 @@ impl Cli {
         \x20 --progress-interval N   print live progress every N seconds; 0 disables it\n\
         \x20 --max-eval-fac N        advanced retry maximum evaluation factor\n\
         \x20 --check-interval N      advanced retry checkpoint interval\n\
+        \x20 --no-repair-z           CMA-ES updates moved samples with their unmoved z (0.3.0)\n\
         \x20 --help                  show this help";
 
     pub fn from_env() -> Self {
@@ -82,6 +87,10 @@ impl Cli {
         let mut args = args.into_iter();
         while let Some(argument) = args.next() {
             let argument = argument.as_ref();
+            if argument == "--no-repair-z" {
+                cli.repair_z = false;
+                continue;
+            }
             let value = args
                 .next()
                 .ok_or_else(|| format!("{argument} requires a value"))?;
@@ -259,7 +268,7 @@ impl ProgressReporter {
     }
 }
 
-fn de_cma_run<O>(objective: &O, context: &RetryContext) -> RetryRunResult
+fn de_cma_run<O>(objective: &O, context: &RetryContext, repair_z: bool) -> RetryRunResult
 where
     O: Fn(&[f64]) -> f64 + Sync,
 {
@@ -300,6 +309,7 @@ where
             stop_fitness: f64::NEG_INFINITY,
             seed: context.seed ^ 0xA076_1D64_78BD_642F,
             runid: context.run_id as i64,
+            repair_z,
             ..Default::default()
         },
     );
@@ -320,11 +330,11 @@ where
 ///
 /// The budget split (40% for the first stage, at least 31 evaluations for
 /// each stage), the CMA-ES step size (`context.sdev`) and the seeds are those
-/// of [`de_cma_run`]. jSO has no start point: its initial population is
+/// of [`de_cma_run`], and so is `repair_z`. jSO has no start point: its initial population is
 /// uniform in the retry's bounds, so `context.guess` is not used. Its
 /// evaluation limit is hard, and its population schedule is scaled to the
 /// first-stage budget.
-fn jso_cma_run<O>(objective: &O, context: &RetryContext) -> RetryRunResult
+fn jso_cma_run<O>(objective: &O, context: &RetryContext, repair_z: bool) -> RetryRunResult
 where
     O: Fn(&[f64]) -> f64 + Sync,
 {
@@ -355,6 +365,7 @@ where
             stop_fitness: f64::NEG_INFINITY,
             seed: context.seed ^ 0xA076_1D64_78BD_642F,
             runid: context.run_id as i64,
+            repair_z,
             ..Default::default()
         },
     );
@@ -418,13 +429,13 @@ enum Sequence {
 }
 
 impl Sequence {
-    fn run<O>(self, objective: &O, context: &RetryContext) -> RetryRunResult
+    fn run<O>(self, objective: &O, context: &RetryContext, repair_z: bool) -> RetryRunResult
     where
         O: Fn(&[f64]) -> f64 + Sync,
     {
         match self {
-            Self::DeCma => de_cma_run(objective, context),
-            Self::JsoCma => jso_cma_run(objective, context),
+            Self::DeCma => de_cma_run(objective, context, repair_z),
+            Self::JsoCma => jso_cma_run(objective, context, repair_z),
             Self::CrfmnesBite(params) => crfmnes_bite(objective, context, &params)
                 .expect("validated settings and bounds for independent retries"),
         }
@@ -472,7 +483,7 @@ fn run_basic_sequence(problem: &Problem, cli: &Cli, sequence: Sequence) -> Retry
             &problem.objective,
             &problem.bounds,
             &config,
-            |objective, context| sequence.run(objective, context),
+            |objective, context| sequence.run(objective, context, cli.repair_z),
         );
     }
 
@@ -489,7 +500,7 @@ fn run_basic_sequence(problem: &Problem, cli: &Cli, sequence: Sequence) -> Retry
         &problem.bounds,
         &config,
         move |objective, context| {
-            let result = sequence.run(objective, context);
+            let result = sequence.run(objective, context, cli.repair_z);
             completion_state.retry_completed();
             result
         },
@@ -558,7 +569,12 @@ pub fn run_advanced(problem: &Problem, cli: &Cli) -> RetryResult {
         ..Default::default()
     };
     if cli.progress_interval <= 0.0 {
-        return advanced_retry(&problem.objective, &problem.bounds, &config, de_cma_run);
+        return advanced_retry(
+            &problem.objective,
+            &problem.bounds,
+            &config,
+            |objective, context| de_cma_run(objective, context, cli.repair_z),
+        );
     }
 
     let reporter = ProgressReporter::start(problem.name, cli.retries, cli.progress_interval);
@@ -574,7 +590,7 @@ pub fn run_advanced(problem: &Problem, cli: &Cli) -> RetryResult {
         &problem.bounds,
         &config,
         move |objective, context| {
-            let result = de_cma_run(objective, context);
+            let result = de_cma_run(objective, context, cli.repair_z);
             completion_state.retry_completed();
             result
         },
@@ -657,7 +673,9 @@ mod tests {
                 calls.fetch_add(1, Ordering::Relaxed);
                 sphere(x)
             };
-            let result = retry(&counted, &bounds, &config, jso_cma_run);
+            let result = retry(&counted, &bounds, &config, |objective, context| {
+                jso_cma_run(objective, context, true)
+            });
             (result, calls.load(Ordering::Relaxed))
         };
         let (first, calls) = run();
@@ -750,6 +768,10 @@ mod tests {
         assert_eq!(cli.max_eval_fac, 50.0);
         assert_eq!(cli.check_interval, 100);
         assert_eq!(cli.seed, 7);
+        assert!(cli.repair_z);
+        let cli = Cli::from_args(["--retries", "3", "--no-repair-z", "--seed", "2"]).unwrap();
+        assert!(!cli.repair_z);
+        assert_eq!((cli.retries, cli.seed), (3, 2));
     }
 
     #[test]
