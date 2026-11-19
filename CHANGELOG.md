@@ -136,6 +136,10 @@ phase, with breaking changes called out explicitly.
   Minion, libcmaes and NOMAD. No decision changes; ARRDE on structural sizing
   and the BIPOP settings of the job worker are open follow-ups
   ([the algorithm portfolio](docs/algorithm-portfolio.md)).
+- The algorithm portfolio lists GOMEA (LT-GOMEA, permutation GOMEA,
+  RV-GOMEA) and other linkage-learning EAs as surveyed and not benchmarked,
+  with the reasons and sources
+  ([the algorithm portfolio](docs/algorithm-portfolio.md#surveyed-and-not-benchmarked)).
 - Experimental, opt-in surrogate `/2`: `fcmaes_surrogate::advanced` and the job profile `fcmaes.surrogate/2` ([guide](docs/surrogate/ADVANCED.md)). Over `/1` it adds:
   - an archive of up to 10,000 observations, of which a GP trains on at most 240 (the incumbent, its neighbours and maximin coverage);
   - asynchronous callbacks with one background proposal;

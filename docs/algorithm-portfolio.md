@@ -208,9 +208,18 @@ out of reach of this screening and would be the place to look again.
 | DIRECT, MCS | Local or low-dimensional by design; usable through the retry adapter. MADS was measured as NOMAD in the eight-worker benchmark. |
 | Niching methods (HillVallEA, RS-CMSA) | A different task; MAP-Elites and the Diversifier cover diversity. |
 | Metaphor-based swarm heuristics | No consistent evidence of an advantage over DE or CMA-ES baselines. |
+| GOMEA (LT-GOMEA, permutation GOMEA, RV-GOMEA) and other linkage-learning EAs (DSMGA-II, P3) | The discrete variants need a discrete genotype, outside the real-vector contract of core; [Combinatorial encodings](combinatorial-encodings.md) sends such problems to genotype-aware libraries. On realistic permutation problems a learned linkage tree gained little over a random one. RV-GOMEA builds on AMaLGaM and gains most from partial evaluations, which the objective contract does not offer. |
 
 The [survey](../benchmarks/candidate-optimizers/PROTOCOL.md) lists them with
-references.
+references, except the GOMEA row, which was added after it. That row rests
+on [Bosman, Luong and Thierens (2016)](https://doi.org/10.1145/2908812.2908917)
+for permutation GOMEA, [Bouter et al. (2017)](https://ir.cwi.nl/pub/26553/)
+for RV-GOMEA, and
+[Guijt, Luong, Bosman and de Weerdt (2022)](https://research.tudelft.nl/en/publications/4e4a617c-2057-4009-811b-c005e2f0c673)
+for the linkage tree against a random tree on flowshop, QAP and other
+permutation problems. A screening would use the
+[GOMEA library](https://pypi.org/project/gomea/) of the same group, on a
+problem with a native binary or categorical genotype.
 
 ### Outside the boundary
 
