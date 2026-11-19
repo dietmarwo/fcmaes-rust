@@ -382,7 +382,8 @@ not established.
   on problems of at most 171 variables and 2 ms per evaluation.
 - **CMA-ES and the bounds.** All rounds and the eight-worker benchmark ran
   with an active CMA-ES that updated from unrepaired samples when a sample
-  was moved onto a bound (`CHANGELOG.md` describes the correction). Their
+  was moved onto a bound (`CHANGELOG.md` describes the correction;
+  `CmaesParams::repair_z: false` reproduces that update). Their
   numbers for CMA-ES, DE→CMA and jSO→CMA may not hold on problems whose
   solutions lie on or near a bound.
 - **Not covered by the rounds.** Noisy objectives, more than 171 variables,

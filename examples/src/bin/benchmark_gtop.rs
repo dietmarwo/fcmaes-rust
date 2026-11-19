@@ -19,6 +19,7 @@ struct BenchmarkCli {
     progress_interval: f64,
     problem: Option<String>,
     include_slow: bool,
+    repair_z: bool,
     raw_output: Option<PathBuf>,
     table_output: Option<PathBuf>,
 }
@@ -35,6 +36,7 @@ impl Default for BenchmarkCli {
             progress_interval: 0.0,
             problem: None,
             include_slow: false,
+            repair_z: true,
             raw_output: None,
             table_output: None,
         }
@@ -52,6 +54,7 @@ impl BenchmarkCli {
       --progress-interval N    live interval inside each experiment\n\
       --problem NAME           run one benchmark problem\n\
       --include-slow           include Tandem and Messenger Full\n\
+      --no-repair-z            CMA-ES updates moved samples with their unmoved z (0.3.0)\n\
       --raw-output PATH        write one TSV row after every experiment\n\
       --table-output PATH      update the Markdown table after every problem\n\
       --help                   show this help";
@@ -72,6 +75,7 @@ impl BenchmarkCli {
             match argument {
                 "--help" | "-h" => return Ok(None),
                 "--include-slow" => cli.include_slow = true,
+                "--no-repair-z" => cli.repair_z = false,
                 _ => {
                     let value = args
                         .next()
@@ -164,13 +168,14 @@ fn main() {
     });
 
     println!(
-        "benchmark runs={} workers={} evaluations={} max_eval_fac={} check_interval={} slow={}",
+        "benchmark runs={} workers={} evaluations={} max_eval_fac={} check_interval={} slow={} repair_z={}",
         cli.runs,
         cli.workers,
         cli.evaluations,
         cli.max_eval_fac,
         cli.check_interval,
-        cli.include_slow
+        cli.include_slow,
+        cli.repair_z
     );
     let mut summaries = Vec::with_capacity(cases.len());
     for (case_index, case) in cases.iter().enumerate() {
@@ -188,6 +193,7 @@ fn main() {
                 stop_fitness: case.stop_value,
                 problem: None,
                 progress_interval: cli.progress_interval,
+                repair_z: cli.repair_z,
             };
             let started = Instant::now();
             let result = run_advanced(&case.problem, &run_cli);
@@ -266,6 +272,7 @@ mod tests {
             "--problem",
             "sagas",
             "--include-slow",
+            "--no-repair-z",
             "--raw-output",
             "raw.tsv",
             "--table-output",
@@ -274,6 +281,8 @@ mod tests {
         .unwrap()
         .unwrap();
         assert_eq!(cli.runs, 7);
+        assert!(!cli.repair_z);
+        assert!(BenchmarkCli::default().repair_z);
         assert_eq!(cli.workers, 3);
         assert_eq!(cli.evaluations, 2_000);
         assert_eq!(cli.seed, 9);

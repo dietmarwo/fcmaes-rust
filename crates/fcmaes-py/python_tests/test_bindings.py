@@ -391,3 +391,54 @@ def test_one_shot_and_stateful_optimizers_share_defaults():
                 f"{name}: {function_name}={parameter.default!r} {class_name}={other!r}"
             )
     assert not divergent, "shared parameter defaults diverged:\n" + "\n".join(divergent)
+
+
+def beyond_the_bounds(x):
+    """Sphere whose optimum lies outside ``[-1, 1]`` in the first ten variables."""
+    x = np.asarray(x)
+    return float(np.sum((x[:10] - 2.0) ** 2) + np.sum((x[10:] - 0.3) ** 2))
+
+
+def test_acma_repair_z_selects_the_update_of_bounded_samples():
+    """``repair_z=False`` restores the update of 0.3.0, whose step size grows
+    until the run stops early when samples keep reaching the bounds."""
+
+    def run(**kwargs):
+        x, y, evaluations, iterations, stop = fcmaes_rust.optimize_acma(
+            beyond_the_bounds,
+            None,
+            [0.0] * 20,
+            [-1.0] * 20,
+            [1.0] * 20,
+            [0.3],
+            seed=1,
+            popsize=16,
+            max_evaluations=20_000,
+            **kwargs,
+        )
+        return list(x), y, evaluations, iterations, stop
+
+    default = run()
+    assert default == run(repair_z=True)
+    assert default[1] < 11.0 and default[2] > 2000
+    without = run(repair_z=False)
+    assert without[1] > 12.5 and without[2] < 1800
+
+    # The class takes the same keyword; inside the bounds it changes nothing.
+    def ask_tell(repair_z):
+        acma = fcmaes_rust.ACMA(
+            [1.0, -2.0, 0.5],
+            [-1e3] * 3,
+            [1e3] * 3,
+            [1e-3],
+            popsize=10,
+            seed=5,
+            repair_z=repair_z,
+        )
+        for _ in range(100):
+            if acma.tell([sphere(x) for x in acma.ask()]) != 0:
+                break
+        x, y, evaluations, iterations, stop = acma.result()
+        return list(x), y, evaluations, iterations, stop
+
+    assert ask_tell(True) == ask_tell(False)

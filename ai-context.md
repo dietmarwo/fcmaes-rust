@@ -1028,6 +1028,7 @@ release.
 | `stop_fitness` | negative infinity | Use a known target. |
 | `stop_tol_hist_fun` | -1 | Negative selects the automatic history tolerance. Avoid tight tolerances on noise. |
 | `update_gap` | -1 | Negative selects the automatic covariance update interval. |
+| `repair_z` | true | A sample moved into the bounds enters the update with the `z` of the evaluated point; `false` uses the `z` of the unmoved sample, the update of 0.3.0. Matters only when samples reach the bounds; compare both where they do (Python `repair_z=`, examples `--no-repair-z`). |
 | `seed` / `runid` | 0 / 0 | Use distinct values for independent runs. |
 
 The guess must match the dimension. `input_sigma` has length one (broadcast)

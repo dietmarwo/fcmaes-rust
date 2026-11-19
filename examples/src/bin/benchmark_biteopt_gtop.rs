@@ -117,6 +117,7 @@ struct BenchmarkCli {
     seed: u64,
     problem: Option<String>,
     progress_interval: f64,
+    repair_z: bool,
     raw_output: Option<PathBuf>,
     table_output: Option<PathBuf>,
 }
@@ -133,6 +134,7 @@ impl Default for BenchmarkCli {
             seed: 1,
             problem: None,
             progress_interval: 0.0,
+            repair_z: true,
             raw_output: None,
             table_output: None,
         }
@@ -153,6 +155,7 @@ impl BenchmarkCli {
       --seed N                 deterministic root seed (default 1)\n\
       --problem NAME           run one included benchmark problem\n\
       --progress-interval N    live interval inside each experiment\n\
+      --no-repair-z            CMA-ES of de_cma and jso_cma updates moved samples with their unmoved z (0.3.0)\n\
       --raw-output PATH        write one TSV row after every experiment\n\
       --table-output PATH      update the Markdown table after every problem\n\
       --help                   show this help\n\
@@ -176,6 +179,10 @@ Messenger Full is always excluded; Tandem is included by default.";
             let argument = argument.as_ref();
             if argument == "--help" || argument == "-h" {
                 return Ok(None);
+            }
+            if argument == "--no-repair-z" {
+                cli.repair_z = false;
+                continue;
             }
             let value = args
                 .next()
@@ -306,12 +313,13 @@ fn main() {
     });
 
     println!(
-        "benchmark optimizer={} retry=basic runs={} workers={} retries={} evaluations={}",
+        "benchmark optimizer={} retry=basic runs={} workers={} retries={} evaluations={} repair_z={}",
         cli.algorithm.key(),
         cli.runs,
         cli.workers,
         cli.retries,
-        cli.evaluations
+        cli.evaluations,
+        cli.repair_z
     );
     let mut summaries = Vec::with_capacity(cases.len());
     for (case_index, case) in cases.iter().enumerate() {
@@ -328,6 +336,7 @@ fn main() {
                 value_limit: f64::INFINITY,
                 stop_fitness: case.stop_value,
                 progress_interval: cli.progress_interval,
+                repair_z: cli.repair_z,
                 ..Default::default()
             };
             let started = Instant::now();
@@ -451,6 +460,12 @@ mod tests {
             .unwrap();
         assert_eq!(jso.algorithm, Algorithm::JsoCma);
         assert_eq!(jso.algorithm.key(), "jso_cma");
+        assert!(jso.repair_z);
+        let jso = BenchmarkCli::from_args(["--algo", "jso_cma", "--no-repair-z", "--runs", "2"])
+            .unwrap()
+            .unwrap();
+        assert!(!jso.repair_z);
+        assert_eq!(jso.runs, 2);
     }
 
     #[test]
