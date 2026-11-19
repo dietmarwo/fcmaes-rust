@@ -78,7 +78,7 @@ impl CrfmnesBiteParams {
 
 /// Run one CR-FM-NES → BiteOpt sequence within a retry's hard evaluation budget.
 ///
-/// Pass this to a [`crate::retry`] closure to parallelize independent runs.
+/// Pass this to a [`crate::retry()`] closure to parallelize independent runs.
 /// CR-FM-NES samples complete, even-sized populations. DeepBiteOpt starts at
 /// the best point actually evaluated by the first stage and receives the
 /// remaining calls, including any unused first-stage allowance. The returned
