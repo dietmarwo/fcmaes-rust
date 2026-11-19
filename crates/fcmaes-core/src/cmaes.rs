@@ -346,6 +346,7 @@ impl Cmaes {
             let delta = (&self.bd * col(&self.arz, k)) * self.sigma;
             let cand = &self.xmean + delta;
             let feasible = self.fitfun.closest_feasible_normed(cand.as_slice());
+            // REPAIR-Z: read only by `repair_arz`.
             self.repaired[k] = feasible.as_slice() != cand.as_slice();
             for i in 0..self.dim {
                 xs[(i, k)] = feasible[i];
@@ -375,6 +376,10 @@ impl Cmaes {
                     None => self.normal_matrix(self.dim, self.popsize),
                 };
             } else {
+                // REPAIR-Z: the one call that enables the repaired-sample
+                // update. Removing it restores the update of 0.3.0 and
+                // earlier (z of the unrepaired samples). To make the change
+                // optional, guard this call with a parameter.
                 self.repair_arz();
             }
             self.update_cma();
@@ -390,6 +395,11 @@ impl Cmaes {
     /// points while the evolution paths and the rank-μ update followed the
     /// unrepaired samples; on problems whose samples hit the bounds that
     /// mismatch inflates the step size until the run stops (`stop_tol_upx`).
+    ///
+    /// REPAIR-Z: this changes results on every problem whose samples reach
+    /// the bounds, including coordinated retry, which narrows the bounds
+    /// around good solutions. It has one call site, in `tell_one`, and may
+    /// become an option after wider tests; see CHANGELOG.md.
     fn repair_arz(&mut self) {
         for k in 0..self.popsize {
             if !self.repaired[k] {
