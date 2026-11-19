@@ -196,3 +196,24 @@ before any run of ROUND4.md. No result of the test existed.
    one-run medians had been looked at (jSO→CMA 453, ARRDE 481, DE→CMA 543,
    BiteOpt 560). Arms that do not use the changed code must reproduce
    their first-start rows exactly; the report states whether they do.
+7. **Two more core arms at stage 2: jSO→CMA with `repair_z` off.** Recorded
+   on 19 November 2026 after stage 1 and after the ten stage-2 runs of
+   `jso_cma` as one run (median 420.35), before any other stage-2 run. The
+   correction of item 6 has since become the option `CmaesParams::repair_z`
+   (default `true`). On this problem the CMA-based arms were better without
+   it at stage 1 (jSO→CMA as one run: 452.8 in the first start against
+   470.5). On the maintainer's instruction stage 2 therefore also runs
+   `jso_cma_z0`, which is `jso_cma` with `repair_z: false` in its CMA-ES
+   stage, in both shapes, with the stage's seeds and budgets.
+   - Both settings are core configurations. The declared rule is applied
+     to all four core arms of stage 2: ARRDE is superior there only if the
+     median of its arm is lower than the medians of `jso_cma` and
+     `jso_cma_z0` in both shapes and the test against the one with the
+     lowest median is significant. The report also gives the outcome
+     against the two declared arms alone.
+   - Stage 1 is not rerun with the added arm. Its outcome does not depend
+     on it: ARRDE (480.6) is not below the declared `jso_cma` arm (470.5),
+     and the first start shows `jso_cma` without the correction at 452.8.
+   - `jso_cma_z0` must reproduce the first-start rows of `jso_cma` exactly
+     (same seeds, the update of 0.3.0); two repetitions of the one-run
+     shape of stage 1 are rerun into a scratch file to check this.
