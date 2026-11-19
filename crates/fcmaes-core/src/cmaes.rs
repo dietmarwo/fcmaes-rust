@@ -809,11 +809,13 @@ impl Cmaes {
         self.asked_x = self.encode_population(&decoded);
         self.population_decoded = decoded;
         self.told = 0;
+        // The update takes the z of the supplied points, also after an ask
+        // (whose z belong to the asked points).
+        self.compute_arz = true;
         let asked = self.asked_x.clone();
         for (p, &y) in ys.iter().enumerate() {
             self.tell_one(y, &col(&asked, p));
         }
-        self.compute_arz = true;
         self.external_evaluations += ys.len() as u64;
         Ok(self.stop)
     }
@@ -1056,6 +1058,25 @@ mod tests {
             (asked, es.population(), summary(&es.result()))
         };
         assert_eq!(run(true), run(false));
+    }
+
+    /// `tell_x` updates from the supplied points: a pending ask, whose
+    /// samples differ from them, does not change the update.
+    #[test]
+    fn tell_x_after_an_ask_updates_from_the_supplied_points() {
+        let mut asked = cma(5);
+        let mut fresh = cma(5);
+        let xs: Vec<Vec<f64>> = asked
+            .ask()
+            .iter()
+            .map(|x| x.iter().map(|v| 0.5 * v + 0.1).collect())
+            .collect();
+        let ys: Vec<f64> = xs.iter().map(|x| rosen(x)).collect();
+        asked.tell_x(&ys, &xs);
+        fresh.tell_x(&ys, &xs);
+        assert_eq!(asked.xmean, fresh.xmean);
+        assert_eq!(asked.sigma, fresh.sigma);
+        assert_eq!(asked.c, fresh.c);
     }
 
     #[test]
