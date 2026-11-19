@@ -143,3 +143,42 @@ existed and no result of the test had been examined.
    table was checked on 496 points (300 random, 196 next to interval
    boundaries): moving every discrete coordinate to its level center leaves
    the objective bit-identical.
+
+## Round 4
+
+Recorded on 19 November 2026, after the candidate library was built and
+before any run of ROUND4.md. No result of the test existed.
+
+1. **Build route of Minion.** The library is built from source at the
+   declared revision (`535504a`, version 2.0.1, MIT license) with its
+   documented `pip install .` route (scikit-build and CMake, release build).
+   Its CMake file fetches the Eigen headers from a source host that this
+   build host cannot reach, so the build uses a local copy of the same Eigen
+   release (3.4.0, the tag the library's CMake file pins) obtained from the
+   conda-forge package and passed with `-DEigen3_DIR`. Nothing else differs
+   from the documented build, and the `minionpy` wheel from PyPI is not
+   used.
+2. **Seed.** `ARRDE` takes the seed as a C++ `int`, and `-1` means "draw a
+   random seed". The driver passes the low 31 bits of the derived run seed,
+   `seed & 0x7FFFFFFF`, which is never `-1`. The library seeds a
+   thread-local generator in the constructor; two runs with one seed
+   reproduce each other exactly (checked in `test_arrde.py`).
+3. **Budget.** The library overshoots its own evaluation budget by a few
+   evaluations (a 20,000 evaluation run on a test function made 20,007
+   calls). The driver's guard refuses every point beyond the run's
+   allowance, answers it with `+inf` without evaluating it, and counts it in
+   `over_budget`; the evaluation count of a row never exceeds its allowance.
+   No callback is used to stop the library.
+4. **Run shapes and files.** The Rust runner resumes by (solver, problem,
+   protocol, repetition, total), which does not distinguish two run caps, so
+   each shape has its own file, `stage1-cap1000000.tsv` and
+   `stage1-cap125000.tsv` (stage 2: `stage2-cap4000000.tsv` and
+   `stage2-cap500000.tsv`). The decision script reads both.
+5. **Infeasible designs.** The cost of `truss_sizing` is the mass of the
+   design when all constraints hold and the mass plus 10^8 times the sum of
+   squared constraint violations otherwise. A run is reported as ending
+   infeasible when its best cost is at least 10^4; this is a violation of
+   about 1% in one constraint, and the survey of round 3 shows infeasible
+   results of the order 4e8. A marginally infeasible design with a smaller
+   penalty is counted as feasible. The count is informational and does not
+   enter the decision.
