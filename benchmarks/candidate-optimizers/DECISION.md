@@ -157,3 +157,87 @@ replace DE.
 - One protocol, one host, 20 repetitions, published defaults.
 - The first stage gets 40% of each run because the core sequence does; no
   other split was tried.
+
+# Round 3: CatCMA with Margin
+
+Screening of 18 and 19 November 2026 under [ROUND3.md](ROUND3.md) and
+[ROUND3B.md](ROUND3B.md), with the departures recorded in
+[DEVIATIONS.md](DEVIATIONS.md). CatCMAwM ran as its authors' reference
+implementation (`cmaes` 0.13.1, default parameters, native variable types)
+against seven core solvers, on identical objectives, at 2,000 and 20,000
+evaluations with 20 repetitions: 2,880 runs, no contract violation. Reports:
+[round 3](results/round3/report.md), [second batch](results/round3b/report.md),
+[union](results/round3b/report-union.md).
+
+## Outcome
+
+**Watch. CatCMAwM is not implemented in core, and it is not rejected.**
+
+| Cells | Wins | Losses | Ties | Mean rank (of 8) | Best incumbent | Resample share | Gates |
+|---|---:|---:|---:|---:|---|---:|---|
+| Round 3: six repository problems (12 cells) | 1 | 3 | 8 | 3.33 | BiteOpt 3.79 | 97.3% | G2 met |
+| Second batch: three categorical problems (6 cells) | 0 | 3 | 3 | 5.00 | DE, jSO→CMA 3.75 | 0.0% | none |
+| **Union (18 cells), the declared basis** | 1 | 6 | 11 | 3.89 | BiteOpt 3.92 | 43.1% | **none** |
+
+The mean-rank gate needs the candidate ahead of every incumbent in at least
+95% of the resamples. Over the union it is ahead in 43.1%.
+
+## What the cells show
+
+- **No real win.** The single winning cell is truss sizing at 2,000
+  evaluations, where CatCMAwM finds no feasible truss in any run and only
+  sits lower on the infeasibility plateau. At 20,000 evaluations it finds a
+  feasible truss in 0 of 20 runs; BiteOpt does in 19, jSO→CMA in 14, core
+  CMA-ES in 1 and CR-FM-NES in 0.
+- **Level with the best at the larger budget on two mixed problems.** Best
+  median on the phased array at 20,000 evaluations (−27.77 against −27.45
+  for CR-FM-NES) and second on field-service routing (1,313.8 against
+  1,300.4 for Dual Annealing); both are ties. It loses both at 2,000.
+- **No advantage on categorical structure.** Over the ten cells of problems
+  with a categorical coordinate: no win, four losses, six ties, mean rank
+  4.5 against 3.85 for Dual Annealing.
+  - Welded beam with material choice: DE, CMA-ES, DE→CMA and jSO→CMA reach
+    the published optimum value 1.94188 in the median at 20,000
+    evaluations; CatCMAwM reaches 2.06291.
+  - Pest control (25 five-way choices): CatCMAwM ties the best at 2,000
+    evaluations (12.07) and loses to BiteOpt at 20,000 (12.07 against
+    12.03).
+- **Six cells say nothing.** On the job shop, material flow and the mixed
+  cantilever beam every solver has the same median.
+
+## Was the candidate badly configured?
+
+A check outside the declared rules
+([posthoc_round3_start.py](posthoc_round3_start.py), output in
+[results/round3/posthoc-start.txt](results/round3/posthoc-start.txt);
+3 to 8 seeds that are not campaign seeds) compared the library defaults
+with a random start, a random start with a doubled initial spread, and
+that with a population of 31:
+
+- On truss sizing no variant finds a feasible truss.
+- On field-service routing the default is the best variant at 2,000
+  evaluations (median 1,932 against 12,374 or more) and level at 20,000.
+  The default starts at the center of the box, which helps there; the core
+  solvers start from random points.
+
+The margin, the learning rates and other variable typings were not varied.
+
+## Limits
+
+- The candidate is a Python reference implementation, compared by
+  evaluations only.
+- The repository has few cheap problems with categorical variables; the
+  second batch adds three from the literature, one of which (the mixed
+  cantilever beam, three variables) is solved by every solver.
+- The costlier problems with the richest mixed structure (energy hub, water
+  network, ML tuning) were outside the 2 ms entry rule on this host.
+- 20 repetitions, two budgets, default parameters, one host.
+
+## What would change the decision
+
+- Mixed problems with many categorical variables coupled to continuous
+  ones, at budgets of a few tens of thousands of evaluations and with
+  costlier objectives: hyperparameter tuning on tabular or surrogate
+  benchmarks, reaction optimization, the energy hub on a larger machine.
+- A win on such problems that the core solvers cannot match with the
+  repository's real-vector encodings.

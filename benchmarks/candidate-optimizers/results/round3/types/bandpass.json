@@ -1,0 +1,14 @@
+{
+  "problem": "bandpass",
+  "dimension": 5,
+  "source": "tutorials/sindr-circuit-design/src/decode.rs: decode_bandpass_continuous (via so::evaluate_bandpass)",
+  "counts": {"continuous": 5, "integer": 0, "categorical": 0},
+  "notes": ["All five coordinates are log-decoded continuous component values. The E12 catalogue decoding (decode_bandpass_e12) is used only by the MAP-Elites arm (qd.rs), not by a single-objective arm."],
+  "coordinates": [
+    {"index": 0, "kind": "continuous", "lower": 0.0, "upper": 1.0, "meaning": "log-decoded component value"},
+    {"index": 1, "kind": "continuous", "lower": 0.0, "upper": 1.0, "meaning": "log-decoded component value"},
+    {"index": 2, "kind": "continuous", "lower": 0.0, "upper": 1.0, "meaning": "log-decoded component value"},
+    {"index": 3, "kind": "continuous", "lower": 0.0, "upper": 1.0, "meaning": "log-decoded component value"},
+    {"index": 4, "kind": "continuous", "lower": 0.0, "upper": 1.0, "meaning": "log-decoded component value"}
+  ]
+}

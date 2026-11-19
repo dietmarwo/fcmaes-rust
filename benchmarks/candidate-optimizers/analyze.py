@@ -7,7 +7,12 @@ correction, ranks, gates G1/G2, the decision per candidate, violations,
 incomplete cells and timing.
 
 With `--round 2` it analyzes a protocol-T file instead (ROUND2.md section 5;
-see `main_round2`).
+see `main_round2`). With `--round 3` it analyzes the round-3 file (ROUND3.md
+section 6; see `main_round3`): cells are (problem, total), one candidate
+(`catcmawm`), and the generalist gate G2 includes a resampling check. With
+`--round 3b` it analyzes the second round-3 batch alone (ROUND3B.md, same
+tables), and with `--round 3u` the union of the round-3 and round-3b files,
+on which the decision on CatCMAwM is taken (ROUND3B.md section 4).
 
 Every consistency check raises an exception; the script never uses `assert`,
 so it behaves identically under `python -O`.
@@ -18,6 +23,13 @@ Usage:
                        [--threads 2]
     python3 analyze.py --round 2 --raw results/round2/raw.tsv \
                        --out results/round2/report.md --reps 20
+    python3 analyze.py --round 3 --raw results/round3/raw.tsv \
+                       --out results/round3/report.md --reps 20
+    python3 analyze.py --round 3b --raw results/round3b/raw.tsv \
+                       --out results/round3b/report.md --reps 20
+    python3 analyze.py --round 3u \
+                       --raw results/round3/raw.tsv,results/round3b/raw.tsv \
+                       --out results/round3b/report-union.md --reps 20
 """
 
 from __future__ import annotations
@@ -71,11 +83,23 @@ DECLARED_T = {"root_seed": 2, "total": 400_000, "run_cap": 100_000, "min_run": 1
 G1_WINS_R2 = 3
 
 
+def parse_round(value: str):
+    """`--round`: 1, 2 and 3 as integers, `3b` and `3u` as strings."""
+    if value in ("1", "2", "3"):
+        return int(value)
+    if value in ("3b", "3u"):
+        return value
+    raise argparse.ArgumentTypeError(f"invalid round {value!r} (1, 2, 3, 3b or 3u)")
+
+
 def parse_args(argv: list[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("--round", type=int, choices=[1, 2], default=1,
+    parser.add_argument("--round", type=parse_round, default=1,
                         help="1: protocols S and R (PROTOCOL.md); 2: protocol T "
-                             "(ROUND2.md)")
+                             "(ROUND2.md); 3: protocol T with two totals (ROUND3.md); "
+                             "3b: the second round-3 batch alone (ROUND3B.md); 3u: the "
+                             "union of round 3 and round 3b, comma-separated --raw files "
+                             "(ROUND3B.md section 4)")
     parser.add_argument("--raw", default=None,
                         help="raw TSV (default results/raw.tsv, round 2: "
                              "results/round2/raw.tsv)")
@@ -98,6 +122,29 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
                         help="budgets.tsv; adds an evaluation-time projection "
                              "(round 1 only)")
     args = parser.parse_args(argv)
+    if args.round in ("3b", "3u"):
+        union = args.round == "3u"
+        if args.raw is None:
+            args.raw = ("results/round3/raw.tsv,results/round3b/raw.tsv" if union
+                        else "results/round3b/raw.tsv")
+        if args.out is None:
+            args.out = ("results/round3b/report-union.md" if union
+                        else "results/round3b/report.md")
+        if args.solvers is None:
+            args.solvers = ",".join(INCUMBENTS_R3 + [CANDIDATE_R3])
+        if args.problems is None:
+            args.problems = ",".join((PROBLEMS_R3 + PROBLEMS_R3B) if union else PROBLEMS_R3B)
+        return args
+    if args.round == 3:
+        if args.raw is None:
+            args.raw = "results/round3/raw.tsv"
+        if args.out is None:
+            args.out = "results/round3/report.md"
+        if args.solvers is None:
+            args.solvers = ",".join(INCUMBENTS_R3 + [CANDIDATE_R3])
+        if args.problems is None:
+            args.problems = ",".join(PROBLEMS_R3)
+        return args
     round2 = args.round == 2
     if args.raw is None:
         args.raw = "results/round2/raw.tsv" if round2 else "results/raw.tsv"
@@ -161,6 +208,8 @@ def main(argv: list[str]) -> int:
     args = parse_args(argv)
     if args.round == 2:
         return main_round2(args)
+    if args.round in (3, "3b", "3u"):
+        return main_round3(args)
     if args.reps <= 0 or args.threads <= 0 or args.project_reps <= 0:
         raise AnalysisError("--reps, --threads and --project-reps must be positive")
     solvers = [s for s in args.solvers.split(",") if s]
@@ -865,6 +914,520 @@ def main_round2(args: argparse.Namespace) -> int:
       "nothing about tuned performance.")
     w("- The decisions follow the declared rules mechanically; this report draws "
       "no other conclusion.")
+    w("")
+
+    out_path = Path(args.out)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out_path.write_text("\n".join(out))
+    print(f"wrote {out_path} ({len(complete)} complete cells, "
+          f"{len(incomplete)} incomplete)")
+    return 0
+
+
+# ===================================================================== round 3
+# ROUND3.md and DEVIATIONS.md (round 3): seven incumbents, one candidate, six
+# problems, cells (problem, total), protocol T with run cap equal to the total.
+INCUMBENTS_R3 = ["bite", "de", "cma", "crfmnes", "da", "de_cma", "jso_cma"]
+CANDIDATE_R3 = "catcmawm"
+PROBLEMS_R3 = ["truss_sizing", "phased_array", "field_service", "jobshop",
+               "uav_assignment", "material_flow"]
+# Problems with a categorical coordinate (descriptive split, ROUND3.md section 6).
+CATEGORICAL_R3 = ["field_service", "jobshop"]
+DECLARED_R3 = {"root_seed": 3, "totals": [2_000, 20_000], "min_run": 100}
+G1_WINS_R3 = 3
+G1_PROBLEMS_R3 = 2
+G2_RESAMPLES = 10_000
+G2_SHARE = 0.95
+# Seed of the resampling generator (the round's root seed).
+G2_SEED = 3
+# Round 3, second batch (ROUND3B.md): every problem has a categorical
+# coordinate; same solvers, settings, gates and tests as round 3.
+PROBLEMS_R3B = ["welded_beam_mixed", "cantilever_mixed", "pest_control"]
+CATEGORICAL_R3B = list(PROBLEMS_R3B)
+
+
+def round3_spec(round_id) -> dict:
+    """Report texts and problem groups of `--round 3`, `3b` and `3u`."""
+    if round_id == 3:
+        return {
+            "title": "# Candidate optimizers, round 3: mixed-variable screening report\n",
+            "command": "--round 3",
+            "categorical": CATEGORICAL_R3,
+            "split_source": "ROUND3.md section 6",
+            "decision_note": None,
+            "limits": [
+                "- Narrower question than declared (DEVIATIONS.md, round 3, entry 1): only two "
+                "problems under the entry rule have an unordered categorical coordinate "
+                "(field-service routing and the job shop), so the question is limited to "
+                "mixed-integer problems with some categorical structure. A statement about "
+                "categorical variables rests on those two problems alone and is not a verdict "
+                "on CatCMAwM for categorical design problems in general.",
+                "- Six problems (DEVIATIONS.md, round 3, entry 2): the two network-coverage "
+                "problems (4,000 variables) are left out by a dimension cap of 200, and the "
+                "costlier problems with the richest mixed structure (energy hub, water network, "
+                "ML tuning) are outside the 2 ms entry rule on this host.",
+                "- Binary switches are typed integer, as declared, although the `cmaes` library "
+                "recommends categorical for them (DEVIATIONS.md, round 3, entry 3).",
+            ],
+        }
+    if round_id == "3b":
+        return {
+            "title": "# Candidate optimizers, round 3, second batch: categorical problems "
+                     "report\n",
+            "command": "--round 3b",
+            "categorical": CATEGORICAL_R3B,
+            "split_source": "ROUND3B.md section 4",
+            "decision_note": "This table is the second batch alone, reported with the tables "
+                             "of round 3. The decision on CatCMAwM is taken on the union of the "
+                             "round-3 cells and the cells of this batch (ROUND3B.md section 4; "
+                             "`analyze.py --round 3u`).\n",
+            "limits": [
+                "- Three published problems with an unordered categorical coordinate "
+                "(ROUND3B.md section 2): the mixed welded beam of Deb and Goyal, SMT's mixed "
+                "cantilever beam and the pest-control benchmark in the fixed-seed form of the "
+                "Bounce suite. Sources, verification and the encoding are described in "
+                "README.md (\"Round 3, second batch\").",
+                "- Binary switches are typed integer, as declared (the weld type; "
+                "DEVIATIONS.md, round 3, entry 3).",
+            ],
+        }
+    return {
+        "title": "# Candidate optimizers, round 3: union of round 3 and its second batch "
+                 "(decision report)\n",
+        "command": "--round 3u",
+        "categorical": CATEGORICAL_R3 + CATEGORICAL_R3B,
+        "split_source": "ROUND3B.md section 4",
+        "decision_note": "The decision on CatCMAwM is taken on these union cells: the gates of "
+                         "ROUND3.md section 6 over all cells of both files, Holm correction "
+                         "over all union cells of the candidate (ROUND3B.md section 4).\n",
+        "limits": [
+            "- The union holds the six round-3 problems (DEVIATIONS.md, round 3, entry 2) and "
+            "the round-3b batch (ROUND3B.md section 2). Problems with an unordered categorical "
+            "coordinate: field-service routing and the job shop of round 3 and the three "
+            "round-3b problems.",
+            "- Binary switches are typed integer, as declared, although the `cmaes` library "
+            "recommends categorical for them (DEVIATIONS.md, round 3, entry 3).",
+        ],
+    }
+
+
+def resample_share(data: np.ndarray, candidate: int, incumbents: list[int],
+                   resamples: int, seed: int) -> float:
+    """Share of resamples in which the candidate's mean rank is strictly
+    below every incumbent's.
+
+    `data` has shape (cells, solvers, repetitions). Each resample draws, for
+    every cell and solver independently, the repetitions with replacement,
+    recomputes the medians, ranks the solvers per cell by median (average
+    ranks for ties) and averages the ranks over the cells."""
+    cells, solvers, reps = data.shape
+    rng = np.random.default_rng(seed)
+    rank_sum = np.zeros((resamples, solvers))
+    for cell in range(cells):
+        index = rng.integers(0, reps, size=(resamples, solvers, reps))
+        drawn = np.take_along_axis(
+            np.broadcast_to(data[cell], (resamples, solvers, reps)), index, axis=2)
+        medians = np.median(drawn, axis=2)
+        rank_sum += rankdata(medians, method="average", axis=1)
+    mean_ranks = rank_sum / cells
+    better = np.all(mean_ranks[:, [candidate]] < mean_ranks[:, incumbents], axis=1)
+    return float(np.mean(better))
+
+
+def main_round3(args: argparse.Namespace) -> int:
+    """Round-3 analysis (ROUND3.md section 6): cells are (problem, total);
+    best incumbent per cell by median (ties: lower mean); two-sided
+    Mann-Whitney U against it, Holm over the candidate's cells; ranks of all
+    solvers per cell by median; G1 (at least 3 winning cells on at least 2
+    problems) and G2 (mean rank strictly better than the best incumbent's,
+    and strictly better than every incumbent's in at least 95% of 10,000
+    seeded resamples of the repetitions)."""
+    if args.reps <= 0:
+        raise AnalysisError("--reps must be positive")
+    if args.budgets:
+        raise AnalysisError("--budgets applies to round 1 only")
+    solvers = [s for s in args.solvers.split(",") if s]
+    problems = [p for p in args.problems.split(",") if p]
+    if len(set(solvers)) != len(solvers) or len(set(problems)) != len(problems):
+        raise AnalysisError("duplicate solver or problem in the expected sets")
+    incumbents = [s for s in solvers if s in INCUMBENTS_R3]
+    unknown = [s for s in solvers if s not in INCUMBENTS_R3 + [CANDIDATE_R3]]
+    if unknown:
+        raise AnalysisError(f"unknown round-3 solvers {unknown}")
+    if not incumbents:
+        raise AnalysisError("no incumbent among the expected solvers")
+    if CANDIDATE_R3 not in solvers:
+        raise AnalysisError(f"the candidate {CANDIDATE_R3} is not among the expected solvers")
+    candidate = CANDIDATE_R3
+    spec = round3_spec(args.round)
+
+    raw_paths = [Path(p) for p in args.raw.split(",") if p]
+    if args.round == "3u":
+        if len(raw_paths) != 2:
+            raise AnalysisError("--round 3u needs two raw files: round 3, then round 3b")
+    elif len(raw_paths) != 1:
+        raise AnalysisError(f"--round {args.round} takes one raw file")
+    raw_path = raw_paths[0]
+    file_rows = []
+    for path in raw_paths:
+        part = load_rows_t(path)
+        if not part:
+            raise AnalysisError(f"{path}: no rows")
+        file_rows.append(part)
+    if len(file_rows) > 1:
+        shared_problems = sorted({r["problem"] for r in file_rows[0]}
+                                 & {r["problem"] for r in file_rows[1]})
+        if shared_problems:
+            raise AnalysisError(f"problems {shared_problems} appear in both raw files")
+    rows = [row for part in file_rows for row in part]
+    for row in rows:
+        if row["run_cap"] != row["total"]:
+            raise AnalysisError(f"row {row['solver']} {row['problem']} {row['rep']}: run cap "
+                                "differs from the total (round 3: run cap = total)")
+        if row["budget_scale"] != 1.0:
+            raise AnalysisError("protocol-T rows must have budget_scale 1")
+    shared = sorted({(r["root_seed"], r["min_run"]) for r in rows})
+    if len(shared) != 1:
+        raise AnalysisError(f"mixed root seeds or minimum runs {shared}")
+    root_seed, min_run = shared[0]
+    totals = sorted({r["total"] for r in rows})
+    declared = (root_seed == DECLARED_R3["root_seed"] and min_run == DECLARED_R3["min_run"]
+                and totals == DECLARED_R3["totals"])
+
+    seen = set()
+    domains: dict[str, str] = {}
+    dims: dict[str, int] = {}
+    seeds: dict = {}
+    for row in rows:
+        key = (row["solver"], row["problem"], row["total"], row["rep"])
+        if key in seen:
+            raise AnalysisError(f"duplicate row {key}")
+        seen.add(key)
+        seed_key = (row["problem"], row["total"], row["rep"])
+        if seeds.setdefault(seed_key, row["seed"]) != row["seed"]:
+            raise AnalysisError(f"solvers saw different seeds for {seed_key}")
+        if domains.setdefault(row["problem"], row["domain"]) != row["domain"]:
+            raise AnalysisError(f"inconsistent domain for {row['problem']}")
+        if dims.setdefault(row["problem"], row["dim"]) != row["dim"]:
+            raise AnalysisError(f"inconsistent dimension for {row['problem']}")
+
+    extra = sorted({row["solver"] for row in rows} - set(solvers))
+    extra_problems = sorted({row["problem"] for row in rows} - set(problems))
+
+    cells = [(p, t) for p in problems for t in totals]
+    counts_by_key: dict = defaultdict(int)
+    for (s, p, t, r) in seen:
+        if r < args.reps:
+            counts_by_key[(s, p, t)] += 1
+    complete, incomplete = [], []
+    for cell in cells:
+        counts = {solver: counts_by_key[(solver, *cell)] for solver in solvers}
+        if all(count >= args.reps for count in counts.values()):
+            complete.append(cell)
+        else:
+            incomplete.append((cell, counts))
+
+    by_cell: dict = defaultdict(list)
+    for row in rows:
+        if row["rep"] < args.reps:
+            by_cell[(row["problem"], row["total"], row["solver"])].append(row)
+
+    stats = {}
+    for cell in complete:
+        stats[cell] = {}
+        for solver in solvers:
+            ordered = sorted(by_cell[(*cell, solver)], key=lambda r: r["rep"])
+            data = np.array([r["best_value"] for r in ordered])
+            stats[cell][solver] = {
+                "median": float(np.median(data)),
+                "mean": float(np.mean(data)),
+                "best": float(np.min(data)),
+                "data": data,
+            }
+
+    best_incumbent = {}
+    for cell in complete:
+        best_incumbent[cell] = min(
+            incumbents,
+            key=lambda s: (stats[cell][s]["median"], stats[cell][s]["mean"],
+                           incumbents.index(s)),
+        )
+
+    ranks = {}
+    for cell in complete:
+        medians = [stats[cell][s]["median"] for s in solvers]
+        ranks[cell] = dict(zip(solvers, rankdata(medians, method="average")))
+
+    def mean_rank_over(subset) -> dict:
+        return {s: (float(np.mean([ranks[c][s] for c in subset])) if subset else math.nan)
+                for s in solvers}
+
+    mean_rank = mean_rank_over(complete)
+
+    entries = []
+    for cell in complete:
+        incumbent = best_incumbent[cell]
+        x = stats[cell][candidate]["data"]
+        y = stats[cell][incumbent]["data"]
+        u, p = mannwhitney_p(x, y)
+        diff = stats[cell][candidate]["median"] - stats[cell][incumbent]["median"]
+        if diff != 0:
+            direction = -1 if diff < 0 else 1
+        else:
+            half = len(x) * len(y) / 2.0
+            direction = -1 if u < half else (1 if u > half else 0)
+        entries.append({"cell": cell, "incumbent": incumbent, "u": u, "p": p,
+                        "direction": direction})
+    adjusted = holm([e["p"] for e in entries])
+    for entry, p_adj in zip(entries, adjusted):
+        entry["p_holm"] = p_adj
+        if p_adj <= ALPHA and entry["direction"] < 0:
+            entry["outcome"] = "win"
+        elif p_adj <= ALPHA and entry["direction"] > 0:
+            entry["outcome"] = "loss"
+        else:
+            entry["outcome"] = "tie"
+
+    violations = {}
+    for solver in sorted({row["solver"] for row in rows}):
+        mine = [row for row in rows if row["solver"] == solver]
+        violations[solver] = {
+            "rows": len(mine),
+            "over_budget": sum(r["over_budget"] for r in mine),
+            "out_of_bounds": sum(r["out_of_bounds"] for r in mine),
+            "violating_rows": sum(1 for r in mine if r["over_budget"] or r["out_of_bounds"]),
+            "wall_ms": sum(r["wall_ms"] for r in mine),
+        }
+    usage = {}
+    for solver in sorted({row["solver"] for row in rows}):
+        for total in totals:
+            mine = [r for r in rows if r["solver"] == solver and r["total"] == total]
+            if not mine:
+                continue
+            usage[(solver, total)] = {
+                "rows": len(mine),
+                "runs": np.array([r["runs"] for r in mine]),
+                "evaluations": sum(r["evaluations"] for r in mine),
+                "total": sum(r["total"] for r in mine),
+                "empty_stops": sum(1 for r in mine
+                                   if r["total"] - r["evaluations"] >= r["min_run"]),
+            }
+
+    best_incumbent_rank = min(mean_rank[s] for s in incumbents) if complete else math.nan
+    best_rank_incumbents = [s for s in incumbents if mean_rank[s] == best_incumbent_rank]
+    wins = [e for e in entries if e["outcome"] == "win"]
+    win_problems = len({e["cell"][0] for e in wins})
+    g1 = len(wins) >= G1_WINS_R3 and win_problems >= G1_PROBLEMS_R3
+    g2_point = bool(complete) and mean_rank[candidate] < best_incumbent_rank
+    if complete:
+        data = np.array([[stats[cell][s]["data"] for s in solvers] for cell in complete])
+        share = resample_share(data, solvers.index(candidate),
+                               [solvers.index(s) for s in incumbents], G2_RESAMPLES, G2_SEED)
+    else:
+        share = math.nan
+    g2 = g2_point and share >= G2_SHARE
+    has_rows = candidate in violations
+    clean = has_rows and violations[candidate]["over_budget"] == 0 \
+        and violations[candidate]["out_of_bounds"] == 0
+    if not has_rows:
+        decision = "not run"
+    elif (g1 or g2) and clean:
+        decision = "Include"
+    elif g1 or g2:
+        decision = "no rule applies (gate met, but contract violations recorded)"
+    elif wins:
+        decision = "Watch"
+    else:
+        decision = "Reject"
+    losses = sum(1 for e in entries if e["outcome"] == "loss")
+    ties = sum(1 for e in entries if e["outcome"] == "tie")
+
+    # ---------------------------------------------------------------- report
+    out = []
+    w = out.append
+    w(spec["title"])
+    if args.round == "3u":
+        sources = " and ".join(f"`{path}` ({len(part)} rows)"
+                               for path, part in zip(raw_paths, file_rows))
+        w(f"Raw data: {sources}. Generated by `analyze.py {spec['command']}` with Python "
+          f"{platform.python_version()}, NumPy {np.__version__}, SciPy {scipy.__version__}.\n")
+    else:
+        w(f"Raw data: `{raw_path.name}` ({len(rows)} rows). Generated by `analyze.py "
+          f"{spec['command']}` with Python {platform.python_version()}, NumPy "
+          f"{np.__version__}, SciPy {scipy.__version__}.\n")
+    if not declared:
+        w(f"**Settings (root seed {root_seed}, totals {', '.join(map(str, totals))}, "
+          f"minimum run {min_run}) differ from the declared settings (root seed "
+          f"{DECLARED_R3['root_seed']}, totals "
+          f"{', '.join(map(str, DECLARED_R3['totals']))}, minimum run "
+          f"{DECLARED_R3['min_run']}): this is a smoke test of the harness, not a "
+          "campaign result. Its numbers must not be used for any decision.**\n")
+    w("## Settings\n")
+    w(f"- Protocol T per cell: total of {', '.join(map(str, totals))} evaluations per "
+      f"repetition, runs of at most the total, no run started with fewer than {min_run} "
+      f"remaining; root seed {root_seed}")
+    w(f"- Requested repetitions per cell: {args.reps}")
+    w(f"- Incumbents: {', '.join(incumbents)}; candidate: {candidate} (`cmaes.CatCMAwM`, "
+      "Python reference implementation, default parameters)")
+    w(f"- Cells (problem, total) expected: {len(cells)}; complete: {len(complete)}")
+    w(f"- Tests: two-sided Mann-Whitney U (`scipy.stats.mannwhitneyu`, default "
+      f"method) against the best incumbent of the cell (lowest median, ties by lower "
+      f"mean); a NaN p-value (all values identical) counts as 1; Holm correction over "
+      f"the candidate's complete cells; significant when the adjusted p-value is at "
+      f"most {ALPHA}")
+    w(f"- Ranks: by median among the {len(solvers)} solvers in each complete cell "
+      "(average ranks for ties), averaged over the complete cells")
+    w(f"- Resampling for G2: {G2_RESAMPLES:,} resamples (NumPy `default_rng({G2_SEED})`); "
+      "in each, the repetitions of every cell and solver are drawn with replacement, "
+      "all mean ranks are recomputed, and the resample counts when the candidate's "
+      "mean rank is strictly below every incumbent's")
+    if extra:
+        w(f"- Rows of solvers outside the expected set (ignored for statistics, "
+          f"listed under violations): {', '.join(extra)}")
+    if extra_problems:
+        w(f"- Rows of problems outside the expected set (ignored): {', '.join(extra_problems)}")
+    w("")
+
+    w("## Decision\n")
+    if spec["decision_note"]:
+        w(spec["decision_note"])
+    w(f"Best incumbent mean rank: {fmt(best_incumbent_rank)} "
+      f"({', '.join(best_rank_incumbents) if complete else 'n/a'}).\n")
+    w("| Candidate | Wins | Losses | Ties | Problems won | Mean rank | Resample share | "
+      "G1 | G2 | No violation | Decision |")
+    w("|---|---:|---:|---:|---:|---:|---:|:-:|:-:|:-:|---|")
+    share_text = "n/a" if math.isnan(share) else f"{share:.4f}"
+    w(f"| {candidate} | {len(wins)} | {losses} | {ties} | {win_problems} | "
+      f"{fmt(mean_rank[candidate])} | {share_text} | {'yes' if g1 else 'no'} | "
+      f"{'yes' if g2 else 'no'} | {'yes' if clean else 'no'} | {decision} |")
+    w("")
+    w(f"G1: at least {G1_WINS_R3} winning cells on at least {G1_PROBLEMS_R3} different "
+      "problems. G2: mean rank strictly better than the best incumbent's mean rank, and "
+      f"strictly better than every incumbent's in at least {G2_SHARE:.0%} of the "
+      f"{G2_RESAMPLES:,} resamples (resample share). Include: G1 or G2 and no contract "
+      "violation (implement CatCMAwM in core). Watch: at least one winning cell but "
+      "neither gate. Reject for now: no winning cell.\n")
+
+    w("## Mean ranks\n")
+    w("| Solver | Role | Mean rank |")
+    w("|---|---|---:|")
+    for solver in sorted(solvers, key=lambda s: (math.isnan(mean_rank[s]), mean_rank[s])):
+        role = "incumbent" if solver in INCUMBENTS_R3 else "candidate"
+        w(f"| {solver} | {role} | {fmt(mean_rank[solver])} |")
+    w("")
+
+    w("## Win / loss / tie against the best incumbent\n")
+    if complete:
+        w(f"| Cell | Best incumbent | {candidate} | Adjusted p | Unadjusted p |")
+        w("|---|---|---|---:|---:|")
+        for entry in entries:
+            problem, total = entry["cell"]
+            w(f"| {problem} {total} | {entry['incumbent']} | {entry['outcome']} | "
+              f"{entry['p_holm']:.3g} | {entry['p']:.3g} |")
+    else:
+        w("No complete cell.")
+    w("")
+    w("Adjusted p-values are Holm-adjusted over the candidate's cells.\n")
+
+    w("## Per-cell medians\n")
+    w("Median of the guard-recorded best values over the repetitions; the best "
+      "incumbent of each cell is marked with `*`.\n")
+    if complete:
+        w("| Cell | D | " + " | ".join(solvers) + " |")
+        w("|---|---:|" + "---:|" * len(solvers))
+        for cell in complete:
+            values = []
+            for solver in solvers:
+                mark = "*" if solver == best_incumbent[cell] else ""
+                values.append(f"{fmt(stats[cell][solver]['median'])}{mark}")
+            w(f"| {cell[0]} {cell[1]} | {dims.get(cell[0], '?')} | " + " | ".join(values) + " |")
+    else:
+        w("No complete cell.")
+    w("")
+
+    w("## Descriptive split: problems with and without a categorical coordinate\n")
+    categorical = spec["categorical"]
+    w(f"Descriptive only; this split decides nothing ({spec['split_source']}). "
+      f"Categorical: cells of {', '.join(categorical)}; other: cells of the "
+      "remaining problems. Mean ranks are the full-cell ranks averaged over the "
+      "group's complete cells.\n")
+    groups = [
+        ("categorical", [c for c in complete if c[0] in categorical]),
+        ("other", [c for c in complete if c[0] not in categorical]),
+    ]
+    w(f"| Group | Complete cells | {candidate} wins | Losses | Ties | " +
+      " | ".join(f"Mean rank {s}" for s in solvers) + " |")
+    w("|---|---:|---:|---:|---:|" + "---:|" * len(solvers))
+    for name, subset in groups:
+        group_entries = [e for e in entries if e["cell"] in subset]
+        group_rank = mean_rank_over(subset)
+        w(f"| {name} | {len(subset)} | "
+          f"{sum(1 for e in group_entries if e['outcome'] == 'win')} | "
+          f"{sum(1 for e in group_entries if e['outcome'] == 'loss')} | "
+          f"{sum(1 for e in group_entries if e['outcome'] == 'tie')} | " +
+          " | ".join(fmt(group_rank[s]) for s in solvers) + " |")
+    w("")
+
+    w("## Runs and evaluations\n")
+    w("Runs per repetition (minimum / median / maximum of the `runs` column) and "
+      "evaluations counted by the guards as a share of the total, per solver and "
+      "total, over all rows. Empty stops: repetitions in which a run made no "
+      "evaluation, so restarting stopped with at least the minimum run left.\n")
+    w("| Solver | Total | Rows | Runs min | Runs median | Runs max | Evaluations / total | "
+      "Empty stops |")
+    w("|---|---:|---:|---:|---:|---:|---:|---:|")
+    for (solver, total), v in usage.items():
+        share_used = v["evaluations"] / v["total"] if v["total"] else math.nan
+        w(f"| {solver} | {total} | {v['rows']} | {int(v['runs'].min())} | "
+          f"{float(np.median(v['runs'])):g} | {int(v['runs'].max())} | {share_used:.4f} | "
+          f"{v['empty_stops']} |")
+    w("")
+
+    w("## Contract violations\n")
+    w("| Solver | Rows | Over budget | Out of bounds | Rows with a violation |")
+    w("|---|---:|---:|---:|---:|")
+    for solver, v in violations.items():
+        w(f"| {solver} | {v['rows']} | {v['over_budget']} | {v['out_of_bounds']} | "
+          f"{v['violating_rows']} |")
+    w("")
+
+    w("## Incomplete cells\n")
+    if incomplete:
+        w("These cells have fewer repetitions than requested for at least one "
+          "expected solver. They are excluded from best-incumbent selection, tests, "
+          "ranks, resampling and gates.\n")
+        w("| Cell | Repetitions per solver |")
+        w("|---|---|")
+        for (problem, total), counts in incomplete:
+            listing = ", ".join(f"{s} {n}" for s, n in counts.items() if n < args.reps)
+            w(f"| {problem} {total} | short: {listing} |")
+    else:
+        w("None.")
+    w("")
+
+    w("## Timing\n")
+    w("Run wall times summed per solver. The candidate is Python and the incumbents "
+      "are Rust; solvers are compared by evaluations only.\n")
+    w("| Solver | Rows | Wall time (s) |")
+    w("|---|---:|---:|")
+    total_ms = 0.0
+    for solver, v in violations.items():
+        total_ms += v["wall_ms"]
+        w(f"| {solver} | {v['rows']} | {v['wall_ms'] / 1e3:.1f} |")
+    w(f"| total | {len(rows)} | {total_ms / 1e3:.1f} |")
+    w("")
+
+    w("## Limits\n")
+    for line in spec["limits"]:
+        w(line)
+    w("- The candidate is the authors' Python reference implementation; it is "
+      "compared by objective evaluations only, never by time. Its seed is the low 32 "
+      "bits of the shared run seed (entry 4).")
+    w(f"- {args.reps} repetitions per cell; small effects can stay undetected and "
+      "Holm correction is conservative.")
+    w("- Published defaults only; no solver was tuned.")
+    w("- The decision follows the declared rules mechanically; this report draws no "
+      "other conclusion.")
     w("")
 
     out_path = Path(args.out)

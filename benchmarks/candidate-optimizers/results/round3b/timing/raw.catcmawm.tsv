@@ -1,0 +1,7 @@
+problem	total	rep	popsize	runs	stopped_by_criterion	ended_by_allowance	evaluations	objective_ms	bridge_ms	wall_ms
+welded_beam_mixed	2000	0	9	1	0	1	2000	0.343	16.589	352.137
+cantilever_mixed	2000	0	7	2	1	1	2000	0.279	16.099	194.452
+cantilever_mixed	20000	0	7	16	15	1	20000	2.128	133.018	1651.076
+pest_control	2000	0	13	1	0	1	2000	2.835	17.275	213.070
+welded_beam_mixed	20000	0	9	6	5	1	20000	3.668	168.562	3535.243
+pest_control	20000	0	13	1	0	1	20000	29.488	205.500	2013.519

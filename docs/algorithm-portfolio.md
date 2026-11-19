@@ -11,7 +11,7 @@ stay outside core.
 
 The decisions rest on the
 [candidate-optimizer benchmark](../benchmarks/candidate-optimizers/README.md),
-a predeclared experiment in two rounds. Every solver runs behind one
+a predeclared experiment in three rounds. Every solver runs behind one
 interface, on one thread, under a guard that enforces the evaluation budget
 and the box. Protocols, gates and departures from them were written down
 before the runs; all raw rows are in the repository.
@@ -29,7 +29,11 @@ A candidate is compared with the best core optimizer of each cell by a
 two-sided Mann–Whitney U test with Holm correction. It passes a gate with at
 least three winning cells, or with a mean rank better than the best core
 optimizer's. The [decision file](../benchmarks/candidate-optimizers/DECISION.md)
-has the outcome of both rounds and their limits.
+has the outcome of every round and its limits. Round 3, a screening of a
+mixed-variable optimizer on nine problems at 2,000 and 20,000 evaluations
+(2,880 runs; protocols [ROUND3.md](../benchmarks/candidate-optimizers/ROUND3.md)
+and [ROUND3B.md](../benchmarks/candidate-optimizers/ROUND3B.md)), is
+described with its candidate below.
 
 *Mean rank* below is the average rank among the twelve solvers of a round
 (1 is best). *Best in n cells* counts the cells in which an optimizer has the
@@ -104,6 +108,37 @@ DE→CMA stalls.
 
 Wins, losses and ties are against the best core optimizer of each cell.
 
+### Screened: CatCMA with Margin
+
+CatCMAwM (Hamano, Nomura, Saito, Uchida and Shirakawa, 2025) optimizes
+continuous, integer and categorical variables jointly. `fcmaes-core` has no
+optimizer with native categorical variables, so it was screened in round 3
+as its authors' Python implementation against the core solvers working on
+the decoded real vector.
+
+| Cells | Wins | Losses | Ties | Mean rank (of 8) | Best core solver |
+|---|---:|---:|---:|---:|---|
+| Six mixed problems of this repository | 1 | 3 | 8 | 3.33 | BiteOpt 3.79 |
+| Three categorical problems from the literature | 0 | 3 | 3 | 5.00 | DE, jSO→CMA 3.75 |
+| All 18 cells | 1 | 6 | 11 | 3.89 | BiteOpt 3.92 |
+
+- **Decision: watch.** It is not implemented in core and not rejected. Over
+  all cells it is level with BiteOpt on mean rank, ahead in 43% of the
+  resamples where the gate asks for 95%.
+- It has no real win: the one winning cell is among infeasible truss
+  designs, and it never finds a feasible truss.
+- At 20,000 evaluations it matches the best core solver on the phased array
+  and on field-service routing.
+- On the ten cells with categorical variables it has no win and four losses.
+  On the welded beam with material choice, DE, CMA-ES and both sequences
+  reach the published optimum in the median; CatCMAwM does not.
+
+The repository's real-vector encodings, described in
+[Combinatorial encodings](combinatorial-encodings.md), were sufficient on
+every problem tested. Problems with many categorical variables coupled to
+continuous ones and costlier objectives, such as hyperparameter tuning, were
+out of reach of this screening and would be the place to look again.
+
 ### Surveyed and not benchmarked
 
 | Algorithm | Reason |
@@ -112,7 +147,7 @@ Wins, losses and ties are against the best core optimizer of each cell.
 | LRA-CMA-ES | Aims at noisy and multimodal problems; needs changes inside `Cmaes` and a noisy benchmark. |
 | sep-CMA-ES, VD-CMA, LM-CMA, LM-MA-ES | Large-scale covariance models; CR-FM-NES covers that niche. |
 | xNES, SNES | Predecessors of CR-FM-NES. |
-| CMA-ES with margin, CatCMA | Mixed-integer; needs a mixed-integer benchmark against DE's integer handling. |
+| CMA-ES with margin, CatCMA | Predecessors of CatCMAwM, which was screened instead. |
 | Particle swarm variants | Last on all seven GTOP problems in the [earlier comparison](../benchmarks/optimizer-comparison/comparison.md). |
 | MADS, DIRECT, MCS | Local or low-dimensional by design; usable through the retry adapter. |
 | Niching methods (HillVallEA, RS-CMSA) | A different task; MAP-Elites and the Diversifier cover diversity. |
@@ -139,8 +174,11 @@ optimization, and gradient-based solvers are covered by
   stop before the budget is spent; round 2 restarts them until it is.
 - **The jSO gate.** The mean-rank gate has no margin, and jSO→CMA passes it
   narrowly.
-- **Not covered.** Noisy objectives, mixed-integer variables, more than 114
-  variables, multi-objective optimization, coordinated retry.
+- **Mixed-variable screening.** Round 3 ran the candidate as a Python
+  reference implementation with default parameters, compared by evaluations,
+  on problems of at most 171 variables and 2 ms per evaluation.
+- **Not covered.** Noisy objectives, more than 171 variables,
+  multi-objective optimization, coordinated retry.
 
 ## Challenging a decision
 

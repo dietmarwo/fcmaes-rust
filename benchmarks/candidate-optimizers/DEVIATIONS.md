@@ -70,3 +70,56 @@ No deviation from [ROUND2.md](ROUND2.md). Both optional problems failed the
 timing rule and did not enter. The compute rule kept 20 repetitions: one
 full-scale timing repetition (root seed 999, not a campaign row) projected
 64 minutes.
+
+## Round 3
+
+Recorded on 18 November 2026 after the problem survey and before any
+optimization run of round 3. The survey used code inspection and timing
+only.
+
+1. **The categorical requirement is not met; the round continues as a
+   narrower screening.** [ROUND3.md](ROUND3.md) requires three problems with
+   an unordered categorical coordinate. Two exist under the entry rule:
+   field-service routing (52 categorical coordinates) and the job shop
+   (three two-way choices). The question is therefore limited to
+   *mixed-integer problems with some categorical structure*. A statement
+   about categorical variables rests on those two problems alone, and the
+   outcome cannot be read as a verdict on CatCMAwM for categorical design
+   problems in general.
+2. **Dimension cap of 200 variables.** The two network-coverage problems
+   (4,000 integer coordinates) are left out: the reference implementation
+   performs a full eigendecomposition several times per generation, which is
+   infeasible at that size. Six problems run: truss sizing, phased-array
+   geometry, field-service routing, job shop, UAV assignment and material
+   flow.
+3. **Binary switches stay integer, as declared.** The `cmaes` library
+   recommends treating binary variables as categorical. The protocol's
+   typing rule is kept so that the type tables do not depend on the
+   candidate.
+4. **Candidate seed.** `CatCMAwM` accepts 32-bit seeds; the candidate uses
+   the low 32 bits of the seed that the other solvers receive for the same
+   run.
+
+Known limits of this round, unchanged by the entries above:
+
+- The costlier problems with the richest mixed structure (energy hub, water
+  network, ML tuning) are outside the 2 ms entry rule on this host.
+- The candidate is a Python reference implementation and is compared by
+  evaluations only.
+
+## Round 3, second batch
+
+No deviation from [ROUND3B.md](ROUND3B.md). All three problems entered.
+
+- **Welded beam.** The definition follows Deb and Goyal. Their published
+  solution is reproduced for the bending and buckling constraints and, within
+  the rounding of the printed weld length, for the shear constraint; the
+  printed deflection slack (0.2346) and cost (1.9422) differ in the fourth
+  digit (0.2344 and 1.94188). The bounds of the weld length come from Tran,
+  Tran and Wang (2019), because the original gives none. Later restatements
+  of the problem differ from the original in several formulas; the README
+  lists the differences.
+- **Pest control.** The function as first published draws unseeded random
+  numbers. The batch uses the fixed-seed form of the Bounce and Casmopolitan
+  suites (seed 0), which is a deterministic function of the 25 choices, and
+  reproduces the reference code bit for bit.

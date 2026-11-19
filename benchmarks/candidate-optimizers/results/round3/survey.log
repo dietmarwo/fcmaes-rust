@@ -1,0 +1,17 @@
+load average before measuring: 0.76 0.95 0.82 2/103 28856
+truss_sizing           D=171   cont=95   int=76   cat=0   mean       37.091 us (2000 pts) det=true (200) mask=false entered=yes
+energy_hub             D=10    cont=7    int=3    cat=0   mean    27147.302 us (148 pts) det=true (10) mask=false entered=no
+energy_hub_annual      D=10    cont=6    int=4    cat=0   mean   313332.889 us (13 pts) det=true (10) mask=false entered=no
+phased_array           D=96    cont=48   int=48   cat=0   mean      985.125 us (2000 pts) det=true (200) mask=false entered=yes
+phased_array_beam      D=32    cont=0    int=32   cat=0   mean     6156.202 us (650 pts) det=true (10) mask=false entered=no
+bandpass               D=5     cont=5    int=0    cat=0   mean      415.705 us (2000 pts) det=true (200) mask=false entered=no
+water_network          D=28    cont=3    int=24   cat=1   mean     4265.758 us (939 pts) det=true (10) mask=false entered=no
+field_service          D=104   cont=52   int=0    cat=52  mean       25.827 us (2000 pts) det=true (200) mask=false entered=yes
+coverage_cardinality   D=4000  cont=0    int=4000 cat=0   mean       47.760 us (2000 pts) det=true (200) mask=true entered=yes
+coverage_weighted      D=4000  cont=0    int=4000 cat=0   mean       63.952 us (2000 pts) det=true (200) mask=true entered=yes
+cassini1_minlp         D=6     cont=6    int=0    cat=0   mean        5.924 us (2000 pts) det=true (200) mask=false entered=no
+ml_tuning              D=8     cont=3    int=4    cat=1   mean 10136379.896 us (1 pts) det=true (10) mask=false entered=no
+jobshop                D=8     cont=5    int=0    cat=3   mean        0.207 us (2000 pts) det=true (200) mask=false entered=yes
+uav_assignment         D=34    cont=30   int=4    cat=0   mean        0.529 us (2000 pts) det=true (200) mask=false entered=yes
+material_flow          D=2     cont=0    int=2    cat=0   mean      173.636 us (2000 pts) det=true (200) mask=false entered=yes
+entered: 8 (2 with a categorical coordinate); ROUND3.md needs at least 5 and 3: NOT met, the round stops
