@@ -135,21 +135,32 @@ class Decision(unittest.TestCase):
             d = Path(tmp)
             fake_file(d / "early.tsv", allsolvers, 100000, 100000, 9, rng)
             fake_file(d / "stage1-cap1000000.tsv", allsolvers, 1000000, 1000000, 7, rng,
-                      {"arrde": -100.0, "de": 5.0})
+                      {"arrde": -100.0, "de": 5.0, "jso_cma": -200.0})
             fake_file(d / "stage1-cap125000.tsv", allsolvers, 1000000, 125000, 7, rng,
-                      {"arrde": -50.0})
+                      {"arrde": -50.0, "jso_cma": -200.0})
             done = self.run_script(d)
             self.assertEqual(done.returncode, 0, done.stderr)
             report = (d / "report.md").read_text()
             self.assertIn("Pending", report)
             self.assertIn("arrde/one", report)
             self.assertIn("(bound)", report)
-            # Stage 2 arms: arrde/one and the two best core arms (one shape each).
+            # Stage 2 arms: arrde/one and jso_cma, jso_cma_z0 in both shapes.
             fake_file(d / "stage2-cap4000000.tsv", ["arrde"], 4000000, 4000000, 8, rng,
                       {"arrde": -100.0})
             partial = self.run_script(d)
             self.assertEqual(partial.returncode, 0, partial.stderr)
             self.assertIn("pending", (d / "report.md").read_text())
+            fake_file(d / "stage2-cap4000000.tsv", ["arrde", "jso_cma", "jso_cma_z0"],
+                      4000000, 4000000, 8, rng, {"arrde": -100.0, "jso_cma_z0": -20.0})
+            fake_file(d / "stage2-cap500000.tsv", ["jso_cma", "jso_cma_z0"],
+                      4000000, 500000, 8, rng, {"jso_cma_z0": -20.0})
+            full = self.run_script(d)
+            self.assertEqual(full.returncode, 0, full.stderr)
+            report = (d / "report.md").read_text()
+            self.assertIn("Against the two declared arms alone", report)
+            self.assertIn("with and without repair_z", report)
+            self.assertIn("jso_cma_z0/eight", report)
+            self.assertIn("accepted: ARRDE is superior at stage 2", report)
 
     def test_wrong_root_seed_is_refused(self):
         import random

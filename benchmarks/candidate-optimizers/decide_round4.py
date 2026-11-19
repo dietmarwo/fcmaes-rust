@@ -18,6 +18,13 @@ its own shape, scaled. With stage 2 absent it is reported as pending and the
 stage-1 decision is provisional (the adjusted p-value is bounded by twice the
 unadjusted one).
 
+Stage 2 has two more core arms (DEVIATIONS.md, round 4, entry 7): jSO->CMA
+with `repair_z` off, `jso_cma_z0`, in both shapes. The decision row applies
+the rule to all four core arms of stage 2 (`jso_cma` and `jso_cma_z0`, one
+run and eight runs). The report also gives the outcome against the two
+declared arms alone, and a table of jSO->CMA with and without `repair_z`.
+Stage 1 does not contain `jso_cma_z0` and is unchanged.
+
 A run ends infeasible when its best cost is at least 1e4 (DEVIATIONS.md,
 round 4, entry 5); the count is informational. Contract violations are
 points out of the box, and, for the core solvers, evaluations beyond the
@@ -42,6 +49,9 @@ from scipy.stats import mannwhitneyu
 CORE = ["bite", "de", "cma", "crfmnes", "da", "de_cma", "jso_cma"]
 CANDIDATE = "arrde"
 SOLVERS = CORE + [CANDIDATE]
+# Core solvers of stage 2 (entry 7): the declared jSO->CMA and the same with
+# repair_z off; both run in both shapes.
+CORE2 = ["jso_cma", "jso_cma_z0"]
 PROBLEM = "truss_sizing"
 INFEASIBLE_AT = 1e4
 ALPHA = 0.05
@@ -211,9 +221,13 @@ def main():
     selected_core = sorted(core1, key=lambda a: rank_key(core1[a]))[:2]
 
     # ---- stage 2
+    check(all(a[0] in CORE2 for a in selected_core),
+          "the stage-1 core arms are not jso_cma; entry 7 does not cover this case")
+    declared2 = selected_core
+    core2_arms = [(s, shape) for s in CORE2 for shape in STAGES["stage2"][2]]
     stage2, info2 = {}, {}
     pending2 = False
-    s2_arms = [best_arrde1] + selected_core
+    s2_arms = [best_arrde1] + core2_arms
     for shape, name in STAGES["stage2"][2].items():
         path = directory / name
         needed = [a[0] for a in s2_arms if a[1] == shape]
@@ -234,14 +248,19 @@ def main():
         if arm[1] not in stage2:
             pending2 = True
     p2 = lower2 = best_core2 = None
+    p2d = lower2d = best_core2d = None
     violations2 = 0
     if not pending2:
         values2 = {arm: stage2[arm[1]][arm[0]] for arm in s2_arms}
         arrde2 = values2[best_arrde1]
-        core2 = {a: values2[a] for a in selected_core}
+        core2 = {a: values2[a] for a in core2_arms}
         best_core2 = min(core2, key=lambda a: rank_key(core2[a]))
         lower2 = all(statistics.median(arrde2) < statistics.median(v) for v in core2.values())
         p2 = pvalue(arrde2, core2[best_core2])
+        core2d = {a: values2[a] for a in declared2}
+        best_core2d = min(core2d, key=lambda a: rank_key(core2d[a]))
+        lower2d = all(statistics.median(arrde2) < statistics.median(v) for v in core2d.values())
+        p2d = pvalue(arrde2, core2d[best_core2d])
         violations2 = sum(info2[a]["violations"] for a in info2)
 
     if pending2:
@@ -250,8 +269,12 @@ def main():
     else:
         adjusted = holm({"stage1": p1, "stage2": p2})
         adjusted1, adjusted2 = adjusted["stage1"], adjusted["stage2"]
+        adjusted_d = holm({"stage1": p1, "stage2": p2d})
+        adjusted1d, adjusted2d = adjusted_d["stage1"], adjusted_d["stage2"]
     superior1 = lower1 and adjusted1 <= ALPHA and violations1 == 0
     superior2 = bool(not pending2 and lower2 and adjusted2 <= ALPHA and violations2 == 0)
+    superior1d = superior1
+    superior2d = bool(not pending2 and lower2d and adjusted2d <= ALPHA and violations2 == 0)
     if superior1 or superior2:
         outcome = "accepted: ARRDE is superior at " + (
             "stage 1" if superior1 else "stage 2") + (
@@ -261,22 +284,31 @@ def main():
                    f"{min(1.0, 2 * p1):.3g}, upper bound); stage 2 has not been run.")
     else:
         outcome = "not accepted: ARRDE is superior at neither stage."
+    if pending2:
+        outcome_d = "pending."
+    elif superior1d or superior2d:
+        outcome_d = "accepted: ARRDE is superior at " + ("stage 1." if superior1d else "stage 2.")
+    else:
+        outcome_d = "not accepted: ARRDE is superior at neither stage."
 
     def name(arm):
         return f"{arm[0]}/{arm[1]}"
 
+    head = ["| Stage | Total | ARRDE arm | Median | Best core arm | Median | "
+            "Lower than every core arm | Unadjusted p | Adjusted p | Violations | Superior |",
+            "|---|---:|---|---:|---|---:|:-:|---:|---:|---:|:-:|"]
+    stage1_row = (f"| 1 | 1,000,000 | {name(best_arrde1)} "
+                  f"| {fmt(statistics.median(arrde1[best_arrde1]))} "
+                  f"| {name(best_core1)} | {fmt(statistics.median(core1[best_core1]))} | "
+                  f"{'yes' if lower1 else 'no'} | {p1:.3g} | "
+                  f"{adjusted1:.3g}{' (bound)' if pending2 else ''} | {violations1} | "
+                  f"{'yes' if superior1 else 'no'} |")
     lines += ["## Decision", "",
-              "| Stage | Total | ARRDE arm | Median | Best core arm | Median | "
-              "Lower than every core arm | Unadjusted p | Adjusted p | Violations | Superior |",
-              "|---|---:|---|---:|---|---:|:-:|---:|---:|---:|:-:|",
-              f"| 1 | 1,000,000 | {name(best_arrde1)} | {fmt(statistics.median(arrde1[best_arrde1]))} "
-              f"| {name(best_core1)} | {fmt(statistics.median(core1[best_core1]))} | "
-              f"{'yes' if lower1 else 'no'} | {p1:.3g} | "
-              f"{adjusted1:.3g}{' (bound)' if pending2 else ''} | {violations1} | "
-              f"{'yes' if superior1 else 'no'} |"]
+              "Core arms of stage 2: " + ", ".join(name(a) for a in core2_arms)
+              + " (DEVIATIONS.md, round 4, entry 7).", ""] + head + [stage1_row]
     if pending2:
         lines.append(f"| 2 | 4,000,000 | {name(best_arrde1)} | pending | "
-                     f"{', '.join(name(a) for a in selected_core)} | pending | - | - | - | - | - |")
+                     f"{', '.join(name(a) for a in core2_arms)} | pending | - | - | - | - | - |")
     else:
         lines.append(f"| 2 | 4,000,000 | {name(best_arrde1)} | "
                      f"{fmt(statistics.median(values2[best_arrde1]))} | {name(best_core2)} | "
@@ -287,6 +319,20 @@ def main():
               "Holm correction over the two stages"
               + (" (stage 2 pending: the stage-1 value is the Bonferroni bound 2 p, "
                  "an upper bound of the Holm value)." if pending2 else "."), ""]
+
+    lines += ["### Against the two declared arms alone", "",
+              "The same rule with only the declared stage-2 core arms "
+              + ", ".join(name(a) for a in declared2) + ".", ""] + head + [stage1_row]
+    if pending2:
+        lines.append(f"| 2 | 4,000,000 | {name(best_arrde1)} | pending | "
+                     f"{', '.join(name(a) for a in declared2)} | pending | - | - | - | - | - |")
+    else:
+        lines.append(f"| 2 | 4,000,000 | {name(best_arrde1)} | "
+                     f"{fmt(statistics.median(values2[best_arrde1]))} | {name(best_core2d)} | "
+                     f"{fmt(statistics.median(values2[best_core2d]))} | "
+                     f"{'yes' if lower2d else 'no'} | {p2d:.3g} | {adjusted2d:.3g} | "
+                     f"{violations2} | {'yes' if superior2d else 'no'} |")
+    lines += ["", f"**Outcome against the declared arms alone: {outcome_d}**", ""]
 
     lines += early_lines
     lines += ["## Stage 1: 1,000,000 evaluations", "",
@@ -309,6 +355,22 @@ def main():
         table(arms2, {a: info2[a] for a in s2_arms}, lines)
         lines += ["ARRDE points refused beyond the run allowance: "
                   f"{info2[best_arrde1]['cut']}.", ""]
+        lines += ["### jSO→CMA with and without repair_z at stage 2", "",
+                  "`jso_cma` is the declared arm (`repair_z` on, the default); `jso_cma_z0` "
+                  "has `repair_z` off. Same seeds and budgets. The p-value is a two-sided "
+                  "Mann-Whitney U test of the two arms of one shape (unadjusted).", "",
+                  "| Shape | Arm | Median | Best | Worst | Infeasible runs | p (on vs off) |",
+                  "|---|---|---:|---:|---:|---:|---:|"]
+        for shape in STAGES["stage2"][2]:
+            p_on_off = pvalue(stage2[shape]["jso_cma"], stage2[shape]["jso_cma_z0"])
+            for solver in CORE2:
+                v = stage2[shape][solver]
+                lines.append(f"| {shape} | {solver} | {fmt(statistics.median(v))} | "
+                             f"{fmt(min(v))} | {fmt(max(v))} | {infeasible(v)} / {len(v)} | "
+                             f"{p_on_off:.3g} |" if solver == CORE2[0] else
+                             f"| {shape} | {solver} | {fmt(statistics.median(v))} | "
+                             f"{fmt(min(v))} | {fmt(max(v))} | {infeasible(v)} / {len(v)} | |")
+        lines.append("")
 
     lines += ["## Limits", "",
               f"- {reps} repetitions per arm, one problem, one host.",
