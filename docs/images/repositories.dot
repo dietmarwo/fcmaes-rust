@@ -6,6 +6,8 @@ digraph repos {
   // users and applications
   EC   [fillcolor="#fde2c8", label=<<b>experiment-craft</b><br/><font point-size="11">campaigns</font>>];
   BUD  [fillcolor="#f6d5d8", label=<<b>budel-craft</b><br/><font point-size="11">application</font>>];
+  INL  [fillcolor="#f6d5d8", label=<<b>inlet-craft</b><br/><font point-size="11">application</font>>];
+  BO   [fillcolor="#fde2c8", label=<<b>BO-craft</b><br/><font point-size="11">BO proposals</font>>];
   PL   [fillcolor="#ece0f7", label=<<b>pykep-lambert</b><br/><font point-size="11">astrodynamics</font>>];
   DOM  [shape=plain, style="", label=<
     <table border="1" cellborder="0" cellspacing="0" cellpadding="2" bgcolor="#fff3bf" color="#5b6677" style="rounded">
@@ -31,8 +33,8 @@ digraph repos {
   FCE  [fillcolor="#dbe7ff", label=<<b>fast-cma-es</b><br/><font point-size="11">optimizer (Python/C++)</font>>];
   OJ   [fillcolor="#fde2c8", label=<<b>optimization-jobs</b><br/><font point-size="11">job layer and MCP server</font>>];
 
-  { rank=same; EC; BUD; PL; }
-  { rank=same; DOM; CFD; }
+  { rank=same; EC; BUD; INL; PL; }
+  { rank=same; BO; DOM; CFD; }
   { rank=same; CRN; PK; }
   { rank=same; SQP; LPIP; }
   { rank=same; FCR; ART; ARC; }
@@ -50,6 +52,9 @@ digraph repos {
   PL  -> PK   [label=" Rust\n consumer"];
   PL  -> FCR  [label=" fcmaes-core"];
   BUD -> FCR  [label=" optional\n tuner"];
+  INL -> FCR  [label=" vendored\n fcmaes-core"];
+  INL -> OJ   [label=" vendored\n job API"];
+  EC  -> BO   [label=" optional,\n adaptive\n campaigns"];
   CRN -> FCR  [label=" optional\n worker,\n fit extra"];
   CRN -> SQP  [label=" optional\n fit extra"];
   CFD -> FCR  [label=" optional\n worker"];

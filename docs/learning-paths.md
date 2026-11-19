@@ -1,7 +1,7 @@
 # Learning paths
 
 Three tracks order the existing tutorials of the
-[18 related repositories](repositories.md) by reader. Each has five stages
+[20 related repositories](repositories.md) by reader. Each has five stages
 and ends in a capstone that continuous integration runs. The overview sorts
 the same repositories [by problem type](repositories.md#where-to-start). An
 agent that has to choose a solver for a problem in hand starts at the shared
