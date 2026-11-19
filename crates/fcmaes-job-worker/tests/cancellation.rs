@@ -14,7 +14,15 @@ use std::{
 
 #[test]
 fn plain_models_stop_on_cancel_and_deadline_without_rechecks() {
-    for kind in ["biteopt", "de", "jso", "cmaes", "crfmnes", "pgpe"] {
+    for kind in [
+        "biteopt",
+        "de",
+        "jso",
+        "cmaes",
+        "crfmnes",
+        "pgpe",
+        "crfmnes_bite",
+    ] {
         for batch in [None, Some(4)] {
             if batch.is_some() && kind != "biteopt" && kind != "de" {
                 continue;
@@ -42,7 +50,7 @@ fn plain_models_stop_on_cancel_and_deadline_without_rechecks() {
                         "problem":{"id":"app.sleep","version":"1","config":{"dimension":3},
                             "bounds":{"lower":[-5.0],"upper":[5.0],"broadcast":true}},
                         "optimizer":{"kind":kind,"parameters":parameters},"seed":3,"retries":1,
-                        "evaluations_per_retry":10000,"evaluation_limit_mode":if kind=="biteopt" || kind=="jso" {"hard"} else {"soft"}},
+                        "evaluations_per_retry":10000,"evaluation_limit_mode":if ["biteopt","jso","crfmnes_bite"].contains(&kind) {"hard"} else {"soft"}},
                     "resources":{"cpu_slots":1,"outer_workers":1,"inner_threads":1},
                     "limits":{"wall_time_seconds":60.0,"grace_seconds":1.0},"inputs":[]
                 })).unwrap();

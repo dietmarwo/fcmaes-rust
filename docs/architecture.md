@@ -20,7 +20,7 @@ experimental crates:
 | `examples` (`fcmaes-examples`) | Native GTOP and application objectives, data adapters, optimizer runners, and binaries |
 | `crates/fcmaes-runner` | `fcmaes-run`: the shared runner under its legacy name and default root |
 | `crates/fcmaes-native-worker` | Native objective registry and solver dispatch (library), and the `fcmaes.job/0.1` worker running Sphere, Rosenbrock and Cassini1 with BiteOpt or DE |
-| `crates/fcmaes-job-worker` | Worker for the common envelope: `fcmaes.retry/1` (BiteOpt and DE through the native worker's library, jSO, CMA-ES, CR-FM-NES, PGPE), `fcmaes.mode/1`, `fcmaes.map-elites/1`, `fcmaes.evaluate/1` and the experimental `fcmaes.surrogate/1` on the models of a registry, with the built-in benchmarks and example application workers |
+| `crates/fcmaes-job-worker` | Worker for the common envelope: `fcmaes.retry/1` (BiteOpt and DE through the native worker's library, jSO, CMA-ES, CR-FM-NES, PGPE, CR-FM-NES → BiteOpt), `fcmaes.mode/1`, `fcmaes.map-elites/1`, `fcmaes.evaluate/1` and the experimental `fcmaes.surrogate/1` on the models of a registry, with the built-in benchmarks and example application workers |
 | `crates/fcmaes-surrogate` | Experimental small-budget exact-GP optimization behind `fcmaes.surrogate/1` ([API](job-api/surrogate.md)); independent of the job API |
 
 The shared [job API](job-api.md) crates, `optimization-job-api` (versioned

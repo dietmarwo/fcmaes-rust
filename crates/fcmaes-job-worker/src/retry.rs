@@ -1,13 +1,15 @@
 //! `fcmaes.retry/1`: independent retries of BiteOpt, DE, jSO, CMA-ES,
-//! CR-FM-NES or PGPE on registered scalar models. Without a `guess`, BiteOpt
-//! and DE run the shared native solver of the legacy `fcmaes.job/0.1`
-//! profile, so both profiles run identical retries on the built-in models.
-//! jSO, CMA-ES, CR-FM-NES and PGPE evaluate whole populations, in parallel
-//! with `inner_threads > 1`; jSO keeps a hard evaluation limit. CMA-ES can
-//! restart with growing populations (IPOP) or alternate large and small ones
-//! (BIPOP) inside the retry's budget. A `guess` starts every retry there
-//! (jSO takes none). A `Scalar::simulation` model's failed evaluations count as
-//! `+inf`; its evaluations stop at its `SimContext` checkpoints on a cancel.
+//! CR-FM-NES, PGPE or the CR-FM-NES → BiteOpt sequence on registered scalar
+//! models. Without a `guess`, BiteOpt and DE run the shared native solver of
+//! the legacy `fcmaes.job/0.1` profile, so both profiles run identical
+//! retries on the built-in models. jSO, CMA-ES, CR-FM-NES and PGPE evaluate
+//! whole populations, in parallel with `inner_threads > 1`; jSO keeps a hard
+//! evaluation limit. CMA-ES can restart with growing populations (IPOP) or
+//! alternate large and small ones (BIPOP) inside the retry's budget. The
+//! sequence (`crfmnes_bite`) runs `fcmaes_core::crfmnes_bite_until` serially
+//! with a hard limit. A `guess` starts every retry there (jSO takes none). A
+//! `Scalar::simulation` model's failed evaluations count as `+inf`; its
+//! evaluations stop at its `SimContext` checkpoints on a cancel.
 use crate::{
     Control,
     registry::{Kind, Model, Probe, Problem, Registry, Scalar},
@@ -16,8 +18,9 @@ use crate::{
     threads::Threads,
 };
 use fcmaes_core::{
-    BiteOpt, BiteParams, Cmaes, CmaesParams, Crfmnes, CrfmnesParams, De, DeParams, Fitness, Jso,
-    JsoParams, Pgpe, PgpeParams, RetryBounds, RetryRunResult, Rng, retry_run_seed,
+    BiteOpt, BiteParams, Cmaes, CmaesParams, Crfmnes, CrfmnesBiteParams, CrfmnesParams, De,
+    DeParams, Fitness, Jso, JsoParams, Pgpe, PgpeParams, RetryBounds, RetryRunResult, Rng,
+    crfmnes_bite_until, retry_run_seed,
 };
 use fcmaes_native_worker::solve_until;
 use optimization_job_api::{
@@ -73,7 +76,8 @@ pub struct Payload {
     /// Initial point of every retry, inside the bounds: the start of the
     /// first CMA-ES, CR-FM-NES or PGPE run (restarts start at random points),
     /// the centre of BiteOpt's initial population, the mean DE samples
-    /// around with `sigma`. Absent: random starts. jSO rejects it.
+    /// around with `sigma`, the start of the sequence's CR-FM-NES stage.
+    /// Absent: random starts. jSO rejects it.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub guess: Option<Vec<f64>>,
 }
@@ -90,7 +94,9 @@ pub struct Optimizer {
 pub struct Parameters {
     pub population: Option<usize>,
     /// CMA-ES, CR-FM-NES, PGPE, and DE with a guess: initial step size (DE:
-    /// the spread around the guess) in the normalized `[-1, 1]` box.
+    /// the spread around the guess) in the normalized `[-1, 1]` box. The
+    /// sequence's CR-FM-NES stage takes it in the same units; absent there,
+    /// every retry draws its own step.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub sigma: Option<f64>,
     /// CMA-ES: `none` (absent when resolved), `ipop` or `bipop`.
@@ -109,6 +115,13 @@ pub struct Parameters {
     /// delayed feedback (ask/tell); absent for the serial algorithm.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub batch: Option<usize>,
+    /// CR-FM-NES → BiteOpt: the fraction of each retry's budget available to
+    /// CR-FM-NES, in `[0, 1]`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub crfmnes_share: Option<f64>,
+    /// CR-FM-NES → BiteOpt: the number of DeepBiteOpt populations, 1..36.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub bite_depth: Option<usize>,
 }
 
 /// The population-based optimizers of this profile.
@@ -184,6 +197,8 @@ enum Engine {
     Jso {
         population: usize,
     },
+    /// CR-FM-NES → BiteOpt with these settings and the retry's budget.
+    CrfmnesBite(CrfmnesBiteParams),
 }
 pub struct Run {
     engine: Engine,
@@ -198,6 +213,7 @@ pub struct Run {
 
 pub fn describe() -> Value {
     let pgpe = PgpeParams::default();
+    let bite = CrfmnesBiteParams::default();
     json!({
         "biteopt":{"profile":PROFILE,"limit":"hard","defaults":{"population":"9 + 3 * dimension"},
             "ranges":{"population":"4..1000000; population * dimension <= 1e7 (the default exceeds it from dimension 1825 on)"},
@@ -234,6 +250,11 @@ pub fn describe() -> Value {
             "defaults":{"population":"round(25 ln(D) sqrt(D)), >= 4; shrinks to 4 over the budget"},
             "ranges":{"population":"4..1000000; population * dimension <= 1e7"},
             "start":"uniform in the bounds; no guess"},
+        "crfmnes_bite":{"profile":PROFILE,"limit":"hard",
+            "sequence":"CR-FM-NES (whole populations within crfmnes_share of the budget), then DeepBiteOpt from the best point to the budget; for random-key routing",
+            "defaults":{"population":bite.popsize,"crfmnes_share":bite.crfmnes_share,"bite_depth":bite.bite_depth,"sigma":"drawn per retry in [0.1,0.2)"},
+            "ranges":{"population":"4..1000000; population * bite_depth * dimension <= 1e7","crfmnes_share":"[0,1]","bite_depth":"1..36","sigma":"(0,2]"},
+            "start":"guess, or a uniform random point","inner_threads":"1"},
         "best":"every optimizer reports the best point it evaluated; for CR-FM-NES and PGPE it is tracked from the evaluated populations",
         "guess":"optional payload field: the problem's dimension of numbers inside its bounds; every retry starts there (different seeds still make retries differ); not for jso",
         "simulation":"Scalar::simulation models: SimContext with threads() 1, a seed from the retry's run_seed and the point, the remaining time and the job's cancellation; a failed evaluation is +inf, counted in work and details (failed_evaluations, failures); after a cancel, evaluations return +inf without calling the model (cancelled_evaluations, termination cancelled) and the best point is not rechecked (evidence claimed)"
@@ -308,8 +329,26 @@ pub fn prepare(registry: &Registry, s: &mut JobSpec, base: &Path) -> Result<Box<
                 .ok_or("evaluation budget overflow")?;
             (Engine::Jso { population }, p.evaluations_per_retry)
         }
+        "crfmnes_bite" => {
+            if threads != 1 {
+                return Err(
+                    "crfmnes_bite evaluates one point at a time; use inner_threads=1 and run retries in parallel with outer_workers"
+                        .into(),
+                );
+            }
+            let settings = crfmnes_bite_settings(&mut p)?;
+            // A hard limit: CR-FM-NES runs whole populations within its
+            // share and BiteOpt stops at the budget.
+            p.evaluations_per_retry
+                .checked_mul(p.retries as u64)
+                .ok_or("evaluation budget overflow")?;
+            (Engine::CrfmnesBite(settings), p.evaluations_per_retry)
+        }
         _ => {
-            return Err("optimizer.kind must be biteopt, de, jso, cmaes, crfmnes or pgpe".into());
+            return Err(
+                "optimizer.kind must be biteopt, de, jso, cmaes, crfmnes, pgpe or crfmnes_bite"
+                    .into(),
+            );
         }
     };
     let bounds = RetryBounds::new(
@@ -381,6 +420,8 @@ fn legacy_spec(s: &JobSpec, p: &mut Payload) -> Result<LegacySpec> {
         ("max_population", q.max_population.is_some()),
         ("center_learning_rate", q.center_learning_rate.is_some()),
         ("stdev_learning_rate", q.stdev_learning_rate.is_some()),
+        ("crfmnes_share", q.crfmnes_share.is_some()),
+        ("bite_depth", q.bite_depth.is_some()),
     ] {
         if given {
             return Err(format!(
@@ -481,6 +522,8 @@ fn jso_settings(p: &mut Payload) -> Result<usize> {
         ("max_population", q.max_population.is_some()),
         ("center_learning_rate", q.center_learning_rate.is_some()),
         ("stdev_learning_rate", q.stdev_learning_rate.is_some()),
+        ("crfmnes_share", q.crfmnes_share.is_some()),
+        ("bite_depth", q.bite_depth.is_some()),
     ] {
         if given {
             return Err(format!("optimizer.parameters.{name} does not apply to jso").into());
@@ -607,6 +650,14 @@ fn es_settings(p: &mut Payload) -> Result<EsSettings> {
         )
         .into());
     }
+    for (name, given) in [
+        ("crfmnes_share", q.crfmnes_share.is_some()),
+        ("bite_depth", q.bite_depth.is_some()),
+    ] {
+        if given {
+            return Err(format!("optimizer.parameters.{name} applies only to crfmnes_bite").into());
+        }
+    }
     only("restarts", q.restarts.is_some(), EsKind::Cmaes, "cmaes")?;
     only(
         "max_population",
@@ -710,6 +761,85 @@ fn es_settings(p: &mut Payload) -> Result<EsSettings> {
         center_learning_rate: pgpe.then_some(settings.center_learning_rate),
         stdev_learning_rate: pgpe.then_some(settings.stdev_learning_rate),
         batch: None,
+        crfmnes_share: None,
+        bite_depth: None,
+    };
+    Ok(settings)
+}
+
+/// Validates a CR-FM-NES → BiteOpt request and resolves its defaults. The
+/// payload's `sigma` is in the normalized `[-1, 1]` box like that of the
+/// other kinds; `fcmaes-core` takes half of it, the fraction of each range.
+fn crfmnes_bite_settings(p: &mut Payload) -> Result<CrfmnesBiteParams> {
+    if p.evaluation_limit_mode != "hard" {
+        return Err(
+            "crfmnes_bite never exceeds its evaluation budget; use evaluation_limit_mode hard"
+                .into(),
+        );
+    }
+    let q = &p.optimizer.parameters;
+    if q.batch.is_some() {
+        return Err(
+            "optimizer.parameters.batch applies only to biteopt and de; crfmnes_bite runs serially"
+                .into(),
+        );
+    }
+    for (name, given) in [
+        ("restarts", q.restarts.is_some()),
+        ("max_population", q.max_population.is_some()),
+        ("center_learning_rate", q.center_learning_rate.is_some()),
+        ("stdev_learning_rate", q.stdev_learning_rate.is_some()),
+    ] {
+        if given {
+            return Err(
+                format!("optimizer.parameters.{name} does not apply to crfmnes_bite").into(),
+            );
+        }
+    }
+    let defaults = CrfmnesBiteParams::default();
+    let population = q.population.unwrap_or(defaults.popsize as usize);
+    if !(4..=POPULATION_LIMIT).contains(&population) {
+        return Err("population must be 4..1000000".into());
+    }
+    let crfmnes_share = q.crfmnes_share.unwrap_or(defaults.crfmnes_share);
+    if !(0.0..=1.0).contains(&crfmnes_share) {
+        return Err("crfmnes_share must lie in [0, 1]".into());
+    }
+    let bite_depth = q.bite_depth.unwrap_or(defaults.bite_depth as usize);
+    if !(1..=36).contains(&bite_depth) {
+        return Err("bite_depth must be 1..36".into());
+    }
+    let sigma = q
+        .sigma
+        .map(|sigma| in_range("crfmnes_bite sigma (normalized box units)", sigma, 0.0, 2.0))
+        .transpose()?;
+    // Every DeepBiteOpt population holds population x dimension tables.
+    let n = p.problem.config.dimension;
+    if population.saturating_mul(bite_depth).saturating_mul(n) > MAX_CELLS {
+        return Err(format!(
+            "population * bite_depth * dimension must be at most 1e7 (population {population}, bite_depth {bite_depth}, dimension {n}); set a smaller optimizer.parameters.population or bite_depth"
+        )
+        .into());
+    }
+    let settings = CrfmnesBiteParams {
+        crfmnes_share,
+        popsize: i32::try_from(population).expect("population <= 1e6"),
+        sigma: sigma.map(|sigma| sigma / 2.0),
+        bite_depth: i32::try_from(bite_depth).expect("bite_depth <= 36"),
+        stop_fitness: f64::NEG_INFINITY,
+    };
+    let bounds = RetryBounds::new(
+        p.problem.bounds.lower.clone(),
+        p.problem.bounds.upper.clone(),
+    )
+    .map_err(|e| format!("bounds: {e}"))?;
+    settings.validate(&bounds, p.guess.as_deref())?;
+    p.optimizer.parameters = Parameters {
+        population: Some(population),
+        sigma,
+        crfmnes_share: Some(crfmnes_share),
+        bite_depth: Some(bite_depth),
+        ..Parameters::default()
     };
     Ok(settings)
 }
@@ -1248,7 +1378,8 @@ impl Prepared for Run {
         self.payload.retries
     }
     /// Stop every optimizer between evaluations (between batches for batch
-    /// engines, between generations for jSO, CMA-ES, CR-FM-NES and PGPE).
+    /// engines, between generations for jSO, CMA-ES, CR-FM-NES and PGPE;
+    /// the CR-FM-NES → BiteOpt sequence stops between evaluations).
     /// Simulations also see the signal at their checkpoints.
     fn cancel(&self) {
         self.control.cancel();
@@ -1325,6 +1456,15 @@ impl Run {
                 details["generations"] = json!(run.generations);
                 run.result
             }
+            Engine::CrfmnesBite(settings) => crfmnes_bite_until(
+                &|x: &[f64]| objective(x),
+                &self.bounds,
+                self.payload.guess.as_deref(),
+                seed,
+                self.payload.evaluations_per_retry,
+                settings,
+                &stop,
+            )?,
         };
         // One snapshot of the stop signal, so that the termination and the
         // recheck decision agree even if the job is cancelled meanwhile.
@@ -1417,7 +1557,9 @@ pub fn payload_schema(problem: Value) -> Value {
         "restarts":{"enum":["none","ipop","bipop",null]},
         "max_population":or_null(integer(4, limit)),
         "center_learning_rate":or_null(number(Some(0.0), Some(1.0), true)),
-        "stdev_learning_rate":or_null(number(Some(0.0), Some(1.0), true))}});
+        "stdev_learning_rate":or_null(number(Some(0.0), Some(1.0), true)),
+        "crfmnes_share":or_null(number(Some(0.0), Some(1.0), false)),
+        "bite_depth":or_null(integer(1, 36))}});
     // The rules of one optimizer kind: its evaluation limit mode, the
     // parameters that apply to it, and `rules` on the whole payload.
     let kind = |kind: &str, mode: &str, parameters: Value, rules: Value| {
@@ -1446,13 +1588,25 @@ pub fn payload_schema(problem: Value) -> Value {
         json!([]),
     );
     jso["then"]["properties"]["guess"] = null();
+    let crfmnes_bite = kind(
+        "crfmnes_bite",
+        "hard",
+        absent(&[
+            "batch",
+            "restarts",
+            "max_population",
+            "center_learning_rate",
+            "stdev_learning_rate",
+        ]),
+        json!([]),
+    );
     payload(
         PROFILE,
         json!({"type":"object","additionalProperties":false,
         "required":["problem","optimizer","seed","retries","evaluations_per_retry","evaluation_limit_mode"],
         "properties":{"problem":problem,
             "optimizer":{"type":"object","additionalProperties":false,"required":["kind","parameters"],
-                "properties":{"kind":{"enum":["biteopt","de","jso","cmaes","crfmnes","pgpe"]},"parameters":parameters}},
+                "properties":{"kind":{"enum":["biteopt","de","jso","cmaes","crfmnes","pgpe","crfmnes_bite"]},"parameters":parameters}},
             "seed":u64(),"retries":integer(1, 1_000_000),"evaluations_per_retry":integer(1, u64::MAX),
             "evaluation_limit_mode":{"enum":["hard","soft"]},"guess":or_null(numbers())},
         "allOf":[
@@ -1465,8 +1619,11 @@ pub fn payload_schema(problem: Value) -> Value {
                     "else":absent(&["max_population"])})),json!([])),
             kind("crfmnes","soft",all(absent(&["batch","restarts","max_population","center_learning_rate","stdev_learning_rate"]),even.clone()),json!([])),
             kind("pgpe","soft",all(absent(&["batch","restarts","max_population"]),even),json!([])),
-            jso],
-        "$comment":"inner_threads: 1 for biteopt and de without parameters.batch, otherwise the threads evaluating a population (results do not depend on them). population, batch and (with restarts) max_population times dimension <= 1e7; cmaes: dimension <= 3162 and max_population >= population. guess: one value per variable inside the bounds. de: sigma only with a guess. retries times the per-retry maximum must not overflow."}),
+            jso,
+            crfmnes_bite,
+            json!({"if":{"properties":{"optimizer":{"properties":{"kind":{"const":"crfmnes_bite"}}}}},
+                "else":{"properties":{"optimizer":{"properties":{"parameters":absent(&["crfmnes_share","bite_depth"])}}}}})],
+        "$comment":"inner_threads: 1 for biteopt and de without parameters.batch, otherwise the threads evaluating a population (results do not depend on them). population, batch and (with restarts) max_population times dimension <= 1e7; cmaes: dimension <= 3162 and max_population >= population. crfmnes_bite: inner_threads 1 and population * bite_depth * dimension <= 1e7. guess: one value per variable inside the bounds. de: sigma only with a guess. retries times the per-retry maximum must not overflow."}),
     )
 }
 

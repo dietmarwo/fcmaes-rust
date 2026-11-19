@@ -1,11 +1,11 @@
-//! jSO, CR-FM-NES and PGPE retries, CMA-ES restarts, CVT archives and CMA-ES
-//! emitters, and the independence of every population-based run from the
-//! number of evaluation threads.
+//! jSO, CR-FM-NES, PGPE and CR-FM-NES → BiteOpt retries, CMA-ES restarts,
+//! CVT archives and CMA-ES emitters, and the independence of every
+//! population-based run from the number of evaluation threads.
 mod common;
 use common::{envelope, execute, problem, results, validate};
 use fcmaes_core::{
-    Archive, Fitness, Jso, JsoParams, MapElitesParams, RetryBounds, Rng, map_elites_batch,
-    retry_run_seed,
+    Archive, CrfmnesBiteParams, Fitness, Jso, JsoParams, MapElitesParams, RetryBounds, Rng,
+    crfmnes_bite_until, map_elites_batch, retry_run_seed,
 };
 use fcmaes_job_worker::{
     problems,
@@ -255,11 +255,155 @@ fn jso_retries_match_the_library_and_spend_exactly_their_budget() {
         ),
         (
             retry("lshade", json!({}), 6, 100, 1),
-            "biteopt, de, jso, cmaes, crfmnes or pgpe",
+            "biteopt, de, jso, cmaes, crfmnes, pgpe or crfmnes_bite",
         ),
     ] {
         let err = validate(dir.path(), &spec).unwrap_err();
         assert!(err.contains(message), "{message}: {err}");
+    }
+}
+
+/// A CR-FM-NES → BiteOpt retry job: a hard limit, serial evaluation.
+fn crfmnes_bite(parameters: Value, dim: usize, evaluations: u64) -> Value {
+    let mut spec = retry("crfmnes_bite", parameters, dim, evaluations, 1);
+    spec["payload"]["evaluation_limit_mode"] = json!("hard");
+    spec
+}
+
+#[test]
+fn crfmnes_bite_retries_match_the_library_and_spend_exactly_their_budget() {
+    let dir = tempfile::tempdir().unwrap();
+    let resolved = validate(dir.path(), &crfmnes_bite(json!({}), 6, 4000)).unwrap();
+    assert_eq!(
+        resolved["payload"]["optimizer"],
+        json!({"kind": "crfmnes_bite",
+            "parameters": {"population": 500, "crfmnes_share": 0.3, "bite_depth": 4}})
+    );
+    let bounds = RetryBounds::new(vec![-5.0; 6], vec![5.0; 6]).unwrap();
+    let objective = objective_by_id("benchmark.rosenbrock");
+    let custom = json!({"population": 31, "sigma": 0.3, "crfmnes_share": 0.5, "bite_depth": 2});
+    let resolved = validate(dir.path(), &crfmnes_bite(custom.clone(), 6, 3001)).unwrap();
+    assert_eq!(resolved["payload"]["optimizer"]["parameters"], custom);
+    for (parameters, settings, evaluations) in [
+        (json!({}), CrfmnesBiteParams::default(), 4000),
+        // The payload's sigma is in the normalized box, the core's a fraction
+        // of each range; an odd population is rounded up for CR-FM-NES.
+        (
+            custom,
+            CrfmnesBiteParams {
+                popsize: 31,
+                sigma: Some(0.15),
+                crfmnes_share: 0.5,
+                bite_depth: 2,
+                ..Default::default()
+            },
+            3001,
+        ),
+        // Less than one CR-FM-NES population: BiteOpt spends everything.
+        (json!({}), CrfmnesBiteParams::default(), 300),
+    ] {
+        let run = execute(&crfmnes_bite(parameters, 6, evaluations));
+        assert_eq!(run["status"], "completed");
+        let mut total = 0;
+        for r in results(&run) {
+            let seed = retry_run_seed(5, r["task_id"].as_u64().unwrap() as usize);
+            let direct = crfmnes_bite_until(
+                &|x: &[f64]| objective(x),
+                &bounds,
+                None,
+                seed,
+                evaluations,
+                &settings,
+                &|| false,
+            )
+            .unwrap();
+            let o = &r["outcome"];
+            assert_eq!(o["objective"], json!(direct.y));
+            assert_eq!(o["x"], json!(direct.x));
+            assert_eq!(o["claim"], "best_found", "{o}");
+            assert_eq!(
+                o["evidence"],
+                json!({"level": "rechecked", "checks": ["objective", "bounds"]})
+            );
+            assert_eq!(o["termination"], "evaluation_limit");
+            assert_eq!(o["details"]["run_seed"], seed);
+            // A hard limit: exactly the budget, never more.
+            assert_eq!(direct.evaluations, evaluations);
+            assert_eq!(r["work"]["evaluations"], evaluations);
+            assert_eq!(r["work"]["validation_evaluations"], 1);
+            total += evaluations;
+        }
+        assert_eq!(run["work"]["evaluations"], total);
+    }
+    let mut soft = crfmnes_bite(json!({}), 6, 100);
+    soft["payload"]["evaluation_limit_mode"] = json!("soft");
+    let threaded = retry("crfmnes_bite", json!({}), 6, 100, 2);
+    let mut on_cmaes = retry("cmaes", json!({"crfmnes_share": 0.3}), 6, 100, 1);
+    on_cmaes["payload"]["evaluation_limit_mode"] = json!("soft");
+    let mut on_jso = retry("jso", json!({"bite_depth": 2}), 6, 100, 1);
+    on_jso["payload"]["evaluation_limit_mode"] = json!("hard");
+    let mut on_biteopt = retry("biteopt", json!({"bite_depth": 2}), 6, 100, 1);
+    on_biteopt["payload"]["evaluation_limit_mode"] = json!("hard");
+    for (spec, message) in [
+        (soft, "use evaluation_limit_mode hard"),
+        (threaded, "use inner_threads=1"),
+        (
+            crfmnes_bite(json!({"batch": 8}), 6, 100),
+            "batch applies only to biteopt and de",
+        ),
+        (
+            crfmnes_bite(json!({"restarts": "ipop"}), 6, 100),
+            "restarts does not apply to crfmnes_bite",
+        ),
+        (
+            crfmnes_bite(json!({"max_population": 64}), 6, 100),
+            "max_population does not apply to crfmnes_bite",
+        ),
+        (
+            crfmnes_bite(json!({"center_learning_rate": 0.1}), 6, 100),
+            "center_learning_rate does not apply to crfmnes_bite",
+        ),
+        (
+            crfmnes_bite(json!({"stdev_learning_rate": 0.1}), 6, 100),
+            "stdev_learning_rate does not apply to crfmnes_bite",
+        ),
+        (crfmnes_bite(json!({"population": 3}), 6, 100), "population"),
+        (
+            crfmnes_bite(json!({"population": 1_000_001}), 6, 100),
+            "population",
+        ),
+        (
+            crfmnes_bite(json!({"crfmnes_share": 1.5}), 6, 100),
+            "crfmnes_share must lie in [0, 1]",
+        ),
+        (
+            crfmnes_bite(json!({"bite_depth": 0}), 6, 100),
+            "bite_depth must be 1..36",
+        ),
+        (
+            crfmnes_bite(json!({"bite_depth": 37}), 6, 100),
+            "bite_depth must be 1..36",
+        ),
+        (crfmnes_bite(json!({"sigma": 0.0}), 6, 100), "sigma"),
+        (crfmnes_bite(json!({"sigma": 2.5}), 6, 100), "sigma"),
+        (on_cmaes, "crfmnes_share applies only to crfmnes_bite"),
+        (on_jso, "bite_depth does not apply to jso"),
+        (on_biteopt, "bite_depth does not apply to biteopt"),
+    ] {
+        let err = validate(dir.path(), &spec).unwrap_err();
+        assert!(err.contains(message), "{message}: {err}");
+    }
+    // Both stages can be the whole run.
+    for share in [0.0, 1.0] {
+        let run = execute(&crfmnes_bite(
+            json!({"population": 8, "crfmnes_share": share}),
+            6,
+            501,
+        ));
+        for r in results(&run) {
+            assert_eq!(r["work"]["evaluations"], 501, "share {share}");
+            assert_eq!(r["outcome"]["claim"], "best_found");
+        }
     }
 }
 
@@ -688,4 +832,20 @@ fn population_runs_respect_memory_limits() {
     )
     .unwrap_err();
     assert!(err.contains("population * dimension"), "{err}");
+    // CR-FM-NES → BiteOpt holds bite_depth BiteOpt populations: the defaults
+    // (500 and 4) fit up to dimension 5000.
+    assert!(validate(dir.path(), &crfmnes_bite(json!({}), 5000, 100)).is_ok());
+    let err = validate(dir.path(), &crfmnes_bite(json!({}), 5001, 100)).unwrap_err();
+    assert!(
+        err.contains("population * bite_depth * dimension must be at most 1e7"),
+        "{err}"
+    );
+    let shallow = json!({"population": 1000, "bite_depth": 1});
+    assert!(validate(dir.path(), &crfmnes_bite(shallow, 10_000, 100)).is_ok());
+    let deeper = json!({"population": 1000, "bite_depth": 2});
+    let err = validate(dir.path(), &crfmnes_bite(deeper, 10_000, 100)).unwrap_err();
+    assert!(
+        err.contains("smaller optimizer.parameters.population or bite_depth"),
+        "{err}"
+    );
 }

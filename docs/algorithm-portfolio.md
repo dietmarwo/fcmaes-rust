@@ -107,7 +107,8 @@ DE→CMA stalls.
 The [OneForAll tutorial](https://github.com/dietmarwo/fast-cma-es/blob/master/tutorials/OneForAll.adoc)
 uses CR-FM-NES to find a starting point for DeepBiteOpt. The native Rust
 composition is available through [`crfmnes_bite`](optimizers.md#staged-cr-fm-nes-and-biteopt)
-and `--algo crfmnes_bite` in [`benchmark-biteopt-gtop`](examples.md#benchmarks).
+and `--algo crfmnes_bite` in [`benchmark-biteopt-gtop`](examples.md#benchmarks),
+and as `kind: crfmnes_bite` in the `fcmaes.retry/1` job profile.
 The opt-in recipe uses a hard cap per retry, a 30/70 split, population 500,
 and BiteOpt depth 4 by default. Each stage works on the continuous encoding
 accepted by the objective, such as random keys for a permutation.

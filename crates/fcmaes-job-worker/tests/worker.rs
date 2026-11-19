@@ -120,11 +120,20 @@ fn describe_reports_profile_and_workspace_engine_version() {
         "cmaes",
         "crfmnes",
         "pgpe",
+        "crfmnes_bite",
         "mode",
         "map_elites",
     ] {
         assert!(d["optimizers"][kind]["profile"].is_string(), "{kind}");
     }
+    let sequence = &d["optimizers"]["crfmnes_bite"];
+    assert_eq!(sequence["limit"], "hard");
+    assert_eq!(
+        sequence["defaults"]["population"], 500,
+        "the fcmaes-core defaults"
+    );
+    assert_eq!(sequence["defaults"]["crfmnes_share"], 0.3);
+    assert_eq!(sequence["defaults"]["bite_depth"], 4);
     assert_eq!(d["optimizers"]["jso"]["limit"], "hard");
     assert!(
         d["optimizers"]["jso"]
@@ -134,14 +143,72 @@ fn describe_reports_profile_and_workspace_engine_version() {
     let schema = &d["payload_schemas"]["fcmaes.retry/1"];
     assert_eq!(
         schema["properties"]["optimizer"]["properties"]["kind"]["enum"],
-        json!(["biteopt", "de", "jso", "cmaes", "crfmnes", "pgpe"])
+        json!([
+            "biteopt",
+            "de",
+            "jso",
+            "cmaes",
+            "crfmnes",
+            "pgpe",
+            "crfmnes_bite"
+        ])
     );
-    let rules = schema["allOf"]
+    let rules_of = |kind: &str| {
+        schema["allOf"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|r| r["if"]["properties"]["optimizer"]["properties"]["kind"]["const"] == kind)
+            .unwrap()
+            .clone()
+    };
+    // A parameter's rule, also inside an allOf of the parameters' rules.
+    let parameters = |rules: &Value, name: &str| {
+        let p = &rules["then"]["properties"]["optimizer"]["properties"]["parameters"];
+        std::iter::once(p)
+            .chain(p["allOf"].as_array().into_iter().flatten())
+            .map(|s| s["properties"][name].clone())
+            .find(|v| !v.is_null())
+            .unwrap_or(Value::Null)
+    };
+    // The sequence's settings belong to it alone: one rule for every other kind.
+    let own = schema["allOf"]
         .as_array()
         .unwrap()
         .iter()
-        .find(|r| r["if"]["properties"]["optimizer"]["properties"]["kind"]["const"] == "jso")
+        .find(|r| r.get("else").is_some())
         .unwrap();
+    assert_eq!(
+        own["if"]["properties"]["optimizer"]["properties"]["kind"]["const"],
+        "crfmnes_bite"
+    );
+    for name in ["crfmnes_share", "bite_depth"] {
+        assert_eq!(
+            own["else"]["properties"]["optimizer"]["properties"]["parameters"]["properties"][name],
+            json!({"type": "null"}),
+            "{name}"
+        );
+    }
+    let sequence = rules_of("crfmnes_bite");
+    assert_eq!(
+        sequence["then"]["properties"]["evaluation_limit_mode"]["const"],
+        "hard"
+    );
+    assert!(sequence["then"]["properties"].get("guess").is_none());
+    for name in [
+        "batch",
+        "restarts",
+        "max_population",
+        "center_learning_rate",
+        "stdev_learning_rate",
+    ] {
+        assert_eq!(
+            parameters(&sequence, name),
+            json!({"type": "null"}),
+            "{name}"
+        );
+    }
+    let rules = rules_of("jso");
     assert_eq!(
         rules["then"]["properties"]["evaluation_limit_mode"]["const"],
         "hard"

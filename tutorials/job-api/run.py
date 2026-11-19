@@ -13,7 +13,7 @@ BINARY='fcmaes-job-worker'
 # An application worker with a model of its own (examples/custom_worker.rs).
 APPLICATION=('curve-fit','examples/custom_worker')
 EXAMPLES=['sphere', 'rosenbrock', 'cassini1', 'rosenbrock-cmaes', 'cassini1-bipop', 'rosenbrock-crfmnes', 'rosenbrock-jso',
-          'zdt1-mode', 'binh-korn-mode', 'rastrigin-map-elites', 'sphere-cvt-cma-mae', 'binh-korn-evaluate',
+          'cassini1-crfmnes-bite', 'zdt1-mode', 'binh-korn-mode', 'rastrigin-map-elites', 'sphere-cvt-cma-mae', 'binh-korn-evaluate',
           'exponential-fit']
 sys.path.insert(0,str(REPO/'scripts/job-api'))
 from shared_root import shared_root
@@ -57,6 +57,9 @@ def check_retry(spec,record,outcome):
         # A hard limit that jSO's shrinking population schedule spends exactly.
         assert record['work']['evaluations']==limit and outcome['termination']=='evaluation_limit',record
         assert outcome['details']['generations']>0,outcome
+    if optimizer['kind']=='crfmnes_bite':
+        # A hard limit: whole CR-FM-NES populations, then BiteOpt to the budget.
+        assert record['work']['evaluations']==limit and outcome['termination']=='evaluation_limit',record
     if 'restarts' in optimizer['parameters']:
         assert outcome['details']['restarts']>=1 and record['work']['evaluations']>=payload['evaluations_per_retry'],outcome
     if payload['problem']['id']=='app.exponential-fit':
@@ -143,6 +146,20 @@ for worker_id in (WORKER,APPLICATION[0]):
                  ('center_learning_rate',.1),('stdev_learning_rate',.1),('population',3)]]
         discovery['validated']+=payload_schemas.check_rejected(
             description,[(f'jso {edit}','fcmaes.retry/1',{**jso,**edit}) for edit in edits])
+        # The sequence takes only its own settings and the hard limit; its
+        # crfmnes_share and bite_depth belong to no other kind.
+        sequence=specs['cassini1-crfmnes-bite']['payload']
+        edits=[{'evaluation_limit_mode':'soft'}]
+        edits+=[{'optimizer':{'kind':'crfmnes_bite','parameters':{name:value}}} for name,value in
+                [('batch',8),('restarts','ipop'),('max_population',64),('center_learning_rate',.1),
+                 ('stdev_learning_rate',.1),('population',3),('crfmnes_share',1.5),('bite_depth',0),
+                 ('bite_depth',37),('sigma',0)]]
+        edits+=[{'optimizer':{'kind':kind,'parameters':{name:value}},'evaluation_limit_mode':mode}
+                for kind,mode in [('biteopt','hard'),('de','soft'),('jso','hard'),('cmaes','soft'),
+                                  ('crfmnes','soft'),('pgpe','soft')]
+                for name,value in [('crfmnes_share',.3),('bite_depth',4)]]
+        discovery['validated']+=payload_schemas.check_rejected(
+            description,[(f'crfmnes_bite {edit}','fcmaes.retry/1',{**sequence,**edit}) for edit in edits])
     discovery['runs']+=payload_schemas.run_examples(call,root/'discovery',worker_id,description,conforms)
 report=[]
 for example in EXAMPLES:
@@ -169,6 +186,7 @@ for example in EXAMPLES:
     if example=='rosenbrock-crfmnes':assert best<1e-20,best
     # The best known Cassini1 value is 4.9307 km/s.
     if example=='cassini1-bipop':assert best<5.4,best
+    if example=='cassini1-crfmnes-bite':assert best<20,best
     if example=='exponential-fit':
         resolved=call('validate','--spec',spec_path)['resolved']
         assert resolved['payload']['problem']['parameters']=={'loss':'squared'},resolved['payload']['problem']

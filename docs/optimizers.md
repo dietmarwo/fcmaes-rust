@@ -264,6 +264,14 @@ assert!(result.y < 1e-6);
 
 The same example is a doctest of `crfmnes_bite`.
 
+`crfmnes_bite_until` runs the sequence on explicit bounds, guess, seed and
+budget instead of a `RetryContext`, and checks a stop predicate before every
+evaluation; once it fires, the run returns the best observation so far. The
+job worker uses it for `fcmaes.retry/1` with `kind: crfmnes_bite`, which takes
+`crfmnes_share`, `bite_depth`, `population` and `sigma` (in the normalized
+box there, twice the fraction used here); see the
+[job tutorial](../tutorials/job-api/README.md#scalar-retries-biteopt-de-jso-cma-es-cr-fm-nes-pgpe-and-cr-fm-nes--biteopt).
+
 See the [routing evidence](algorithm-portfolio.md#cr-fm-nes-to-biteopt-for-routing)
 and the [example CLI](examples.md#benchmarks).
 

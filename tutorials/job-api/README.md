@@ -6,7 +6,7 @@ the experimental `fcmaes.surrogate/1`, which has
 
 | Profile | One task is | Result claim |
 | --- | --- | --- |
-| `fcmaes.retry/1` | one BiteOpt, DE, jSO, CMA-ES (optionally with IPOP or BIPOP restarts), CR-FM-NES or PGPE retry on a registered scalar model | `best_found` |
+| `fcmaes.retry/1` | one BiteOpt, DE, jSO, CMA-ES (optionally with IPOP or BIPOP restarts), CR-FM-NES, PGPE or CR-FM-NES → BiteOpt retry on a registered scalar model | `best_found` |
 | `fcmaes.mode/1` | one MODE run on a registered multi-objective model | `non_dominated_set` |
 | `fcmaes.map-elites/1` | one MAP-Elites run on a grid or CVT archive of a registered quality-diversity model, optionally followed by CMA-ME or CMA-MAE emitters | `elite_archive` |
 | `fcmaes.evaluate/1` | one given point, evaluated on any of these models | `feasible` or `none` |
@@ -51,6 +51,7 @@ existing attempts.
 | `cassini1-bipop.json` | CMA-ES with BIPOP restarts, 8 × 50,000 evaluations, 2 workers × 4 threads | at least one restart per retry, the soft budget, best value below 5.4 (the best known is 4.9307) |
 | `rosenbrock-crfmnes.json` | CR-FM-NES on 50 dimensions, 8 × 100,000 evaluations, 4 workers × 2 threads | `best_found`, best value below 1e-20 |
 | `rosenbrock-jso.json` | jSO on 10 dimensions, 8 × 50,000 evaluations, 4 workers × 2 threads | `best_found`, exactly 50,000 evaluations per retry (the hard budget); the payload schema rejects a `guess`, a soft limit and other kinds' parameters for jSO |
+| `cassini1-crfmnes-bite.json` | CR-FM-NES → BiteOpt with its defaults, 8 × 50,000 evaluations, 8 workers × 1 thread | `best_found`, exactly 50,000 evaluations per retry, best value below 20; the payload schema rejects other kinds' parameters, a soft limit and out-of-range `crfmnes_share` or `bite_depth`, and the sequence's two settings on every other kind. The example shows the mechanics: the sequence is meant for random-key routing, and on Cassini1 `cassini1-bipop.json` does much better |
 | `zdt1-mode.json` | MODE, 8 runs × 250 generations × 64 | the recomputed ZDT1 values, non-dominance, nothing below the true front, hypervolume above 0.85 (the true front has 0.8767) |
 | `binh-korn-mode.json` | MODE, 8 runs × 100 generations × 64 | feasibility of every front point and non-dominance |
 | `rastrigin-map-elites.json` | MAP-Elites, 8 runs × 1,000 generations × 20, 400 niches | the recomputed fitness and descriptors of every elite, coverage above 50% |
@@ -130,9 +131,10 @@ than slots or one evaluation is expensive. A run's result does not depend on
 `inner_threads`: populations are evaluated in parallel but returned in order,
 and the optimizer's state stays serial. Serial BiteOpt and DE evaluate one
 point at a time and `fcmaes.evaluate/1` one point per task, so they require
-`inner_threads=1`.
+`inner_threads=1`, as does the CR-FM-NES → BiteOpt sequence, whose
+parallelism is its independent retries.
 
-## Scalar retries: BiteOpt, DE, jSO, CMA-ES, CR-FM-NES and PGPE
+## Scalar retries: BiteOpt, DE, jSO, CMA-ES, CR-FM-NES, PGPE and CR-FM-NES → BiteOpt
 
 `problem` selects a registered scalar model: `benchmark.sphere`,
 `benchmark.rosenbrock`, `gtop.cassini1`, `benchmark.branin` or
@@ -196,6 +198,23 @@ entire batch after admission.
   center it moves with Adam; a common choice for neural-network weights.
   `population` (even, default 32), `sigma` (default 0.1), and the
   `center_learning_rate` (0.15) and `stdev_learning_rate` (0.1).
+- **CR-FM-NES → BiteOpt** (`kind: crfmnes_bite`) runs the
+  [staged recipe](../../docs/optimizers.md#staged-cr-fm-nes-and-biteopt) of
+  `fcmaes-core`. CR-FM-NES evaluates whole populations that fit
+  `crfmnes_share` of the retry's budget (default 0.3, in `[0, 1]`); then
+  DeepBiteOpt with `bite_depth` populations (default 4, 1 to 36) starts at
+  the best point evaluated so far and spends every remaining evaluation. The
+  limit is `hard`: each retry spends exactly `evaluations_per_retry` unless
+  stopped. `population` (default 500) serves both stages, and CR-FM-NES
+  rounds an odd one up. `sigma` is CR-FM-NES's initial step in the
+  normalized box, as for the other kinds; absent, each retry draws one in
+  `[0.1, 0.2)`, 5–10% of each range. A `guess` starts CR-FM-NES. Both stages
+  evaluate one point at a time, so the sequence needs `inner_threads=1` and
+  gets its parallelism from `outer_workers`; a cancel stops it between
+  evaluations. `population × bite_depth × dimension` must not exceed 10⁷.
+  It is an opt-in arm for random-key routing and scheduling at large budgets,
+  where it [led the routing check](../../docs/algorithm-portfolio.md#cr-fm-nes-to-biteopt-for-routing);
+  compare it with BiteOpt and CMA-ES on your own model.
 - **A start point** (`"guess": [...]`, one value per variable inside the
   bounds, next to `seed`): every retry starts its CMA-ES, CR-FM-NES or PGPE
   distribution there with the given `sigma`; retries still differ by seed.
