@@ -430,9 +430,10 @@ population is uniform in the box.
 
 `--algo crfmnes_bite` runs the opt-in CR-FM-NES → DeepBiteOpt sequence.
 The defaults allocate 30% of the retry budget to CR-FM-NES, use population
-500 for both stages, and run BiteOpt at depth 4. The example below uses a
-fixed step size in the decision variables' units. Omit the sigma flag to
-draw a step size from the retry's seed.
+500 for both stages, and run BiteOpt at depth 4. The example below fixes the
+initial CR-FM-NES step at 7.5% of each variable's range. Omit the sigma flag
+to draw the fraction from the retry's seed. The four `--crfmnes-bite-*`
+options are rejected without `--algo crfmnes_bite`.
 
 ```bash
 cargo run --release -p fcmaes-examples --bin benchmark-biteopt-gtop -- \

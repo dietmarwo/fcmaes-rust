@@ -223,7 +223,7 @@ the sequence independently on several workers.
 |---|---|
 | `crfmnes_share` | 0.30 of each retry's evaluation cap |
 | `popsize` | 500 for both stages, rounded up to even for CR-FM-NES |
-| `sigma` | Seeded draw in `[0.05, 0.10)` in the objective's decision units |
+| `sigma` | Seeded draw in `[0.05, 0.10)`, a fraction of each variable's range |
 | `bite_depth` | 4 |
 | `stop_fitness` | Negative infinity |
 
@@ -234,25 +234,35 @@ stops CR-FM-NES after the current population and BiteOpt after the current
 evaluation. Deriving the sequence's random streams from `RetryContext::run_seed`
 makes each retry reproducible across worker counts.
 
+CR-FM-NES works in normalized coordinates, so `sigma` is a fraction of each
+variable's range and one default suits a unit box of random keys, a box of
+item indices `[0, 10)` and a box of launch dates alike. On a unit box this
+is the step of the Python recipe in the OneForAll tutorial, which measures it
+in decision units. CR-FM-NES's bound penalty is still measured in decision
+units.
+
 ```rust
 use fcmaes_core::{CrfmnesBiteParams, RetryBounds, RetryConfig, crfmnes_bite, retry};
 
-let objective = |x: &[f64]| x.iter().map(|v| v * v).sum::<f64>();
+let sphere = |x: &[f64]| x.iter().map(|v| v * v).sum::<f64>();
 let bounds = RetryBounds::new(vec![-1.0; 4], vec![1.0; 4]).unwrap();
-let settings = CrfmnesBiteParams { popsize: 64, ..Default::default() };
+let settings = CrfmnesBiteParams { popsize: 16, ..Default::default() };
+settings.validate(&bounds, None).unwrap();
 let config = RetryConfig {
-    num_retries: 8,
-    workers: 8,
-    max_evaluations: 10_000,
+    num_retries: 4,
+    workers: 2,
+    max_evaluations: 2_000,
     seed: 42,
     ..Default::default()
 };
-settings.validate(&bounds, None).unwrap();
-let result = retry(&objective, &bounds, &config, |objective, context| {
+let result = retry(&sphere, &bounds, &config, |objective, context| {
     crfmnes_bite(objective, context, &settings).unwrap()
 });
-assert!(result.evaluations <= 80_000);
+assert_eq!(result.evaluations, 8_000);
+assert!(result.y < 1e-6);
 ```
+
+The same example is a doctest of `crfmnes_bite`.
 
 See the [routing evidence](algorithm-portfolio.md#cr-fm-nes-to-biteopt-for-routing)
 and the [example CLI](examples.md#benchmarks).

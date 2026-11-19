@@ -75,8 +75,10 @@ phase, with breaking changes called out explicitly.
   `de_cma_run`, and `--algo jso_cma` in `benchmark-biteopt-gtop`.
 - Opt-in CR-FM-NES → DeepBiteOpt sequence in `fcmaes-core` through
   `crfmnes_bite` and `CrfmnesBiteParams`. It retains the best evaluated
-  point across both stages within one hard retry budget. Select it in
-  `benchmark-biteopt-gtop` with `--algo crfmnes_bite`.
+  point across both stages within one hard retry budget. CR-FM-NES runs in
+  normalized coordinates, so `sigma` is a fraction of each variable's range.
+  Select it in `benchmark-biteopt-gtop` with `--algo crfmnes_bite`; its
+  `--crfmnes-bite-*` options require that algorithm.
 - Candidate-optimizer benchmark (`benchmarks/candidate-optimizers`): L-SHADE,
   jSO, L-SRTDE, BIPOP-aCMA-ES, AMaLGaM-IDEA and the jSO→CMA and L-SRTDE→CMA
   sequences against the core optimizers on 13 real-world problems in two

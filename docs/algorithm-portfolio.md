@@ -134,6 +134,17 @@ On the 400-group knapsack `I13`, standalone CR-FM-NES ended 1.94% below the
 supplied bound at 500,000 calls in the median, compared with 3.84% for the
 sequence. These results support the sequence as an opt-in routing recipe.
 
+The native recipe sets CR-FM-NES's initial step as a fraction of each
+variable's range. On the unit random-key box of the routing table, this is
+the decision-unit step of the Python recipe. A paired check compared the two
+conventions on other boxes, with one 100,000-call retry for each of 16 seeds
+per case. The range fraction won 15 of 16 pairs on Rosetta and 14 of 16 on
+Tandem, whose intervals span hundreds to thousands of units. MMKP `I07` and
+`I13` (also at 500,000 calls), Cassini2, GTOC1 and Messenger showed no clear
+difference. On Cassini1 and Sagas, the decision-unit step reached the deepest
+basins in more seeds (6 against 1 and 3 against 1), without a significant
+paired difference.
+
 ## What is not in core, and why
 
 ### Benchmarked and left out
