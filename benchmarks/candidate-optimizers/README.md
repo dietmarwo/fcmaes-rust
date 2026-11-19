@@ -1082,3 +1082,35 @@ coordinate (`field_service`, `jobshop` and the three round-3b problems) and
 the rest (`results/round3b/report-union.md`). The two files must share root
 seed and minimum run and must not hold the same problem. `--round 3` is
 unchanged.
+
+## Round 3, convergence test
+
+[ROUND3C.md](ROUND3C.md) runs CatCMAwM and the core solvers on three round-3
+problems with larger total budgets and asks whether the candidate is
+superior on any of them at the end of the budget. Solvers, protocol, the
+bridge and the file formats are those of "Round 3: campaign"; the root seed
+is 5, there are 10 repetitions, and each problem has its own raw file.
+
+### Reproduce
+
+From this directory, one problem after the other; the Rust runner and the
+driver never write a raw file at the same time:
+
+```sh
+BIN=target/release/candidate-harness   # or $CARGO_TARGET_DIR/release/...
+for spec in phased_array:100000 field_service:200000 water_network:20000; do
+    p=${spec%%:*}; t=${spec##*:}
+    $BIN run --protocols T --problems $p --solvers round3 --totals $t \
+        --root-seed 5 --min-run 100 --reps 10 --threads 2 \
+        --out results/round3c/$p.tsv
+    types=results/round3/types
+    [ $p = water_network ] && types=results/round3c/types
+    python3 run_catcmawm.py run --problems $p --types $types \
+        --out results/round3c/$p.tsv --totals $t --root-seed 5 \
+        --min-run 100 --reps 10 --workers 2
+done
+python3 convergence_round3c.py          # writes results/round3c/report.md
+```
+
+`results/round3c/types/water_network.json` types the pump-priority switch as
+an integer for the candidate; [DEVIATIONS.md](DEVIATIONS.md) says why.

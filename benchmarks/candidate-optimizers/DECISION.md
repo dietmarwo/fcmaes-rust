@@ -222,6 +222,36 @@ that with a population of 31:
 
 The margin, the learning rates and other variable typings were not varied.
 
+## Convergence test
+
+The round-3 budgets end at 20,000 evaluations, where the candidate was level
+with the best core solver on two problems. [ROUND3C.md](ROUND3C.md) asks
+whether it solves any problem better once the budget is large enough for
+the solvers to converge. The rule, declared before the runs: superior on a
+problem if its median is lower than every core solver's and the difference
+to the best core solver is significant; superior on one problem is enough
+to implement it in core.
+
+| Problem | Total | CatCMAwM median | Best core solver | Its median | Adjusted p | Superior |
+|---|---:|---:|---|---:|---:|:-:|
+| phased_array | 100,000 | -29.47 | jSO→CMA | -32.31 | 0.023 | no |
+| field_service | 200,000 | 1298.7 | BiteOpt | 1254.8 | 0.43 | no |
+| water_network | 20,000 | 97.8 | DE | 76.7 | 0.011 | no |
+
+**Not superior on any problem; the decision stays at watch.**
+([report](results/round3c/report.md), 10 repetitions.)
+
+- On the phased array the candidate had the lowest median at 20,000
+  evaluations. At 100,000 it is second, and jSO→CMA is significantly
+  better: the earlier result was a faster start, not a better solution.
+- On field-service routing it is third, level with BiteOpt, CMA-ES and
+  Dual Annealing.
+- On the water network it is seventh of eight and significantly worse than
+  DE. The library fails on this problem's single two-way categorical
+  variable, so the switch was typed as an integer for the candidate
+  ([DEVIATIONS.md](DEVIATIONS.md)); the problem tests its integer handling
+  only.
+
 ## Limits
 
 - The candidate is a Python reference implementation, compared by

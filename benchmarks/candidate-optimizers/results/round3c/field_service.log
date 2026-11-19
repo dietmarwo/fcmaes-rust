@@ -1,0 +1,10 @@
+protocol T, totals 200000: root seed 5, run cap = total, min run 100 (not the declared round-3 settings)
+70 runs to do (0 already present), 2 threads
+done bite field_service T (10/70 runs, cell 30.2s, elapsed 30.2s)
+done de field_service T (20/70 runs, cell 29.0s, elapsed 59.0s)
+done cma field_service T (30/70 runs, cell 85.0s, elapsed 143.7s)
+done crfmnes field_service T (40/70 runs, cell 28.0s, elapsed 170.6s)
+done da field_service T (50/70 runs, cell 32.1s, elapsed 201.7s)
+done de_cma field_service T (60/70 runs, cell 44.7s, elapsed 245.2s)
+done jso_cma field_service T (70/70 runs, cell 48.4s, elapsed 291.8s)
+wrote 70 rows to results/round3c/field_service.tsv
