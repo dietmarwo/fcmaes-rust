@@ -79,6 +79,11 @@ phase, with breaking changes called out explicitly.
   predeclared rounds. Only jSO, as a first stage before CMA-ES, is added to
   core ([decision](benchmarks/candidate-optimizers/DECISION.md),
   [the algorithm portfolio](docs/algorithm-portfolio.md)).
+- Candidate-optimizer benchmark, round 3: a screening of CatCMA with Margin
+  (mixed continuous, integer and categorical variables) through its reference
+  implementation, on six mixed problems of the repository and three
+  categorical problems from the literature. The outcome is *watch*: it is not
+  implemented in core.
 - Experimental, opt-in surrogate `/2`: `fcmaes_surrogate::advanced` and the job profile `fcmaes.surrogate/2` ([guide](docs/surrogate/ADVANCED.md)). Over `/1` it adds:
   - an archive of up to 10,000 observations, of which a GP trains on at most 240 (the incumbent, its neighbours and maximin coverage);
   - asynchronous callbacks with one background proposal;

@@ -106,3 +106,20 @@ Known limits of this round, unchanged by the entries above:
   network, ML tuning) are outside the 2 ms entry rule on this host.
 - The candidate is a Python reference implementation and is compared by
   evaluations only.
+
+## Round 3, second batch
+
+No deviation from [ROUND3B.md](ROUND3B.md). All three problems entered.
+
+- **Welded beam.** The definition follows Deb and Goyal. Their published
+  solution is reproduced for the bending and buckling constraints and, within
+  the rounding of the printed weld length, for the shear constraint; the
+  printed deflection slack (0.2346) and cost (1.9422) differ in the fourth
+  digit (0.2344 and 1.94188). The bounds of the weld length come from Tran,
+  Tran and Wang (2019), because the original gives none. Later restatements
+  of the problem differ from the original in several formulas; the README
+  lists the differences.
+- **Pest control.** The function as first published draws unseeded random
+  numbers. The batch uses the fixed-seed form of the Bounce and Casmopolitan
+  suites (seed 0), which is a deterministic function of the 25 choices, and
+  reproduces the reference code bit for bit.

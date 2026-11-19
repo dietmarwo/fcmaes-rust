@@ -1,0 +1,12 @@
+truss_sizing 20000 default        median 4e+08 min 4e+08 max 4e+08 feasible(<1e8) 0/3 runs 1-1
+truss_sizing 20000 rand_mean      median 4e+08 min 4e+08 max 4e+08 feasible(<1e8) 0/3 runs 1-1
+truss_sizing 20000 rand_wide      median 4e+08 min 4e+08 max 4e+08 feasible(<1e8) 0/3 runs 1-1
+truss_sizing 20000 rand_wide_p31  median 4e+08 min 4e+08 max 4e+08 feasible(<1e8) 0/3 runs 1-1
+field_service 2000 default        median 1931.88 min 1863.12 max 4240.32 feasible(<1e8) 8/8 runs 1-1
+field_service 2000 rand_mean      median 12374.2 min 1987.69 max 46681.1 feasible(<1e8) 8/8 runs 1-1
+field_service 2000 rand_wide      median 13678.4 min 1965.9 max 35368.7 feasible(<1e8) 8/8 runs 1-1
+field_service 2000 rand_wide_p31  median 25056.6 min 3689.19 max 28397.4 feasible(<1e8) 8/8 runs 1-1
+field_service 20000 default        median 1303.56 min 1209.44 max 1320.77 feasible(<1e8) 5/5 runs 1-1
+field_service 20000 rand_mean      median 1336.74 min 1273.65 max 1379.43 feasible(<1e8) 5/5 runs 1-1
+field_service 20000 rand_wide      median 1383.25 min 1342.27 max 1412.9 feasible(<1e8) 5/5 runs 1-1
+field_service 20000 rand_wide_p31  median 1295.69 min 1231.16 max 1345.84 feasible(<1e8) 5/5 runs 1-1
