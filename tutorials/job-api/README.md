@@ -179,7 +179,14 @@ entire batch after admission.
   starts from a uniform random point drawn from its seed, or from `guess`
   (below). CMA-ES can stop
   before its budget on its own convergence tests; the task then reports
-  `termination: "optimizer_stop"` and `details.stop_code`.
+  `termination: "optimizer_stop"` and `details.stop_code`. `repair_z`
+  (default `false`) is
+  [`CmaesParams::repair_z`](../../docs/optimizers.md#active-cma-es) of every
+  run: with `true` a sample moved into the bounds enters the update with the
+  `z` of the evaluated point. It changes results only when samples reach the
+  bounds; try it when runs stop early with a growing step size, the optimum
+  lies on or outside the bounds, or samples stay clipped. The resolved
+  payload lists it only when `true`.
 - **CMA-ES with restarts** (`restarts: ipop` or `bipop`) restarts until the
   retry's budget is spent, each run from a new uniform random point (with a
   `guess`, only the first run starts there). IPOP
@@ -224,8 +231,8 @@ entire batch after admission.
   `fcmaes.job/0.1`. jSO rejects a guess.
 
 Settings of another optimizer are rejected, never ignored: `sigma` for
-BiteOpt, `restarts` for CR-FM-NES, `center_learning_rate` for CMA-ES, `sigma`,
-`batch` or a `guess` for jSO. CMA-ES,
+BiteOpt, `restarts` for CR-FM-NES, `center_learning_rate` for CMA-ES,
+`repair_z` for every kind but CMA-ES, `sigma`, `batch` or a `guess` for jSO. CMA-ES,
 CR-FM-NES and PGPE use a soft limit (`evaluation_limit_mode: soft`) and may
 spend `population-1` extra evaluations. CR-FM-NES adds a bound penalty to the
 values it ranks and keeps unclamped points, so for CR-FM-NES and PGPE the

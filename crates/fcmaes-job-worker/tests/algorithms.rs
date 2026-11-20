@@ -518,6 +518,93 @@ fn cmaes_restarts_spend_the_budget_and_match_the_library() {
     }
 }
 
+/// `repair_z` reaches `CmaesParams`: on a box that excludes Rosenbrock's
+/// optimum (1, ..., 1) the samples keep reaching the upper bound, so the
+/// setting changes the result; each run matches the library with it.
+#[test]
+fn cmaes_repair_z_reaches_the_library_and_changes_bounded_runs() {
+    let dir = tempfile::tempdir().unwrap();
+    let (dim, evaluations) = (4, 3000);
+    let spec = |parameters: Value| {
+        envelope(
+            "fcmaes.retry/1",
+            json!({"problem": problem("benchmark.rosenbrock", dim, -0.5, 0.5),
+                "optimizer": {"kind": "cmaes", "parameters": parameters}, "seed": 5,
+                "retries": 4, "evaluations_per_retry": evaluations,
+                "evaluation_limit_mode": "soft"}),
+            2,
+            1,
+        )
+    };
+    let resolved = validate(dir.path(), &spec(json!({"repair_z": true}))).unwrap();
+    assert_eq!(
+        resolved["payload"]["optimizer"]["parameters"],
+        json!({"population": 31, "sigma": 0.3, "repair_z": true})
+    );
+    // The default, false, is absent when resolved, as in payloads without it.
+    let resolved = validate(dir.path(), &spec(json!({"repair_z": false}))).unwrap();
+    assert_eq!(
+        resolved["payload"]["optimizer"]["parameters"],
+        json!({"population": 31, "sigma": 0.3})
+    );
+    let bounds = RetryBounds::new(vec![-0.5; dim], vec![0.5; dim]).unwrap();
+    let objective = objective_by_id("benchmark.rosenbrock");
+    let mut objectives = Vec::new();
+    for repair_z in [false, true] {
+        let run = execute(&spec(json!({"repair_z": repair_z})));
+        assert_eq!(run["status"], "completed");
+        let settings = EsSettings {
+            repair_z,
+            ..EsSettings::cmaes(31, 0.3)
+        };
+        let mut values = Vec::new();
+        for r in results(&run) {
+            let seed = retry_run_seed(5, r["task_id"].as_u64().unwrap() as usize);
+            let direct = es_retry(
+                &settings,
+                &bounds,
+                seed,
+                evaluations,
+                &objective,
+                &Threads::new(1).unwrap(),
+            );
+            let o = &r["outcome"];
+            assert_eq!(o["objective"], json!(direct.result.y), "{repair_z}");
+            assert_eq!(o["x"], json!(direct.result.x));
+            assert_eq!(r["work"]["evaluations"], direct.result.evaluations);
+            values.push(direct.result.y);
+        }
+        objectives.push(values);
+    }
+    assert_ne!(
+        objectives[0], objectives[1],
+        "repair_z did not change the runs"
+    );
+    // Other kinds reject it.
+    for (kind, mode) in [
+        ("biteopt", "hard"),
+        ("de", "soft"),
+        ("jso", "hard"),
+        ("crfmnes", "soft"),
+        ("pgpe", "soft"),
+        ("crfmnes_bite", "hard"),
+    ] {
+        let mut other = spec(json!({"repair_z": true}));
+        other["payload"]["optimizer"]["kind"] = json!(kind);
+        other["payload"]["evaluation_limit_mode"] = json!(mode);
+        if kind == "crfmnes_bite" {
+            other["resources"] = json!({"cpu_slots": 1, "outer_workers": 1, "inner_threads": 1});
+        }
+        let error = validate(dir.path(), &other).unwrap_err();
+        assert!(
+            error.contains("optimizer.parameters.repair_z"),
+            "{kind}: {error}"
+        );
+        other["payload"]["optimizer"]["parameters"] = json!({});
+        validate(dir.path(), &other).unwrap();
+    }
+}
+
 #[test]
 fn population_runs_do_not_depend_on_inner_threads() {
     let mode = |inner| {

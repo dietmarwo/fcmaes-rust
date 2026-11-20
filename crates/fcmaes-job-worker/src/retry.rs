@@ -122,6 +122,10 @@ pub struct Parameters {
     /// CR-FM-NES → BiteOpt: the number of DeepBiteOpt populations, 1..36.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub bite_depth: Option<usize>,
+    /// CMA-ES: `fcmaes_core::CmaesParams::repair_z`, how a sample moved into
+    /// the bounds enters the update; default `false` (absent when resolved).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub repair_z: Option<bool>,
 }
 
 /// The population-based optimizers of this profile.
@@ -155,6 +159,8 @@ pub struct EsSettings {
     pub stdev_learning_rate: f64,
     /// Start of the first run of every retry; `None`: a uniform random point.
     pub guess: Option<Vec<f64>>,
+    /// CMA-ES: `fcmaes_core::CmaesParams::repair_z` of every run.
+    pub repair_z: bool,
 }
 impl EsSettings {
     /// CMA-ES without restarts.
@@ -169,6 +175,7 @@ impl EsSettings {
             center_learning_rate: d.center_learning_rate,
             stdev_learning_rate: d.stdev_learning_rate,
             guess: None,
+            repair_z: false,
         }
     }
 }
@@ -228,12 +235,13 @@ pub fn describe() -> Value {
             "inner_threads":"1 without batch; with batch, evaluates the candidates in flight on inner_threads threads"},
         "cmaes":{"profile":PROFILE,"limit":"soft",
             "maximum_overshoot_per_retry":"population-1; max_population-1 with restarts",
-            "defaults":{"population":CMAES_POPULATION,"sigma":CMAES_SIGMA,"restarts":"none",
+            "defaults":{"population":CMAES_POPULATION,"sigma":CMAES_SIGMA,"restarts":"none","repair_z":false,
                 "max_population":format!("with restarts: {MAX_POPULATION_FACTOR} * population, at most 1e6 and 1e7 / dimension")},
             "sigma":"initial step size in the normalized [-1,1] box, (0,2]",
             "limits":"dimension <= 3162 (dimension^2 <= 1e7); population * dimension <= 1e7 (max_population with restarts)",
             "restarts":"none | ipop (double the population after every stop) | bipop (alternate doubled populations with small populations and step sizes); runs restart until the retry's budget is spent, each from a new uniform random point (also with guess)",
             "start":"guess, or a uniform random point in the bounds from the retry seed; initial step size sigma",
+            "repair_z":"true: a sample moved into the bounds updates with the z of the evaluated point; try it if runs stop early or samples stay clipped",
             "inner_threads":"evaluates each population on inner_threads threads"},
         "crfmnes":{"profile":PROFILE,"limit":"soft","maximum_overshoot_per_retry":"population-1",
             "defaults":{"population":CRFMNES_POPULATION,"sigma":CRFMNES_SIGMA},
@@ -422,6 +430,7 @@ fn legacy_spec(s: &JobSpec, p: &mut Payload) -> Result<LegacySpec> {
         ("stdev_learning_rate", q.stdev_learning_rate.is_some()),
         ("crfmnes_share", q.crfmnes_share.is_some()),
         ("bite_depth", q.bite_depth.is_some()),
+        ("repair_z", q.repair_z.is_some()),
     ] {
         if given {
             return Err(format!(
@@ -524,6 +533,7 @@ fn jso_settings(p: &mut Payload) -> Result<usize> {
         ("stdev_learning_rate", q.stdev_learning_rate.is_some()),
         ("crfmnes_share", q.crfmnes_share.is_some()),
         ("bite_depth", q.bite_depth.is_some()),
+        ("repair_z", q.repair_z.is_some()),
     ] {
         if given {
             return Err(format!("optimizer.parameters.{name} does not apply to jso").into());
@@ -659,6 +669,7 @@ fn es_settings(p: &mut Payload) -> Result<EsSettings> {
         }
     }
     only("restarts", q.restarts.is_some(), EsKind::Cmaes, "cmaes")?;
+    only("repair_z", q.repair_z.is_some(), EsKind::Cmaes, "cmaes")?;
     only(
         "max_population",
         q.max_population.is_some(),
@@ -750,6 +761,7 @@ fn es_settings(p: &mut Payload) -> Result<EsSettings> {
             1.0,
         )?,
         guess: p.guess.clone(),
+        repair_z: q.repair_z.unwrap_or(false),
     };
     let pgpe = kind == EsKind::Pgpe;
     let restarting = restarts != Restarts::None;
@@ -763,6 +775,7 @@ fn es_settings(p: &mut Payload) -> Result<EsSettings> {
         batch: None,
         crfmnes_share: None,
         bite_depth: None,
+        repair_z: settings.repair_z.then_some(true),
     };
     Ok(settings)
 }
@@ -789,6 +802,7 @@ fn crfmnes_bite_settings(p: &mut Payload) -> Result<CrfmnesBiteParams> {
         ("max_population", q.max_population.is_some()),
         ("center_learning_rate", q.center_learning_rate.is_some()),
         ("stdev_learning_rate", q.stdev_learning_rate.is_some()),
+        ("repair_z", q.repair_z.is_some()),
     ] {
         if given {
             return Err(
@@ -1012,6 +1026,7 @@ fn es_run(
                 popsize: population as i32,
                 max_evaluations: evaluations,
                 seed,
+                repair_z: s.repair_z,
                 ..Default::default()
             },
         );
@@ -1559,7 +1574,8 @@ pub fn payload_schema(problem: Value) -> Value {
         "center_learning_rate":or_null(number(Some(0.0), Some(1.0), true)),
         "stdev_learning_rate":or_null(number(Some(0.0), Some(1.0), true)),
         "crfmnes_share":or_null(number(Some(0.0), Some(1.0), false)),
-        "bite_depth":or_null(integer(1, 36))}});
+        "bite_depth":or_null(integer(1, 36)),
+        "repair_z":or_null(json!({"type":"boolean"}))}});
     // The rules of one optimizer kind: its evaluation limit mode, the
     // parameters that apply to it, and `rules` on the whole payload.
     let kind = |kind: &str, mode: &str, parameters: Value, rules: Value| {
@@ -1622,7 +1638,9 @@ pub fn payload_schema(problem: Value) -> Value {
             jso,
             crfmnes_bite,
             json!({"if":{"properties":{"optimizer":{"properties":{"kind":{"const":"crfmnes_bite"}}}}},
-                "else":{"properties":{"optimizer":{"properties":{"parameters":absent(&["crfmnes_share","bite_depth"])}}}}})],
+                "else":{"properties":{"optimizer":{"properties":{"parameters":absent(&["crfmnes_share","bite_depth"])}}}}}),
+            json!({"if":{"properties":{"optimizer":{"properties":{"kind":{"const":"cmaes"}}}}},
+                "else":{"properties":{"optimizer":{"properties":{"parameters":absent(&["repair_z"])}}}}})],
         "$comment":"inner_threads: 1 for biteopt and de without parameters.batch, otherwise the threads evaluating a population (results do not depend on them). population, batch and (with restarts) max_population times dimension <= 1e7; cmaes: dimension <= 3162 and max_population >= population. crfmnes_bite: inner_threads 1 and population * bite_depth * dimension <= 1e7. guess: one value per variable inside the bounds. de: sigma only with a guess. retries times the per-retry maximum must not overflow."}),
     )
 }

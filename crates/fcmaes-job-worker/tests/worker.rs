@@ -232,6 +232,25 @@ fn describe_reports_profile_and_workspace_engine_version() {
             "{absent}"
         );
     }
+    // repair_z belongs to cmaes alone: one rule for every other kind.
+    assert_eq!(d["optimizers"]["cmaes"]["defaults"]["repair_z"], false);
+    assert_eq!(
+        schema["properties"]["optimizer"]["properties"]["parameters"]["properties"]["repair_z"],
+        json!({"type": ["boolean", "null"]})
+    );
+    let own = schema["allOf"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|r| {
+            r.get("else").is_some()
+                && r["if"]["properties"]["optimizer"]["properties"]["kind"]["const"] == "cmaes"
+        })
+        .unwrap();
+    assert_eq!(
+        own["else"]["properties"]["optimizer"]["properties"]["parameters"]["properties"]["repair_z"],
+        json!({"type": "null"})
+    );
     // fcmaes-core and this worker both inherit [workspace.package] version.
     let manifest = include_str!("../../../Cargo.toml");
     let workspace = &manifest[manifest.find("[workspace.package]").unwrap()..];

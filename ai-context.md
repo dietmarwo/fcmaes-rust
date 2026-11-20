@@ -698,8 +698,10 @@ from BiteOpt to DE means changing both `optimizer.kind` to `de` and
 CMA-ES (`kind: cmaes`) also requires `soft`: it evaluates whole generations, so
 it may spend at most `population-1` extra evaluations, and it can stop earlier
 on its own convergence tests (`termination: "optimizer_stop"`,
-`details.stop_code`). Its parameters are `population` (default 31) and `sigma`
-(default 0.3, the initial step size in the box normalized to `[-1, 1]`); each
+`details.stop_code`). Its parameters are `population` (default 31), `sigma`
+(default 0.3, the initial step size in the box normalized to `[-1, 1]`) and
+`repair_z` (default `false`, `CmaesParams::repair_z` of every run; other
+kinds reject it, and the resolved payload lists it only when `true`); each
 retry starts at a uniform random point drawn from its seed, or at the
 payload's `guess` (one value per variable, inside the bounds): every retry
 then starts its CMA-ES, CR-FM-NES or PGPE distribution there with `sigma`,
