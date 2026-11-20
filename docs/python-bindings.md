@@ -113,12 +113,13 @@ that replaces the pending one. `ACMA.tell_x(ys, xs)` needs no pending `ask`;
 it raises `ValueError` unless `ys` has `popsize` values and `xs` the shape
 `(popsize, dim)`.
 
-`optimize_acma` and `ACMA` take the keyword `repair_z` (default `True`), the
-Rust [`CmaesParams::repair_z`](optimizers.md#active-cma-es): with `True` a
-sample that was moved into the bounds enters the update with the `z` of the
-evaluated point; `repair_z=False` uses the `z` of the unmoved sample and
-reproduces fcmaes-rust 0.3.0. It changes results only when samples reach the
-bounds.
+`optimize_acma` and `ACMA` take the keyword `repair_z` (default `False`),
+the Rust [`CmaesParams::repair_z`](optimizers.md#active-cma-es): with the
+default a sample that was moved into the bounds enters the update with the
+`z` of the unmoved sample, the update of fcmaes-rust 0.3.0; `repair_z=True`
+uses the `z` of the evaluated point. It changes results only when samples
+reach the bounds; try `True` when runs stop early with a growing step size
+or many samples are clipped.
 
 `JSO` differs from `DE` in two ways. Its constructor takes `max_evaluations`,
 because jSO's population size and parameter schedule follow the fraction of

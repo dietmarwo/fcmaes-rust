@@ -36,7 +36,7 @@ impl Default for BenchmarkCli {
             progress_interval: 0.0,
             problem: None,
             include_slow: false,
-            repair_z: true,
+            repair_z: false,
             raw_output: None,
             table_output: None,
         }
@@ -54,7 +54,8 @@ impl BenchmarkCli {
       --progress-interval N    live interval inside each experiment\n\
       --problem NAME           run one benchmark problem\n\
       --include-slow           include Tandem and Messenger Full\n\
-      --no-repair-z            CMA-ES updates moved samples with their unmoved z (0.3.0)\n\
+      --repair-z               CMA-ES updates moved samples with the z of the evaluated point\n\
+      --no-repair-z            CMA-ES updates moved samples with their unmoved z (default, 0.3.0)\n\
       --raw-output PATH        write one TSV row after every experiment\n\
       --table-output PATH      update the Markdown table after every problem\n\
       --help                   show this help";
@@ -75,6 +76,7 @@ impl BenchmarkCli {
             match argument {
                 "--help" | "-h" => return Ok(None),
                 "--include-slow" => cli.include_slow = true,
+                "--repair-z" => cli.repair_z = true,
                 "--no-repair-z" => cli.repair_z = false,
                 _ => {
                     let value = args
@@ -282,7 +284,9 @@ mod tests {
         .unwrap();
         assert_eq!(cli.runs, 7);
         assert!(!cli.repair_z);
-        assert!(BenchmarkCli::default().repair_z);
+        assert!(!BenchmarkCli::default().repair_z);
+        let on = BenchmarkCli::from_args(["--repair-z"]).unwrap().unwrap();
+        assert!(on.repair_z);
         assert_eq!(cli.workers, 3);
         assert_eq!(cli.evaluations, 2_000);
         assert_eq!(cli.seed, 9);

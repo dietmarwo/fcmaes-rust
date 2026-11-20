@@ -400,8 +400,9 @@ def beyond_the_bounds(x):
 
 
 def test_acma_repair_z_selects_the_update_of_bounded_samples():
-    """``repair_z=False`` restores the update of 0.3.0, whose step size grows
-    until the run stops early when samples keep reaching the bounds."""
+    """``repair_z=False`` (the default) is the update of 0.3.0, whose step size
+    grows until the run stops early when samples keep reaching the bounds;
+    ``repair_z=True`` keeps improving."""
 
     def run(**kwargs):
         x, y, evaluations, iterations, stop = fcmaes_rust.optimize_acma(
@@ -419,10 +420,10 @@ def test_acma_repair_z_selects_the_update_of_bounded_samples():
         return list(x), y, evaluations, iterations, stop
 
     default = run()
-    assert default == run(repair_z=True)
-    assert default[1] < 11.0 and default[2] > 2000
-    without = run(repair_z=False)
-    assert without[1] > 12.5 and without[2] < 1800
+    assert default == run(repair_z=False)
+    assert default[1] > 12.5 and default[2] < 1800
+    repaired = run(repair_z=True)
+    assert repaired[1] < 11.0 and repaired[2] > 2000
 
     # The class takes the same keyword; inside the bounds it changes nothing.
     def ask_tell(repair_z):

@@ -8,31 +8,17 @@ phase, with breaking changes called out explicitly.
 
 ### Fixed
 
-- Active CMA-ES (`Cmaes`, and every sequence, retry and job-worker policy
-  built on it) updated its evolution paths and covariance from samples that
-  it had moved onto the bounds as if they had not been moved, while the mean
-  followed the moved points. On problems whose samples keep reaching the
-  bounds the step size then grew until the run stopped early with
-  `stop_tol_upx`. A moved sample now enters the update with the `z` of the
-  point that was evaluated. Examples at 110,000 evaluations: the
-  118-variable neural controller of `tutorials/neural-controller-policy-search`
-  goes from a median loss of 1.13 to 0.137 (libcmaes reached 0.148 there in
-  the eight-worker benchmark); a
-  20-variable linear function on a box stops near -19.8 where it stopped
-  near -13 (optimum -20). **Results change on every bounded problem whose
-  samples reach the bounds**; runs that stay inside the bounds, and unbounded
-  runs, are unchanged. Coordinated retry narrows the bounds around good
-  solutions and is affected: in a preliminary check on the eight GTOP
-  problems (300 retries, 7 to 8 seeds, single worker) the fixed version
-  spent 8% to 32% fewer evaluations for the same number of retries, was
-  better more often on Cassini1 and Cassini2, and worse more often on
-  Messenger (6 of 8 seeds, final values 8.7032 against 8.7016 in the
-  median) and Messenger full (5 of 7, 6.30 against 6.12). Wider tests at
-  equal evaluations are pending. The change is marked `REPAIR-Z` in
-  `crates/fcmaes-core/src/cmaes.rs` and is optional: `CmaesParams::repair_z`
-  (default `true`) selects it, and `repair_z: false` restores the update of
-  0.3.0 exactly (see Added). The Foundations lesson L2 (Rastrigin-10, 1,500
-  evaluations, one seed) reports 7.38 for CMA-ES where it reported 35.2.
+- Active CMA-ES: when a step norm of the worst samples was zero or not
+  finite, the negative (active) covariance update divided by it and put NaN
+  into the covariance; every stop test then compared NaN and the run ended
+  after that generation as a small-step stop (code 2). In 0.3.0 this needs
+  a point told with `tell_x` that equals the mean among the worst samples;
+  with `repair_z: true` (see Added) it happens whenever a sample is moved
+  onto the bound at the mean, whose `z` is then zero: one variable on
+  [0, 1] started at the lower bound stopped after 31 evaluations. Such a generation now
+  makes no negative update, and the run continues. Results with finite
+  nonzero norms are unchanged bit for bit; the same guard applies to
+  `tell`, `tell_x` and `optimize`.
 - `Cmaes::tell_x` after an `ask` updated from the asked samples instead of
   the supplied points, because the flag that selects the supplied points
   was set after the update had run. It is now set first.
@@ -86,20 +72,31 @@ phase, with breaking changes called out explicitly.
 
 ### Added
 
-- `CmaesParams::repair_z` (default `true`) selects how active CMA-ES updates
-  from a sample that it moved into the bounds: `true` uses the `z` of the
-  evaluated point (the fix under Fixed), `false` the `z` of the unmoved
-  sample, which reproduces the results of 0.3.0 bit for bit (checked on
-  coordinated retry for Cassini1 and Messenger, single worker). It matters
-  only when samples reach the bounds, and both settings can now be compared
-  in wider tests. Python: keyword `repair_z=True` of `optimize_acma` and
-  `ACMA`. Examples: `--no-repair-z` sets it to `false` for every CMA-ES
-  that `gtop-examples` and `gtop-advexamples` build (the CMA-ES stage of
-  DE→CMA and jSO→CMA, basic and advanced retry), and for the CMA-ES stage of
-  `benchmark-gtop` and of `benchmark-biteopt-gtop` with `--algo de_cma` or
-  `jso_cma`. The `fcmaes.retry/1` job worker always uses the default
-  `true`; a payload parameter would change the job schema and is left to a
-  separate change.
+- `CmaesParams::repair_z` (default `false`) selects how active CMA-ES
+  updates from a sample that it moved into the bounds: `false` uses the `z`
+  of the unmoved sample, the update of 0.3.0, whose results the default
+  reproduces bit for bit (checked on coordinated retry for Cassini1 and
+  Messenger, single worker); `true` uses the `z` of the evaluated point, so
+  the evolution paths and the covariance follow the same points as the
+  mean. It matters only when samples reach the bounds. In 2,400 matched
+  pairs on 12 application objectives and a benchmark, `false` won more
+  often for standalone bounded CMA-ES (217 wins against 152, 15 ties) and
+  as the second stage of DE→CMA (178/118) and jSO→CMA (197/144), also at
+  equal evaluations (jSO→CMA on a 171-variable truss: median 394.5 against
+  420.4 at four million evaluations); coordinated DE→CMA retry leaned
+  slightly toward `true` (72/58). `true` is clearly better where samples
+  keep being clipped and the step size grows: the 118-variable neural
+  controller of `tutorials/neural-controller-policy-search` reaches a
+  median loss of 0.137 against 1.13. Try `true` when runs stop early with
+  `stop_tol_upx`, when optima lie on or outside the bounds, or when samples
+  are clipped throughout the run. The code is marked `REPAIR-Z` in
+  `crates/fcmaes-core/src/cmaes.rs`. Python: keyword `repair_z=False` of
+  `optimize_acma` and `ACMA`. Examples: `--repair-z` sets it to `true` for
+  every CMA-ES that `gtop-examples` and `gtop-advexamples` build (the
+  CMA-ES stage of DE→CMA and jSO→CMA, basic and advanced retry), and for
+  the CMA-ES stage of `benchmark-gtop` and of `benchmark-biteopt-gtop`
+  with `--algo de_cma` or `jso_cma`; `--no-repair-z` states the default.
+  The `fcmaes.retry/1` job worker uses the default `false`.
 - jSO in `fcmaes-core` (`Jso`, `JsoParams`, `JsoResult`; Brest, Maučec and
   Bošković, CEC 2017): adaptive differential evolution with linear
   population size reduction, with `optimize`, `optimize_until`,

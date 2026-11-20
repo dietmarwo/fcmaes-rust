@@ -185,18 +185,26 @@ Key `CmaesParams` defaults:
 | `accuracy` | 1.0 |
 | `stop_fitness` | negative infinity |
 | `stop_tol_hist_fun` / `update_gap` | -1 / -1, automatic |
-| `repair_z` | `true` |
+| `repair_z` | `false` |
 
 `repair_z` matters only when samples reach the bounds. A sample that was
-moved into the bounds enters the update with the `z` of the point that was
-evaluated (`true`), or with the `z` of the unmoved sample (`false`, the
-update of 0.3.0). `true` keeps the step size from growing when samples keep
-reaching the bounds. In first comparisons `false` did better on some
-problems: the CMA-based sequences on a 171-variable truss, and coordinated
-retry, whose bounds narrow around good solutions, on the Messenger
-trajectories. Compare both settings where samples reach the bounds.
-Runs that stay inside the bounds, unbounded runs and `tell_x` give the same
-results with either value.
+moved into the bounds enters the update with the `z` of the unmoved sample
+(`false`, the default and the update of 0.3.0), or with the `z` of the point
+that was evaluated (`true`). In 2,400 matched pairs on 12 application
+objectives and a benchmark `false` won more often: standalone bounded
+CMA-ES 217 to 152 (15 ties), as the second stage of DE→CMA 178 to 118 and of
+jSO→CMA 197 to 144; coordinated DE→CMA retry leaned slightly toward `true`
+(72 to 58). `true` keeps the step size from growing where samples keep being
+moved onto the bounds: on a 118-variable neural controller it reached a
+median loss of 0.137 against 1.13. Try `true` when runs stop early with
+`stop_tol_upx` (stop code 3), when optima lie on or outside the bounds, or
+when many samples are clipped throughout the run. Runs that stay inside the
+bounds, unbounded runs and `tell_x` give the same results with either value.
+
+The negative (active) covariance update divides by the step norms of the
+worst samples. When one of these norms is zero or not finite (with
+`repair_z: true`, a sample moved onto the bound at the mean has `z = 0`),
+that generation makes no negative update, so the covariance stays finite.
 
 `Cmaes::optimize(objective, workers)` controls population-evaluation
 parallelism. Use `1` when outer retry already supplies parallelism.

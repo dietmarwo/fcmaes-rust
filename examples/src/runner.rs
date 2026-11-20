@@ -25,8 +25,8 @@ pub struct Cli {
     pub stop_fitness: f64,
     pub problem: Option<String>,
     pub progress_interval: f64,
-    /// [`CmaesParams::repair_z`] of every CMA-ES the runner builds;
-    /// `--no-repair-z` sets it to `false`.
+    /// [`CmaesParams::repair_z`] of every CMA-ES the runner builds:
+    /// `false` by default and with `--no-repair-z`, `true` with `--repair-z`.
     pub repair_z: bool,
 }
 
@@ -43,7 +43,7 @@ impl Default for Cli {
             stop_fitness: f64::NEG_INFINITY,
             problem: None,
             progress_interval: 0.0,
-            repair_z: true,
+            repair_z: false,
         }
     }
 }
@@ -60,7 +60,8 @@ impl Cli {
         \x20 --progress-interval N   print live progress every N seconds; 0 disables it\n\
         \x20 --max-eval-fac N        advanced retry maximum evaluation factor\n\
         \x20 --check-interval N      advanced retry checkpoint interval\n\
-        \x20 --no-repair-z           CMA-ES updates moved samples with their unmoved z (0.3.0)\n\
+        \x20 --repair-z              CMA-ES updates moved samples with the z of the evaluated point\n\
+        \x20 --no-repair-z           CMA-ES updates moved samples with their unmoved z (default, 0.3.0)\n\
         \x20 --help                  show this help";
 
     pub fn from_env() -> Self {
@@ -87,9 +88,16 @@ impl Cli {
         let mut args = args.into_iter();
         while let Some(argument) = args.next() {
             let argument = argument.as_ref();
-            if argument == "--no-repair-z" {
-                cli.repair_z = false;
-                continue;
+            match argument {
+                "--repair-z" => {
+                    cli.repair_z = true;
+                    continue;
+                }
+                "--no-repair-z" => {
+                    cli.repair_z = false;
+                    continue;
+                }
+                _ => {}
             }
             let value = args
                 .next()
@@ -768,7 +776,10 @@ mod tests {
         assert_eq!(cli.max_eval_fac, 50.0);
         assert_eq!(cli.check_interval, 100);
         assert_eq!(cli.seed, 7);
+        assert!(!cli.repair_z);
+        let cli = Cli::from_args(["--retries", "3", "--repair-z", "--seed", "2"]).unwrap();
         assert!(cli.repair_z);
+        assert_eq!((cli.retries, cli.seed), (3, 2));
         let cli = Cli::from_args(["--retries", "3", "--no-repair-z", "--seed", "2"]).unwrap();
         assert!(!cli.repair_z);
         assert_eq!((cli.retries, cli.seed), (3, 2));

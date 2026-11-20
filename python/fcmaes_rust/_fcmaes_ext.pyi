@@ -86,7 +86,7 @@ def optimize_acma(
     delayed_update: bool = True,
     update_gap: int = -1,
     workers: int = 1,
-    repair_z: bool = True,
+    repair_z: bool = False,
 ) -> _Result: ...
 def optimize_bite(
     fun: Callable[[_F64], float],
@@ -268,7 +268,7 @@ class ACMA:
         normalize: bool = True,
         delayed_update: bool = True,
         update_gap: int = -1,
-        repair_z: bool = True,
+        repair_z: bool = False,
     ) -> None: ...
     @property
     def dim(self) -> int: ...
