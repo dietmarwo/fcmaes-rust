@@ -390,6 +390,40 @@ pub fn cma_sequence<F>(
 where
     F: FnOnce(&Budgeted<'_>, FirstStage) -> Vec<f64>,
 {
+    cma_sequence_bounded(
+        objective,
+        lower,
+        upper,
+        max_evaluations,
+        seed,
+        CmaBounds::default(),
+        first_stage,
+    )
+}
+
+/// Bound handling of the CMA-ES stage of a sequence: the
+/// [`CmaesParams::repair_z`] and [`CmaesParams::bound_transform`] settings.
+/// The default (both `false`) is the clip mode of [`cma_sequence`].
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct CmaBounds {
+    pub repair_z: bool,
+    pub bound_transform: bool,
+}
+
+/// [`cma_sequence`] with the CMA-ES stage's bound handling set by `bounds`;
+/// budgets, seeds and the first stage are unchanged.
+pub fn cma_sequence_bounded<F>(
+    objective: Objective<'_>,
+    lower: &[f64],
+    upper: &[f64],
+    max_evaluations: u64,
+    seed: u64,
+    bounds: CmaBounds,
+    first_stage: F,
+) -> Outcome
+where
+    F: FnOnce(&Budgeted<'_>, FirstStage) -> Vec<f64>,
+{
     let wrapped = Budgeted::new(objective, lower, upper, max_evaluations);
     let dim = lower.len();
     // The retry coordinator draws the step size first, then the run seed.
@@ -416,6 +450,8 @@ where
         &CmaesParams {
             max_evaluations: cma_budget,
             seed: run_seed ^ 0xA076_1D64_78BD_642F,
+            repair_z: bounds.repair_z,
+            bound_transform: bounds.bound_transform,
             ..Default::default()
         },
     );
@@ -487,12 +523,36 @@ fn candidate_sequence(
     max_evaluations: u64,
     seed: u64,
 ) -> Outcome {
-    cma_sequence(
+    candidate_sequence_bounded(
+        first,
         objective,
         lower,
         upper,
         max_evaluations,
         seed,
+        CmaBounds::default(),
+    )
+}
+
+/// [`candidate_sequence`] with the CMA-ES stage's bound handling set by
+/// `bounds` ([`cma_sequence_bounded`]).
+#[cfg(feature = "candidates")]
+fn candidate_sequence_bounded(
+    first: &dyn Solver,
+    objective: Objective<'_>,
+    lower: &[f64],
+    upper: &[f64],
+    max_evaluations: u64,
+    seed: u64,
+    bounds: CmaBounds,
+) -> Outcome {
+    cma_sequence_bounded(
+        objective,
+        lower,
+        upper,
+        max_evaluations,
+        seed,
+        bounds,
         |wrapped, stage| {
             let f = |x: &[f64]| wrapped.eval(x);
             first.minimize(&f, lower, upper, stage.stop, stage.seed).x
@@ -522,6 +582,64 @@ impl Solver for JsoCma {
     ) -> Outcome {
         let first = cand_de::Jso::default();
         candidate_sequence(&first, objective, lower, upper, max_evaluations, seed)
+    }
+}
+
+/// jSO→CMA with a non-default bound handling of the CMA-ES stage
+/// (`benchmarks/cmaes-bound-handling`): `jso_cma_rz` sets `repair_z`,
+/// `jso_cma_tr` the experimental `bound_transform`. Everything else, seeds and
+/// budget split included, is [`JsoCma`]. Not part of any round's solver set.
+#[cfg(feature = "candidates")]
+#[derive(Clone, Copy, Debug)]
+pub struct JsoCmaBounds {
+    name: &'static str,
+    bounds: CmaBounds,
+}
+
+#[cfg(feature = "candidates")]
+impl JsoCmaBounds {
+    /// `jso_cma_rz`: the CMA-ES stage with `repair_z: true`.
+    pub const REPAIR: Self = Self {
+        name: "jso_cma_rz",
+        bounds: CmaBounds {
+            repair_z: true,
+            bound_transform: false,
+        },
+    };
+    /// `jso_cma_tr`: the CMA-ES stage with `bound_transform: true`.
+    pub const TRANSFORM: Self = Self {
+        name: "jso_cma_tr",
+        bounds: CmaBounds {
+            repair_z: false,
+            bound_transform: true,
+        },
+    };
+}
+
+#[cfg(feature = "candidates")]
+impl Solver for JsoCmaBounds {
+    fn name(&self) -> &'static str {
+        self.name
+    }
+
+    fn minimize(
+        &self,
+        objective: Objective<'_>,
+        lower: &[f64],
+        upper: &[f64],
+        max_evaluations: u64,
+        seed: u64,
+    ) -> Outcome {
+        let first = cand_de::Jso::default();
+        candidate_sequence_bounded(
+            &first,
+            objective,
+            lower,
+            upper,
+            max_evaluations,
+            seed,
+            self.bounds,
+        )
     }
 }
 
@@ -603,6 +721,8 @@ pub fn registry() -> Vec<Box<dyn Solver>> {
         solvers.push(Box::new(cand_eda::Amalgam::default()));
         solvers.push(Box::new(JsoCma));
         solvers.push(Box::new(LSrtdeCma));
+        solvers.push(Box::new(JsoCmaBounds::REPAIR));
+        solvers.push(Box::new(JsoCmaBounds::TRANSFORM));
     }
     solvers
 }
