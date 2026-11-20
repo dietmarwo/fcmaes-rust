@@ -165,7 +165,8 @@ systemd user manager with lingering on the node. It contains no solver or
 simulator of its own, and it hosts the shared solver-selection guide and
 the ecosystem page. Version 0.5.0 on crates.io, which adds an optional
 progress file to command jobs (`jobs progress`); the solver repositories pin
-it by Git revision, currently its tag `v0.5.0`.
+it by Git revision, currently `2bfa8e4`, the merge of the 0.5.0 release
+(the tag `v0.5.0` is on `df7c55d`, with the same shared files).
 
 **Relations:** fcmaes-rust, LP-IP-craft and SQP-craft provide job workers
 built on its API, and inlet-craft's worker uses a vendored copy of its
