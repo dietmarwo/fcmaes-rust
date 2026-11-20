@@ -79,12 +79,14 @@ phase, with breaking changes called out explicitly.
   Messenger, single worker); `true` uses the `z` of the evaluated point, so
   the evolution paths and the covariance follow the same points as the
   mean. It matters only when samples reach the bounds. In 2,400 matched
-  pairs on 12 application objectives and a benchmark, `false` won more
-  often for standalone bounded CMA-ES (217 wins against 152, 15 ties) and
-  as the second stage of DE→CMA (178/118) and jSO→CMA (197/144), also at
-  equal evaluations (jSO→CMA on a 171-variable truss: median 394.5 against
-  420.4 at four million evaluations); coordinated DE→CMA retry leaned
-  slightly toward `true` (72/58). `true` is clearly better where samples
+  pairs on 12 application objectives at about 63,000 evaluations per run,
+  `false` won more often for standalone bounded CMA-ES (222 wins against
+  149, 13 ties), as the second stage of DE→CMA (217/62) and jSO→CMA
+  (205/75), at exactly equal work (166/49) and in coordinated DE→CMA retry
+  (74/43); at a quarter of that budget coordinated retry had leaned toward
+  `true` (72/58). On a 171-variable truss jSO→CMA reaches a median of 394.5
+  with `false` against 420.4 at four million evaluations. `true` is clearly
+  better where samples
   keep being clipped and the step size grows: the 118-variable neural
   controller of `tutorials/neural-controller-policy-search` reaches a
   median loss of 0.137 against 1.13. Try `true` when runs stop early with
@@ -163,6 +165,12 @@ phase, with breaking changes called out explicitly.
   Minion, libcmaes and NOMAD. No decision changes; ARRDE on structural sizing
   and the BIPOP settings of the job worker are open follow-ups
   ([the algorithm portfolio](docs/algorithm-portfolio.md)).
+- The algorithm portfolio has a section on CMA-ES and the bounds: the two
+  studies behind the default of `repair_z`, and a declared test of clip,
+  repair and a bound transformation on four problems. The transformation is
+  not merged; its records are on the branch
+  `experiment/cmaes-bound-transform`. The page also records that an age
+  limit for the jSO stage of jSO→CMA was examined and not adopted.
 - Round 4 of the candidate benchmark tests ARRDE (Minion 2.0.1) against all
   core optimizers on the truss at one and four million evaluations. It is
   not accepted: it beats BiteOpt and does not beat jSO→CMA
