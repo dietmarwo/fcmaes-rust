@@ -5,8 +5,9 @@ default-branch commits since 1 August 2026 and two earlier split-brain
 research projects from April 2026. Status: 6 November 2026; the CRN-craft
 and population-epidemiology entries as of 8 November 2026, the BO-craft and
 inlet-craft entries as of 19 November 2026. Versions were checked against
-PyPI, crates.io and the repositories' tags on 20 November 2026; fast-cma-es
-2.2.0 and fcmaes-rust 0.4.0 are the releases prepared that day.
+PyPI, crates.io and the repositories' tags on 20 November 2026, including
+that day's releases fast-cma-es 2.2.0, fcmaes-rust 0.4.0 and
+optimization-jobs 0.5.0.
 
 Together they connect Python and Rust optimizers, durable job execution,
 experiment campaigns, simulators and bounded domain models. Native
@@ -162,9 +163,9 @@ jobs and checked binary file transfers, which the MCP server refuses, and
 places jobs explicitly on registered SSH nodes. Remote launch needs a
 systemd user manager with lingering on the node. It contains no solver or
 simulator of its own, and it hosts the shared solver-selection guide and
-the ecosystem page. Version 0.4.1 on crates.io; the solver repositories
-pin it by Git revision, currently `41d5f00` (main after 0.4.1), which adds
-an optional progress file to command jobs (`jobs progress`).
+the ecosystem page. Version 0.5.0 on crates.io, which adds an optional
+progress file to command jobs (`jobs progress`); the solver repositories pin
+it by Git revision, currently its tag `v0.5.0`.
 
 **Relations:** fcmaes-rust, LP-IP-craft and SQP-craft provide job workers
 built on its API, and inlet-craft's worker uses a vendored copy of its
