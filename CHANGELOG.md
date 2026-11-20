@@ -8,7 +8,7 @@ phase, with breaking changes called out explicitly.
 
 ### Changed
 
-- optimization-jobs pin `2bfa8e4` (tag `v0.5.0`, the optimization-jobs 0.5.0
+- optimization-jobs pin `2bfa8e4` (the merge of the optimization-jobs 0.5.0
   release; the job crates are 0.5.0) in every manifest and lockfile,
   including the four tutorials with a job worker; the lockfiles change only
   in the two optimization-jobs entries. The guide behind `get_guide` names
