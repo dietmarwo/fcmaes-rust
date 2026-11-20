@@ -1,0 +1,3 @@
+Cassini1: value=4.930953375142 evaluations=9593639 runs=300 x=[-789.264876231126, 157.89625492148232, 449.3858854870169, 54.6555003739424, 1025.3103341355627, 4553.738648307565]
+cmd=gtop-advexamples --problem cassini1 --retries 300 --evaluations 1500 --workers 1 --seed 7 --max-eval-fac 50 --check-interval 100
+wall_s=53.8
