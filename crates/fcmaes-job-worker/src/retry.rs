@@ -592,7 +592,8 @@ pub fn jso_retry(
 }
 
 /// [`jso_retry`] that stops before the next generation once `stopped`; a
-/// generation in flight is evaluated and told in full.
+/// generation in flight is told in full. The job worker's objective skips
+/// the candidates not yet evaluated when the job stops.
 pub fn jso_retry_until(
     population: usize,
     bounds: &RetryBounds,
@@ -919,6 +920,7 @@ pub fn es_retry(
 }
 
 /// [`es_retry`] that stops between populations and starts no further restart once stopped.
+/// The job worker's objective skips the candidates not yet evaluated when the job stops.
 pub fn es_retry_until(
     settings: &EsSettings,
     bounds: &RetryBounds,
@@ -1392,9 +1394,9 @@ impl Prepared for Run {
     fn tasks(&self) -> usize {
         self.payload.retries
     }
-    /// Stop every optimizer between evaluations (between batches for batch
-    /// engines, between generations for jSO, CMA-ES, CR-FM-NES and PGPE;
-    /// the CR-FM-NES → BiteOpt sequence stops between evaluations).
+    /// Stop every optimizer between evaluations: evaluations in flight
+    /// finish, and no further one starts, also within a population or batch
+    /// that is already asked (its remaining candidates are skipped).
     /// Simulations also see the signal at their checkpoints.
     fn cancel(&self) {
         self.control.cancel();
@@ -1488,20 +1490,25 @@ impl Run {
             return Err("native evaluation budget mismatch".into());
         }
         let (failed, cancelled) = (evaluator.failed(), evaluator.cancelled());
-        // All engines stop cooperatively; batch engines drain in-flight work.
+        // All engines stop cooperatively: evaluations in flight finish, and
+        // candidates an engine asked but had not evaluated when the job
+        // stopped are skipped, so they are no work of the retry.
+        let attempts = r.evaluations - evaluator.skipped();
         let termination = retry_termination(
             cancelled,
             stopped,
-            r.evaluations,
+            attempts,
             self.payload.evaluations_per_retry,
         );
-        let attempts = r.evaluations;
         let mut cancelled_validations = 0;
         let (outcome, validations) = if stopped {
             details["recheck"] = json!("skipped: cancelled");
             judge_with(r, &self.bounds, None)?
         } else if !evaluator.is_simulation() {
-            judge(r, &self.bounds, &objective)?
+            // The model itself: a stop that arrives during the recheck must
+            // not turn it into a skipped (+inf) value.
+            let recheck = |x: &[f64]| evaluator.try_value(x).unwrap_or(f64::INFINITY);
+            judge(r, &self.bounds, &recheck)?
         } else {
             // The recheck uses the point's seed again; a failure refutes
             // the claim, a cancel leaves it unchecked.

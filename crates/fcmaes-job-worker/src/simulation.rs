@@ -93,13 +93,19 @@ const FAILURE_MESSAGE_CHARS: usize = 200;
 /// gets a [`SimContext`] with one thread, a seed derived from `seed` and the
 /// point, the task's remaining time and the job's cancellation; for an
 /// optimizer ([`Evaluator::value`]), an evaluation that fails or is cancelled
-/// is `+inf` (the worst value) and counted.
+/// is `+inf` (the worst value) and counted. After a cancel or the deadline,
+/// [`Evaluator::value`] calls no model at all: a plain model's candidate is
+/// `+inf` and counted as skipped, so that an optimizer that asked a whole
+/// population starts no further evaluation of it.
 pub(crate) struct Evaluator<'a> {
     model: &'a Scalar,
     context: Option<SimContext>,
     stop_context: SimContext,
     failed: AtomicU64,
     cancelled: AtomicU64,
+    /// Candidates of a plain model not evaluated because the job had
+    /// stopped; they are neither evaluations nor cancelled evaluations.
+    skipped: AtomicU64,
     /// The smallest distinct failure messages with their counts, which do
     /// not depend on the order in which parallel evaluations fail.
     messages: Mutex<BTreeMap<String, u64>>,
@@ -115,6 +121,7 @@ impl<'a> Evaluator<'a> {
             stop_context,
             failed: AtomicU64::new(0),
             cancelled: AtomicU64::new(0),
+            skipped: AtomicU64::new(0),
             messages: Mutex::new(BTreeMap::new()),
         }
     }
@@ -141,8 +148,14 @@ impl<'a> Evaluator<'a> {
         }
     }
     /// The value an optimizer ranks: the model's value, or `+inf` for a
-    /// failed or cancelled evaluation, which is counted.
+    /// failed or cancelled evaluation, which is counted. Once the job is
+    /// cancelled or past its deadline, a plain model is not called either:
+    /// the candidate is `+inf` and counted as skipped.
     pub(crate) fn value(&self, x: &[f64]) -> f64 {
+        if self.context.is_none() && self.is_cancelled() {
+            self.skipped.fetch_add(1, Ordering::Relaxed);
+            return f64::INFINITY;
+        }
         match self.try_value(x) {
             Ok(value) => value,
             Err(Failure::Cancelled) => {
@@ -171,6 +184,9 @@ impl<'a> Evaluator<'a> {
     }
     pub(crate) fn cancelled(&self) -> u64 {
         self.cancelled.load(Ordering::Relaxed)
+    }
+    pub(crate) fn skipped(&self) -> u64 {
+        self.skipped.load(Ordering::Relaxed)
     }
     /// Up to three distinct failure messages (the smallest) with counts.
     pub(crate) fn messages(&self) -> BTreeMap<String, u64> {
