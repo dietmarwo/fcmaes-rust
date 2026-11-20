@@ -67,6 +67,7 @@ fn make_params(
         seed,
         runid,
         repair_z,
+        bound_transform: false,
     }
 }
 

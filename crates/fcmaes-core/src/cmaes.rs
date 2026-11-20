@@ -90,6 +90,24 @@ pub struct CmaesParams {
     /// when optima lie on or outside the bounds, or when many samples are
     /// clipped throughout the run.
     pub repair_z: bool,
+    /// Experimental: handle the bounds by a smooth transformation instead of
+    /// moving samples onto them (`BOUND-TRANSFORM`, the `BoundTransform` of
+    /// pycma). With `true` CMA-ES samples and updates in unbounded internal
+    /// coordinates; only the point handed to the objective is mapped into the
+    /// box, coordinate by coordinate, by a periodic transformation that is the
+    /// identity in the interior and quadratic in a margin at each bound. The
+    /// mean, the evolution paths and the covariance follow the unmapped
+    /// samples, and the mean is not clamped. Every evaluated point and the
+    /// reported best point lie in the box.
+    ///
+    /// The transformation acts in the coordinates in which CMA-ES samples: the
+    /// normalized coordinates of [`Fitness`] when normalization is on (box
+    /// `[-1, 1]`, margins `0.05`), else the actual bounds with the margins
+    /// `min((ub - lb) / 2, 0.05 * max(|b|, 1))` of each bound `b`. Unbounded
+    /// problems are not affected. When `true` this setting takes precedence
+    /// over [`repair_z`](Self::repair_z), which then has no effect. Defaults
+    /// to `false`; the setting is under test and may change or go away.
+    pub bound_transform: bool,
 }
 
 impl Default for CmaesParams {
@@ -105,7 +123,78 @@ impl Default for CmaesParams {
             seed: 0,
             runid: 0,
             repair_z: false,
+            bound_transform: false,
         }
+    }
+}
+
+// BOUND-TRANSFORM: the linear-quadratic box transformation of pycma
+// (`cma.transformations.BoxConstraintsLinQuadTransformation`, pycma 4.6.0,
+// margins of `margin_width2`, the default) and of Hansen's C code. Facts
+// taken from pycma and mirrored here:
+// - transform: a point far outside (beyond `lb - 2 al - (ub - lb) / 2` or
+//   `ub + 2 au + (ub - lb) / 2`) is shifted by whole periods
+//   `2 (ub - lb + al + au)`, then mirrored at `ub + au` and `lb - al` into the
+//   invertible domain `[lb - al, ub + au]`, then mapped quadratically within
+//   `al` of `lb` and `au` of `ub`, identically in between.
+// - inverse: defined on `[lb, ub]` only; `lb` maps to `lb - al`, `ub` to
+//   `ub + au`.
+// - `CMAEvolutionStrategy` converts the initial point with the inverse,
+//   updates from the genotypes it handed out in `ask` (an archive keyed by
+//   the phenotype) and converts unknown told points with the inverse. With the
+//   default `mean_towards_boundary_factor = False` it never moves the mean
+//   back toward the invertible domain; `shift_or_mirror_into_invertible_domain`
+//   is not called by the strategy. The mean is therefore left unbounded here.
+
+/// Margins `(al, au)` of the transformation for the bounds `[lb, ub]`.
+fn linquad_margins(lb: f64, ub: f64) -> (f64, f64) {
+    let half = (ub - lb) / 2.0;
+    (
+        half.min(lb.abs().max(1.0) / 20.0),
+        half.min(ub.abs().max(1.0) / 20.0),
+    )
+}
+
+/// Maps any `y` into `[lb, ub]`: identity in `[lb + al, ub - au]`, quadratic
+/// in the margins, periodic and mirrored outside (pycma's
+/// `BoxConstraintsLinQuadTransformation.transform`).
+fn linquad_transform(y: f64, lb: f64, ub: f64) -> f64 {
+    let (al, au) = linquad_margins(lb, ub);
+    let mut y = y;
+    if y < lb - 2.0 * al - (ub - lb) / 2.0 || y > ub + 2.0 * au + (ub - lb) / 2.0 {
+        let r = 2.0 * (ub - lb + al + au);
+        let s = lb - 2.0 * al - (ub - lb) / 2.0;
+        y -= r * ((y - s) / r).floor();
+    }
+    if y > ub + au {
+        y -= 2.0 * (y - ub - au);
+    }
+    if y < lb - al {
+        y += 2.0 * (lb - al - y);
+    }
+    if y < lb + al {
+        let d = y - (lb - al);
+        lb + d * d / 4.0 / al
+    } else if y > ub - au {
+        let d = y - (ub + au);
+        ub - d * d / 4.0 / au
+    } else {
+        y
+    }
+}
+
+/// Inverse of [`linquad_transform`] on `[lb, ub]`, into `[lb - al, ub + au]`.
+/// A value outside `[lb, ub]` is first moved onto the nearer bound (pycma
+/// rejects such a value).
+fn linquad_inverse(x: f64, lb: f64, ub: f64) -> f64 {
+    let (al, au) = linquad_margins(lb, ub);
+    let x = x.clamp(lb, ub);
+    if x < lb + al {
+        (lb - al) + 2.0 * (al * (x - lb)).sqrt()
+    } else if x < ub - au {
+        x
+    } else {
+        (ub + au) - 2.0 * (au * (ub - x)).sqrt()
     }
 }
 
@@ -192,6 +281,13 @@ pub struct Cmaes {
     repaired: Vec<bool>,
     /// [`CmaesParams::repair_z`]: whether `repair_arz` runs before the update.
     repair_z: bool,
+    /// [`CmaesParams::bound_transform`]: samples stay unbounded and only the
+    /// evaluated points are mapped into the box.
+    bound_transform: bool,
+    /// Bounds in the sampling coordinates for `bound_transform`: `[-1, 1]`
+    /// when normalized, else the actual bounds; empty when unbounded.
+    tf_lower: Vec<f64>,
+    tf_upper: Vec<f64>,
 
     // ask/tell bookkeeping (mirrors AcmaState::Impl)
     asked_x: DMatrix<f64>,
@@ -264,7 +360,21 @@ impl Cmaes {
             1.0 / (ccov1 + ccovmu + 1e-23) / dimf / 10.0
         };
 
-        let xmean = DVector::from_vec(fitfun.encode(guess));
+        let (tf_lower, tf_upper) = if !fitfun.has_bounds() {
+            (Vec::new(), Vec::new())
+        } else if fitfun.normalize() {
+            (vec![-1.0; dim], vec![1.0; dim])
+        } else {
+            (fitfun.lower().to_vec(), fitfun.upper().to_vec())
+        };
+        let mut xmean = DVector::from_vec(fitfun.encode(guess));
+        if p.bound_transform && !tf_lower.is_empty() {
+            // BOUND-TRANSFORM: the start point is converted with the inverse,
+            // as pycma converts x0.
+            for i in 0..dim {
+                xmean[i] = linquad_inverse(xmean[i], tf_lower[i], tf_upper[i]);
+            }
+        }
         let diag_d = &input_sigma / sigma;
         let diag_c = diag_d.component_mul(&diag_d);
         let b = DMatrix::identity(dim, dim);
@@ -331,6 +441,9 @@ impl Cmaes {
             compute_arz: true,
             repaired: vec![false; popsize],
             repair_z: p.repair_z,
+            bound_transform: p.bound_transform,
+            tf_lower,
+            tf_upper,
             asked_x: DMatrix::zeros(dim, popsize),
             population_decoded: DMatrix::zeros(dim, popsize),
             pending: false,
@@ -364,9 +477,56 @@ impl Cmaes {
         m
     }
 
-    /// Sample `popsize` offspring; returns the encoded (normed) columns.
+    /// BOUND-TRANSFORM: maps a point of the sampling coordinates into the box.
+    fn transform_point(&self, g: &[f64]) -> Vec<f64> {
+        if self.tf_lower.is_empty() {
+            return g.to_vec();
+        }
+        g.iter()
+            .enumerate()
+            .map(|(i, &v)| linquad_transform(v, self.tf_lower[i], self.tf_upper[i]))
+            .collect()
+    }
+
+    /// BOUND-TRANSFORM: maps a point of the box (sampling coordinates) to the
+    /// internal coordinates with the inverse transformation.
+    fn inverse_point(&self, x: &[f64]) -> Vec<f64> {
+        if self.tf_lower.is_empty() {
+            return x.to_vec();
+        }
+        x.iter()
+            .enumerate()
+            .map(|(i, &v)| linquad_inverse(v, self.tf_lower[i], self.tf_upper[i]))
+            .collect()
+    }
+
+    /// BOUND-TRANSFORM: the transformed columns of `genotypes`.
+    fn transform_population(&self, genotypes: &DMatrix<f64>) -> DMatrix<f64> {
+        let mut xs = DMatrix::zeros(self.dim, genotypes.ncols());
+        for k in 0..genotypes.ncols() {
+            let x = self.transform_point(col(genotypes, k).as_slice());
+            for i in 0..self.dim {
+                xs[(i, k)] = x[i];
+            }
+        }
+        xs
+    }
+
+    /// Sample `popsize` offspring; returns the encoded (normed) columns. With
+    /// `bound_transform` the columns are the unbounded samples.
     fn ask_all(&mut self) -> DMatrix<f64> {
         self.arz = self.normal_matrix(self.dim, self.popsize);
+        if self.bound_transform {
+            let mut xs = &self.bd * &self.arz * self.sigma;
+            for k in 0..self.popsize {
+                for i in 0..self.dim {
+                    xs[(i, k)] += self.xmean[i];
+                }
+                self.repaired[k] = false;
+            }
+            self.compute_arz = false;
+            return xs;
+        }
         let mut xs = DMatrix::zeros(self.dim, self.popsize);
         for k in 0..self.popsize {
             let delta = (&self.bd * col(&self.arz, k)) * self.sigma;
@@ -387,8 +547,10 @@ impl Cmaes {
         self.arx.set_column(self.told, x);
         self.told += 1;
         if self.told >= self.popsize {
-            let feasible = self.fitfun.closest_feasible_normed(self.xmean.as_slice());
-            self.xmean = DVector::from_vec(feasible);
+            if !self.bound_transform {
+                let feasible = self.fitfun.closest_feasible_normed(self.xmean.as_slice());
+                self.xmean = DVector::from_vec(feasible);
+            }
             if self.compute_arz {
                 // arz = BD^{-1} * ((arx - xmean) / sigma)
                 let mut diff = self.arx.clone();
@@ -401,7 +563,7 @@ impl Cmaes {
                     Some(inv) => inv * diff,
                     None => self.normal_matrix(self.dim, self.popsize),
                 };
-            } else if self.repair_z {
+            } else if self.repair_z && !self.bound_transform {
                 // REPAIR-Z: the one call of the repaired-sample update,
                 // selected by `CmaesParams::repair_z: true`. Skipping it
                 // (`false`, the default) keeps the z of the unrepaired
@@ -623,7 +785,12 @@ impl Cmaes {
         let worst_fitness = self.fitness[arindex[self.popsize - 1]];
         if self.best_value > best_fitness {
             self.best_value = best_fitness;
-            self.best_x = self.fitfun.decode(col(&best_arx, 0).as_slice());
+            self.best_x = if self.bound_transform {
+                self.fitfun
+                    .decode(&self.transform_point(col(&best_arx, 0).as_slice()))
+            } else {
+                self.fitfun.decode(col(&best_arx, 0).as_slice())
+            };
             if self.stopfitness.is_finite() && best_fitness < self.stopfitness {
                 self.stop = 1;
                 return;
@@ -735,9 +902,14 @@ impl Cmaes {
                 break;
             }
             let xs = self.ask_all();
-            let ys = self
-                .fitfun
-                .eval_population_scalar_flat(xs.as_slice(), self.dim, obj, workers);
+            let ys = if self.bound_transform {
+                let pheno = self.transform_population(&xs);
+                self.fitfun
+                    .eval_population_scalar_flat(pheno.as_slice(), self.dim, obj, workers)
+            } else {
+                self.fitfun
+                    .eval_population_scalar_flat(xs.as_slice(), self.dim, obj, workers)
+            };
             self.told = 0;
             for (k, &y) in ys.iter().enumerate() {
                 if self.stop != 0 {
@@ -767,9 +939,12 @@ impl Cmaes {
     fn decode_population(&self, encoded: &DMatrix<f64>) -> DMatrix<f64> {
         let mut decoded = DMatrix::zeros(self.dim, self.popsize);
         for p in 0..self.popsize {
-            let feasible = self
-                .fitfun
-                .closest_feasible_normed(col(encoded, p).as_slice());
+            let feasible = if self.bound_transform {
+                self.transform_point(col(encoded, p).as_slice())
+            } else {
+                self.fitfun
+                    .closest_feasible_normed(col(encoded, p).as_slice())
+            };
             let dec = self.fitfun.decode(&feasible);
             for i in 0..self.dim {
                 decoded[(i, p)] = dec[i];
@@ -781,7 +956,12 @@ impl Cmaes {
     fn encode_population(&self, decoded: &DMatrix<f64>) -> DMatrix<f64> {
         let mut encoded = DMatrix::zeros(self.dim, self.popsize);
         for p in 0..self.popsize {
-            let enc = self.fitfun.encode(col(decoded, p).as_slice());
+            let mut enc = self.fitfun.encode(col(decoded, p).as_slice());
+            if self.bound_transform {
+                // BOUND-TRANSFORM: a supplied point enters the update at its
+                // inverse image (a point on a bound at the edge of the margin).
+                enc = self.inverse_point(&enc);
+            }
             for i in 0..self.dim {
                 encoded[(i, p)] = enc[i];
             }
@@ -1317,5 +1497,293 @@ mod tests {
         assert_eq!(optimizer.population(), population);
         assert_eq!(optimizer.result().evaluations, values.len() as u64);
         assert_eq!(optimizer.result().y, -1.0);
+    }
+}
+
+/// Reference values of the bound transformation computed with pycma; see
+/// the comment of `bound_transform_tests`.
+#[cfg(test)]
+mod pycma_reference;
+
+/// Tests of the experimental `bound_transform` mode (`BOUND-TRANSFORM`).
+///
+/// The reference values in `cmaes/pycma_reference.rs` were generated once
+/// with pycma 4.6.0 by this script (output redirected into that file):
+///
+/// ```text
+/// import numpy as np, cma.transformations as ts
+/// assert ts.linquad_margin_width is ts.margin_width2
+/// rng = np.random.default_rng(20261119)
+/// for (lb, ub) in [(-1.0, 1.0), (0.0, 1.0), (2.0, 50.0), (-0.01, 0.01)]:
+///     tf = ts.BoxConstraintsLinQuadTransformation([[lb, ub]])
+///     al, au, w = tf._al[0], tf._au[0], ub - lb
+///     ys = concatenate([uniform(lb, ub, 50), uniform(lb - al, lb + al, 25),
+///                       uniform(ub - au, ub + au, 25),
+///                       uniform(lb - 3 * w, ub + 3 * w, 50),
+///                       normal(0, 1, 50) * w * 10 ** uniform(1, 4, 50)])
+///     xs = [tf(array([y]))[0] for y in ys]      # 200 (y, transform(y))
+///     xi = uniform(lb, ub, 50); gi = tf.inverse(list(xi))  # 50 (x, inverse(x))
+///     print both lists as Rust tuples with repr()
+/// ```
+///
+/// Points far outside the box reach `|y| ~ 1e4 (ub - lb)`.
+#[cfg(test)]
+mod bound_transform_tests {
+    use super::pycma_reference::{CASE0, CASE1, CASE2, CASE3, Case};
+    use super::*;
+    use std::sync::atomic::{AtomicBool, Ordering};
+
+    fn cases() -> [&'static Case; 4] {
+        [&CASE0, &CASE1, &CASE2, &CASE3]
+    }
+
+    #[test]
+    fn transform_and_inverse_match_pycma() {
+        for (c, case) in cases().iter().enumerate() {
+            let (lb, ub, forward, inverse) = **case;
+            let mut worst = 0.0f64;
+            for &(y, x) in forward.iter() {
+                let t = linquad_transform(y, lb, ub);
+                // The periodic shift loses about |y| * eps of absolute accuracy.
+                let tol = 1e-14 * (1.0 + y.abs() + lb.abs() + ub.abs());
+                assert!((t - x).abs() <= tol, "case {c}: T({y}) = {t}, pycma {x}");
+                worst = worst.max((t - x).abs() / (1.0 + y.abs()));
+            }
+            let mut worst_inverse = 0.0f64;
+            for &(x, g) in inverse.iter() {
+                let i = linquad_inverse(x, lb, ub);
+                let tol = 1e-14 * (1.0 + lb.abs() + ub.abs());
+                assert!((i - g).abs() <= tol, "case {c}: T^-1({x}) = {i}, pycma {g}");
+                worst_inverse = worst_inverse.max((i - g).abs());
+            }
+            println!(
+                "case {c} [{lb}, {ub}]: max |T - pycma| / (1 + |y|) = {worst:e}, \
+                 max |T^-1 - pycma| = {worst_inverse:e}"
+            );
+        }
+    }
+
+    #[test]
+    fn margins_are_those_of_pycma() {
+        assert_eq!(linquad_margins(-1.0, 1.0), (0.05, 0.05));
+        assert_eq!(linquad_margins(2.0, 50.0), (0.1, 2.5));
+        assert_eq!(linquad_margins(-0.01, 0.01), (0.01, 0.01));
+    }
+
+    #[test]
+    fn transform_is_continuous_and_in_range() {
+        for case in cases() {
+            let (lb, ub) = (case.0, case.1);
+            let (al, au) = linquad_margins(lb, ub);
+            let w = ub - lb;
+            let n = 200_000;
+            let (a, b) = (lb - 7.3 * w, ub + 7.3 * w);
+            let h = (b - a) / n as f64;
+            let mut prev = linquad_transform(a, lb, ub);
+            for k in 1..=n {
+                let y = a + k as f64 * h;
+                let x = linquad_transform(y, lb, ub);
+                assert!((lb..=ub).contains(&x), "T({y}) = {x} outside [{lb}, {ub}]");
+                // Slope at most 1 everywhere.
+                assert!((x - prev).abs() <= h * (1.0 + 1e-9) + 1e-15, "jump at {y}");
+                prev = x;
+            }
+            // Identity in the interior, the bounds at the margin edges.
+            assert_eq!(linquad_transform(0.5 * (lb + ub), lb, ub), 0.5 * (lb + ub));
+            assert_eq!(linquad_transform(lb - al, lb, ub), lb);
+            assert_eq!(linquad_transform(ub + au, lb, ub), ub);
+        }
+    }
+
+    #[test]
+    fn inverse_round_trips_in_the_interior_and_the_margins() {
+        for case in cases() {
+            let (lb, ub) = (case.0, case.1);
+            let (al, au) = linquad_margins(lb, ub);
+            let scale = 1.0 + lb.abs() + ub.abs();
+            for k in 0..=1000 {
+                // genotype in [lb - al, ub + au] -> back to itself
+                let y = (lb - al) + (ub + au - lb + al) * k as f64 / 1000.0;
+                let g = linquad_inverse(linquad_transform(y, lb, ub), lb, ub);
+                // Near the margin edges the square root amplifies rounding.
+                assert!((g - y).abs() < 1e-7 * scale, "{y} -> {g}");
+                // phenotype in [lb, ub] -> back to itself
+                let x = lb + (ub - lb) * k as f64 / 1000.0;
+                let t = linquad_transform(linquad_inverse(x, lb, ub), lb, ub);
+                assert!((t - x).abs() < 1e-13 * scale, "{x} -> {t}");
+            }
+            assert_eq!(linquad_inverse(lb, lb, ub), lb - al);
+            assert_eq!(linquad_inverse(ub, lb, ub), ub + au);
+        }
+    }
+
+    fn params(seed: u64, popsize: i32, max_evaluations: u64) -> CmaesParams {
+        CmaesParams {
+            popsize,
+            max_evaluations,
+            seed,
+            bound_transform: true,
+            ..Default::default()
+        }
+    }
+
+    #[test]
+    fn bound_transform_is_off_by_default() {
+        assert!(!CmaesParams::default().bound_transform);
+    }
+
+    /// Optimum outside the box in every coordinate, with and without
+    /// normalization: no evaluated point and no reported point leaves it.
+    #[test]
+    fn a_bounded_run_never_evaluates_outside_the_box() {
+        for normalize in [true, false] {
+            let (lower, upper) = (vec![-2.0, 0.0, 3.0, -1.0], vec![1.0, 0.5, 40.0, -0.5]);
+            let mut fit = Fitness::bounded(4, 1, &lower, &upper);
+            fit.set_normalize(normalize);
+            let outside = AtomicBool::new(false);
+            let (lo, up) = (lower.clone(), upper.clone());
+            let obj = |x: &[f64]| {
+                if x.iter().enumerate().any(|(i, &v)| v < lo[i] || v > up[i]) {
+                    outside.store(true, Ordering::Relaxed);
+                }
+                x.iter().map(|v| (v - 100.0).powi(2)).sum::<f64>()
+            };
+            let mut es = Cmaes::new(
+                fit.clone(),
+                &[0.0, 0.25, 10.0, -0.75],
+                &[0.5],
+                &params(4, 12, 6000),
+            );
+            let r = es.optimize(&obj, 1);
+            assert!(!outside.load(Ordering::Relaxed), "normalize {normalize}");
+            assert!(
+                r.x.iter()
+                    .enumerate()
+                    .all(|(i, &v)| v >= lower[i] && v <= upper[i])
+            );
+            assert!((r.x[2] - 40.0).abs() < 1e-3, "{:?}", r.x);
+            // The ask/tell path hands out points in the box too.
+            let mut es = Cmaes::new(fit, &[0.0, 0.25, 10.0, -0.75], &[0.5], &params(4, 12, 6000));
+            for _ in 0..100 {
+                let pop = es.ask();
+                assert!(pop.iter().all(|x| {
+                    x.iter()
+                        .enumerate()
+                        .all(|(i, &v)| v >= lower[i] && v <= upper[i])
+                }));
+                let ys: Vec<f64> = pop.iter().map(|x| obj(x)).collect();
+                if es.tell(&ys) != 0 {
+                    break;
+                }
+            }
+            assert!(!outside.load(Ordering::Relaxed));
+        }
+    }
+
+    /// The samples are not clipped: some lie outside the box, the update
+    /// keeps their z, and the mean is not clamped.
+    #[test]
+    fn samples_and_mean_stay_unbounded() {
+        let mut fit = Fitness::bounded(3, 1, &[-1.0; 3], &[1.0; 3]);
+        fit.set_normalize(true);
+        let mut es = Cmaes::new(fit, &[0.9; 3], &[0.5], &params(2, 10, 1000));
+        let xs = es.ask_all();
+        assert!(xs.iter().any(|v| v.abs() > 1.0));
+        for k in 0..10 {
+            let x = &es.xmean + (&es.bd * col(&es.arz, k)) * es.sigma;
+            assert!((x - col(&xs, k)).norm() < 1e-12);
+        }
+        // Linear objective pushing out of the box: the genotype mean crosses
+        // the bound.
+        let r = es.optimize(&|x: &[f64]| -x.iter().sum::<f64>(), 1);
+        assert!(r.x.iter().all(|&v| v <= 1.0));
+        assert!(es.xmean.iter().any(|&v| v > 1.0), "{}", es.xmean);
+    }
+
+    /// The start point is converted with the inverse transformation; a told
+    /// point on a bound enters at the edge of the margin.
+    #[test]
+    fn guess_and_told_points_enter_at_their_inverse() {
+        let mut fit = Fitness::bounded(2, 1, &[0.0; 2], &[1.0; 2]);
+        fit.set_normalize(true);
+        let es = Cmaes::new(fit.clone(), &[0.0, 0.99], &[0.1], &params(1, 4, 100));
+        assert_eq!(es.xmean[0], -1.05);
+        assert!((es.xmean[1] - linquad_inverse(0.98, -1.0, 1.0)).abs() < 1e-15);
+        assert!(es.xmean[1] > 0.98 && es.xmean[1] < 1.05);
+        let mut es = Cmaes::new(fit, &[0.5; 2], &[0.1], &params(1, 4, 100));
+        let points = vec![
+            vec![0.0, 1.0],
+            vec![0.5, 0.5],
+            vec![1.0, 0.0],
+            vec![0.25, 0.75],
+        ];
+        es.tell_x(&[1.0, 2.0, 3.0, 4.0], &points);
+        assert_eq!(es.arx[(0, 0)], -1.05);
+        assert_eq!(es.arx[(1, 0)], 1.05);
+        assert_eq!(es.population(), points);
+    }
+
+    /// The linear function on the box: its optimum is the corner.
+    #[test]
+    fn linear_function_on_the_box_reaches_the_corner() {
+        for seed in 1..=5 {
+            let mut fit = Fitness::bounded(10, 1, &[-1.0; 10], &[1.0; 10]);
+            fit.set_normalize(true);
+            let mut es = Cmaes::new(fit, &[0.0; 10], &[0.3], &params(seed, 16, 20_000));
+            let r = es.optimize(&|x: &[f64]| x.iter().sum::<f64>(), 1);
+            assert!(r.y < -10.0 + 1e-6, "seed {seed}: {} (stop {})", r.y, r.stop);
+        }
+    }
+
+    /// The sphere of the REPAIR-Z tests with half its optimum outside the
+    /// box; the constrained optimum is 10.
+    #[test]
+    fn sphere_beyond_the_bounds_reaches_the_constrained_optimum() {
+        let dim = 20;
+        let sphere = |x: &[f64]| {
+            x.iter()
+                .enumerate()
+                .map(|(i, v)| (v - if i < 10 { 2.0 } else { 0.3 }).powi(2))
+                .sum::<f64>()
+        };
+        for seed in 1..=5 {
+            let mut fit = Fitness::bounded(dim, 1, &vec![-1.0; dim], &vec![1.0; dim]);
+            fit.set_normalize(true);
+            let mut es = Cmaes::new(fit, &vec![0.0; dim], &[0.3], &params(seed, 16, 20_000));
+            let r = es.optimize(&sphere, 1);
+            assert!(r.y < 10.0 + 1e-3, "seed {seed}: {} (stop {})", r.y, r.stop);
+        }
+    }
+
+    /// One variable on [0, 1] started at the lower bound (the probe of the
+    /// REPAIR-Z tests).
+    #[test]
+    fn one_variable_from_the_lower_bound_converges() {
+        let mut fit = Fitness::bounded(1, 1, &[0.0], &[1.0]);
+        fit.set_normalize(true);
+        let mut es = Cmaes::new(fit, &[0.0], &[0.15], &params(3, 31, 3100));
+        let r = es.optimize(&|x: &[f64]| (x[0] - 0.3).powi(2), 1);
+        assert!(r.y < 1e-12, "{} (stop {})", r.y, r.stop);
+        assert!(es.c.iter().all(|v| v.is_finite()));
+    }
+
+    /// `bound_transform` takes precedence over `repair_z`.
+    #[test]
+    fn bound_transform_takes_precedence_over_repair_z() {
+        let run = |repair_z: bool| {
+            let mut fit = Fitness::bounded(5, 1, &[-1.0; 5], &[1.0; 5]);
+            fit.set_normalize(true);
+            let p = CmaesParams {
+                repair_z,
+                ..params(9, 10, 3000)
+            };
+            let mut es = Cmaes::new(fit, &[0.8; 5], &[0.3], &p);
+            let r = es.optimize(
+                &|x: &[f64]| x.iter().map(|v| (v - 2.0).powi(2)).sum::<f64>(),
+                1,
+            );
+            (r.y.to_bits(), r.evaluations, r.stop)
+        };
+        assert_eq!(run(true), run(false));
     }
 }
