@@ -298,7 +298,7 @@ Both binaries share the same parser:
 | `--max-eval-fac N` | 50 | Advanced final budget factor |
 | `--check-interval N` | 100 | Advanced diversity checkpoint interval |
 | `--repair-z` | off | Sets [`CmaesParams::repair_z`](optimizers.md#active-cma-es) to `true` for every CMA-ES the runner builds (the second stage of DE→CMA and jSO→CMA, in basic and advanced retry) |
-| `--no-repair-z` | on | Keeps `repair_z` at its default `false`, the update of 0.3.0; accepted so that scripts can state it |
+| `--no-repair-z` | off | Sets `repair_z` to `false`, its default and the update of 0.3.0; accepted so that scripts can state the setting |
 
 Show the installed parser help with:
 
