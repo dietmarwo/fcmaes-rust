@@ -1,0 +1,19 @@
+[package]
+name = "bound-handling"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.88"
+publish = false
+description = "CMA-ES bound handling (clip, repair, transform): neural-controller runs and boundary-start probes"
+license = "MIT"
+
+[workspace]
+
+[dependencies]
+fcmaes-core = { path = "../../../crates/fcmaes-core" }
+fcmaes-job-worker = { path = "../../../crates/fcmaes-job-worker" }
+neural-controller-policy-search = { path = "../../../tutorials/neural-controller-policy-search" }
+
+[profile.release]
+codegen-units = 1
+lto = "thin"
