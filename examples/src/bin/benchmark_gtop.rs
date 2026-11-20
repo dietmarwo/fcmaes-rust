@@ -196,6 +196,7 @@ fn main() {
                 problem: None,
                 progress_interval: cli.progress_interval,
                 repair_z: cli.repair_z,
+                bound_transform: false,
             };
             let started = Instant::now();
             let result = run_advanced(&case.problem, &run_cli);
