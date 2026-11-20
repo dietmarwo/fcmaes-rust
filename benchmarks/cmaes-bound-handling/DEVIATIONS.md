@@ -39,3 +39,9 @@ The coordinated retry of `gtop-advexamples` prints one summary line per
 problem with the best value, the evaluations used and the number of runs
 (retries); these are the recorded values. The retries are those the schedule
 completes, which can differ between modes.
+
+## 5. Budget of the probes
+
+The protocol gives no budget for the two boundary-start probes. They run
+3,100 evaluations (100 generations of 31), the budget of the existing unit
+test of the first probe in `fcmaes-core`.
