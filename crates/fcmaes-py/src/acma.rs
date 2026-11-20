@@ -83,9 +83,10 @@ fn make_params(
 /// currently accepted for API compatibility and do not change evaluation.
 ///
 /// ``repair_z`` selects how a sample that was moved into the bounds enters the
-/// update: ``True`` (the default) uses the ``z`` of the evaluated point,
-/// ``False`` the ``z`` of the unmoved sample, which reproduces fcmaes-rust
-/// 0.3.0. It changes results only when samples reach the bounds.
+/// update: ``False`` (the default) uses the ``z`` of the unmoved sample, the
+/// update of fcmaes-rust 0.3.0, ``True`` the ``z`` of the evaluated point. It
+/// changes results only when samples reach the bounds; try ``True`` when runs
+/// stop early with a growing step size or many samples are clipped.
 ///
 /// Returns ``(x, fun, evaluations, iterations, stop)``.
 ///
@@ -108,7 +109,7 @@ fn make_params(
 #[pyo3(signature = (fun, batch_fun, guess, lower, upper, sigma, *, seed, runid=0,
     max_evaluations=100000, stop_fitness=f64::NEG_INFINITY, stop_hist=-1.0, mu=0,
     popsize=31, accuracy=1.0, normalize=true, delayed_update=true, update_gap=-1,
-    workers=1, repair_z=true))]
+    workers=1, repair_z=false))]
 pub fn optimize_acma<'py>(
     py: Python<'py>,
     fun: Py<PyAny>,
@@ -168,10 +169,10 @@ pub fn optimize_acma<'py>(
 /// empty for an unbounded search.
 ///
 /// ``repair_z`` selects how a sample of :meth:`ask` that was moved into the
-/// bounds enters the update: ``True`` (the default) uses the ``z`` of the
-/// evaluated point, ``False`` the ``z`` of the unmoved sample, which
-/// reproduces fcmaes-rust 0.3.0. It changes results only when samples reach
-/// the bounds; :meth:`tell_x` does not depend on it.
+/// bounds enters the update: ``False`` (the default) uses the ``z`` of the
+/// unmoved sample, the update of fcmaes-rust 0.3.0, ``True`` the ``z`` of the
+/// evaluated point. It changes results only when samples reach the bounds;
+/// :meth:`tell_x` does not depend on it.
 ///
 /// Raises ``ValueError`` if ``lower`` and ``upper`` do not have one entry per
 /// element of ``guess`` (both may be empty for an unbounded search) or do not
@@ -197,7 +198,7 @@ impl ACMA {
     #[pyo3(signature = (guess, lower, upper, sigma, *, max_evaluations=100000,
         stop_fitness=f64::NEG_INFINITY, stop_hist=-1.0, mu=0, popsize=31,
         accuracy=1.0, seed, runid=0, normalize=true, delayed_update=true,
-        update_gap=-1, repair_z=true))]
+        update_gap=-1, repair_z=false))]
     fn new(
         guess: F64Vec<'_>,
         lower: F64Vec<'_>,

@@ -75,21 +75,20 @@ pub struct CmaesParams {
     /// Additional run identifier mixed into [`seed`](Self::seed).
     pub runid: i64,
     /// How a sample that was moved into the bounds enters the update
-    /// (`REPAIR-Z`). With `true` (the default) it enters with the `z` of the
-    /// point that was evaluated, so the evolution paths and the covariance
-    /// follow the same points as the mean. With `false` it enters with the
-    /// `z` of the unmoved sample, which reproduces the update of fcmaes-core
-    /// 0.3.0 exactly.
+    /// (`REPAIR-Z`). With `false` (the default) it enters with the `z` of the
+    /// unmoved sample, the update of fcmaes-core 0.3.0. With `true` it enters
+    /// with the `z` of the point that was evaluated, so the evolution paths
+    /// and the covariance follow the same points as the mean.
     ///
     /// The setting matters only when samples reach the bounds: runs that stay
     /// inside the bounds, unbounded runs and runs that tell their own points
-    /// ([`Cmaes::tell_x`]) give identical results with either value. `true`
-    /// keeps the step size from growing on problems whose samples keep
-    /// reaching the bounds (for example optima on or outside the bounds).
-    /// In first comparisons `false` did better on some problems: the
-    /// CMA-based sequences on a 171-variable truss, and coordinated retry,
-    /// whose bounds narrow around good solutions, on the Messenger
-    /// trajectories. Compare both settings where samples reach the bounds.
+    /// ([`Cmaes::tell_x`]) give identical results with either value. In
+    /// matched comparisons on application problems `false` won more often,
+    /// standalone and as the CMA-ES stage of DE→CMA and jSO→CMA. `true` keeps
+    /// the step size from growing where samples keep being moved onto the
+    /// bounds; try it when runs stop early with `stop_tol_upx` (stop code 3),
+    /// when optima lie on or outside the bounds, or when many samples are
+    /// clipped throughout the run.
     pub repair_z: bool,
 }
 
@@ -105,7 +104,7 @@ impl Default for CmaesParams {
             update_gap: -1,
             seed: 0,
             runid: 0,
-            repair_z: true,
+            repair_z: false,
         }
     }
 }
@@ -124,6 +123,12 @@ fn inverse_perm(perm: &[usize]) -> Vec<usize> {
         inv[p] = i;
     }
     inv
+}
+
+/// Whether every entry of `m` is finite.
+#[cfg(debug_assertions)]
+fn all_finite(m: &DMatrix<f64>) -> bool {
+    m.iter().all(|v| v.is_finite())
 }
 
 /// Column of `m` as an owned `DVector`.
@@ -367,7 +372,7 @@ impl Cmaes {
             let delta = (&self.bd * col(&self.arz, k)) * self.sigma;
             let cand = &self.xmean + delta;
             let feasible = self.fitfun.closest_feasible_normed(cand.as_slice());
-            // REPAIR-Z: read only by `repair_arz` (`CmaesParams::repair_z`).
+            // REPAIR-Z: read only by `repair_arz` (`CmaesParams::repair_z: true`).
             self.repaired[k] = feasible.as_slice() != cand.as_slice();
             for i in 0..self.dim {
                 xs[(i, k)] = feasible[i];
@@ -398,8 +403,9 @@ impl Cmaes {
                 };
             } else if self.repair_z {
                 // REPAIR-Z: the one call of the repaired-sample update,
-                // selected by `CmaesParams::repair_z`. Skipping it (`false`)
-                // keeps the z of the unrepaired samples, the update of 0.3.0.
+                // selected by `CmaesParams::repair_z: true`. Skipping it
+                // (`false`, the default) keeps the z of the unrepaired
+                // samples, the update of 0.3.0.
                 self.repair_arz();
             }
             self.update_cma();
@@ -416,11 +422,14 @@ impl Cmaes {
     /// unrepaired samples; on problems whose samples hit the bounds that
     /// mismatch inflates the step size until the run stops (`stop_tol_upx`).
     ///
-    /// REPAIR-Z: runs only with [`CmaesParams::repair_z`] (the default);
-    /// with `false` the update uses the `z` of the unrepaired samples, as in
-    /// 0.3.0. It changes results on every problem whose samples reach the
-    /// bounds, including coordinated retry, which narrows the bounds around
-    /// good solutions. It has one call site, in `tell_one`.
+    /// REPAIR-Z: runs only with [`CmaesParams::repair_z`] set to `true`;
+    /// with `false` (the default) the update uses the `z` of the unrepaired
+    /// samples, as in 0.3.0. With `true` results change on every problem
+    /// whose samples reach the bounds, including coordinated retry, which
+    /// narrows the bounds around good solutions. A sample moved onto the
+    /// bound at the mean gets `z = 0`; the guard in `update_covariance`
+    /// keeps that zero norm out of the negative update. It has one call
+    /// site, in `tell_one`.
     fn repair_arz(&mut self) {
         for k in 0..self.popsize {
             if !self.repaired[k] {
@@ -495,6 +504,25 @@ impl Cmaes {
                 .collect();
             let inv_idx = inverse_perm(&idxnorms);
             let arnorms_inv: Vec<f64> = (0..self.mu).map(|k| ratio[inv_idx[k]]).collect();
+
+            // NEGATIVE-UPDATE GUARD: the negative update rescales each worst
+            // sample by a ratio of step norms, so it divides by those norms.
+            // A zero norm (a sample whose z is zero, for example one moved
+            // onto the bounds at the mean when `repair_z` recomputes its z)
+            // or a non-finite one would put NaN or infinity into the
+            // covariance, after which every stop test compares NaN and the
+            // run ends as if the step size had become small (stop code 2).
+            // Then this generation makes no negative update: `negccov` is 0
+            // and only the positive (rank-one and rank-μ) parts apply. With
+            // finite nonzero norms and finite ratios the update is unchanged
+            // bit for bit.
+            let usable = arnorms.iter().all(|n| n.is_finite() && *n > 0.0)
+                && arnorms_inv.iter().all(|r| r.is_finite());
+            if !usable {
+                let rankmu = &arpos * DMatrix::from_diagonal(&self.weights) * arpos.transpose();
+                self.c = &self.c * old_fac + roneu + rankmu * self.ccovmu;
+                return 0.0;
+            }
 
             // sqarnw = (arnorms_inv^2) . weights
             let sqarnw: f64 = (0..self.mu)
@@ -603,7 +631,24 @@ impl Cmaes {
         }
         if self.iterations >= self.last_update + self.lazy_update_gap as i32 {
             self.last_update = self.iterations;
+            // With the guard in `update_covariance` the update makes no
+            // non-finite covariance from finite inputs, so a NaN cannot end
+            // the run as a small-step stop (code 2) below.
+            #[cfg(debug_assertions)]
+            let finite_inputs = all_finite(&self.c)
+                && all_finite(&self.arz)
+                && all_finite(&self.bd)
+                && all_finite(&best_arx)
+                && self.pc.iter().all(|v| v.is_finite())
+                && xold.iter().all(|v| v.is_finite())
+                && self.sigma.is_finite()
+                && self.sigma > 0.0;
             let negccov = self.update_covariance(hsig, &best_arx, &arindex, &xold);
+            #[cfg(debug_assertions)]
+            debug_assert!(
+                !finite_inputs || all_finite(&self.c),
+                "CMA-ES covariance update made a non-finite covariance"
+            );
             self.update_bd(negccov);
             let sqrt_diag_c = self.diag_c.map(|v| v.sqrt());
             let mut all_below = true;
@@ -922,6 +967,7 @@ mod tests {
         let params = CmaesParams {
             popsize: 12,
             seed: 3,
+            repair_z: true,
             ..Default::default()
         };
         // A mean near a corner: some samples leave the box, some do not.
@@ -995,9 +1041,53 @@ mod tests {
         }
     }
 
+    /// The default is the update of 0.3.0.
     #[test]
-    fn repair_z_is_on_by_default() {
-        assert!(CmaesParams::default().repair_z);
+    fn repair_z_is_off_by_default() {
+        assert!(!CmaesParams::default().repair_z);
+    }
+
+    /// One variable on [0, 1], started at the lower bound: every sample below
+    /// the bound is moved onto it, which is the mean, so with
+    /// `repair_z: true` its z is zero.
+    fn one_variable_from_the_lower_bound(repair_z: bool) -> (Cmaes, AcmaResult) {
+        let mut fit = Fitness::bounded(1, 1, &[0.0], &[1.0]);
+        fit.set_normalize(true);
+        let params = CmaesParams {
+            popsize: 31,
+            max_evaluations: 3100,
+            seed: 3,
+            repair_z,
+            ..Default::default()
+        };
+        let mut es = Cmaes::new(fit, &[0.0], &[0.15], &params);
+        let r = es.optimize(&|x: &[f64]| (x[0] - 0.3).powi(2), 1);
+        (es, r)
+    }
+
+    /// A zero step norm among the worst samples used to put NaN into the
+    /// covariance through the negative update; the run then stopped after
+    /// the first generation (stop code 2, 31 evaluations, 0.022). The guard
+    /// skips the negative update for that generation.
+    #[test]
+    fn a_sample_moved_onto_the_mean_keeps_the_state_finite() {
+        for repair_z in [true, false] {
+            let (es, r) = one_variable_from_the_lower_bound(repair_z);
+            assert!(
+                r.iterations > 1,
+                "{repair_z}: stopped after {} evaluations",
+                r.evaluations
+            );
+            assert!(es.c.iter().all(|v| v.is_finite()), "{repair_z}: {}", es.c);
+            assert!(
+                es.sigma.is_finite() && es.sigma > 0.0,
+                "{repair_z}: {}",
+                es.sigma
+            );
+            assert!(es.xmean.iter().all(|v| v.is_finite()));
+            assert!(r.y < 1e-12, "{repair_z}: {} (stop {})", r.y, r.stop);
+            assert!((r.x[0] - 0.3).abs() < 1e-5, "{repair_z}: {:?}", r.x);
+        }
     }
 
     /// Runs whose samples never reach the bounds do not depend on

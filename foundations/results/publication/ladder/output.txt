@@ -1,5 +1,5 @@
 L1 first run | retries=3 evaluations=1320 best=3.920261e-7
-L2 equal budget | cma=7.384935e0 de=2.089413e1 bite=0.000000e0 crfmnes=3.540577e1
+L2 equal budget | cma=3.524898e1 de=2.089413e1 bite=0.000000e0 crfmnes=3.540577e1
 L3 deterministic workers | runs=8 identical=true best=6.672241e-5
 L4 explicit constraint | feasible=true objective=1.000288e0 violation=-1.438893e-4
 L5 measured front | points=64 hv=9.130531e-1 fixed_status=not-applicable fixed_outside=1 igd_plus=6.433183e-2

@@ -297,7 +297,8 @@ Both binaries share the same parser:
 | `--progress-interval N` | 0 | Live status period in seconds; zero disables |
 | `--max-eval-fac N` | 50 | Advanced final budget factor |
 | `--check-interval N` | 100 | Advanced diversity checkpoint interval |
-| `--no-repair-z` | off | Sets [`CmaesParams::repair_z`](optimizers.md#active-cma-es) to `false` for every CMA-ES the runner builds (the second stage of DE→CMA and jSO→CMA, in basic and advanced retry) |
+| `--repair-z` | off | Sets [`CmaesParams::repair_z`](optimizers.md#active-cma-es) to `true` for every CMA-ES the runner builds (the second stage of DE→CMA and jSO→CMA, in basic and advanced retry) |
+| `--no-repair-z` | off | Sets `repair_z` to `false`, its default and the update of 0.3.0; accepted so that scripts can state the setting |
 
 Show the installed parser help with:
 
@@ -395,9 +396,10 @@ cargo run --release -p fcmaes-examples --bin benchmark-gtop -- \
 ```
 
 Pass `--include-slow` to include both slow cases, or `--problem NAME` to run a
-single case, including a slow one. `--no-repair-z` sets
-[`CmaesParams::repair_z`](optimizers.md#active-cma-es) to `false` for the
-CMA-ES stage. The recorded 100-run measurement and its
+single case, including a slow one. `--repair-z` sets
+[`CmaesParams::repair_z`](optimizers.md#active-cma-es) to `true` for the
+CMA-ES stage; `--no-repair-z` keeps the default `false`. The header line
+prints the setting. The recorded 100-run measurement and its
 methodology are in [the benchmark report](../benchmarks/benchmark_gtop.md).
 The repository's recorded Tandem sample was produced resumably with:
 
@@ -430,8 +432,8 @@ cargo run --release -p fcmaes-examples --bin benchmark-biteopt-gtop -- \
 stage (same 4,000/6,000 split, step sizes and seeds; `jso_cma_run` in
 `examples/src/runner.rs`). jSO stops exactly at its share; its initial
 population is uniform in the box. With `--algo de_cma` or `--algo jso_cma`,
-`--no-repair-z` sets [`CmaesParams::repair_z`](optimizers.md#active-cma-es)
-to `false` for the CMA-ES stage.
+`--repair-z` sets [`CmaesParams::repair_z`](optimizers.md#active-cma-es)
+to `true` for the CMA-ES stage; `--no-repair-z` keeps the default `false`.
 
 `--algo crfmnes_bite` runs the opt-in CR-FM-NES → DeepBiteOpt sequence.
 The defaults allocate 30% of the retry budget to CR-FM-NES, use population

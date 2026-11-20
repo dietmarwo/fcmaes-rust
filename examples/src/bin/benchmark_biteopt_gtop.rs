@@ -134,7 +134,7 @@ impl Default for BenchmarkCli {
             seed: 1,
             problem: None,
             progress_interval: 0.0,
-            repair_z: true,
+            repair_z: false,
             raw_output: None,
             table_output: None,
         }
@@ -155,7 +155,8 @@ impl BenchmarkCli {
       --seed N                 deterministic root seed (default 1)\n\
       --problem NAME           run one included benchmark problem\n\
       --progress-interval N    live interval inside each experiment\n\
-      --no-repair-z            CMA-ES of de_cma and jso_cma updates moved samples with their unmoved z (0.3.0)\n\
+      --repair-z               CMA-ES of de_cma and jso_cma updates moved samples with the z of the evaluated point\n\
+      --no-repair-z            CMA-ES of de_cma and jso_cma updates moved samples with their unmoved z (default, 0.3.0)\n\
       --raw-output PATH        write one TSV row after every experiment\n\
       --table-output PATH      update the Markdown table after every problem\n\
       --help                   show this help\n\
@@ -180,8 +181,8 @@ Messenger Full is always excluded; Tandem is included by default.";
             if argument == "--help" || argument == "-h" {
                 return Ok(None);
             }
-            if argument == "--no-repair-z" {
-                cli.repair_z = false;
+            if argument == "--repair-z" || argument == "--no-repair-z" {
+                cli.repair_z = argument == "--repair-z";
                 continue;
             }
             let value = args
@@ -460,7 +461,11 @@ mod tests {
             .unwrap();
         assert_eq!(jso.algorithm, Algorithm::JsoCma);
         assert_eq!(jso.algorithm.key(), "jso_cma");
-        assert!(jso.repair_z);
+        assert!(!jso.repair_z);
+        let on = BenchmarkCli::from_args(["--algo", "jso_cma", "--repair-z"])
+            .unwrap()
+            .unwrap();
+        assert!(on.repair_z);
         let jso = BenchmarkCli::from_args(["--algo", "jso_cma", "--no-repair-z", "--runs", "2"])
             .unwrap()
             .unwrap();
