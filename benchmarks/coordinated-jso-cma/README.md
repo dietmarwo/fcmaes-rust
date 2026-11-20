@@ -1,7 +1,36 @@
 # Coordinated retry: jSO→CMA against DE→CMA
 
 Protocol: [PROTOCOL.md](PROTOCOL.md), declared before any run. This page
-records how stage 1 was produced. Stage 2 has not been run.
+records the outcome and how stage 1 was produced.
+
+## Outcome
+
+**No port** by the protocol's rule: in stage 1 `jso_cma` is significantly
+better on no problem, so no problem qualifies for stage 2 and the test ends
+there. Stage 2 was not run.
+
+| Problem | Median `de_cma` | Median `jso_cma` | p | Holm p |
+|---|---:|---:|---:|---:|
+| cassini1 | 4.93073 | 4.93071 | 0.114 | 0.430 |
+| cassini2 | 8.63725 | 8.76629 | 0.041 | 0.247 |
+| rosetta | 1.35244 | 1.35195 | 0.839 | 0.839 |
+| tandem | -1292.35 | -1339.90 | 0.365 | 0.730 |
+| messenger | 8.70163 | 8.70163 | 0.057 | 0.283 |
+| gtoc1 | -1447330 | -1490810 | 0.108 | 0.430 |
+| sagas | 18.5009 | 82.138 | 5.2e-07 | 4.2e-06 |
+| messenger-full | 6.09938 | 7.01867 | 8.3e-05 | 5.8e-04 |
+
+- `jso_cma` is significantly worse on `sagas` and `messenger-full`.
+- The median evaluations of the two arms differ by at most 4% on every
+  problem, inside the protocol's 10% margin.
+- All 320 runs finished with a retained result.
+- The medians and tests were recounted from the 320 raw run files with a
+  second script; they agree with [results/report.md](results/report.md).
+
+The protocol's question was whether jSO is worth a port to the C++ backend
+of fast-cma-es. That port was made on the maintainer's decision while stage 1
+was running. The result stands as guidance for its use: `jso_cma` is not a
+replacement for `de_cma` in coordinated retry.
 
 ## Revision
 
