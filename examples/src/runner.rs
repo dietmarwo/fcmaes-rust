@@ -28,6 +28,8 @@ pub struct Cli {
     /// [`CmaesParams::repair_z`] of every CMA-ES the runner builds:
     /// `false` by default and with `--no-repair-z`, `true` with `--repair-z`.
     pub repair_z: bool,
+    /// Coordinated retry (`run_advanced`) runs jSO→CMA instead of DE→CMA in every retry.
+    pub jso_cma: bool,
 }
 
 impl Default for Cli {
@@ -44,6 +46,7 @@ impl Default for Cli {
             problem: None,
             progress_interval: 0.0,
             repair_z: false,
+            jso_cma: false,
         }
     }
 }
@@ -62,6 +65,7 @@ impl Cli {
         \x20 --check-interval N      advanced retry checkpoint interval\n\
         \x20 --repair-z              CMA-ES updates moved samples with the z of the evaluated point\n\
         \x20 --no-repair-z           CMA-ES updates moved samples with their unmoved z (default, 0.3.0)\n\
+        \x20 --jso-cma                coordinated retry runs jSO→CMA instead of DE→CMA in every retry\n\
         \x20 --help                  show this help";
 
     pub fn from_env() -> Self {
@@ -95,6 +99,10 @@ impl Cli {
                 }
                 "--no-repair-z" => {
                     cli.repair_z = false;
+                    continue;
+                }
+                "--jso-cma" => {
+                    cli.jso_cma = true;
                     continue;
                 }
                 _ => {}
@@ -560,6 +568,18 @@ pub fn run_bite(problem: &Problem, cli: &Cli) -> RetryResult {
     result
 }
 
+/// The sequence of one coordinated retry: DE→CMA, or jSO→CMA with `--jso-cma`.
+fn advanced_sequence<O>(objective: &O, context: &RetryContext, cli: &Cli) -> RetryRunResult
+where
+    O: Fn(&[f64]) -> f64 + Sync,
+{
+    if cli.jso_cma {
+        jso_cma_run(objective, context, cli.repair_z)
+    } else {
+        de_cma_run(objective, context, cli.repair_z)
+    }
+}
+
 pub fn run_advanced(problem: &Problem, cli: &Cli) -> RetryResult {
     let config = AdvancedRetryConfig {
         retry: RetryConfig {
@@ -581,7 +601,7 @@ pub fn run_advanced(problem: &Problem, cli: &Cli) -> RetryResult {
             &problem.objective,
             &problem.bounds,
             &config,
-            |objective, context| de_cma_run(objective, context, cli.repair_z),
+            |objective, context| advanced_sequence(objective, context, cli),
         );
     }
 
@@ -598,7 +618,7 @@ pub fn run_advanced(problem: &Problem, cli: &Cli) -> RetryResult {
         &problem.bounds,
         &config,
         move |objective, context| {
-            let result = de_cma_run(objective, context, cli.repair_z);
+            let result = advanced_sequence(objective, context, cli);
             completion_state.retry_completed();
             result
         },
@@ -697,6 +717,31 @@ mod tests {
     }
 
     #[test]
+    fn advanced_jso_cma_converges_and_is_reproducible() {
+        let problem = Problem {
+            name: "sphere",
+            objective: sphere,
+            bounds: fcmaes_core::RetryBounds::new(vec![-5.0; 2], vec![5.0; 2]).unwrap(),
+        };
+        let cli = Cli {
+            retries: 2,
+            evaluations: 1_000,
+            workers: 1,
+            seed: 11,
+            max_eval_fac: 50.0,
+            check_interval: 100,
+            jso_cma: true,
+            ..Default::default()
+        };
+        let first = run_advanced(&problem, &cli);
+        assert!(first.success);
+        assert!(first.y < 1.0e-6, "sphere not solved: {}", first.y);
+        let second = run_advanced(&problem, &cli);
+        assert_eq!((second.x, second.y), (first.x, first.y));
+        assert_eq!(second.evaluations, first.evaluations);
+    }
+
+    #[test]
     fn native_advanced_sequence_converges() {
         let problem = Problem {
             name: "sphere",
@@ -783,6 +828,9 @@ mod tests {
         let cli = Cli::from_args(["--retries", "3", "--no-repair-z", "--seed", "2"]).unwrap();
         assert!(!cli.repair_z);
         assert_eq!((cli.retries, cli.seed), (3, 2));
+        assert!(!cli.jso_cma);
+        let cli = Cli::from_args(["--retries", "3", "--jso-cma"]).unwrap();
+        assert!(cli.jso_cma);
     }
 
     #[test]

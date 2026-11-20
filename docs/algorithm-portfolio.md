@@ -105,6 +105,33 @@ So jSO widens the first-stage choice; it does not replace DE. DE→CMA stays
 the default sequence, and jSO→CMA is a reasonable second attempt when
 DE→CMA stalls.
 
+**In coordinated retry** the picture is the same, with no gain for
+jSO→CMA. A [separate predeclared test](../benchmarks/coordinated-jso-cma/README.md)
+ran both sequences inside coordinated retry on the eight GTOP problems
+(300 retries, about 10 million evaluations per run, 20 seeds per arm):
+
+| Coordinated retry, 20 runs per arm | DE→CMA median | jSO→CMA median | Holm p |
+|---|---:|---:|---:|
+| Cassini1 | 4.93073 | 4.93071 | 0.43 |
+| Cassini2 | 8.637 | 8.766 | 0.25 |
+| Rosetta | 1.35244 | 1.35195 | 0.84 |
+| Tandem | −1292.4 | −1339.9 | 0.73 |
+| Messenger | 8.70163 | 8.70163 | 0.28 |
+| GTOC1 | −1,447,330 | −1,490,810 | 0.43 |
+| Sagas | 18.50 | 82.14 | 4.2e-6 |
+| Messenger full | 6.099 | 7.019 | 5.8e-4 |
+
+- jSO→CMA is significantly better on no problem and significantly worse on
+  Sagas and Messenger full, the two problems where it also lost in round 2.
+  Its lower medians on Tandem and GTOC1 are within the noise of 20 runs.
+- Both arms used the same number of evaluations to within 4%.
+- Coordinated retry hands every retry a start point and step sizes. DE
+  uses them for its first population; jSO has no start point and uses only
+  the shrunk bounds.
+
+Coordinated retry therefore keeps DE→CMA. `gtop-advexamples --jso-cma`
+runs the other sequence for comparison.
+
 The jSO stage runs unchanged. fcmaes DE replaces individuals that have
 stopped improving; a study on 12 application objectives put that rule into
 the jSO stage (576 matched groups at 15,500 and 62,000 evaluations; its
@@ -454,7 +481,9 @@ throughout the run.
   modes rests on four problems of this repository and on two studies whose
   records are kept elsewhere.
 - **Not covered by the rounds.** Noisy objectives, more than 171 variables,
-  multi-objective optimization, coordinated retry.
+  multi-objective optimization, coordinated retry. The coordinated test of
+  jSO→CMA has one coordinator setting, one budget (300 retries) and GTOP
+  problems only; with 20 runs per arm it can miss a small advantage.
 - **The eight-worker benchmark.** Wall-clock results depend on hosts and
   implementations: it ran on three cloud hosts, with every block on one
   host, and its conclusions hold for the tested libraries, settings and

@@ -85,6 +85,14 @@ phase, with breaking changes called out explicitly.
 
 ### Added
 
+- `gtop-advexamples --jso-cma`: coordinated retry runs jSO→CMA instead of
+  DE→CMA in every retry (default off).
+- Coordinated-retry benchmark of jSO→CMA against DE→CMA
+  (`benchmarks/coordinated-jso-cma`, protocol declared before the runs): on
+  the eight GTOP problems, 300 retries and 20 seeds per arm, jSO→CMA is
+  significantly better on no problem and significantly worse on Sagas and
+  Messenger full. Coordinated retry keeps DE→CMA; the algorithm portfolio
+  records the table.
 - `CmaesParams::repair_z` (default `false`) selects how active CMA-ES
   updates from a sample that it moved into the bounds: `false` uses the `z`
   of the unmoved sample, the update of 0.3.0, whose results the default
