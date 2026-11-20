@@ -38,7 +38,10 @@ described with its candidate below.
 A second source is the
 [eight-worker deadline benchmark](#the-eight-worker-deadline-benchmark). It
 compares by wall-clock time on eight CPUs, includes external libraries, and
-has its own section.
+has its own section. Round 4
+([ROUND4.md](../benchmarks/candidate-optimizers/ROUND4.md), 290 runs)
+follows up its one positive finding, ARRDE on the truss, at one and four
+million evaluations.
 
 *Mean rank* below is the average rank among the twelve solvers of a round
 (1 is best). *Best in n cells* counts the cells in which an optimizer has the
@@ -155,6 +158,7 @@ paired difference.
 | L-SHADE (Tanabe and Fukunaga, 2014) | 1/17/8, 7.58 | 0/7/3, 7.6 | Out. Same family as jSO and behind it in both rounds. |
 | L-SRTDE (Stanovov and Semenkin, 2024) | 1/13/12, 5.94 | alone 0/5/5, 6.2; before CMA-ES 0/3/7, 4.4 | Out. Close to DE→CMA as a first stage, never significantly better than it, and the published equation does not reproduce the published results (see the [deviations](../benchmarks/candidate-optimizers/DEVIATIONS.md)). |
 | BIPOP-aCMA-ES (Hansen, 2009) | 1/5/20, 4.88 | 0/6/4, 7.7 | Out of core. Third of twelve with small budgets, ninth with large ones. A BIPOP schedule is available in the job worker; the eight-worker benchmark points at its settings, not at a missing algorithm. |
+| ARRDE (Muzakka et al., 2025) | not run | not run | Out. Round 4: on the 171-variable truss its median is not below jSO→CMA's at one million evaluations (480.6 against 452.8) or at four million (437.2 against 394.5). It beats BiteOpt there. |
 | AMaLGaM-IDEA (Bosman, Grahl and Thierens, 2013) | 0/15/11, 7.60 | not run | Out. No winning cell; its published population rule leaves few generations above about 100 variables. |
 
 Wins, losses and ties are against the best core optimizer of each cell.
@@ -349,14 +353,16 @@ of fcmaes DE at 15 seconds, where DE is ahead of both in the rounds.
 ### Decision and follow-ups
 
 **No decision changes.** Nothing is added to core and no default changes.
-Two findings are open:
+Two findings needed a follow-up:
 
-1. **ARRDE on structural sizing.** The truss result is a better final design
-   on a real problem, measured against BiteOpt only. The test that would
-   settle it runs ARRDE against every core optimizer, including jSO→CMA,
-   its closest relative in core, on the truss by evaluations, under the
-   rules of the candidate benchmark.
-2. **BIPOP settings in the job worker.** Initial step size, bounds handling
+1. **ARRDE on structural sizing: settled, not accepted.** The truss result
+   was a better final design on a real problem, measured against BiteOpt
+   only. Round 4 of the candidate benchmark ran ARRDE against every core
+   optimizer on the truss by evaluations. ARRDE beats BiteOpt there and
+   does not beat jSO→CMA: 480.6 against 452.8 at one million evaluations,
+   437.2 against 394.5 at four million
+   ([decision file](../benchmarks/candidate-optimizers/DECISION.md)).
+2. **BIPOP settings in the job worker: open.** Initial step size, bounds handling
    and restart schedule should be compared with libcmaes on the circuit and
    the controller.
 

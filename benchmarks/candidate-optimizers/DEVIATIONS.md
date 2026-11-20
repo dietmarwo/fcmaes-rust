@@ -143,3 +143,90 @@ existed and no result of the test had been examined.
    table was checked on 496 points (300 random, 196 next to interval
    boundaries): moving every discrete coordinate to its level center leaves
    the objective bit-identical.
+
+## Round 4
+
+Recorded on 19 November 2026, after the candidate library was built and
+before any run of ROUND4.md. No result of the test existed.
+
+1. **Build route of Minion.** The library is built from source at the
+   declared revision (`535504a`, version 2.0.1, MIT license) with its
+   documented `pip install .` route (scikit-build and CMake, release build).
+   Its CMake file fetches the Eigen headers from a source host that this
+   build host cannot reach, so the build uses a local copy of the same Eigen
+   release (3.4.0, the tag the library's CMake file pins) obtained from the
+   conda-forge package and passed with `-DEigen3_DIR`. Nothing else differs
+   from the documented build, and the `minionpy` wheel from PyPI is not
+   used.
+2. **Seed.** `ARRDE` takes the seed as a C++ `int`, and `-1` means "draw a
+   random seed". The driver passes the low 31 bits of the derived run seed,
+   `seed & 0x7FFFFFFF`, which is never `-1`. The library seeds a
+   thread-local generator in the constructor; two runs with one seed
+   reproduce each other exactly (checked in `test_arrde.py`).
+3. **Budget.** The library overshoots its own evaluation budget by a few
+   evaluations (a 20,000 evaluation run on a test function made 20,007
+   calls). The driver's guard refuses every point beyond the run's
+   allowance, answers it with `+inf` without evaluating it, and counts it in
+   `over_budget`; the evaluation count of a row never exceeds its allowance.
+   No callback is used to stop the library.
+4. **Run shapes and files.** The Rust runner resumes by (solver, problem,
+   protocol, repetition, total), which does not distinguish two run caps, so
+   each shape has its own file, `stage1-cap1000000.tsv` and
+   `stage1-cap125000.tsv` (stage 2: `stage2-cap4000000.tsv` and
+   `stage2-cap500000.tsv`). The decision script reads both.
+5. **Infeasible designs.** The cost of `truss_sizing` is the mass of the
+   design when all constraints hold and the mass plus 10^8 times the sum of
+   squared constraint violations otherwise. A run is reported as ending
+   infeasible when its best cost is at least 10^4; this is a violation of
+   about 1% in one constraint, and the survey of round 3 shows infeasible
+   results of the order 4e8. A marginally infeasible design with a smaller
+   penalty is counted as feasible. The count is informational and does not
+   enter the decision.
+6. **Restart on the corrected CMA-ES.** The first start of this round ran
+   the early stage, the one-run shape of stage 1 and 53 core rows of the
+   eight-run shape on the core as it was before active CMA-ES was corrected
+   for samples moved onto the bounds (`REPAIR-Z` in
+   `crates/fcmaes-core/src/cmaes.rs`). That correction changes the arms
+   `cma`, `de_cma` and `jso_cma`; BiteOpt, DE, CR-FM-NES, Dual Annealing and
+   ARRDE do not use the changed code. On the maintainer's instruction the
+   round is restarted from the beginning on the corrected core, with the
+   declared seeds, budgets, arms and decision rule unchanged. The rows of
+   the first start are kept in `results/round4/before-cma-fix/` and do not
+   enter the decision. No decision had been computed from them; their
+   one-run medians had been looked at (jSO→CMA 453, ARRDE 481, DE→CMA 543,
+   BiteOpt 560). Arms that do not use the changed code must reproduce
+   their first-start rows exactly; the report states whether they do.
+7. **Two more core arms at stage 2: jSO→CMA with `repair_z` off.** Recorded
+   on 19 November 2026 after stage 1 and after the ten stage-2 runs of
+   `jso_cma` as one run (median 420.35), before any other stage-2 run. The
+   correction of item 6 has since become the option `CmaesParams::repair_z`
+   (default `true`). On this problem the CMA-based arms were better without
+   it at stage 1 (jSO→CMA as one run: 452.8 in the first start against
+   470.5). On the maintainer's instruction stage 2 therefore also runs
+   `jso_cma_z0`, which is `jso_cma` with `repair_z: false` in its CMA-ES
+   stage, in both shapes, with the stage's seeds and budgets.
+   - Both settings are core configurations. The declared rule is applied
+     to all four core arms of stage 2: ARRDE is superior there only if the
+     median of its arm is lower than the medians of `jso_cma` and
+     `jso_cma_z0` in both shapes and the test against the one with the
+     lowest median is significant. The report also gives the outcome
+     against the two declared arms alone.
+   - Stage 1 is not rerun with the added arm. Its outcome does not depend
+     on it: ARRDE (480.6) is not below the declared `jso_cma` arm (470.5),
+     and the first start shows `jso_cma` without the correction at 452.8.
+   - `jso_cma_z0` must reproduce the first-start rows of `jso_cma` exactly
+     (same seeds, the update of 0.3.0); two repetitions of the one-run
+     shape of stage 1 are rerun into a scratch file to check this.
+8. **The default of `repair_z` changed after the runs.** The restart of
+   entry 6 ran while the correction was on by default. `CmaesParams::repair_z`
+   has since become an option that is off by default, which is the update
+   of 0.3.0. In the files of this round therefore:
+   - the rows named `cma`, `de_cma` and `jso_cma` in `results/round4/` were
+     produced with `repair_z: true`. They reproduce at revision `d01b252` of
+     this repository, where that was the default, and not with the current
+     default;
+   - the rows named `jso_cma_z0`, and all rows in
+     `results/round4/before-cma-fix/`, were produced with the update that
+     is the default.
+   The decision does not depend on the setting: ARRDE's median is below
+   neither.

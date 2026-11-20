@@ -390,6 +390,32 @@ pub fn cma_sequence<F>(
 where
     F: FnOnce(&Budgeted<'_>, FirstStage) -> Vec<f64>,
 {
+    cma_sequence_with(
+        objective,
+        lower,
+        upper,
+        max_evaluations,
+        seed,
+        CmaesParams::default().repair_z,
+        first_stage,
+    )
+}
+
+/// [`cma_sequence`] with the CMA-ES option `repair_z` set explicitly
+/// (`true` is the default of [`CmaesParams`]; `false` is the update of
+/// version 0.3.0). Nothing else differs.
+pub fn cma_sequence_with<F>(
+    objective: Objective<'_>,
+    lower: &[f64],
+    upper: &[f64],
+    max_evaluations: u64,
+    seed: u64,
+    repair_z: bool,
+    first_stage: F,
+) -> Outcome
+where
+    F: FnOnce(&Budgeted<'_>, FirstStage) -> Vec<f64>,
+{
     let wrapped = Budgeted::new(objective, lower, upper, max_evaluations);
     let dim = lower.len();
     // The retry coordinator draws the step size first, then the run seed.
@@ -416,6 +442,7 @@ where
         &CmaesParams {
             max_evaluations: cma_budget,
             seed: run_seed ^ 0xA076_1D64_78BD_642F,
+            repair_z,
             ..Default::default()
         },
     );
@@ -486,13 +513,15 @@ fn candidate_sequence(
     upper: &[f64],
     max_evaluations: u64,
     seed: u64,
+    repair_z: bool,
 ) -> Outcome {
-    cma_sequence(
+    cma_sequence_with(
         objective,
         lower,
         upper,
         max_evaluations,
         seed,
+        repair_z,
         |wrapped, stage| {
             let f = |x: &[f64]| wrapped.eval(x);
             first.minimize(&f, lower, upper, stage.stop, stage.seed).x
@@ -521,7 +550,41 @@ impl Solver for JsoCma {
         seed: u64,
     ) -> Outcome {
         let first = cand_de::Jso::default();
-        candidate_sequence(&first, objective, lower, upper, max_evaluations, seed)
+        candidate_sequence(&first, objective, lower, upper, max_evaluations, seed, true)
+    }
+}
+
+/// jSO→CMA with `repair_z: false` in the CMA-ES stage (round 4, stage 2;
+/// `DEVIATIONS.md`, round 4, entry 7): [`JsoCma`] in every respect except
+/// that option. It is not part of the round-3 solver set.
+#[cfg(feature = "candidates")]
+#[derive(Clone, Copy, Debug, Default)]
+pub struct JsoCmaZ0;
+
+#[cfg(feature = "candidates")]
+impl Solver for JsoCmaZ0 {
+    fn name(&self) -> &'static str {
+        "jso_cma_z0"
+    }
+
+    fn minimize(
+        &self,
+        objective: Objective<'_>,
+        lower: &[f64],
+        upper: &[f64],
+        max_evaluations: u64,
+        seed: u64,
+    ) -> Outcome {
+        let first = cand_de::Jso::default();
+        candidate_sequence(
+            &first,
+            objective,
+            lower,
+            upper,
+            max_evaluations,
+            seed,
+            false,
+        )
     }
 }
 
@@ -550,7 +613,7 @@ impl Solver for LSrtdeCma {
             pbest_difference_from_base: true,
             ..Default::default()
         };
-        candidate_sequence(&first, objective, lower, upper, max_evaluations, seed)
+        candidate_sequence(&first, objective, lower, upper, max_evaluations, seed, true)
     }
 }
 
@@ -602,6 +665,7 @@ pub fn registry() -> Vec<Box<dyn Solver>> {
         solvers.push(Box::new(LSrtdeBase));
         solvers.push(Box::new(cand_eda::Amalgam::default()));
         solvers.push(Box::new(JsoCma));
+        solvers.push(Box::new(JsoCmaZ0));
         solvers.push(Box::new(LSrtdeCma));
     }
     solvers

@@ -1114,3 +1114,81 @@ python3 convergence_round3c.py          # writes results/round3c/report.md
 
 `results/round3c/types/water_network.json` types the pump-priority switch as
 an integer for the candidate; [DEVIATIONS.md](DEVIATIONS.md) says why.
+
+## Round 4, ARRDE on the truss
+
+[ROUND4.md](ROUND4.md) asks whether ARRDE (Minion 2.0.1) is better than every
+core optimizer on `truss_sizing` at equal evaluation budgets. The candidate
+runs through the Python driver `run_arrde.py`; the core solvers run through
+the Rust runner with the protocol-T settings of the declaration. The round
+was restarted with `CmaesParams::repair_z` on (DEVIATIONS.md, round 4,
+entry 6), and stage 2 has two more core arms, jSO→CMA with `repair_z` off
+(entry 7).
+
+`repair_z` is off by default (entry 8). The committed rows named `cma`,
+`de_cma` and `jso_cma` were produced with it on and reproduce at revision
+`d01b252`; with the current code the commands below give the default
+update for these arms, which for jSO→CMA is what the rows named
+`jso_cma_z0` and the files in `results/round4/before-cma-fix/` hold.
+
+### Build the candidate
+
+Build Minion from source at the declared revision (`535504a`) with its
+documented `pip install .` route. Its CMake file downloads the Eigen headers;
+on a host without that access, pass a local copy of Eigen 3.4.0 with
+`-DEigen3_DIR` (entry 1). Then check the build:
+
+```sh
+python3 run_arrde.py info
+python3 -m pytest -q test_arrde.py
+```
+
+### Reproduce
+
+From this directory, with the release harness built with
+`--features candidates`. A raw file belongs to one run shape (entry 4); the
+Rust runner and the driver never write one file at the same time, and
+`--solvers` names the arms of a step exactly.
+
+```sh
+BIN=$CARGO_TARGET_DIR/release/candidate-harness
+R=results/round4
+run() {  # solvers total run-cap root-seed out
+    $BIN run --protocols T --problems truss_sizing --solvers $1 --total $2 \
+        --run-cap $3 --min-run 1000 --root-seed $4 --reps 10 --threads 2 --out $5
+}
+arrde() {  # total run-cap root-seed out
+    python3 run_arrde.py run --total $1 --run-cap $2 --root-seed $3 --reps 10 --out $4
+}
+
+# early stage: 100,000 evaluations, one run, root seed 9
+run round3 100000 100000 9 $R/early.tsv;  arrde 100000 100000 9 $R/early.tsv
+
+# stage 1: 1,000,000 evaluations, root seed 7, both shapes
+run round3 1000000 1000000 7 $R/stage1-cap1000000.tsv
+arrde      1000000 1000000 7 $R/stage1-cap1000000.tsv
+run round3 1000000  125000 7 $R/stage1-cap125000.tsv
+arrde      1000000  125000 7 $R/stage1-cap125000.tsv
+
+# stage 2: 4,000,000 evaluations, root seed 8
+run jso_cma 4000000 4000000 8 $R/stage2-cap4000000.tsv
+arrde       4000000 4000000 8 $R/stage2-cap4000000.tsv
+run jso_cma_z0 4000000 4000000 8 $R/stage2-cap4000000.tsv
+run jso_cma,jso_cma_z0 4000000 500000 8 $R/stage2-cap500000.tsv
+
+python3 decide_round4.py        # writes results/round4/report.md
+```
+
+`jso_cma_z0` is `jso_cma` with `CmaesParams::repair_z` set to `false` in the
+CMA-ES stage; it is not part of the solver set `round3`. Two checks before
+stage 2: `jso_cma` must reproduce the rows of
+`results/round4/stage1-cap1000000.tsv`, and `jso_cma_z0` the `jso_cma` rows of
+`results/round4/before-cma-fix/stage1-cap1000000.tsv` (repetitions 0 and 1 of
+the one-run shape, `--reps 2`, scratch file). The rows of the first start are
+kept in `results/round4/before-cma-fix/` and do not enter the decision.
+
+`decide_round4.py` reads the raw files, applies the declared rule at both
+stages with Holm correction, and writes the report. At stage 2 it applies the
+rule to all four core arms (`jso_cma` and `jso_cma_z0`, both shapes), also
+reports the outcome against the two declared arms alone, and shows jSO→CMA with
+and without `repair_z`. Missing raw files are reported as pending.

@@ -1,0 +1,2 @@
+problem	total	run_cap	rep	runs	first_batch	library_calls	evaluations	over_budget	out_of_bounds	objective_ms	bridge_ms	wall_ms
+truss_sizing	100000	100000	0	1	984	100016	100000	16	0	2062.457	5847.797	7536.657
