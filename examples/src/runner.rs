@@ -705,7 +705,7 @@ mod tests {
                 sphere(x)
             };
             let result = retry(&counted, &bounds, &config, |objective, context| {
-                jso_cma_run(objective, context, true)
+                jso_cma_run(objective, context, true, false)
             });
             (result, calls.load(Ordering::Relaxed))
         };
@@ -806,9 +806,9 @@ mod tests {
         let cli = Cli::from_args(["--retries", "3", "--no-repair-z", "--seed", "2"]).unwrap();
         assert!(!cli.repair_z);
         assert!(!cli.bound_transform);
+        assert_eq!((cli.retries, cli.seed), (3, 2));
         let cli = Cli::from_args(["--bound-transform", "--seed", "2"]).unwrap();
         assert!(cli.bound_transform && !cli.repair_z);
-        assert_eq!((cli.retries, cli.seed), (3, 2));
     }
 
     #[test]

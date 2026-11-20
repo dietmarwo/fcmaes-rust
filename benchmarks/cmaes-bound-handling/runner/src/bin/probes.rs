@@ -55,6 +55,9 @@ fn quadratic(t: &[f64]) -> f64 {
     (t[0] - 0.3).powi(2)
 }
 
+/// A probe's name and objective.
+type Probe = (&'static str, fn(&[f64]) -> f64);
+
 fn main() {
     // The value of the test in damp.rs.
     assert!((damp_amplitude(&REFERENCE) - 1.4984988964913732).abs() < 1e-12);
@@ -64,7 +67,7 @@ fn main() {
         "probe\tmode\tseed\tevaluations\tvalue\tx\tstop",
         3,
     );
-    let probes: [(&str, fn(&[f64]) -> f64); 2] = [("quadratic", quadratic), ("damp", damp_probe)];
+    let probes: [Probe; 2] = [("quadratic", quadratic), ("damp", damp_probe)];
     for (name, f) in probes {
         let n = 1_000_000;
         let (best_t, best) = (0..=n)

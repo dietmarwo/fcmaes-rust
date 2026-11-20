@@ -107,7 +107,7 @@ impl Table {
     }
 
     pub fn is_done(&self, key: &[String]) -> bool {
-        self.done.contains(&key[..self.key_columns].to_vec())
+        self.done.contains(&key[..self.key_columns])
     }
 
     pub fn write(&mut self, fields: &[String]) {
