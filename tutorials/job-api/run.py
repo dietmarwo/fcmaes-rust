@@ -136,6 +136,11 @@ discovery={'validated':0,'runs':[]}
 for worker_id in (WORKER,APPLICATION[0]):
     description=call('problems','describe',worker_id)
     payloads=[(example,s['payload_schema'],s['payload']) for example,s in specs.items() if s['worker']==worker_id]
+    if worker_id==WORKER:
+        # CMA-ES takes repair_z (CmaesParams::repair_z); no other kind does.
+        cmaes=specs['rosenbrock-cmaes']['payload']
+        parameters={**cmaes['optimizer']['parameters'],'repair_z':True}
+        payloads.append(('rosenbrock-cmaes repair_z','fcmaes.retry/1',{**cmaes,'optimizer':{'kind':'cmaes','parameters':parameters}}))
     discovery['validated']+=payload_schemas.check(description,payloads)
     if worker_id==WORKER:
         # jSO takes no guess, no settings of other kinds and only the hard limit.
@@ -160,6 +165,12 @@ for worker_id in (WORKER,APPLICATION[0]):
                 for name,value in [('crfmnes_share',.3),('bite_depth',4)]]
         discovery['validated']+=payload_schemas.check_rejected(
             description,[(f'crfmnes_bite {edit}','fcmaes.retry/1',{**sequence,**edit}) for edit in edits])
+        edits=[{'optimizer':{'kind':kind,'parameters':{'repair_z':True}},'evaluation_limit_mode':mode}
+               for kind,mode in [('biteopt','hard'),('de','soft'),('jso','hard'),('crfmnes','soft'),
+                                 ('pgpe','soft'),('crfmnes_bite','hard')]]
+        edits.append({'optimizer':{'kind':'cmaes','parameters':{'repair_z':1}}})
+        discovery['validated']+=payload_schemas.check_rejected(
+            description,[(f'repair_z {edit}','fcmaes.retry/1',{**cmaes,**edit}) for edit in edits])
     discovery['runs']+=payload_schemas.run_examples(call,root/'discovery',worker_id,description,conforms)
 report=[]
 for example in EXAMPLES:

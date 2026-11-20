@@ -96,7 +96,14 @@ phase, with breaking changes called out explicitly.
   CMA-ES stage of DE→CMA and jSO→CMA, basic and advanced retry), and for
   the CMA-ES stage of `benchmark-gtop` and of `benchmark-biteopt-gtop`
   with `--algo de_cma` or `jso_cma`; `--no-repair-z` states the default.
-  The `fcmaes.retry/1` job worker uses the default `false`.
+- `fcmaes.retry/1` accepts `optimizer.parameters.repair_z` (boolean,
+  default `false`) for `optimizer.kind: "cmaes"`, with and without
+  `restarts`: `CmaesParams::repair_z` of every CMA-ES run of the retry. The
+  other kinds reject it, in the worker and in the payload schema of
+  `describe`, which lists it with its default. The resolved payload carries
+  it only when `true`, so payloads without it resolve, and hash, as
+  before. `retry::EsSettings` gains the field `repair_z`
+  (`EsSettings::cmaes` sets it to `false`).
 - jSO in `fcmaes-core` (`Jso`, `JsoParams`, `JsoResult`; Brest, Maučec and
   Bošković, CEC 2017): adaptive differential evolution with linear
   population size reduction, with `optimize`, `optimize_until`,
