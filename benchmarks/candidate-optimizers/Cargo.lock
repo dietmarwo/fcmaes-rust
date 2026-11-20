@@ -152,7 +152,7 @@ checksum = "1fd0f2584146f6f2ef48085050886acf353beff7305ebd1ae69500e27c67f64b"
 name = "cand-de"
 version = "0.1.0"
 dependencies = [
- "fcmaes-core 0.3.0",
+ "fcmaes-core 0.4.0",
  "solver-api",
 ]
 
@@ -160,7 +160,7 @@ dependencies = [
 name = "cand-eda"
 version = "0.1.0"
 dependencies = [
- "fcmaes-core 0.3.0",
+ "fcmaes-core 0.4.0",
  "nalgebra 0.33.3",
  "solver-api",
 ]
@@ -173,7 +173,7 @@ dependencies = [
  "cand-eda",
  "dispersion-source-localization",
  "energy-hub-bilevel",
- "fcmaes-core 0.3.0",
+ "fcmaes-core 0.4.0",
  "fcmaes-foundations",
  "fcmaes-gtop",
  "field-service-routing",
@@ -357,7 +357,7 @@ dependencies = [
 name = "dispersion-source-localization"
 version = "0.1.0"
 dependencies = [
- "fcmaes-core 0.3.0",
+ "fcmaes-core 0.4.0",
  "serde_json",
 ]
 
@@ -562,7 +562,7 @@ dependencies = [
 
 [[package]]
 name = "fcmaes-core"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "libm",
  "nalgebra 0.33.3",
@@ -576,7 +576,7 @@ dependencies = [
 name = "fcmaes-foundations"
 version = "0.1.0"
 dependencies = [
- "fcmaes-core 0.3.0",
+ "fcmaes-core 0.4.0",
  "serde",
  "serde_json",
  "sha2",
@@ -584,7 +584,7 @@ dependencies = [
 
 [[package]]
 name = "fcmaes-gtop"
-version = "0.3.0"
+version = "0.4.0"
 
 [[package]]
 name = "field-service-routing"
@@ -1106,7 +1106,7 @@ dependencies = [
 name = "ml-hyperparameter-tuning"
 version = "0.1.0"
 dependencies = [
- "fcmaes-core 0.3.0",
+ "fcmaes-core 0.4.0",
  "serde",
  "serde_json",
  "smartcore",
@@ -1425,7 +1425,7 @@ checksum = "384b8ab6d37215f3c5301a95a4accb5d64aa607f1fcb26a11b5303878451b4fe"
 name = "optical-lens-design"
 version = "0.1.0"
 dependencies = [
- "fcmaes-core 0.3.0",
+ "fcmaes-core 0.4.0",
  "serde_json",
 ]
 

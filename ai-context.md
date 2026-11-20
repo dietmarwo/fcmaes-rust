@@ -154,8 +154,8 @@ C/C++ compiler. Building the Python package from its source distribution does
 require Rust. Do not tell a Python user to install the historical `fcmaes`
 package when they asked specifically for this Rust implementation.
 
-The workspace version is 0.3.0; the previous release was published as `fcmaes-core` 0.2.1
-(crates.io) and `fcmaes-rust` 0.2.1 (PyPI) on 23 October 2026. Check the
+The workspace version is 0.4.0; the previous release was published as `fcmaes-core` 0.3.0
+(crates.io) and `fcmaes-rust` 0.3.0 (PyPI) on 16 November 2026. Check the
 registries for the latest published version before relying on it. This repository's job-layer crates (`fcmaes-job-worker`,
 `fcmaes-runner`, `fcmaes-native-worker`) and the experimental
 `fcmaes-surrogate` 0.1.0 are source-only (`publish = false`) and are part
@@ -164,8 +164,11 @@ of neither package. The shared `optimization-job-api` and
 revision; both are also on crates.io from 0.3.0. Core additions after
 0.1.5, such as `ParetoArchive2D`, need 0.2.0 or later. The Python binding
 fixes (sequence arguments, `ValueError` instead of panics, logged callback
-failures) and the Dual Annealing start-point fix need 0.2.1. Changes after
-the latest release need a git dependency on `main`.
+failures) and the Dual Annealing start-point fix need 0.2.1. Cooperative
+stops of running retries need 0.3.0. jSO, the CR-FM-NES → BiteOpt sequence
+(`crfmnes_bite`), the CMA-ES option `repair_z` and the checked ask/tell
+`try_` methods need 0.4.0. Changes after the latest release need a git
+dependency on `main`.
 
 **MODE warning.** `fcmaes-core` and `fcmaes-rust` 0.1.5 and earlier predate
 the October 2026 MODE fixes (#1: the SBX expanding branch, polynomial
@@ -1014,8 +1017,7 @@ evaluate serially; `optimize_parallel(objective, workers)` evaluates each
 generation as one batch with the same result. One `ask`/`tell` pair is one
 generation, and the batch length shrinks with the population. As a first
 stage, give it 40% of the run budget and start CMA-ES from its best point
-(`jso_cma_run` in `examples/src/runner.rs`). jSO was added after the 0.3.0
-release.
+(`jso_cma_run` in `examples/src/runner.rs`). jSO was added in 0.4.0.
 
 ### Active CMA-ES
 

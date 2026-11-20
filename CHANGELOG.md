@@ -6,6 +6,15 @@ phase, with breaking changes called out explicitly.
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-11-20
+
+New in `fcmaes-core`: jSO, the CR-FM-NES → BiteOpt sequence and the CMA-ES
+option `repair_z`; in the job worker the `fcmaes.retry/1` kinds `jso` and
+`crfmnes_bite`, `repair_z` for `cmaes`, a stop within the population in
+progress, and the experimental profile `fcmaes.surrogate/2`. Seeded runs
+of the existing optimizers give the results of 0.3.0, except where an entry
+under Fixed says otherwise.
+
 ### Fixed
 
 - `fcmaes.retry/1` jobs with jSO, CMA-ES (also with `ipop`/`bipop`
@@ -68,6 +77,16 @@ phase, with breaking changes called out explicitly.
 
 ### Changed
 
+- Breaking for direct users of fcmaes-core: `CmaesParams` gains the public
+  field `repair_z`, so struct literals must set it (or end with
+  `..CmaesParams::default()`). The ask/tell `tell` of `De`, `Cmaes`,
+  `Crfmnes` (`tell_pop`) and `Pgpe` (`tell_pop`) and `Cmaes::tell_x` panic
+  on a batch of the wrong length or without a pending `ask` (`tell_x`
+  excepted), where they used to accept it; the new `try_` variants return
+  the error. In Python the same calls raise `ValueError` (see Fixed).
+- The separately locked benchmarks, foundations and tutorials record the
+  workspace crates at 0.4.0, and foundations requires `fcmaes-core` =0.4.0.
+  The tutorials that use `fcmaes-core` =0.1.3 from crates.io keep it.
 - optimization-jobs pin `41d5f00` (main after the 0.4.1 release; the job
   crates are still 0.4.1) in every manifest and lockfile, including the four
   tutorials with a job worker. It adds an optional progress file to command
@@ -82,6 +101,14 @@ phase, with breaking changes called out explicitly.
   `#10-crn-craft`). Both are in the relationship diagram
   (`docs/images/repositories.dot`, SVG regenerated with Graphviz 2.43.0);
   the README, the documentation map and the learning paths count 20.
+- `docs/repositories.md` names the versions on PyPI, crates.io and the
+  repositories' tags on 20 November 2026 and the two releases prepared that
+  day: fast-cma-es 2.2.0 (was 2.1.0), `fcmaes-core` 0.4.0 (was 0.2.1),
+  LP-IP-craft 0.30.0 (was 0.29.0), SQP-craft 0.20.0 (was 0.17.0),
+  optimization-jobs 0.4.1 and its pinned `41d5f00` (was 0.4.0), CRN-craft
+  0.8.0 (was 0.5.0), CFD-craft 0.2.0 with its city-block and mobile
+  features (was 0.1.0, "research prototype" kept) and pykep-core-rust 0.1.6
+  (was 0.1.5). The other entries were current.
 
 ### Added
 

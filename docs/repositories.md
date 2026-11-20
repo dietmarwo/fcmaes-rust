@@ -4,7 +4,9 @@ This overview covers 20 public repositories (forks excluded): the 18 with
 default-branch commits since 1 August 2026 and two earlier split-brain
 research projects from April 2026. Status: 6 November 2026; the CRN-craft
 and population-epidemiology entries as of 8 November 2026, the BO-craft and
-inlet-craft entries as of 19 November 2026.
+inlet-craft entries as of 19 November 2026. Versions were checked against
+PyPI, crates.io and the repositories' tags on 20 November 2026; fast-cma-es
+2.2.0 and fcmaes-rust 0.4.0 are the releases prepared that day.
 
 Together they connect Python and Rust optimizers, durable job execution,
 experiment campaigns, simulators and bounded domain models. Native
@@ -71,12 +73,13 @@ The diagram is drawn with Graphviz from [images/repositories.dot](images/reposit
 **The original fcmaes library for Python, with C++ cores.**
 [github.com/dietmarwo/fast-cma-es](https://github.com/dietmarwo/fast-cma-es)
 
-Gradient-free optimization: CMA-ES, differential evolution, BiteOpt and
-other algorithms, parallel retry, multi-objective search (MODE) and quality
-diversity, with many application tutorials. Published on PyPI as `fcmaes`
-(2.1.0); the longest-established project here, with 164 GitHub stars on
-6 November 2026. It remains the recommended choice for objectives written
-in Python, because it evaluates them in parallel with multiprocessing.
+Gradient-free optimization: CMA-ES, differential evolution, jSO, BiteOpt
+and other algorithms, parallel retry, multi-objective search (MODE) and
+quality diversity, with many application tutorials. Published on PyPI as
+`fcmaes` (2.2.0); the longest-established project here, with 164 GitHub
+stars on 20 November 2026. It remains the recommended choice for objectives
+written in Python, because it evaluates them in parallel with
+multiprocessing.
 
 **Relations:** fcmaes-rust re-implements its algorithms in Rust. Both
 autoresearch projects use it as their inner optimizer, and the five domain
@@ -89,15 +92,15 @@ tutorial is the origin of hydro-craft.
 [github.com/dietmarwo/fcmaes-rust](https://github.com/dietmarwo/fcmaes-rust)
 
 Black-box, multi-objective and quality-diversity optimizers in the crate
-`fcmaes-core` (0.2.1), which does not compile, link or call the original
+`fcmaes-core` (0.4.0), which does not compile, link or call the original
 C++ code and has no job-layer dependency. Python bindings are on PyPI as
 `fcmaes-rust`; they fit best when the objective itself is in Rust. The
 optional, source-built `fcmaes-job-worker` serves optimization-jobs and
-offers an experimental exact-GP surrogate profile for expensive
-simulations with few evaluations. Its 22 tutorials range from GTOC1
-trajectory design to truss sizing, lens design, robot gaits and other
-simulator-backed problems, and its GTOP benchmarks compare it with the
-original.
+offers experimental exact-GP surrogate profiles (`fcmaes.surrogate/1`,
+and `/2` from 0.4.0) for expensive simulations with few evaluations. Its 22
+tutorials range from GTOC1 trajectory design to truss sizing, lens design,
+robot gaits and other simulator-backed problems, and its GTOP benchmarks
+compare it with the original.
 
 **Relations:** the job worker depends on the optimization-jobs crates.
 CRN-craft and CFD-craft build their optional workers on it. budel-craft,
@@ -113,7 +116,8 @@ GTOC1 route search applies the same split-brain pattern to planet orders.
 [github.com/dietmarwo/LP-IP-craft](https://github.com/dietmarwo/LP-IP-craft)
 
 Linear and mixed-integer linear optimization with Python bindings
-(`lp-ip-craft` 0.29.0) and a separate job worker for shell or MCP jobs.
+(`lp-ip-craft` 0.30.0, with optional MIP gap stops) and a separate job
+worker for shell or MCP jobs.
 Nine application tutorials cover allocation, battery dispatch, Sudoku,
 rostering, transportation, facility location, cutting stock, stochastic
 planning and the ESA SpOC 4 matching tables, each checked against an
@@ -128,8 +132,9 @@ shared guide routes linear and integer problems here instead of to fcmaes.
 [github.com/dietmarwo/SQP-craft](https://github.com/dietmarwo/SQP-craft)
 
 A sequential quadratic programming solver in Rust with Python bindings
-(`sqp-craft` 0.17.0) and a separate job worker. The dense default mode
-handles up to 256 variables. The experimental
+(`sqp-craft` 0.20.0) and a separate job worker. The dense default mode
+handles up to 256 variables, and since 0.19.0 it chooses the QP solver
+automatically. The experimental
 [structured mode](https://github.com/dietmarwo/SQP-craft/blob/main/docs/structured-sqp.md)
 (from 0.18.0) uses partitioned BFGS and sparse Clarabel QPs for models with small
 overlapping cliques. The Earth–Mars multiple-shooting study passed
@@ -157,8 +162,9 @@ jobs and checked binary file transfers, which the MCP server refuses, and
 places jobs explicitly on registered SSH nodes. Remote launch needs a
 systemd user manager with lingering on the node. It contains no solver or
 simulator of its own, and it hosts the shared solver-selection guide and
-the ecosystem page. Version 0.4.0; the solver repositories pin it by Git
-revision.
+the ecosystem page. Version 0.4.1 on crates.io; the solver repositories
+pin it by Git revision, currently `41d5f00` (main after 0.4.1), which adds
+an optional progress file to command jobs (`jobs progress`).
 
 **Relations:** fcmaes-rust, LP-IP-craft and SQP-craft provide job workers
 built on its API, and inlet-craft's worker uses a vendored copy of its
@@ -268,8 +274,10 @@ sensitivities, fcmaes job applications, global-to-SQP fitting and
 SBML/BioNetGen import subsets; the default Rust engine depends on none of
 them. Available as `crn-craft` on PyPI, with pandas results and, since
 0.5.0, paths and event columns as xarray arrays, and as the crates
-`crn-craft`, `crn-craft-rules` and `crn-craft-cli` (0.5.0). Four
-optimization lessons cover stochastic calibration and inference.
+`crn-craft`, `crn-craft-rules` and `crn-craft-cli` (0.8.0). Since 0.7.0 one
+engine serves network and rule-based models; 0.8.0 adds species with
+attributes to the Python builder. Four optimization lessons cover
+stochastic calibration and inference.
 
 **Relations:** its optional job integration builds on fcmaes-rust's job
 worker, and the optional `fit` extra installs fcmaes-rust and sqp-craft.
@@ -283,13 +291,18 @@ the optimization-jobs page.
 
 A native Rust solver for incompressible flow and passive gas dispersion, a
 bounded OpenFOAM 13 backend for comparison runs, and a Python API
-(`cfd-craft` 0.1.0 on PyPI, plus the crates `cfd-craft` and
+(`cfd-craft` 0.2.0 on PyPI, plus the crates `cfd-craft` and
 `cfd-craft-cli`). It includes numerical verification and bounded reference
-comparisons. Version 0.1.0 is a research prototype: physical qualification
-of the native street-canyon model is incomplete.
+comparisons. Version 0.2.0 adds opt-in city blocks and mobile
+measurements: buildings from map footprints, particle size classes,
+porous vegetation, concentrations along a route, virtual sensor rides and
+street emissions inferred from rides. It remains a research prototype: the
+new models are numerically verified, not experimentally validated, and
+physical qualification of the native street-canyon model is incomplete.
 
 **Relations:** the optional `fcmaes-cfd-worker`, built outside the main
-workspace, uses fcmaes-rust's job worker. Listed as a simulation model on
+workspace, uses fcmaes-rust's job worker (models `app.cfd.source-allocation`
+and `app.cfd.wind-direction`). Listed as a simulation model on
 the optimization-jobs page.
 
 ## 5. Astrodynamics
@@ -303,13 +316,16 @@ the optimization-jobs page.
 Lambert solvers, Kepler and adaptive Taylor propagation, ephemerides,
 flybys, Sims–Flanagan and zero-order-hold low-thrust legs, and a trajectory
 gym with multiple-gravity-assist and low-thrust benchmark problems. Released
-as the crate `pykep-core` and the Python wheel `pykep-rust` (0.1.5). The
-wheel includes the gym; its Rust crate `pykep-trajopt` is built from source
+as the crate `pykep-core` and the Python wheel `pykep-rust` (0.1.6, which
+adds fixed-duration Sims–Flanagan multiple shooting). The wheel includes
+the gym; its Rust crate `pykep-trajopt` is built from source
 and not published. Also includes an astrodynamics introduction for
 programmers and benchmarks against PyKEP and heyoka.
 
-**Relations:** fcmaes-rust's GTOC1 tutorials use `pykep-core`, and its gym
-benchmark tool uses `fcmaes-core`. pykep-lambert consumes it.
+**Relations:** fcmaes-rust's GTOC1 tutorials use `pykep-core` (pinned at
+0.1.5), and its gym benchmark tool uses `fcmaes-core`. pykep-lambert
+consumes it, and SQP-craft's multiple-shooting scaling study uses its
+Sims–Flanagan chain.
 
 ### 13. pykep-lambert
 
