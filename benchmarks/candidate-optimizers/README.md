@@ -1121,8 +1121,15 @@ an integer for the candidate; [DEVIATIONS.md](DEVIATIONS.md) says why.
 core optimizer on `truss_sizing` at equal evaluation budgets. The candidate
 runs through the Python driver `run_arrde.py`; the core solvers run through
 the Rust runner with the protocol-T settings of the declaration. The round
-was restarted on the corrected CMA-ES (DEVIATIONS.md, round 4, entry 6), and
-stage 2 has two more core arms, jSO→CMA with `repair_z` off (entry 7).
+was restarted with `CmaesParams::repair_z` on (DEVIATIONS.md, round 4,
+entry 6), and stage 2 has two more core arms, jSO→CMA with `repair_z` off
+(entry 7).
+
+`repair_z` is off by default (entry 8). The committed rows named `cma`,
+`de_cma` and `jso_cma` were produced with it on and reproduce at revision
+`d01b252`; with the current code the commands below give the default
+update for these arms, which for jSO→CMA is what the rows named
+`jso_cma_z0` and the files in `results/round4/before-cma-fix/` hold.
 
 ### Build the candidate
 

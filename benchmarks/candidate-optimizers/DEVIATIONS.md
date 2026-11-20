@@ -217,3 +217,16 @@ before any run of ROUND4.md. No result of the test existed.
    - `jso_cma_z0` must reproduce the first-start rows of `jso_cma` exactly
      (same seeds, the update of 0.3.0); two repetitions of the one-run
      shape of stage 1 are rerun into a scratch file to check this.
+8. **The default of `repair_z` changed after the runs.** The restart of
+   entry 6 ran while the correction was on by default. `CmaesParams::repair_z`
+   has since become an option that is off by default, which is the update
+   of 0.3.0. In the files of this round therefore:
+   - the rows named `cma`, `de_cma` and `jso_cma` in `results/round4/` were
+     produced with `repair_z: true`. They reproduce at revision `d01b252` of
+     this repository, where that was the default, and not with the current
+     default;
+   - the rows named `jso_cma_z0`, and all rows in
+     `results/round4/before-cma-fix/`, were produced with the update that
+     is the default.
+   The decision does not depend on the setting: ARRDE's median is below
+   neither.

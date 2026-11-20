@@ -155,6 +155,8 @@
     - [Round-3 union report](benchmarks/candidate-optimizers/results/round3b/report-union.md)
     - [Round-3 convergence-test protocol](benchmarks/candidate-optimizers/ROUND3C.md)
     - [Round-3 convergence-test report](benchmarks/candidate-optimizers/results/round3c/report.md)
+    - [Round-4 protocol](benchmarks/candidate-optimizers/ROUND4.md)
+    - [Round-4 report](benchmarks/candidate-optimizers/results/round4/report.md)
 - [Example data notices: Mazda](examples/data/MAZDA_NOTICE.md)
   - [Multi-UAV data](examples/data/UAV_NOTICE.md)
   - [Buckingham–Pi data](examples/data/BUCKINGHAM_NOTICE.md)

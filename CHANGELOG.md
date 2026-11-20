@@ -163,6 +163,10 @@ phase, with breaking changes called out explicitly.
   Minion, libcmaes and NOMAD. No decision changes; ARRDE on structural sizing
   and the BIPOP settings of the job worker are open follow-ups
   ([the algorithm portfolio](docs/algorithm-portfolio.md)).
+- Round 4 of the candidate benchmark tests ARRDE (Minion 2.0.1) against all
+  core optimizers on the truss at one and four million evaluations. It is
+  not accepted: it beats BiteOpt and does not beat jSO→CMA
+  ([DECISION.md](benchmarks/candidate-optimizers/DECISION.md)).
 - The algorithm portfolio lists GOMEA (LT-GOMEA, permutation GOMEA,
   RV-GOMEA) and other linkage-learning EAs as surveyed and not benchmarked,
   with the reasons and sources

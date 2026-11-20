@@ -291,6 +291,71 @@ summarizes it. Where it meets this benchmark:
   worker already has BIPOP restarts; the finding is about their settings.
 - **New candidate: ARRDE.** On a 171-variable truss it reaches a median of
   396 kg where BiteOpt reaches 520 kg at the deadline. BiteOpt was the only
-  core optimizer in that comparison. A run of ARRDE against all core solvers
-  on `truss_sizing` under a declared protocol here would decide it.
+  core optimizer in that comparison. Round 4 below runs ARRDE against all
+  core solvers on `truss_sizing`.
 - **MADS.** NOMAD 4.6.0 shows no gain in any of seven families.
+
+# Round 4: ARRDE on the truss
+
+The eight-worker benchmark above left one question: is ARRDE better than
+every core optimizer on the truss, or only better than BiteOpt?
+[ROUND4.md](ROUND4.md) tests it at equal evaluation budgets under the
+maintainer's acceptance rule: a candidate is accepted if it is superior on
+one real problem at the end of the budget; an early lead does not count.
+
+## Outcome
+
+**Not accepted.** ARRDE is superior at neither stage
+([report](results/round4/report.md)).
+
+Median cost on `truss_sizing`, 10 repetitions, lower is better:
+
+| Stage | Evaluations | Shape | ARRDE | jSO→CMA, default update | jSO→CMA, `repair_z` on |
+|---|---:|---|---:|---:|---:|
+| 1 | 1,000,000 | one run | 480.6 | 452.8 | 470.5 |
+| 1 | 1,000,000 | eight runs | 628.0 | not completed | 477.3 |
+| 2 | 4,000,000 | one run | 437.2 | 394.5 | 420.3 |
+| 2 | 4,000,000 | eight runs | not run | 417.9 | 421.6 |
+
+At stage 2 the test of ARRDE against the best core arm gives p = 0.054
+(0.108 after correction over the two stages), in favor of jSO→CMA.
+
+## What the runs show
+
+- **ARRDE beats BiteOpt on this problem**, at one million evaluations by
+  480.6 against 559.7 as one run. That is the eight-worker result, and it
+  holds by evaluations.
+- **jSO→CMA is ahead of both.** It was not in the eight-worker campaign,
+  whose truss comparison was with BiteOpt alone.
+- **Early, ARRDE is behind.** At 100,000 evaluations six of its ten runs
+  end on an infeasible design; BiteOpt has the lowest median there.
+- **Eight shorter runs do not help ARRDE** (628.0 against 480.6 as one
+  run).
+
+## The two CMA-ES updates
+
+The round ran while the handling of samples moved onto the bounds was being
+changed in core ([DEVIATIONS.md](DEVIATIONS.md), round 4, entries 6 to 8).
+It therefore has jSO→CMA with both settings of `CmaesParams::repair_z`. The
+default update (`false`) has the lower medians on this problem; the
+differences between the two settings are not significant (p = 0.41 and 0.21
+at stage 2). ARRDE's median is below neither.
+
+In the raw files the rows named `jso_cma` are the runs with `repair_z` on,
+and the rows named `jso_cma_z0` and those in `before-cma-fix/` are the runs
+with the default update.
+
+## Limits
+
+- One problem, 10 repetitions, one host.
+- Equal evaluations, not equal time. ARRDE needs about two thirds of the
+  time of jSO→CMA per evaluation here, so at equal time on an objective
+  this cheap it gets more evaluations than this test gives it.
+- ARRDE runs from its authors' library, Minion 2.0.1. The library spends
+  slightly more than its budget; the driver cuts the surplus.
+- The eight-run shape of stage 1 with the default update was not completed.
+
+## What would change the decision
+
+A real problem on which ARRDE is superior at the end of the budget, under a
+protocol declared here.
