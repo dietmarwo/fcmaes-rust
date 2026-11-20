@@ -19,6 +19,19 @@ phase, with breaking changes called out explicitly.
 
 ### Fixed
 
+- `fcmaes.retry/1` jobs with jSO, CMA-ES (also with `ipop`/`bipop`
+  restarts), CR-FM-NES or PGPE kept evaluating the rest of the population
+  in progress after a cancel or the wall deadline: with one thread up to
+  `population-1` further evaluations started after the stop (jSO: its whole
+  generation, 262 at dimension 15), with several threads up to
+  `population-threads`. With a plain model sleeping 0.25 s per evaluation,
+  CMA-ES on one thread returned 2.8 s after a 5 s deadline, jSO 61 s. The
+  worker's objective now evaluates nothing once the job has stopped: the
+  candidates of an asked population or batch that have not started are
+  skipped (not counted as evaluations), evaluations in flight finish, and
+  the best evaluated point is returned as before. A plain model now
+  overshoots the deadline by at most its longest single evaluation. Runs
+  that are not stopped are unchanged bit for bit.
 - Active CMA-ES: when a step norm of the worst samples was zero or not
   finite, the negative (active) covariance update divided by it and put NaN
   into the covariance; every stop test then compared NaN and the run ended

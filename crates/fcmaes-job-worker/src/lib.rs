@@ -220,7 +220,7 @@ impl Worker for Adapter {
             "none":"no usable answer (claimed evidence: a penalty value, a failed simulation, an empty front or archive); with evidence.refuted, a best_found claim that failed its re-check"
         });
         d["cancellation"] = json!({
-            retry::PROFILE: "active retries stop between evaluations, batches or generations (best point claimed); Scalar::simulation models also at SimContext checkpoints, later evaluations return +inf",
+            retry::PROFILE: "active retries stop between evaluations: evaluations in flight finish, candidates of an asked population or batch that have not started are skipped, no restart starts (best evaluated point claimed); Scalar::simulation models also at SimContext checkpoints, later evaluations return +inf",
             mode::PROFILE: "between generations; the run returns what it has",
             map_elites::PROFILE: "between generations; the run returns what it has",
             evaluate::PROFILE: "between points; Scalar::simulation models also at SimContext checkpoints"
