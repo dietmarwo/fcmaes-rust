@@ -105,6 +105,14 @@ So jSO widens the first-stage choice; it does not replace DE. DE→CMA stays
 the default sequence, and jSO→CMA is a reasonable second attempt when
 DE→CMA stalls.
 
+The jSO stage runs unchanged. fcmaes DE replaces individuals that have
+stopped improving; a study on 12 application objectives put that rule into
+the jSO stage (576 matched groups at 15,500 and 62,000 evaluations; its
+records are not in this repository). At 15,500 evaluations the final
+results were mixed (123 wins, 120 losses, 45 ties against unchanged
+jSO→CMA). At 62,000 the rule lost 156 of 288 comparisons and won 74, and
+two variants that protect the best individuals lost as well.
+
 ### CR-FM-NES to BiteOpt for routing
 
 The [OneForAll tutorial](https://github.com/dietmarwo/fast-cma-es/blob/master/tutorials/OneForAll.adoc)
@@ -362,14 +370,68 @@ Two findings needed a follow-up:
    does not beat jSO→CMA: 480.6 against 452.8 at one million evaluations,
    437.2 against 394.5 at four million
    ([decision file](../benchmarks/candidate-optimizers/DECISION.md)).
-2. **BIPOP settings in the job worker: open.** Initial step size, bounds handling
-   and restart schedule should be compared with libcmaes on the circuit and
-   the controller.
+2. **BIPOP settings in the job worker: settled for the controller.** The
+   gap is a matter of bound handling, not of the restart schedule: plain
+   CMA-ES as the worker runs it reaches a median loss of 1.134 with the
+   default update and 0.137 with `repair_z: true`, where libcmaes reached
+   0.148. The `cmaes` kind takes `repair_z` as a parameter. See
+   [CMA-ES and the bounds](#cma-es-and-the-bounds). The circuit was not
+   examined.
 
 A third observation needs a look: on the reaction network, with evaluations
 of 90 ms and tails above a second, fcmaes CMA-ES and its IPOP and BIPOP
 variants each lost one of five screening runs to the deadline. The cause is
 not established.
+
+## CMA-ES and the bounds
+
+Active CMA-ES moves a sample that leaves the box onto the bounds. How it
+updates from such a sample was examined in November 2026, after the
+eight-worker benchmark showed the job worker's CMA-ES far behind libcmaes on
+the 118-variable neural controller.
+
+- **clip**, the default (`repair_z: false`): the update uses the `z` of the
+  unmoved sample. Where samples keep being clipped, the step size grows
+  until the run stops.
+- **repair** (`repair_z: true`): the update uses the `z` of the evaluated
+  point.
+- **transform**, the method of pycma's `BoundTransform`, on an experimental
+  branch: CMA-ES samples and updates in unbounded coordinates, and only the
+  evaluated point is mapped into the box.
+
+Two studies of 2,400 matched pairs on 12 application objectives compared
+clip and repair, at about 16,000 and 63,000 evaluations per run. Their
+records are not in this repository. At the larger budget clip won more
+often in every workflow: standalone 222 to 149, after DE 217 to 62, after
+jSO 205 to 75, at exactly equal work 166 to 49, in coordinated DE→CMA retry
+74 to 43. Clip is therefore the default, and repair is an option.
+
+A declared test then compared all three modes on four problems, with the
+same seeds (medians, lower is better):
+
+| Problem and workflow | Clip | Repair | Transform |
+|---|---:|---:|---:|
+| Neural controller, plain CMA-ES, 110,000 evaluations, 10 runs | 1.134 | 0.1372 | 0.1369 |
+| Truss, jSO→CMA, 1,000,000 evaluations, 10 runs | 452.8 | 470.5 | 481.8 |
+| Messenger, coordinated DE→CMA retry, 12 runs | 8.70163 | 8.71050 | 8.70164 |
+| Cassini2, coordinated DE→CMA retry, 12 runs | 8.670 | 8.648 | 8.688 |
+
+- On the controller both alternatives remove the failure of clip; transform
+  is slightly better than repair (p = 0.021).
+- On the other three problems neither alternative is significantly better
+  than clip. Transform ends on an infeasible truss in 3 of 10 runs, repair
+  in 1, clip in none.
+- The rule declared for the test asked transform to keep the controller
+  gain and to beat repair's median on two of the other three problems. It
+  does so on one. **Transform is not merged; repair stays the option.**
+
+The protocol, the implementation, the raw rows and the report are on the
+unmerged branch
+[`experiment/cmaes-bound-transform`](https://github.com/dietmarwo/fcmaes-rust/tree/experiment/cmaes-bound-transform/benchmarks/cmaes-bound-handling).
+
+When to set `repair_z: true`: runs that stop early with `stop_tol_upx` far
+from the optimum, optima on or outside the bounds, samples clipped
+throughout the run.
 
 ## Limits of the evidence
 
@@ -387,11 +449,10 @@ not established.
   reference implementation with default parameters, compared by evaluations,
   on problems of at most 171 variables and 2 ms per evaluation.
 - **CMA-ES and the bounds.** Rounds 1 to 3 and the eight-worker benchmark
-  ran active CMA-ES with its default update, `CmaesParams::repair_z: false`:
-  a sample moved onto a bound enters the update with its unmoved `z`. The
-  option `repair_z: true` updates from the evaluated point instead; it was
-  not part of these rounds, and it can change CMA-ES, DE→CMA and jSO→CMA
-  results on problems whose samples keep reaching the bounds.
+  ran active CMA-ES with its default update, `CmaesParams::repair_z: false`.
+  Round 4 has jSO→CMA with both settings. The comparison of the bound
+  modes rests on four problems of this repository and on two studies whose
+  records are kept elsewhere.
 - **Not covered by the rounds.** Noisy objectives, more than 171 variables,
   multi-objective optimization, coordinated retry.
 - **The eight-worker benchmark.** Wall-clock results depend on hosts and

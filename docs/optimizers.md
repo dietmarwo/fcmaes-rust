@@ -191,12 +191,14 @@ Key `CmaesParams` defaults:
 moved into the bounds enters the update with the `z` of the unmoved sample
 (`false`, the default and the update of 0.3.0), or with the `z` of the point
 that was evaluated (`true`). In 2,400 matched pairs on 12 application
-objectives and a benchmark `false` won more often: standalone bounded
-CMA-ES 217 to 152 (15 ties), as the second stage of DE→CMA 178 to 118 and of
-jSO→CMA 197 to 144; coordinated DE→CMA retry leaned slightly toward `true`
-(72 to 58). `true` keeps the step size from growing where samples keep being
-moved onto the bounds: on a 118-variable neural controller it reached a
-median loss of 0.137 against 1.13. Try `true` when runs stop early with
+objectives at about 63,000 evaluations per run `false` won more often:
+standalone bounded CMA-ES 222 to 149 (13 ties), as the second stage of
+DE→CMA 217 to 62 and of jSO→CMA 205 to 75, at exactly equal work 166 to 49,
+and in coordinated DE→CMA retry 74 to 43. At a quarter of that budget the
+same pairs gave the same direction except for coordinated retry, which
+leaned toward `true` (72 to 58). `true` keeps the step size from growing
+where samples keep being moved onto the bounds: on a 118-variable neural
+controller it reached a median loss of 0.137 against 1.13. Try `true` when runs stop early with
 `stop_tol_upx` (stop code 3), when optima lie on or outside the bounds, or
 when many samples are clipped throughout the run. Runs that stay inside the
 bounds, unbounded runs and `tell_x` give the same results with either value.
