@@ -6,6 +6,18 @@ phase, with breaking changes called out explicitly.
 
 ## [Unreleased]
 
+### Changed
+
+- optimization-jobs pin `2bfa8e4` (tag `v0.5.0`, the optimization-jobs 0.5.0
+  release; the job crates are 0.5.0) in every manifest and lockfile,
+  including the four tutorials with a job worker; the lockfiles change only
+  in the two optimization-jobs entries. The guide behind `get_guide` names
+  this repository's 0.4.0 release, fcmaes 2.2.0 and CFD-craft's
+  wind-direction model; the worker SDK, the job envelope, the worker
+  protocol and the result contract are unchanged. The GTOC1 route search
+  requires `optimization-job-api` 0.5. `docs/repositories.md` records
+  optimization-jobs 0.5.0.
+
 ## [0.4.0] - 2026-11-20
 
 New in `fcmaes-core`: jSO, the CR-FM-NES → BiteOpt sequence and the CMA-ES
