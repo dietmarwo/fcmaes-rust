@@ -298,6 +298,7 @@ Both binaries share the same parser:
 | `--max-eval-fac N` | 50 | Advanced final budget factor |
 | `--check-interval N` | 100 | Advanced diversity checkpoint interval |
 | `--repair-z` | off | Sets [`CmaesParams::repair_z`](optimizers.md#active-cma-es) to `true` for every CMA-ES the runner builds (the second stage of DE→CMA and jSO→CMA, in basic and advanced retry) |
+| `--jso-cma` | off | Coordinated retry (`gtop-advexamples`) runs jSO→CMA instead of DE→CMA in every retry; basic retry is not affected |
 | `--no-repair-z` | off | Sets `repair_z` to `false`, its default and the update of 0.3.0; accepted so that scripts can state the setting |
 
 Show the installed parser help with:

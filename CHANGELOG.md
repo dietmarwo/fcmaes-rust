@@ -6,6 +6,11 @@ phase, with breaking changes called out explicitly.
 
 ## [Unreleased]
 
+### Added
+
+- `gtop-advexamples --jso-cma`: coordinated retry runs jSO→CMA instead of
+  DE→CMA in every retry (default off).
+
 ### Fixed
 
 - Active CMA-ES: when a step norm of the worst samples was zero or not
