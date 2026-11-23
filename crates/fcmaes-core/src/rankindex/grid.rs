@@ -249,7 +249,7 @@ impl GridIndex {
             let d = axes.len();
             let rows = &self.rows[begin * d..end * d];
             fn scan<const D: usize>(rows: &[u32], ids: &[u32], axes: &[Axis], hits: &mut Vec<u32>) {
-                for (row, &id) in rows.chunks_exact(D).zip(ids) {
+                for (row, &id) in rows.as_chunks::<D>().0.iter().zip(ids) {
                     if (0..D).all(|j| axes[j].span.contains(row[j])) {
                         hits.push(id);
                     }
