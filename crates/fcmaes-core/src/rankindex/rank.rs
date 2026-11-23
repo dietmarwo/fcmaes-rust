@@ -1,9 +1,4 @@
-use std::cmp::Ordering;
-
-pub(crate) fn cmp(a: f64, b: f64) -> Ordering {
-    a.partial_cmp(&b).expect("coordinate must not be NaN")
-}
-
+// Part of the rank index port; see the header of rankindex.rs and NOTICE.fronts.
 pub(super) fn validate(points: &[f64], d: usize) -> Result<usize, &'static str> {
     if d == 0 || !points.len().is_multiple_of(d) {
         return Err("invalid row-major point array");
@@ -16,106 +11,6 @@ pub(super) fn validate(points: &[f64], d: usize) -> Result<usize, &'static str> 
         return Err("stored coordinates must be finite");
     }
     Ok(n)
-}
-
-// Match the positional ranks of equal coordinates in the supplied GCC 14 build.
-// std::sort leaves these ties unspecified across C++ libraries. Its median-of-three
-// partitions define their practical order. Insertion sort finishes the short runs.
-fn axis_order(points: &[f64], d: usize, axis: usize) -> Vec<u32> {
-    let mut ids: Vec<_> = (0..(points.len() / d) as u32).collect();
-    if ids.is_empty() {
-        return ids;
-    }
-    let value = |id: u32| points[id as usize * d + axis];
-    fn sift<T: Fn(u32) -> f64>(a: &mut [u32], mut hole: usize, item: u32, value: &T) {
-        let top = hole;
-        while 2 * hole + 1 < a.len() {
-            let l = 2 * hole + 1;
-            let r = l + 1;
-            let child = if r < a.len() && value(a[r]) >= value(a[l]) {
-                r
-            } else {
-                l
-            };
-            a[hole] = a[child];
-            hole = child;
-        }
-        while hole > top {
-            let parent = (hole - 1) / 2;
-            if value(a[parent]) >= value(item) {
-                break;
-            }
-            a[hole] = a[parent];
-            hole = parent;
-        }
-        a[hole] = item;
-    }
-    fn partition<T: Fn(u32) -> f64>(mut a: &mut [u32], mut depth: u32, v: &T) {
-        while a.len() > 16 {
-            if depth == 0 {
-                for i in (0..a.len() / 2).rev() {
-                    sift(a, i, a[i], v);
-                }
-                for end in (1..a.len()).rev() {
-                    a.swap(0, end);
-                    let item = a[0];
-                    sift(&mut a[..end], 0, item, v);
-                }
-                return;
-            }
-            depth -= 1;
-            let (i, j, k) = (1, a.len() / 2, a.len() - 1);
-            let (x, y, z) = (v(a[i]), v(a[j]), v(a[k]));
-            let mid = if x < y {
-                if y < z {
-                    j
-                } else if x < z {
-                    k
-                } else {
-                    i
-                }
-            } else if x < z {
-                i
-            } else if y < z {
-                k
-            } else {
-                j
-            };
-            a.swap(0, mid);
-            let pivot = v(a[0]);
-            let (mut lo, mut hi) = (1, a.len());
-            loop {
-                while v(a[lo]) < pivot {
-                    lo += 1;
-                }
-                hi -= 1;
-                while pivot < v(a[hi]) {
-                    hi -= 1;
-                }
-                if lo >= hi {
-                    break;
-                }
-                a.swap(lo, hi);
-                lo += 1;
-            }
-            let (left, right) = a.split_at_mut(lo);
-            partition(right, depth, v);
-            a = left;
-        }
-    }
-    let depth = 2 * ids.len().ilog2();
-    partition(&mut ids, depth, &value);
-    for i in 1..ids.len() {
-        let id = ids[i];
-        let x = value(id);
-        let mut j = i;
-        while j > 0 && x < value(ids[j - 1]) {
-            ids[j] = ids[j - 1];
-            j -= 1;
-        }
-        ids[j] = id;
-    }
-    ids
 }
 
 pub(crate) struct Ranks {
@@ -148,9 +43,10 @@ impl Span {
     }
 }
 
-// Cache each comparison key locally. Use the reference order for tied columns.
+// Monotone integer key of a finite coordinate. Both zeros share one key, so the
+// stable radix passes keep equal coordinates in row order.
 fn ordered_bits(x: f64) -> u64 {
-    let bits = x.to_bits();
+    let bits = if x == 0. { 0 } else { x.to_bits() };
     if bits >> 63 == 0 {
         bits ^ (1 << 63)
     } else {
@@ -174,24 +70,16 @@ fn make_column(n: usize, entries: impl IntoIterator<Item = (f64, u32)>) -> Colum
     }
     Column { coords, ids, by_id }
 }
+// Rows sorted by coordinate; equal coordinates keep ascending row order.
+// Positional ranks, Borda output order and grid cells are therefore the same
+// on every platform and in the C++ indexes of fast-cma-es.
 fn sorted_column(points: &[f64], d: usize, j: usize, n: usize) -> Column {
-    let reference_order = || {
-        make_column(
-            n,
-            axis_order(points, d, j)
-                .into_iter()
-                .map(|id| (points[id as usize * d + j], id)),
-        )
-    };
-    if n < 256 {
-        return reference_order();
-    }
-    let mut sample = std::array::from_fn::<_, 64, _>(|i| points[i * d + j]);
-    sample.sort_unstable_by(|a, b| cmp(*a, *b));
-    if sample.windows(2).any(|w| w[0] == w[1]) {
-        return reference_order();
-    }
     let mut entries: Vec<_> = (0..n).map(|i| (points[i * d + j], i as u32)).collect();
+    if n < 256 {
+        // A stable sort on the radix key gives the same order as the passes below.
+        entries.sort_by_key(|&(x, _)| ordered_bits(x));
+        return make_column(n, entries);
+    }
     let mut scratch = vec![(0., 0u32); n];
     for shift in [0, 11, 22, 33, 44, 55] {
         let bucket = |x: f64| ((ordered_bits(x) >> shift) & 2047) as usize;
@@ -214,9 +102,6 @@ fn sorted_column(points: &[f64], d: usize, j: usize, n: usize) -> Column {
             *pos += 1;
         }
         std::mem::swap(&mut entries, &mut scratch);
-    }
-    if entries.windows(2).any(|w| w[0].0 == w[1].0) {
-        return reference_order();
     }
     make_column(n, entries)
 }

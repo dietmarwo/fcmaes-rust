@@ -1,4 +1,7 @@
-// MT19937 and the two-word canonical binary64 draw used by the supplied libstdc++ driver.
+// Part of the archive DE port; see the header of archivede.rs and NOTICE.fronts.
+// MT19937 (std::mt19937) and the uniform [0, 1) draw of
+// std::generate_canonical<double, 53>: two 32-bit words, low word first.
+// fast-cma-es's C++ archive DE uses the same draw, so equal seeds give equal runs.
 pub(super) struct Mt {
     data: [u32; 624],
     pos: usize,

@@ -6,7 +6,7 @@
 // first objective, the delta hypervolume updates, the cached rejection point
 // and the append/gap fast paths. The Rust port and its adaptations
 // (compensated area sums, error handling, outside points, payloads,
-// preference scores) are by Dietmar Wolz; Aleksey Vaneev's copyright covers
+// preference scores, paged storage) are by Dietmar Wolz; Aleksey Vaneev's copyright covers
 // the original C++ code only.
 //
 // Original C++ code (bitehv2.h): Copyright (c) 2026 Aleksey Vaneev.

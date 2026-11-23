@@ -1,14 +1,19 @@
 # Box indexes and archive-gated differential evolution
 
-All objectives are minimized. These APIs are available when building this
-source checkout. The rank indexes use original input row IDs. Both Pareto
-archives can retain the decision associated with an accepted objective row.
+All objectives are minimized. These tools are not yet in a crates.io or PyPI
+release; until then, build `fcmaes-core` or `fcmaes-rust` from the repository.
+The rank indexes use original input row IDs. Both Pareto archives can retain
+the decision associated with an accepted objective row.
+
+fast-cma-es has the same tools in C++ (`fcmaes.rankindex`, `fcmaes.archivede`,
+`fcmaes.pareto`). Given the same inputs, both packages return the same row IDs
+in the same order, and `ArchiveDE` with the same seed performs the same run.
 
 | Task | Rust in `fcmaes_core` | Python in `fcmaes_rust` |
 |---|---|---|
-| Find rows inside closed boxes | `rankindex::BordaIndex`, `rankindex::GridIndex` | `BordaBoxIndex`, `GridBoxIndex` |
-| Run archive-gated DE | `archivede::ArchiveDe<X, Y>` | `ArchiveDE` |
-| Keep every strictly nondominated observation, including duplicates | `archivede::ParetoArchive<Y, P>` | `ParetoArchiveND` |
+| Find rows inside closed boxes | `BordaIndex`, `GridIndex` (module `rankindex`) | `BordaBoxIndex`, `GridBoxIndex` |
+| Run archive-gated DE | `ArchiveDe<X, Y>`, `ArchiveDeParams` (module `archivede`) | `ArchiveDE` |
+| Keep every strictly nondominated observation, including duplicates | `ParetoArchiveND<Y, P>` (module `archivede`) | `ParetoArchiveND` |
 | Keep one payload per 2D objective pair and track exact hypervolume | `ParetoArchive2D<P>` | `ParetoArchive2D` |
 | Measure mean distance from reference points to an approximation | `igd(front, reference)` | `igd(front, reference)` |
 
@@ -21,7 +26,7 @@ result. The checked Rust constructors validate matrix size, dimensions and,
 for the grid, the nominal query volume and representability of its cell keys.
 
 ```rust
-use fcmaes_core::rankindex::{BordaIndex, GridIndex};
+use fcmaes_core::{BordaIndex, GridIndex};
 
 fn main() -> Result<(), &'static str> {
     let points = [0., 1., 0.5, 0.5, 1., 0.]; // Three rows of width two.
@@ -35,8 +40,10 @@ fn main() -> Result<(), &'static str> {
 }
 ```
 
-Borda emits IDs in shortest-axis rank order and stores O(n d²) cross-ranks.
-The grid emits IDs in ascending cell-key and then input-row order.
+Ranks sort each axis by coordinate, and equal coordinates keep ascending row
+order. Borda emits IDs in that order on the axis with the shortest rank
+interval and stores O(n d²) cross-ranks. The grid emits IDs in ascending
+cell-key and then input-row order.
 Its positive `query_volume` parameter is an expected query volume fraction
 used to select the grid resolution. Changing it preserves box membership.
 
@@ -62,7 +69,7 @@ of exact integer counters. The Borda columns are `axis_candidates` and
 ## Optimize and retrieve the decisions
 
 ```rust
-use fcmaes_core::archivede::{ArchiveDe, ArchiveDeParams};
+use fcmaes_core::{ArchiveDe, ArchiveDeParams};
 
 fn main() -> Result<(), &'static str> {
     let params = ArchiveDeParams {
@@ -79,6 +86,8 @@ fn main() -> Result<(), &'static str> {
 ```
 
 Use `ArchiveDe<Vec<f64>, Vec<f64>>` when dimensions are known at runtime.
+The DE uses DE/rand/1/bin with F = 0.5 and CR = 0.3. `ArchiveDeParams`
+defaults to a population of 100, 100,000 evaluations and seed 0.
 The population must be at least four and larger than the objective count.
 Equal lower and upper bounds fix a coordinate. The evaluation budget includes
 initialization and can end partway through a generation. `ask` returns the
@@ -113,6 +122,13 @@ the front by increasing first objective, keeps the first payload per pair and
 excludes points above the reference. Rust also exposes preference scores
 and lazy payload creation. See the [2D archive guide](PARETO_ARCHIVE.md).
 
-The two index algorithms and the archive-gated DE follow the supplied
-`borda_box_query-1.cpp`, `grid_point_index-1.cpp` and `archive_de.cpp`.
-The source notices accompany the crate in `NOTICE.fronts` and `NOTICE.pareto`.
+## Origin
+
+The archive-gated DE and its archive are a Rust port of `archive_de.cpp` from
+Aleksey Vaneev's [BiteOpt](https://github.com/avaneev/biteopt) repository
+(commit e8d6785). Unlike that version, the port compares entries whose rounded
+objective sums are equal, which can hide a dominance relation. The Borda and
+grid indexes are ports of two C++ programs that are not part of the published
+repository; the grid program is by Aleksey Vaneev. The 2D hypervolume archive
+is derived from BiteOpt's `bitehv2.h`. `NOTICE.fronts` and `NOTICE.pareto`
+hold the copyright and license notices.

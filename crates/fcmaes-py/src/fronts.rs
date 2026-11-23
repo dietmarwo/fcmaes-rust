@@ -1,6 +1,6 @@
 //! NumPy interfaces to the Rust rank indexes and multi-objective front tools.
 use crate::common::{F64Mat, F64Vec, matrix_rows, slice_or_vec};
-use fcmaes_core::archivede::{ArchiveDe, ArchiveDeParams, ParetoArchive};
+use fcmaes_core::archivede::{ArchiveDe, ArchiveDeParams, ParetoArchiveND};
 use fcmaes_core::rankindex::{BordaIndex, GridIndex};
 use fcmaes_core::{ParetoArchive2D, ParetoError};
 use numpy::ndarray::Array2;
@@ -169,7 +169,7 @@ box_class!(
 
 enum Archive {
     Hv(ParetoArchive2D<Vec<f64>>),
-    Nd(ParetoArchive<Vec<f64>, Vec<f64>>),
+    Nd(ParetoArchiveND<Vec<f64>, Vec<f64>>),
 }
 struct Store {
     archive: Archive,
@@ -303,6 +303,12 @@ macro_rules! archive_class {
                 self.inner.front(py)
             }
 
+            /// Length of the payload stored with each row.
+            #[getter]
+            fn payload_dim(&self) -> usize {
+                self.inner.dx
+            }
+
             fn __len__(&self) -> usize {
                 match &self.inner.archive {
                     Archive::Hv(a) => a.len(),
@@ -338,18 +344,31 @@ fn make_nd(nobj: usize, dx: usize) -> PyResult<Store> {
         return Err(invalid("objective count must be positive"));
     }
     Ok(Store {
-        archive: Archive::Nd(ParetoArchive::new(nobj)),
+        archive: Archive::Nd(ParetoArchiveND::new(nobj)),
         dx,
         dy: nobj,
     })
 }
 archive_class!(
     PyNd, "ParetoArchiveND", "Strict Pareto archive with duplicate observations and optional payloads.",
-    nobj: usize, make_nd
+    nobj: usize, make_nd,
+    /// Number of objectives.
+    #[getter]
+    fn nobj(&self) -> usize {
+        self.inner.dy
+    }
 );
 archive_class!(
     PyHv, "ParetoArchive2D", "Exact reference-bounded 2D archive with incremental hypervolume.",
     reference: F64Vec<'_>, make_hv,
+    /// Hypervolume reference point.
+    #[getter]
+    fn reference(&self) -> (f64, f64) {
+        match &self.inner.archive {
+            Archive::Hv(a) => a.reference().into(),
+            Archive::Nd(_) => unreachable!("ParetoArchive2D always stores the 2D archive"),
+        }
+    },
     /// Dominated area up to the configured reference point.
     fn hypervolume(&self) -> f64 {
         match &self.inner.archive {
@@ -359,7 +378,7 @@ archive_class!(
     }
 );
 
-/// Synchronous archive-gated DE/rand/1/bin with a hard evaluation cap.
+/// Synchronous archive-gated DE/rand/1/bin (F = 0.5, CR = 0.3) with a hard evaluation cap.
 #[pyclass(name = "ArchiveDE", module = "fcmaes_rust._fcmaes_ext")]
 struct PyDe {
     inner: ArchiveDe<Vec<f64>, Vec<f64>>,
@@ -367,7 +386,7 @@ struct PyDe {
 #[pymethods]
 impl PyDe {
     #[new]
-    #[pyo3(signature=(nobj,lower,upper,*,popsize=100,max_evaluations=20_100,seed=100,gate=true,tiered=true))]
+    #[pyo3(signature=(nobj,lower,upper,*,popsize=100,max_evaluations=100_000,seed=0,gate=true,tiered=true))]
     #[allow(clippy::too_many_arguments)]
     fn new(
         nobj: usize,
@@ -432,7 +451,8 @@ impl PyDe {
     }
 }
 
-/// Inverted generational distance, with the approximation front first.
+/// Inverted generational distance: the mean Euclidean distance from each
+/// reference row to its nearest front row. The approximation front comes first.
 #[pyfunction]
 fn igd(py: Python<'_>, front: F64Mat<'_>, reference: F64Mat<'_>) -> PyResult<f64> {
     let (a, b) = (matrix_rows(&front), matrix_rows(&reference));

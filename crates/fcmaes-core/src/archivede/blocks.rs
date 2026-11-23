@@ -1,3 +1,4 @@
+// Part of the archive DE port; see the header of archivede.rs and NOTICE.fronts.
 //! Sum-ordered blocks for large three-objective fronts. Component minima and
 //! maxima let a whole block fail a dominance test without inspecting its rows.
 

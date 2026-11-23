@@ -8,10 +8,14 @@ phase, with breaking changes called out explicitly.
 
 ### Added
 
-- Exact Borda and grid box indexes, archive-gated differential evolution and
-  a duplicate-preserving N-dimensional Pareto archive in `fcmaes-core`.
-  Python exposes these, the incremental `ParetoArchive2D` and `igd`.
-  See the [Rust and Python examples](crates/fcmaes-core/FRONT_TOOLS.md).
+- Exact Borda and grid box indexes (`BordaIndex`, `GridIndex`),
+  archive-gated differential evolution (`ArchiveDe`) and a
+  duplicate-preserving N-dimensional Pareto archive (`ParetoArchiveND`) in
+  `fcmaes-core`, ported from Aleksey Vaneev's C++ (`NOTICE.fronts`). Python
+  exposes these, the incremental `ParetoArchive2D` and `igd(front, reference)`.
+  Ties keep row order, so the indexes return the same IDs in the same order
+  as fast-cma-es's C++ versions, and `ArchiveDE` with the same seed performs
+  the same run. See the [Rust and Python examples](crates/fcmaes-core/FRONT_TOOLS.md).
 
 ### Changed
 

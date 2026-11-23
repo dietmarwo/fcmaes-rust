@@ -1,13 +1,27 @@
-The rank indexes in src/rankindex and the archive-gated optimizer in
-src/archivede are Rust ports and adaptations of the supplied Borda box
-query, rank grid, and archive DE sources. The supplied archive_de.cpp and
-grid_point_index-1.cpp carry Copyright (c) 2026 Aleksey Vaneev. The
-supplied borda_box_query-1.cpp has no author notice. The accompanying
-BiteOpt license is reproduced below.
+src/archivede.rs and src/archivede/ are a Rust port derived from
+archive_de.cpp in Aleksey Vaneev's BiteOpt repository
+(https://github.com/avaneev/biteopt, commit e8d6785, 2026-10-09). From there
+come the archive-gated DE/rand/1/bin, the exact online Pareto archive keyed by
+the objective sum, and the survivor selection by objective champions, rank
+sums and greedy rank-space spread. The port differs from that commit where
+equal rounded objective sums can hide a dominance relation: such entries are
+compared geometrically.
+
+src/rankindex/ is a Rust port derived from two C++ programs that are not part
+of the published BiteOpt repository: grid_point_index.cpp (the sparse uniform
+grid in rank space, Copyright (c) 2026 Aleksey Vaneev) and
+borda_box_query.cpp (the Borda rank-band box selector, which carries no
+author notice). They were provided with the BiteOpt MIT license.
+
+The Rust ports and their fcmaes adaptations are by Dietmar Wolz; Aleksey
+Vaneev's copyright covers the original C++ code. Aleksey Vaneev was not
+involved in the Rust ports. Both are distributed under:
 
 MIT License
 
-Copyright (c) 2016-2024 Aleksey Vaneev
+Copyright (c) 2026 Aleksey Vaneev (original C++ code: archive_de.cpp,
+grid_point_index.cpp)
+Copyright (c) 2026 Dietmar Wolz (Rust ports and adaptations)
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

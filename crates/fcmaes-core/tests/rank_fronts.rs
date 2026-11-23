@@ -1,6 +1,6 @@
 use fcmaes_core::{
     ParetoArchive2D, ParetoUpdate, Rng,
-    archivede::{ArchiveDe, ArchiveDeParams, ParetoArchive},
+    archivede::{ArchiveDe, ArchiveDeParams, ParetoArchiveND},
     gd, igd, pareto_indices,
     rankindex::{BordaIndex, GridIndex},
 };
@@ -74,7 +74,7 @@ fn boxes_match_closed_scan_including_ties_and_sparse_keys() {
 
 fn check_rows<const N: usize>() {
     let mut rng = Rng::new(141);
-    let mut archive = ParetoArchive::<[f64; N], usize>::new(N);
+    let mut archive = ParetoArchiveND::<[f64; N], usize>::new(N);
     let mut expected: Vec<([f64; N], usize)> = vec![];
     let dom = |a: &[f64; N], b: &[f64; N]| a.iter().zip(b).all(|(a, b)| a <= b) && a != b;
     for i in 0..1200 {
@@ -121,7 +121,7 @@ fn strict_archive_preserves_arrival_payloads_and_rounded_sum_ties() {
     check_rows::<5>();
     let m = 2f64.powi(54);
     for n in [2, 3, 6] {
-        let mut a = ParetoArchive::new(n);
+        let mut a = ParetoArchiveND::new(n);
         let mut before = vec![0.; n];
         before[0] = m;
         before[1] = 1.;
@@ -135,7 +135,7 @@ fn strict_archive_preserves_arrival_payloads_and_rounded_sum_ties() {
 
 #[test]
 fn large_three_objective_archive_preserves_equal_sums_and_decisions_across_removals() {
-    let mut archive = ParetoArchive::<[f64; 3], usize>::new(3);
+    let mut archive = ParetoArchiveND::<[f64; 3], usize>::new(3);
     let mut expected: Vec<([f64; 3], usize)> = vec![];
     let mut stream = Vec::new();
     for i in 0..1024 {
@@ -315,4 +315,45 @@ fn indicators_match_full_search_on_raw_and_extreme_coordinates() {
         1e-250
     );
     assert!(igd(&[], &[vec![1.]]).is_err());
+}
+
+#[test]
+fn tied_coordinates_keep_row_order_on_both_sort_paths() {
+    // Below and above the radix threshold of 256 rows, equal coordinates
+    // (including -0.0 and 0.0) must keep ascending row order. fast-cma-es's
+    // C++ indexes use the same order.
+    for n in [40usize, 300, 1000] {
+        let p: Vec<f64> = (0..n)
+            .map(|i| match i % 5 {
+                0 => -0.0,
+                1 => 0.0,
+                2 => 1.5,
+                3 => -2.0,
+                _ => (i % 3) as f64,
+            })
+            .collect();
+        let key = |x: f64| if x == 0. { 0. } else { x };
+        let mut want: Vec<u32> = (0..n as u32).collect();
+        want.sort_by(|&a, &b| key(p[a as usize]).total_cmp(&key(p[b as usize])));
+        let all = ([f64::NEG_INFINITY], [f64::INFINITY]);
+        assert_eq!(BordaIndex::new(&p, 1).query(&all.0, &all.1).ids, want);
+        let zeros = BordaIndex::new(&p, 1).query(&[-0.0], &[0.0]).ids;
+        let mut expected: Vec<u32> = (0..n as u32).filter(|&i| p[i as usize] == 0.).collect();
+        expected.sort_unstable();
+        assert_eq!(zeros, expected);
+        // One grid cell per row: cell order equals rank order.
+        let g = GridIndex::new(&p, 1, 1. / n as f64);
+        assert_eq!(g.query(&all.0, &all.1).ids, want);
+    }
+}
+
+#[test]
+fn archive_de_defaults_match_de_params() {
+    let p = ArchiveDeParams::default();
+    let de = fcmaes_core::DeParams::default();
+    assert_eq!(
+        (p.population, p.max_evaluations, u64::from(p.seed)),
+        (100, de.max_evaluations, de.seed)
+    );
+    assert!(p.gate && p.tiered);
 }

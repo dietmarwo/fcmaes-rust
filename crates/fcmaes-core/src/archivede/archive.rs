@@ -1,3 +1,4 @@
+// Part of the archive DE port; see the header of archivede.rs and NOTICE.fronts.
 //! Duplicate-preserving Pareto archive with optional typed payloads.
 use crate::indicators::dominates;
 use std::{cmp::Ordering, collections::BTreeMap};
@@ -10,11 +11,16 @@ struct Member<Y, P> {
     serial: u64,
 }
 
-/// An unbounded strict-minimization archive. Equal nondominated observations coexist.
+/// An unbounded strict-minimization archive for any number of objectives.
+/// Equal nondominated observations coexist, each with its own payload. For one
+/// payload per objective pair and an exact hypervolume use
+/// [`ParetoArchive2D`](crate::ParetoArchive2D).
+///
 /// `Y` can be a fixed-size array, an owned vector, or a borrowed slice.
 /// A two-objective archive keeps an x-ordered skyline; higher dimensions use
-/// rounded-sum ordering to restrict dominance checks.
-pub struct ParetoArchive<Y, P = ()> {
+/// rounded-sum ordering to restrict dominance checks. Python: `fcmaes_rust.ParetoArchiveND`
+/// and fast-cma-es's `fcmaes.pareto.ParetoArchiveND`.
+pub struct ParetoArchiveND<Y, P = ()> {
     width: usize,
     line: bool,
     members: Vec<Member<Y, P>>,
@@ -30,7 +36,7 @@ pub struct ParetoArchive<Y, P = ()> {
     len: usize,
 }
 
-impl<Y: AsRef<[f64]> + Clone, P> ParetoArchive<Y, P> {
+impl<Y: AsRef<[f64]> + Clone, P> ParetoArchiveND<Y, P> {
     /// Construct an empty archive for the given objective count.
     ///
     /// # Panics
@@ -247,7 +253,7 @@ impl<Y: AsRef<[f64]> + Clone, P> ParetoArchive<Y, P> {
         rows.into_iter().map(|p| (&p.y, &p.payload)).collect()
     }
 }
-impl<Y: AsRef<[f64]> + Clone> ParetoArchive<Y, ()> {
+impl<Y: AsRef<[f64]> + Clone> ParetoArchiveND<Y, ()> {
     /// Insert objectives without a payload. Returns the admission decision.
     ///
     /// # Panics

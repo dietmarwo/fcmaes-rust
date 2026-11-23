@@ -487,7 +487,7 @@ pub fn pareto_indices(values: &[Vec<f64>], nobj: usize) -> Result<Vec<usize>, &'
 
         ids
     } else {
-        let mut archive = crate::archivede::ParetoArchive::new(nobj);
+        let mut archive = crate::archivede::ParetoArchiveND::new(nobj);
         for (id, row) in values.iter().enumerate() {
             archive.insert_with(&row[..nobj], || id);
         }

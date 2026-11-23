@@ -1,3 +1,4 @@
+// Part of the rank index port; see the header of rankindex.rs and NOTICE.fronts.
 use super::rank::{Span, cached_ranks};
 
 /// Matching input rows and traversal diagnostics for one closed box.

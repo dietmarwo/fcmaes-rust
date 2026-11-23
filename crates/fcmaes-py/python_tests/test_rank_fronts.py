@@ -74,3 +74,25 @@ def test_ask_tell_budget_empty_shapes_invalid_rows_and_distances():
     assert igd([[0., 0.]], [[0., 0.], [3., 4.]]) == 2.5
     with pytest.raises(ValueError):
         igd(np.empty((0, 2)), [[1., 2.]])
+
+
+@pytest.mark.parametrize("n", [40, 300])
+def test_ties_keep_row_order_and_match_the_documented_order(n):
+    values = np.array([[-0.0, 0.0, 1.5, -2.0, 1.0][i % 5] for i in range(n)])
+    want = np.argsort(values + 0.0, kind="stable")
+    lo, hi = [-np.inf], [np.inf]
+    np.testing.assert_array_equal(BordaBoxIndex(values[:, None]).query(lo, hi), want)
+    np.testing.assert_array_equal(GridBoxIndex(values[:, None], 1.0 / n).query(lo, hi), want)
+
+
+def test_properties_and_defaults():
+    nd = ParetoArchiveND(3, payload_dim=2)
+    hv = ParetoArchive2D([1.0, 2.0], payload_dim=4)
+    assert (nd.nobj, nd.payload_dim) == (3, 2)
+    assert hv.reference == (1.0, 2.0) and hv.payload_dim == 4
+    de = ArchiveDE(2, [0.0], [1.0], popsize=4)
+    first = de.ask()
+    assert first.shape == (4, 1)
+    np.testing.assert_array_equal(first, ArchiveDE(2, [0.0], [1.0], popsize=4, seed=0).ask())
+    de.tell(np.column_stack((first[:, 0], 1.0 - first[:, 0])))
+    assert de.nfev == 4

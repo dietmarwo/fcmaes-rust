@@ -1,12 +1,21 @@
-//! Archive-gated DE/rand/1/bin for bounded, continuous, minimized objectives.
-//! The archive keeps every strictly nondominated evaluation, including duplicates.
-//! The breeding population uses objective champions and greedy rank-space spread.
-//! Adapted from Aleksey Vaneev's `archive_de.cpp` (BiteOpt).
+// Derived from archive_de.cpp in Aleksey Vaneev's BiteOpt repository,
+// https://github.com/avaneev/biteopt (commit e8d6785, 2026-10-09).
+// Original C++ code: Copyright (c) 2026 Aleksey Vaneev.
+// Rust port: Copyright (c) 2026 Dietmar Wolz.
+// MIT license; keep NOTICE.fronts with copies of this file.
+//! Archive-gated DE/rand/1/bin (F = 0.5, CR = 0.3) for bounded, continuous,
+//! minimized objectives. The archive keeps every strictly nondominated
+//! evaluation, including duplicates. The breeding population uses objective
+//! champions and greedy rank-space spread.
+//!
+//! Rust port of `archive_de.cpp` in Aleksey Vaneev's BiteOpt repository
+//! (<https://github.com/avaneev/biteopt>, commit e8d6785, 2026-10-09), MIT
+//! license; see `NOTICE.fronts`. The port is by Dietmar Wolz.
 #![doc = include_str!("../FRONT_TOOLS.md")]
 mod archive;
 mod blocks;
 mod mt;
-pub use archive::ParetoArchive;
+pub use archive::ParetoArchiveND;
 use mt::Mt;
 
 /// A decision or objective row. Arrays avoid per-row allocation for known widths.
@@ -32,7 +41,7 @@ pub struct ArchiveDeParams {
     pub population: usize,
     /// Hard cap including initialization and a possible partial final generation.
     pub max_evaluations: u64,
-    /// MT19937 seed. The two-word uniform draw reproduces the source driver.
+    /// MT19937 seed. fast-cma-es's `archivede` gives the same run for the same seed.
     pub seed: u32,
     /// Admit offspring to the survivor pool only if they enter the archive.
     pub gate: bool,
@@ -43,8 +52,8 @@ impl Default for ArchiveDeParams {
     fn default() -> Self {
         Self {
             population: 100,
-            max_evaluations: 20_100,
-            seed: 100,
+            max_evaluations: 100_000,
+            seed: 0,
             gate: true,
             tiered: true,
         }
@@ -65,7 +74,7 @@ pub struct ArchiveDe<X: Row, Y: Row> {
     pending: Vec<X>,
     asked: Vec<X>,
     evaluations: u64,
-    archive: ParetoArchive<Y, X>,
+    archive: ParetoArchiveND<Y, X>,
 }
 
 fn select<Y: Row>(pool: &[Y], np: usize, tiered: bool) -> Vec<usize> {
@@ -212,7 +221,7 @@ impl<X: Row, Y: Row> ArchiveDe<X, Y> {
             pending: vec![],
             asked: vec![],
             evaluations: 0,
-            archive: ParetoArchive::new(nobj),
+            archive: ParetoArchiveND::new(nobj),
         })
     }
     fn decode(&self, u: &X) -> X {
@@ -345,7 +354,7 @@ impl<X: Row, Y: Row> ArchiveDe<X, Y> {
         self.width
     }
     /// All nondominated evaluated objectives, with the corresponding real decisions as payloads.
-    pub fn archive(&self) -> &ParetoArchive<Y, X> {
+    pub fn archive(&self) -> &ParetoArchiveND<Y, X> {
         &self.archive
     }
     /// Return the evaluated breeding population as (real decision, objectives) pairs.
