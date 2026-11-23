@@ -13,6 +13,11 @@ pure Rust and does not compile, link, or load the historical C++ backend.
 
 ## Installation
 
+Not yet in a PyPI release (build from the repository): `ArchiveDE`,
+`BordaBoxIndex`, `GridBoxIndex`, `ParetoArchive2D`, `ParetoArchiveND` and
+`igd` for NumPy users. See the
+[front tools guide](https://github.com/dietmarwo/fcmaes-rust/blob/main/crates/fcmaes-core/FRONT_TOOLS.md).
+
 ```bash
 python -m pip install fcmaes-rust
 ```

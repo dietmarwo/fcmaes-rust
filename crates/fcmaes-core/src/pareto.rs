@@ -6,7 +6,7 @@
 // first objective, the delta hypervolume updates, the cached rejection point
 // and the append/gap fast paths. The Rust port and its adaptations
 // (compensated area sums, error handling, outside points, payloads,
-// preference scores) are by Dietmar Wolz; Aleksey Vaneev's copyright covers
+// preference scores, paged storage) are by Dietmar Wolz; Aleksey Vaneev's copyright covers
 // the original C++ code only.
 //
 // Original C++ code (bitehv2.h): Copyright (c) 2026 Aleksey Vaneev.
@@ -14,7 +14,9 @@
 // MIT license; keep NOTICE.pareto with copies of this file.
 #![doc = include_str!("../PARETO_ARCHIVE.md")]
 
-use std::{cmp::Ordering, collections::BTreeMap, fmt};
+use std::{cmp::Ordering, fmt};
+mod pages;
+use pages::Pages;
 
 /// Preference score used by [`ParetoArchive2D::preferred`] and
 /// [`ParetoArchive2D::ranked`]. It never changes archive membership.
@@ -174,12 +176,22 @@ fn outside(point: [f64; 2], reference: [f64; 2]) -> bool {
 fn weak(p: [f64; 2], q: [f64; 2]) -> bool {
     p[0] <= q[0] && p[1] <= q[1]
 }
-fn coordinate_key(x: f64) -> u64 {
+pub(crate) fn coordinate_key(x: f64) -> u64 {
     let bits = canonical(x).to_bits();
     if bits >> 63 == 0 {
         bits ^ (1 << 63)
     } else {
         !bits
+    }
+}
+/// Membership on a lexicographically sorted 2D stream, preserving equal
+/// nondominated rows. The caller chooses whether to collapse duplicates.
+pub(crate) fn sorted_skyline_member(last: &mut Option<[f64; 2]>, p: [f64; 2]) -> bool {
+    if last.is_none_or(|q| p == q || p[1] < q[1]) {
+        *last = Some(p);
+        true
+    } else {
+        false
     }
 }
 fn compare(score: f64, point: [f64; 2], e: &Entry<impl Sized>) -> Ordering {
@@ -270,7 +282,7 @@ fn rectangle(hi_x: f64, lo_x: f64, hi_y: f64, lo_y: f64) -> Result<f64, Error> {
 
 /// Exact, unbounded 2D minimization archive with incremental hypervolume.
 ///
-/// Entries live in one B-tree ordered by the first objective, so the second
+/// Entries live in sorted pages ordered by the first objective, so the second
 /// objective strictly decreases along the front. An insertion needs one
 /// predecessor lookup to reject a dominated point and removes the contiguous
 /// run of successors it dominates; appends and inserts into the gap after the
@@ -284,15 +296,11 @@ fn rectangle(hi_x: f64, lo_x: f64, hi_y: f64, lo_y: f64) -> Result<f64, Error> {
 pub struct ParetoArchive2D<P = ()> {
     reference: [f64; 2],
     preference: Option<(Bounds, Score)>,
-    entries: BTreeMap<u64, Entry<P>>,
-    // Scratch keys separate the numeric preflight from the mutation.
-    victims: Vec<u64>,
+    entries: Pages<P>,
     area: Sum,
-    best: Option<u64>,
     best_score: f64,
     best_point: [f64; 2],
-    last: Option<[f64; 2]>,
-    gap: Option<([f64; 2], [f64; 2])>,
+    witness: [f64; 2],
 }
 impl<P> ParetoArchive2D<P> {
     /// Empty archive with the given hypervolume reference. The preference
@@ -316,24 +324,16 @@ impl<P> ParetoArchive2D<P> {
         Self {
             reference,
             preference,
-            entries: BTreeMap::new(),
-            victims: Vec::new(),
+            entries: Pages::new(),
             area: Sum::default(),
-            best: None,
             best_score: 0.0,
             best_point: [0.0; 2],
-            last: None,
-            gap: None,
+            witness: [f64::INFINITY; 2],
         }
     }
     /// Remove all entries, keeping the reference and preference.
     pub fn clear(&mut self) {
-        self.entries.clear();
-        self.victims.clear();
-        self.area = Sum::default();
-        self.best = None;
-        self.last = None;
-        self.gap = None;
+        *self = Self::build(self.reference, self.preference);
     }
     /// Hypervolume reference.
     pub fn reference(&self) -> [f64; 2] {
@@ -345,7 +345,7 @@ impl<P> ParetoArchive2D<P> {
     }
     /// Whether the archive is empty.
     pub fn is_empty(&self) -> bool {
-        self.entries.is_empty()
+        self.entries.len() == 0
     }
     /// Area dominated by the archive within the reference box.
     pub fn hypervolume(&self) -> f64 {
@@ -353,7 +353,7 @@ impl<P> ParetoArchive2D<P> {
     }
     /// Entries in increasing first-objective order.
     pub fn entries(&self) -> impl DoubleEndedIterator<Item = &Entry<P>> {
-        self.entries.values()
+        self.entries.iter()
     }
     /// Copy of all objective pairs and payloads in increasing first-objective order.
     pub fn front(&self) -> Vec<([f64; 2], P)>
@@ -366,7 +366,7 @@ impl<P> ParetoArchive2D<P> {
     }
     /// Entry with the lowest preference score, ties broken by coordinates.
     pub fn preferred(&self) -> Option<&Entry<P>> {
-        self.best.and_then(|key| self.entries.get(&key))
+        self.entries.get(self.best_point[0])
     }
     /// Entries sorted by preference score, ties broken by coordinates.
     pub fn ranked(&self) -> Vec<&Entry<P>> {
@@ -401,7 +401,7 @@ impl<P> ParetoArchive2D<P> {
             return Ok(Update::Outside);
         }
         let point = point.map(canonical);
-        if self.best.is_some() && weak(self.best_point, point) {
+        if (!self.is_empty() && weak(self.best_point, point)) || weak(self.witness, point) {
             return Ok(Update::Rejected);
         }
         self.insert_validated(point, make_payload)
@@ -447,7 +447,7 @@ impl<P> ParetoArchive2D<P> {
     }
 
     fn replaces_best(&self, score: f64, point: [f64; 2]) -> bool {
-        self.best.is_none()
+        self.is_empty()
             || score
                 .total_cmp(&self.best_score)
                 .then(point[0].total_cmp(&self.best_point[0]))
@@ -460,119 +460,101 @@ impl<P> ParetoArchive2D<P> {
         point: [f64; 2],
         make_payload: impl FnOnce() -> P,
     ) -> Result<Update, Error> {
-        // Append after the last entry, or fill the gap after the previous
-        // insertion: geometry alone proves that nothing is dominated.
-        if let Some(last) = self.last
-            && last[0] < point[0]
-            && point[1] < last[1]
-        {
-            return self.insert_gap(point, last[1], None, make_payload);
-        }
-        if let Some((previous, successor)) = self.gap
-            && previous[0] < point[0]
-            && point[0] < successor[0]
-            && successor[1] < point[1]
-            && point[1] < previous[1]
-        {
-            return self.insert_gap(point, previous[1], Some(successor), make_payload);
-        }
-        let key = coordinate_key(point[0]);
-        let mut predecessors = self.entries.range(..=key).rev();
-        let pred = predecessors.next();
-        if pred.is_some_and(|(_, q)| q.point[1] <= point[1]) {
+        let [x, y] = point;
+        // Extremes and improvement at the last x each add exactly one slab.
+        let left = self
+            .entries
+            .first()
+            .filter(|e| x < e.point[0] && y > e.point[1])
+            .map(|e| e.point[0]);
+        let last = self.entries.last().map(|e| e.point);
+        if let Some(p) = last.filter(|&p| weak(p, point)) {
+            self.witness = p;
             return Ok(Update::Rejected);
         }
-        let mut old_y = match pred {
-            Some((&k, q)) if k < key => q.point[1],
-            Some(_) => predecessors
-                .next()
-                .map_or(self.reference[1], |(_, q)| q.point[1]),
-            None => self.reference[1],
-        };
-        let score = preference_score(self.preference, point);
-        let replace_best = self.replaces_best(score, point);
-        let mut old_x = point[0];
-        let mut next_x = self.reference[0];
-        let mut successor = None;
+        if left.is_some() || last.is_none_or(|p| p[0] <= x) {
+            let replaces_last = last.is_some_and(|p| p[0] == x);
+            let delta = if let Some(next) = left {
+                rectangle(next, x, self.reference[1], y)?
+            } else {
+                rectangle(
+                    self.reference[0],
+                    x,
+                    last.map_or(self.reference[1], |p| p[1]),
+                    y,
+                )?
+            };
+            let mut area = self.area;
+            area.add(delta)?;
+            let score = preference_score(self.preference, point);
+            let best = self.replaces_best(score, point);
+            let entry = Entry {
+                point,
+                score,
+                payload: make_payload(),
+            };
+            if left.is_some() {
+                self.entries.prepend(entry)
+            } else if replaces_last {
+                self.entries.replace_last(entry)
+            } else {
+                self.entries.append(entry)
+            }
+            self.commit(point, score, best, area);
+            return Ok(Update::Accepted {
+                removed: usize::from(replaces_last),
+            });
+        }
+        self.entries.flush_left();
+        let start = self.entries.locate(x);
+        let previous = self.entries.before(start).map(|p| p.point);
+        if let Some(p) = previous.filter(|p| p[1] <= y).or_else(|| {
+            self.entries
+                .at(start)
+                .map(|e| e.point)
+                .filter(|p| p[0] == x && p[1] <= y)
+        }) {
+            self.witness = p;
+            return Ok(Update::Rejected);
+        }
+        let mut old_y = previous.map_or(self.reference[1], |p| p[1]);
+        let mut old_x = x;
         let mut delta = Sum::default();
-        self.victims.clear();
-        for (&k, q) in self.entries.range(key..) {
-            if q.point[1] < point[1] {
-                next_x = q.point[0];
-                successor = Some(q.point);
+        let mut end = start;
+        let mut removed = 0;
+        while let Some(entry) = self.entries.at(end) {
+            if entry.point[1] < y {
                 break;
             }
-            delta.add(rectangle(q.point[0], old_x, old_y, point[1])?)?;
-            old_x = q.point[0];
-            old_y = q.point[1];
-            self.victims.push(k);
+            delta.add(rectangle(entry.point[0], old_x, old_y, y)?)?;
+            [old_x, old_y] = entry.point;
+            removed += 1;
+            end = self.entries.next(end);
         }
-        let removed = self.victims.len();
-        delta.add(rectangle(next_x, old_x, old_y, point[1])?)?;
-        let mut next_area = self.area;
-        next_area.add(delta.value)?;
+        let next_x = self
+            .entries
+            .at(end)
+            .map_or(self.reference[0], |e| e.point[0]);
+        delta.add(rectangle(next_x, old_x, old_y, y)?)?;
+        let mut area = self.area;
+        area.add(delta.value)?;
+        let score = preference_score(self.preference, point);
+        let best = self.replaces_best(score, point);
         let entry = Entry {
             point,
             score,
             payload: make_payload(),
         };
-        // All numeric checks and the payload factory ran before this point.
-        // The score is monotone, so a removed best entry is always replaced.
-        debug_assert!(replace_best || !self.victims.iter().any(|&k| Some(k) == self.best));
-        if removed == self.entries.len() {
-            self.entries.clear();
-        } else {
-            for k in &self.victims {
-                self.entries.remove(k);
-            }
-        }
-        self.entries.insert(key, entry);
-        self.commit(key, point, score, replace_best, next_area, successor);
+        self.entries.replace(start, end, removed, entry);
+        self.commit(point, score, best, area);
         Ok(Update::Accepted { removed })
     }
-
-    fn insert_gap(
-        &mut self,
-        point: [f64; 2],
-        previous_y: f64,
-        successor: Option<[f64; 2]>,
-        make_payload: impl FnOnce() -> P,
-    ) -> Result<Update, Error> {
-        let score = preference_score(self.preference, point);
-        let key = coordinate_key(point[0]);
-        let next_x = successor.map_or(self.reference[0], |p| p[0]);
-        let mut next_area = self.area;
-        next_area.add(rectangle(next_x, point[0], previous_y, point[1])?)?;
-        let entry = Entry {
-            point,
-            score,
-            payload: make_payload(),
-        };
-        self.entries.insert(key, entry);
-        let replace_best = self.replaces_best(score, point);
-        self.commit(key, point, score, replace_best, next_area, successor);
-        Ok(Update::Accepted { removed: 0 })
-    }
-
-    fn commit(
-        &mut self,
-        key: u64,
-        point: [f64; 2],
-        score: f64,
-        replace_best: bool,
-        area: Sum,
-        successor: Option<[f64; 2]>,
-    ) {
-        if replace_best {
-            self.best = Some(key);
+    fn commit(&mut self, point: [f64; 2], score: f64, best: bool, area: Sum) {
+        if best {
             self.best_score = score;
             self.best_point = point;
         }
         self.area = area;
-        self.gap = successor.map(|next| (point, next));
-        if successor.is_none() {
-            self.last = Some(point);
-        }
     }
 }
 

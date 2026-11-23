@@ -466,18 +466,34 @@ pub fn pareto_indices(values: &[Vec<f64>], nobj: usize) -> Result<Vec<usize>, &'
     {
         return Err("every value row must contain nobj finite values");
     }
-    let mut front = Vec::new();
-    for candidate in 0..values.len() {
-        let dominated = (0..values.len()).any(|other| {
-            other != candidate
-                && (0..nobj).all(|j| values[other][j] <= values[candidate][j])
-                && (0..nobj).any(|j| values[other][j] < values[candidate][j])
+    // Keep the original order among equal first coordinates, including duplicates.
+    let mut front = if nobj == 2 {
+        let mut ids: Vec<_> = (0..values.len()).collect();
+        ids.sort_unstable_by(|&a, &b| {
+            values[a][0]
+                .partial_cmp(&values[b][0])
+                .unwrap_or(std::cmp::Ordering::Equal)
+                .then_with(|| {
+                    values[a][1]
+                        .partial_cmp(&values[b][1])
+                        .unwrap_or(std::cmp::Ordering::Equal)
+                })
+                .then(a.cmp(&b))
         });
-        if !dominated {
-            front.push(candidate);
+        let mut last: Option<[f64; 2]> = None;
+        ids.retain(|&id| {
+            crate::pareto::sorted_skyline_member(&mut last, [values[id][0], values[id][1]])
+        });
+
+        ids
+    } else {
+        let mut archive = crate::archivede::ParetoArchiveND::new(nobj);
+        for (id, row) in values.iter().enumerate() {
+            archive.insert_with(&row[..nobj], || id);
         }
-    }
-    front.sort_by(|&left, &right| values[left][0].total_cmp(&values[right][0]));
+        archive.entries().map(|(_, &id)| id).collect()
+    };
+    front.sort_unstable_by(|&a, &b| values[a][0].total_cmp(&values[b][0]).then(a.cmp(&b)));
     Ok(front)
 }
 

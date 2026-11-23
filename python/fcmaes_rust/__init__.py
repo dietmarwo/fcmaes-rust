@@ -13,6 +13,12 @@ __version__ = _distribution_version("fcmaes-rust")
 
 phase1_build_info = native.phase1_build_info
 
+ArchiveDE = native.ArchiveDE
+BordaBoxIndex = native.BordaBoxIndex
+GridBoxIndex = native.GridBoxIndex
+ParetoArchive2D = native.ParetoArchive2D
+ParetoArchiveND = native.ParetoArchiveND
+igd = native.igd
 ACMA = native.ACMA
 Archive = native.Archive
 Bite = native.Bite
@@ -49,6 +55,12 @@ gtop_tandem_unconstrained = native.gtop_tandem_unconstrained
 __all__ = [
     "__version__",
     "ACMA",
+    "ArchiveDE",
+    "BordaBoxIndex",
+    "GridBoxIndex",
+    "ParetoArchive2D",
+    "ParetoArchiveND",
+    "igd",
     "Archive",
     "Bite",
     "CRFMNES",

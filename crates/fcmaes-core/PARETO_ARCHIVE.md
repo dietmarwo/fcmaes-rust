@@ -72,12 +72,15 @@ clamped to zero. The score never changes membership or hypervolume.
 
 ## Complexity
 
-Entries are stored in a `BTreeMap` ordered by the first objective, so the
-second objective strictly decreases along the front. The entry with the lowest
-score serves as a cached dominator that rejects most points in O(1). Otherwise
-an insertion costs one O(log n) predecessor lookup plus O(k log n) for the k
-removed points. Appending after the last entry, or inserting into the gap
-behind the previous insertion, skips the lookup.
+Short sorted pages store increasing first objectives and decreasing second
+objectives. New left extremes accumulate in a reverse-order buffer. Appending
+at either extreme is amortized O(1). A cached dominating point can reject an
+insertion in O(1). An interior insertion searches page endpoints and the
+selected page in O(log n), then visits the k removed entries to update area
+and preference scores. Insertion within a page moves at most 96 entries.
+Splitting or deleting pages can also move O(p) page descriptors for p pages.
+After a run of leftmost insertions, the next interior operation can take O(n)
+to move buffered entries into pages. Iteration across the front is O(n).
 
 `cargo run --release -p fcmaes-core --example pareto_bench` measures three
 synthetic streams; `--example pareto_mode` records a constrained MODE run.

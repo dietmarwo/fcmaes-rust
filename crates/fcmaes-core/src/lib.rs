@@ -9,6 +9,7 @@
 #![warn(clippy::missing_errors_doc)]
 #![warn(clippy::missing_panics_doc)]
 
+pub mod archivede;
 pub mod biteopt;
 pub mod cmaes;
 pub mod crfmnes;
@@ -23,9 +24,11 @@ pub mod mode;
 pub mod moretry;
 pub mod pareto;
 pub mod pgpe;
+pub mod rankindex;
 pub mod retry;
 pub mod rng;
 
+pub use archivede::{ArchiveDe, ArchiveDeParams, ParetoArchiveND};
 pub use biteopt::{
     BiteOpt, BiteParams, BiteResult, DeepBiteOpt, optimize_bite, validate_bite_inputs,
 };
@@ -55,6 +58,7 @@ pub use pareto::{
     Error as ParetoError, ParetoArchive2D, Score as ParetoScore, Update as ParetoUpdate,
 };
 pub use pgpe::{Pgpe, PgpeParams, PgpeResult};
+pub use rankindex::{BordaIndex, BordaResult, GridIndex, GridResult};
 pub use retry::{
     AdvancedRetryConfig, RetryBounds, RetryConfig, RetryContext, RetryEntry, RetryImprovement,
     RetryResult, RetryRunResult, advanced_retry, retry, retry_run_seed, retry_until,

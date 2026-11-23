@@ -267,6 +267,11 @@ coordinated retry, and weighted multi-objective retry. `ParetoArchive2D` keeps t
 and hypervolume of all points evaluated on a two-objective problem, next to
 any optimizer ([guide](crates/fcmaes-core/PARETO_ARCHIVE.md)).
 
+Not yet released (build from the repository): archive-gated differential
+evolution, an N-dimensional Pareto archive that retains tied observations, and
+Borda and grid indexes for closed box queries, all callable from Python. See
+the [Rust and NumPy examples](crates/fcmaes-core/FRONT_TOOLS.md).
+
 The example crate includes GTOP mission optimization, Mazda factory-design
 objectives, stock-strategy optimization, material-flow planning, flexible
 job-shop and harvesting, multi-UAV task assignment, spherical t-design,

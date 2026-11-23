@@ -33,6 +33,10 @@ hypervolume, a Rust port derived from `bitehv2.h` in Aleksey Vaneev's
 [BiteOpt](https://github.com/avaneev/biteopt) repository. See
 [PARETO_ARCHIVE.md](https://github.com/dietmarwo/fcmaes-rust/blob/main/crates/fcmaes-core/PARETO_ARCHIVE.md).
 
+For archive-gated DE, exact rank-space box queries, the duplicate-preserving
+Pareto archive and Python bindings, see the
+[front tools guide](https://github.com/dietmarwo/fcmaes-rust/blob/main/crates/fcmaes-core/FRONT_TOOLS.md).
+
 ## Minimal example
 
 ```rust
