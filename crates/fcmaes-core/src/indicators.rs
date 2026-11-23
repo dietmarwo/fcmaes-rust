@@ -10,6 +10,7 @@ use std::error::Error;
 use std::fmt;
 
 use crate::Rng;
+mod nearest;
 
 const DEFAULT_MONTE_CARLO_SAMPLES: usize = 100_000;
 const DEFAULT_MONTE_CARLO_SEED: u64 = 0x4856_2d4d_4f4e_5445;
@@ -139,7 +140,14 @@ fn same_point(left: &[f64], right: &[f64]) -> bool {
     left.iter().zip(right).all(|(a, b)| a == b)
 }
 
-fn dominates(left: &[f64], right: &[f64]) -> bool {
+#[inline]
+pub(crate) fn dominates(left: &[f64], right: &[f64]) -> bool {
+    // Short fixed widths are frequent in archive scans. Slice patterns keep
+    // the three comparisons adjacent and remove bounds checks.
+    if let ([a, b, c], [x, y, z]) = (left, right) {
+        return a <= x && b <= y && c <= z && (a < x || b < y || c < z);
+    }
+
     let mut strict = false;
     for (&a, &b) in left.iter().zip(right) {
         if a > b {
@@ -187,18 +195,25 @@ fn clean_hypervolume_front(
     });
     unique.dedup_by(|left, right| same_point(left, right));
     let duplicates = front.len() - outside_reference - unique.len();
-    let retained: Vec<Vec<f64>> = unique
-        .iter()
-        .enumerate()
-        .filter(|(index, point)| {
-            !unique
-                .iter()
-                .enumerate()
-                .any(|(other, candidate)| other != *index && dominates(candidate, point))
-        })
-        .map(|(_, point)| point.clone())
-        .collect();
-    let dominated = unique.len() - retained.len();
+    let initial = unique.len();
+    let retained = if reference.dimension() == 2 {
+        let mut last = None;
+        unique.retain(|p| crate::pareto::sorted_skyline_member(&mut last, [p[0], p[1]]));
+        unique
+    } else {
+        unique
+            .iter()
+            .enumerate()
+            .filter(|(index, point)| {
+                !unique
+                    .iter()
+                    .enumerate()
+                    .any(|(other, candidate)| other != *index && dominates(candidate, point))
+            })
+            .map(|(_, point)| point.clone())
+            .collect()
+    };
+    let dominated = initial - retained.len();
     Ok(CleanedHypervolumeFront {
         points: retained,
         duplicates,
@@ -304,8 +319,27 @@ pub fn hypervolume_with(
         );
     }
     let cleaned = clean_hypervolume_front(front, reference, policy)?;
-    let borrowed: Vec<&[f64]> = cleaned.points.iter().map(Vec::as_slice).collect();
-    let value = exact_union(&borrowed, reference.as_slice(), reference.dimension());
+    let value = if reference.dimension() == 2 {
+        // Visit the same ascending y cuts as exact_union. On a sorted skyline,
+        // each horizontal slab's left boundary is already known.
+        let r = reference.as_slice();
+        let mut value = 0.;
+        for i in (0..cleaned.points.len()).rev() {
+            let p = &cleaned.points[i];
+            let top = if i == 0 {
+                r[1]
+            } else {
+                cleaned.points[i - 1][1]
+            };
+            if top > p[1] {
+                value += (top - p[1]) * (r[0] - p[0]).max(0.);
+            }
+        }
+        value
+    } else {
+        let borrowed: Vec<&[f64]> = cleaned.points.iter().map(Vec::as_slice).collect();
+        exact_union(&borrowed, reference.as_slice(), reference.dimension())
+    };
     Ok(report(
         front.len(),
         &cleaned.points,
@@ -550,8 +584,8 @@ fn mean_min_distance(
 ///
 /// Returns an [`IndicatorError`] for invalid or inconsistent sets.
 pub fn igd(front: &[Vec<f64>], reference_set: &[Vec<f64>]) -> Result<f64, IndicatorError> {
-    validate_pair(front, reference_set)?;
-    Ok(mean_min_distance(reference_set, front, euclidean))
+    let dim = validate_pair(front, reference_set)?;
+    Ok(nearest::mean(reference_set, front, dim))
 }
 
 /// IGD+ using only approximation coordinates that are worse than a reference
@@ -572,8 +606,8 @@ pub fn igd_plus(front: &[Vec<f64>], reference_set: &[Vec<f64>]) -> Result<f64, I
 ///
 /// Returns an [`IndicatorError`] for invalid or inconsistent sets.
 pub fn gd(front: &[Vec<f64>], reference_set: &[Vec<f64>]) -> Result<f64, IndicatorError> {
-    validate_pair(front, reference_set)?;
-    Ok(mean_min_distance(front, reference_set, euclidean))
+    let dim = validate_pair(front, reference_set)?;
+    Ok(nearest::mean(front, reference_set, dim))
 }
 
 /// GD+ using only approximation coordinates that are worse than a reference

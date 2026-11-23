@@ -9,6 +9,7 @@
 #![warn(clippy::missing_errors_doc)]
 #![warn(clippy::missing_panics_doc)]
 
+pub mod archivede;
 pub mod biteopt;
 pub mod cmaes;
 pub mod crfmnes;
@@ -23,6 +24,7 @@ pub mod mode;
 pub mod moretry;
 pub mod pareto;
 pub mod pgpe;
+pub mod rankindex;
 pub mod retry;
 pub mod rng;
 

@@ -6,7 +6,18 @@ phase, with breaking changes called out explicitly.
 
 ## [Unreleased]
 
+### Added
+
+- Exact Borda and grid box indexes, archive-gated differential evolution and
+  a duplicate-preserving N-dimensional Pareto archive in `fcmaes-core`.
+  Python exposes these, the incremental `ParetoArchive2D` and `igd`.
+  See the [Rust and Python examples](crates/fcmaes-core/FRONT_TOOLS.md).
+
 ### Changed
+
+- The existing incremental 2D hypervolume archive uses short sorted pages.
+  The batch 2D hypervolume and Pareto filters share skyline logic, and GD and
+  IGD share exact nearest-neighbor search selected by dimension and input size.
 
 - optimization-jobs pin `2bfa8e4` (the merge of the optimization-jobs 0.5.0
   release; the job crates are 0.5.0) in every manifest and lockfile,

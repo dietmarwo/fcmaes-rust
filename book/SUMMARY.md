@@ -165,6 +165,7 @@
   - [Buckingham–Pi data](examples/data/BUCKINGHAM_NOTICE.md)
 - [`fcmaes-core` package overview](crates/fcmaes-core/README.md)
   - [Exact 2D Pareto archive](crates/fcmaes-core/PARETO_ARCHIVE.md)
+  - [Box indexes and archive-gated DE](crates/fcmaes-core/FRONT_TOOLS.md)
 - [Development and testing](docs/development.md)
 - [Security policy](SECURITY.md)
 - [Release history](CHANGELOG.md)

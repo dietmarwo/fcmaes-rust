@@ -1273,11 +1273,20 @@ hypervolume trace is needed during the run. Filter infeasible rows yourself;
 points beyond the reference return `ParetoUpdate::Outside` and are not kept
 (as `OutsidePolicy::Exclude`); non-finite objectives are errors; capacity is
 unbounded. `preferred()` and `ranked()` order entries by a score that never
-changes membership (normalize scales with `ParetoBounds2D`). It has no
-Python binding and needs `fcmaes-core` 0.2.0 or later. See
+changes membership (normalize scales with `ParetoBounds2D`). The Rust type
+requires `fcmaes-core` 0.2.0 or later. The source checkout also exposes
+`fcmaes_rust.ParetoArchive2D` for insertion, front snapshots and hypervolume. See
 [`PARETO_ARCHIVE.md`](crates/fcmaes-core/PARETO_ARCHIVE.md) and
 `cargo run --release -p fcmaes-core --example pareto_mode` (a constrained MODE
 run with a separate archive).
+
+For arbitrary objective counts, including tied evaluations with distinct
+decisions, use `archivede::ParetoArchive` or Python `ParetoArchiveND`.
+`archivede::ArchiveDe` and Python `ArchiveDE` keep that archive throughout
+a bounded continuous optimization. The static `rankindex` module and Python
+`BordaBoxIndex` / `GridBoxIndex` report row IDs for exact closed boxes.
+The [front tools guide](crates/fcmaes-core/FRONT_TOOLS.md) gives the call
+signatures, ordering rules and array shapes.
 
 ## Quality diversity
 

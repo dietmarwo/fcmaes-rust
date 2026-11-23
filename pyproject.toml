@@ -9,7 +9,7 @@ description = "Native Rust implementation of fast, parallel, gradient-free optim
 readme = "python/README.md"
 requires-python = ">=3.11,<3.14"
 license = "MIT"
-license-files = ["LICENSE"]
+license-files = ["LICENSE", "crates/fcmaes-core/NOTICE.fronts", "crates/fcmaes-core/NOTICE.pareto"]
 authors = [{ name = "Dietmar Wolz" }]
 keywords = [
     "optimization",
