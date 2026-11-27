@@ -106,6 +106,7 @@ struct Da<'a, O: Objective> {
     // fitness best (reset per local search)
     fit_best_y: f64,
     fit_best_x: Vec<f64>,
+    decoded: Vec<f64>,
 
     // visiting distribution factors
     factor4_p: f64,
@@ -166,6 +167,11 @@ impl<'a, O: Objective> Da<'a, O> {
             rng: Rng::new(seed),
             fit_best_y: f64::MAX,
             fit_best_x: vec![],
+            decoded: if has_bounds {
+                vec![0.0; dim]
+            } else {
+                Vec::new()
+            },
             factor4_p,
             factor6,
             ebest: f64::MAX,
@@ -219,9 +225,11 @@ impl<'a, O: Objective> Da<'a, O> {
     /// Evaluate an *encoded* point, tracking the local-search best.
     fn value(&mut self, x: &[f64]) -> f64 {
         let res = if self.has_bounds {
-            let feas = self.closest_feasible(x);
-            let dec = self.decode(&feas);
-            self.raw_eval(&dec)
+            for (j, (&z, dst)) in x.iter().zip(&mut self.decoded).enumerate() {
+                *dst = z.clamp(-1.0, 1.0) * self.scale[j] + self.lower[j];
+            }
+            self.eval_counter += 1;
+            self.obj.eval_scalar(&self.decoded)
         } else {
             self.raw_eval(x)
         };

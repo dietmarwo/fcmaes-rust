@@ -200,6 +200,13 @@ At least as many retries as workers are required to use every worker. The
 result store is locked only while creating coordinated contexts and adding
 completed results; optimizer execution remains outside the lock.
 
+Since 0.5.0 a single worker runs on the calling thread and two or more on
+a private Rayon pool. Parallel work started inside the retry closure with
+the ambient pool, such as `parallel_batch` with `workers <= 0`, therefore
+uses the caller's pool with one retry worker and the retry pool otherwise.
+Give the inner solver an explicit worker count when its thread use
+matters.
+
 Worker RNGs are created once, before their retry loops, and are never shared.
 Each worker stream supplies its retry step-size draws, crossover decisions,
 parent selections, and child optimizer seeds. A root-seed mixer and distinct

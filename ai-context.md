@@ -57,6 +57,17 @@ the preceding generation once at dimension 64 or higher, so seeded
 high-dimensional trajectories can differ from earlier releases. See
 [active CMA-ES](docs/optimizers.md#active-cma-es).
 
+For a hard cap on physical evaluations, call the Rust
+`Crfmnes::optimize_batch_capped_until`, `Pgpe::optimize_batch_capped_until`, or
+`diversify_batch_capped`. A final partial population can contribute its
+observations without applying a distribution update. The ordinary
+generational APIs still finish full populations. Weighted multi-objective
+retry can report its post-run callback count through
+`moretry_with_accounting`, and an optimizer that already has the vector
+at its returned point can pass it to `moretry_observed`. Coordinated retry
+can use `advanced_retry_until` to stop claiming work, and its inner solver
+can use the same stop predicate to end an active run.
+
 ## Experimental surrogate chooser rule
 
 `fcmaes.surrogate/1` is exact-GP Bayesian optimization inside the fcmaes job
@@ -178,8 +189,13 @@ stops of running retries need 0.3.0. jSO, the CR-FM-NES → BiteOpt sequence
 `ArchiveDe`, `ParetoArchiveND`, `igd`), `Cmaes::ask_flat`, the faster
 kernels and DE's corrected best value need 0.5.0; with 0.5.0 seeded runs of
 active CMA-ES at dimension 64 to about 160 and of DE on objectives with
-non-finite values differ from 0.4.0. Changes after the latest release need
-a git dependency on `main`.
+non-finite values differ from 0.4.0. The capped batch entry points
+(`optimize_batch_capped_until`, `diversify_batch_capped`),
+`advanced_retry_until`, `moretry_observed` and `moretry_with_accounting`
+also need 0.5.0; with it a retry with one worker runs on the calling
+thread, so Rayon work inside the retry closure uses the caller's pool, and
+CR-FM-NES rounds an odd population up instead of panicking. Changes after
+the latest release need a git dependency on `main`.
 
 **MODE warning.** `fcmaes-core` and `fcmaes-rust` 0.1.5 and earlier predate
 the October 2026 MODE fixes (#1: the SBX expanding branch, polynomial

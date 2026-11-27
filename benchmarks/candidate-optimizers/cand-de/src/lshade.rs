@@ -112,8 +112,9 @@ impl Solver for LShade {
         let h = self.memory_size.max(1);
 
         // Initial population; stop early if the budget is smaller.
-        let mut pop: Vec<Vec<f64>> = Vec::with_capacity(n_init);
-        let mut fit: Vec<f64> = Vec::with_capacity(n_init);
+        let initial_capacity = n_init.min(usize::try_from(max_evaluations).unwrap_or(usize::MAX));
+        let mut pop: Vec<Vec<f64>> = Vec::with_capacity(initial_capacity);
+        let mut fit: Vec<f64> = Vec::with_capacity(initial_capacity);
         for _ in 0..n_init {
             if ev.exhausted() {
                 return ev.outcome(lower, upper);
@@ -166,12 +167,21 @@ impl Solver for LShade {
                     archive.get(r2 - n)
                 };
                 let xi = &pop[i];
-                let mut v: Vec<f64> = (0..dim)
-                    .map(|j| xi[j] + f * (pop[pbest][j] - xi[j]) + f * (pop[r1][j] - x_r2[j]))
-                    .collect();
-                repair_midpoint(&mut v, xi, lower, upper);
-                let mut u = vec![0.0; dim];
-                binomial_crossover(&mut rng, &v, xi, cr, &mut u);
+                let mutate =
+                    |j: usize| xi[j] + f * (pop[pbest][j] - xi[j]) + f * (pop[r1][j] - x_r2[j]);
+                let u = if dim == 8 {
+                    let mut v: [f64; 8] = std::array::from_fn(mutate);
+                    repair_midpoint(&mut v, xi, lower, upper);
+                    let mut trial = [0.; 8];
+                    binomial_crossover(&mut rng, &v, xi, cr, &mut trial);
+                    trial.to_vec()
+                } else {
+                    let mut v: Vec<_> = (0..dim).map(mutate).collect();
+                    repair_midpoint(&mut v, xi, lower, upper);
+                    let mut trial = vec![0.; dim];
+                    binomial_crossover(&mut rng, &v, xi, cr, &mut trial);
+                    trial
+                };
                 trials.push((u, f, cr));
             }
 
@@ -216,7 +226,7 @@ impl Solver for LShade {
             if n_next < pop.len() {
                 let order = sorted_indices(&fit);
                 let keep = &order[..n_next];
-                pop = keep.iter().map(|&j| pop[j].clone()).collect();
+                pop = keep.iter().map(|&j| std::mem::take(&mut pop[j])).collect();
                 fit = keep.iter().map(|&j| fit[j]).collect();
             }
             let capacity = (self.archive_rate * pop.len() as f64).round() as usize;

@@ -58,7 +58,8 @@ pub struct CrfmnesResult {
 /// Tunable inputs for [`Crfmnes::new`].
 #[derive(Clone, Debug)]
 pub struct CrfmnesParams {
-    /// Population size; values below two are raised to two.
+    /// Population size for mirrored sampling. Values below two are raised
+    /// to two and odd values are rounded up to an even population.
     pub popsize: i32,
     /// Evaluation budget, checked before each generation: whole generations
     /// are evaluated, so a run can make up to `popsize - 1` more evaluations.
@@ -155,7 +156,8 @@ impl Crfmnes {
     pub fn new(mut fitfun: Fitness, guess: &[f64], sigma: f64, p: &CrfmnesParams) -> Self {
         let dim = fitfun.dim();
         fitfun.reset_evaluations();
-        let lamb = p.popsize.max(2) as usize;
+        let requested = p.popsize.max(2) as usize;
+        let lamb = requested + requested % 2;
         let mu = lamb / 2;
         let dimf = dim as f64;
 
@@ -338,7 +340,6 @@ impl Crfmnes {
             .iter()
             .map(|&e| if e.is_finite() { e } else { f64::MAX })
             .collect();
-        self.xs_no_sort = self.x.clone();
 
         if self.use_constraint_violation {
             for (k, e) in evals.iter_mut().enumerate() {
@@ -354,7 +355,8 @@ impl Crfmnes {
         // reorder z, y, x
         self.z = sorted.iter().map(|&i| self.z[i].clone()).collect();
         self.y = sorted.iter().map(|&i| self.y[i].clone()).collect();
-        self.x = sorted.iter().map(|&i| self.x[i].clone()).collect();
+        self.xs_no_sort = std::mem::take(&mut self.x);
+        let x: Vec<_> = sorted.iter().map(|&i| &self.xs_no_sort[i]).collect();
 
         self.external_evaluations += lamb as u64;
         if f_best_ < self.f_best {
@@ -397,7 +399,7 @@ impl Crfmnes {
 
         // update pc, m
         let wxm = weighted_sum(
-            &self.x.iter().map(|xk| xk - &self.m).collect::<Vec<_>>(),
+            &x.iter().map(|xk| *xk - &self.m).collect::<Vec<_>>(),
             weights.as_slice(),
         );
         self.pc = &self.pc * (1.0 - self.cc)
@@ -412,8 +414,9 @@ impl Crfmnes {
         let vbarbar = vbar.component_mul(&vbar);
 
         // exY columns: y (lamb of them) then pc./D
-        let mut ex_y: Vec<DVector<f64>> = self.y.clone();
-        ex_y.push(self.pc.component_div(&self.d));
+        let path = self.pc.component_div(&self.d);
+        let mut ex_y: Vec<&DVector<f64>> = self.y.iter().collect();
+        ex_y.push(&path);
         let lp1 = lamb + 1;
 
         let ip_yvbar: Vec<f64> = ex_y.iter().map(|c| vbar.dot(c)).collect();
@@ -427,7 +430,7 @@ impl Crfmnes {
         let ibg: Vec<f64> = ip_yvbar.iter().map(|&p| p * p + gammav).collect();
         // t columns
         let mut t: Vec<DVector<f64>> = (0..lp1)
-            .map(|k| &ex_y[k] * ip_yvbar[k] - &vbar * (ibg[k] / 2.0))
+            .map(|k| ex_y[k] * ip_yvbar[k] - &vbar * (ibg[k] / 2.0))
             .collect();
 
         let a2 = alphavd * alphavd;
@@ -553,6 +556,69 @@ impl Crfmnes {
             self.iterations += 1;
         }
         self.make_result(self.fitfun.evaluations())
+    }
+
+    /// Run batch optimization within the configured hard evaluation budget.
+    /// The result reports the best finite observation from this invocation.
+    /// A final incomplete generation is evaluated without updating the distribution,
+    /// and its observations are eligible for the returned best result.
+    ///
+    /// # Errors
+    /// Returns an error if the callback returns a different number of values than points.
+    pub fn optimize_batch_capped_until<F>(
+        &mut self,
+        mut eval_batch: F,
+        stop: &dyn Fn() -> bool,
+    ) -> Result<CrfmnesResult, &'static str>
+    where
+        F: FnMut(&[Vec<f64>]) -> Vec<f64>,
+    {
+        self.fitfun.reset_evaluations();
+        self.iterations = 0;
+        self.pending = false;
+        let mut incumbent = self.make_result(0);
+        incumbent.y = f64::INFINITY;
+        while self.fitfun.evaluations() < self.max_evaluations
+            && !self.fitfun.terminate()
+            && self.stop == 0
+        {
+            if stop() {
+                break;
+            }
+            self.ask();
+            let rows = self.decode_columns(&self.x);
+            let count =
+                (self.max_evaluations - self.fitfun.evaluations()).min(self.lamb as u64) as usize;
+            let values = eval_batch(&rows[..count]);
+            if values.len() != count {
+                return Err("batch must return one score per candidate");
+            }
+            self.fitfun.incr_evaluations(count as u64);
+            for (x, &y) in rows.iter().zip(&values) {
+                if y.is_finite() && y < incumbent.y {
+                    incumbent.x.clone_from(x);
+                    incumbent.y = y;
+                }
+            }
+            if count < self.lamb {
+                if incumbent.y < self.stopfitness {
+                    self.stop = 1;
+                }
+                break;
+            }
+            let mut values = values;
+            for y in &mut values {
+                if !y.is_finite() {
+                    *y = crate::fitness::NAN_REPLACEMENT;
+                }
+            }
+            self.tell(&values);
+            self.iterations += 1;
+        }
+        incumbent.evaluations = self.fitfun.evaluations();
+        incumbent.iterations = self.iterations;
+        incumbent.stop = self.stop;
+        Ok(incumbent)
     }
 
     // ---- ask/tell interface (mirrors CrfmnesState::Impl) ----

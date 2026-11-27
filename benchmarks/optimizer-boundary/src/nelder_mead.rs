@@ -91,30 +91,37 @@ fn descend<O: Objective>(
     let contraction = 0.75 - 1.0 / (2.0 * n);
     let shrink = 1.0 - 1.0 / n;
 
+    let mut reflected = vec![0.0; dimension];
     while budget.used < budget.limit {
         simplex.sort_by(|left, right| left.1.total_cmp(&right.1));
         let center = centroid(&simplex, dimension);
-        let worst = simplex[dimension].0.clone();
+        let worst = &simplex[dimension].0;
         let worst_value = simplex[dimension].1;
         let second_worst = simplex[dimension - 1].1;
         let best = simplex[0].1;
 
-        let mut reflected = along(&center, &worst, -reflection);
+        for ((v, &c), &w) in reflected.iter_mut().zip(&center).zip(worst) {
+            *v = c + (-reflection) * (w - c);
+        }
         let Some(reflected_value) = budget.eval(&mut reflected) else {
             break;
         };
         if reflected_value < best {
-            let mut expanded = along(&center, &worst, -expansion);
+            let mut expanded = along(&center, worst, -expansion);
             match budget.eval(&mut expanded) {
                 Some(expanded_value) if expanded_value < reflected_value => {
                     simplex[dimension] = (expanded, expanded_value);
                 }
-                _ => simplex[dimension] = (reflected, reflected_value),
+                _ => {
+                    std::mem::swap(&mut simplex[dimension].0, &mut reflected);
+                    simplex[dimension].1 = reflected_value;
+                }
             }
             continue;
         }
         if reflected_value < second_worst {
-            simplex[dimension] = (reflected, reflected_value);
+            std::mem::swap(&mut simplex[dimension].0, &mut reflected);
+            simplex[dimension].1 = reflected_value;
             continue;
         }
 
@@ -122,7 +129,7 @@ fn descend<O: Objective>(
         let mut contracted = if outside {
             along(&center, &reflected, contraction)
         } else {
-            along(&center, &worst, contraction)
+            along(&center, worst, contraction)
         };
         let Some(contracted_value) = budget.eval(&mut contracted) else {
             break;
@@ -139,12 +146,14 @@ fn descend<O: Objective>(
 
         let anchor = simplex[0].0.clone();
         for entry in &mut simplex[1..] {
-            let mut point = along(&anchor, &entry.0, shrink);
-            let Some(value) = budget.eval(&mut point) else {
-                simplex.sort_by(|left, right| left.1.total_cmp(&right.1));
+            if budget.used >= budget.limit {
+                simplex.sort_by(|a, b| a.1.total_cmp(&b.1));
                 return simplex.first().cloned();
-            };
-            *entry = (point, value);
+            }
+            for (v, &base) in entry.0.iter_mut().zip(&anchor) {
+                *v = base + shrink * (*v - base);
+            }
+            entry.1 = budget.eval(&mut entry.0).unwrap();
         }
     }
 

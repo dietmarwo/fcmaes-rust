@@ -392,7 +392,13 @@ impl Amalgam {
 
         loop {
             // 1. Truncation selection (stable order for determinism).
-            order.sort_by(|&a, &b| fit[a].total_cmp(&fit[b]).then(a.cmp(&b)));
+            let compare = |&a: &usize, &b: &usize| fit[a].total_cmp(&fit[b]).then(a.cmp(&b));
+            if !self.incremental && sel < order.len() {
+                order.select_nth_unstable_by(sel, compare);
+                order[..sel].sort_unstable_by(compare);
+            } else {
+                order.sort_by(compare);
+            }
             let selected = &order[..sel];
 
             // Termination on a flat selected set.

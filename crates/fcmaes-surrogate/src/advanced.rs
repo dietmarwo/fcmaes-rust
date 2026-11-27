@@ -598,7 +598,12 @@ impl Engine {
                 None
             };
             let mut scored = Vec::new();
-            for x in &pool {
+            let scan_pool = if self.options.acquisition == Acquisition::LogEi && model.is_some() {
+                &[][..]
+            } else {
+                &pool[..]
+            };
+            for x in scan_pool {
                 let physical = self.space.from_unit(x)?;
                 let x = self.space.to_unit(&physical)?;
                 if occupied.iter().any(|p| {

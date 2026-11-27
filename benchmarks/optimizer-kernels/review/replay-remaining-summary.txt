@@ -1,0 +1,12 @@
+replay_remaining, 0.5.0 as prepared (ccb9f8b) against the merged tree, 27 November 2026
+columns: optimizer, runs, runs with the same evaluated points and result, runs that panic in the base
+jso	405	405	0
+crfmnes	405	270	135
+pgpe	405	405	0
+da	270	270	0
+archivede	108	108	0
+retry	90	90	0
+advretry	90	90	0
+moretry	48	48	0
+diversifier	72	72	0
+The 135 panics are CR-FM-NES with an odd population (31): index out of bounds in ask.

@@ -1159,9 +1159,40 @@ pub fn diversify_batch(
     p: &DiversifierParams,
     rng: &mut Rng,
 ) -> Result<(Vec<f64>, f64), &'static str> {
+    diversify_batch_impl(archive, fitness, lower, upper, p, rng, false)
+}
+
+/// Run the Diversifier with a hard cap on physical evaluations.
+/// The final prefix can update the archive and best solution. Only complete
+/// populations are told to their emitter.
+///
+/// # Errors
+/// Returns an error if the callback gives a result count different from the request.
+pub fn diversify_batch_capped(
+    archive: &mut Archive,
+    fitness: &mut dyn QdBatchFitness,
+    lower: &[f64],
+    upper: &[f64],
+    p: &DiversifierParams,
+    rng: &mut Rng,
+) -> Result<(Vec<f64>, f64), &'static str> {
+    diversify_batch_impl(archive, fitness, lower, upper, p, rng, true)
+}
+
+fn diversify_batch_impl(
+    archive: &mut Archive,
+    fitness: &mut dyn QdBatchFitness,
+    lower: &[f64],
+    upper: &[f64],
+    p: &DiversifierParams,
+    rng: &mut Rng,
+    capped: bool,
+) -> Result<(Vec<f64>, f64), &'static str> {
     let mut best_x = vec![0.0; archive.dim()];
     let mut best_y = f64::INFINITY;
     let mut evals: u64 = 0;
+    let dim = archive.dim();
+    let mut xs: Vec<Vec<f64>> = Vec::new();
     while evals < p.max_evaluations {
         let (x0, _) = archive.random_x_one(archive.occupied().max(1), rng);
         let sigma = {
@@ -1182,7 +1213,18 @@ pub fn diversify_batch(
         let mut last_improve = 0i32;
         let mut old_ys: Option<Vec<f64>> = None;
         for iter in 0..max_iters as i32 {
-            let xs = es.ask();
+            let flat = es.ask_flat();
+            let whole_population = flat.len() / dim;
+            let count = if capped {
+                whole_population
+                    .min(usize::try_from(p.max_evaluations - evals).unwrap_or(usize::MAX))
+            } else {
+                whole_population
+            };
+            xs.resize_with(count, || vec![0.0; dim]);
+            for (row, slice) in xs.iter_mut().zip(flat.chunks_exact(dim)) {
+                row.copy_from_slice(slice);
+            }
             let (improvement, real_ys) = archive.update_batch(&xs, fitness)?;
             evals += xs.len() as u64;
             // track best real solution
@@ -1191,6 +1233,9 @@ pub fn diversify_batch(
                     best_y = ry;
                     best_x.copy_from_slice(x);
                 }
+            }
+            if xs.len() < whole_population {
+                break;
             }
             let mut sorted = improvement.clone();
             sorted.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
