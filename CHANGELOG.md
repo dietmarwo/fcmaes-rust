@@ -6,6 +6,11 @@ phase, with breaking changes called out explicitly.
 
 ## [Unreleased]
 
+### Changed
+
+- The optimization-jobs pin moves from `2bfa8e4` to `ded566f` (optimization-jobs main after #50) in every manifest and lockfile: the workspace and the four tutorials with a job worker; only the optimization-jobs entries change. Between the two revisions only the guide behind `get_guide` changed: it names fcmaes-core 0.5, lp-ip-craft 0.33 and sqp-craft 0.21. The job crates are still 0.5.0; the worker SDK, the job envelope, the worker protocol and the result contract are unchanged.
+- `docs/repositories.md` names the releases of 27 November 2026 (fast-cma-es 2.3.0, fcmaes-rust 0.5.0, LP-IP-craft 0.33.0, SQP-craft 0.21.0) and the new pin; `ai-context.md` says 0.5.0 is published.
+
 ## [0.5.0] - 2026-11-27
 
 ### Remaining optimizers

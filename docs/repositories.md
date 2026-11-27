@@ -5,10 +5,9 @@ default-branch commits since 1 August 2026 and two earlier split-brain
 research projects from April 2026. Status: 6 November 2026; the CRN-craft
 and population-epidemiology entries as of 8 November 2026, the BO-craft and
 inlet-craft entries as of 19 November 2026. Versions were checked against
-PyPI, crates.io and the repositories' tags on 20 November 2026, including
-that day's releases fast-cma-es 2.2.0, fcmaes-rust 0.4.0 and
-optimization-jobs 0.5.0. fcmaes-rust 0.5.0 is the release prepared on
-27 November 2026.
+PyPI, crates.io and the repositories' tags on 27 November 2026, including
+that day's releases fast-cma-es 2.3.0, fcmaes-rust 0.5.0, LP-IP-craft
+0.33.0 and SQP-craft 0.21.0; optimization-jobs is at 0.5.0 (20 November).
 
 Together they connect Python and Rust optimizers, durable job execution,
 experiment campaigns, simulators and bounded domain models. Native
@@ -78,7 +77,7 @@ The diagram is drawn with Graphviz from [images/repositories.dot](images/reposit
 Gradient-free optimization: CMA-ES, differential evolution, jSO, BiteOpt
 and other algorithms, parallel retry, multi-objective search (MODE) and
 quality diversity, with many application tutorials. Published on PyPI as
-`fcmaes` (2.2.0); the longest-established project here, with 164 GitHub
+`fcmaes` (2.3.0); the longest-established project here, with 164 GitHub
 stars on 20 November 2026. It remains the recommended choice for objectives
 written in Python, because it evaluates them in parallel with
 multiprocessing.
@@ -118,7 +117,7 @@ GTOC1 route search applies the same split-brain pattern to planet orders.
 [github.com/dietmarwo/LP-IP-craft](https://github.com/dietmarwo/LP-IP-craft)
 
 Linear and mixed-integer linear optimization with Python bindings
-(`lp-ip-craft` 0.30.0, with optional MIP gap stops) and a separate job
+(`lp-ip-craft` 0.33.0, with optional MIP gap stops) and a separate job
 worker for shell or MCP jobs.
 Nine application tutorials cover allocation, battery dispatch, Sudoku,
 rostering, transportation, facility location, cutting stock, stochastic
@@ -134,7 +133,7 @@ shared guide routes linear and integer problems here instead of to fcmaes.
 [github.com/dietmarwo/SQP-craft](https://github.com/dietmarwo/SQP-craft)
 
 A sequential quadratic programming solver in Rust with Python bindings
-(`sqp-craft` 0.20.0) and a separate job worker. The dense default mode
+(`sqp-craft` 0.21.0) and a separate job worker. The dense default mode
 handles up to 256 variables, and since 0.19.0 it chooses the QP solver
 automatically. The experimental
 [structured mode](https://github.com/dietmarwo/SQP-craft/blob/main/docs/structured-sqp.md)
@@ -166,8 +165,8 @@ systemd user manager with lingering on the node. It contains no solver or
 simulator of its own, and it hosts the shared solver-selection guide and
 the ecosystem page. Version 0.5.0 on crates.io, which adds an optional
 progress file to command jobs (`jobs progress`); the solver repositories pin
-it by Git revision, currently `2bfa8e4`, the merge of the 0.5.0 release
-(the tag `v0.5.0` is on `df7c55d`, with the same shared files).
+it by Git revision, currently `ded566f`, main after #50, whose guide names
+the releases of 27 November 2026 (the job crates are still 0.5.0).
 
 **Relations:** fcmaes-rust, LP-IP-craft and SQP-craft provide job workers
 built on its API, and inlet-craft's worker uses a vendored copy of its
