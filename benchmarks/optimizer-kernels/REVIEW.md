@@ -141,7 +141,7 @@ identical in every evaluation and take the same time).
   measured effects.
 - `replay_digest` and `cma_target` as example programs of `fcmaes-core`.
   They compile in CI and compare two checkouts
-  ([usage](README.md#reproduce-the-review)).
+  ([usage](README.md)).
 - This directory, the two plans under `docs/plans/` and their entries in
   the benchmark index and the book.
 
