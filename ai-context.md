@@ -189,8 +189,13 @@ stops of running retries need 0.3.0. jSO, the CR-FM-NES → BiteOpt sequence
 `ArchiveDe`, `ParetoArchiveND`, `igd`), `Cmaes::ask_flat`, the faster
 kernels and DE's corrected best value need 0.5.0; with 0.5.0 seeded runs of
 active CMA-ES at dimension 64 to about 160 and of DE on objectives with
-non-finite values differ from 0.4.0. Changes after the latest release need
-a git dependency on `main`.
+non-finite values differ from 0.4.0. The capped batch entry points
+(`optimize_batch_capped_until`, `diversify_batch_capped`),
+`advanced_retry_until`, `moretry_observed` and `moretry_with_accounting`
+also need 0.5.0; with it a retry with one worker runs on the calling
+thread, so Rayon work inside the retry closure uses the caller's pool, and
+CR-FM-NES rounds an odd population up instead of panicking. Changes after
+the latest release need a git dependency on `main`.
 
 **MODE warning.** `fcmaes-core` and `fcmaes-rust` 0.1.5 and earlier predate
 the October 2026 MODE fixes (#1: the SBX expanding branch, polynomial

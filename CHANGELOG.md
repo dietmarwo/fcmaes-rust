@@ -6,35 +6,53 @@ phase, with breaking changes called out explicitly.
 
 ## [Unreleased]
 
-### Added
+## [0.5.0] - 2026-11-27
 
-- CR-FM-NES and PGPE expose `optimize_batch_capped_until` for exact evaluation
-  caps. The final partial population can improve the returned result without
-  updating the search distribution.
-- `diversify_batch_capped` applies a final partial batch to the archive within
-  an exact call cap. `advanced_retry_until` accepts a cooperative stop
-  predicate for coordinated retries.
+### Remaining optimizers
+
+The second campaign of 27 November 2026 (19 tracks, 380 trials); review
+and measurements in
+[benchmarks/optimizer-kernels/REVIEW-remaining-optimizers.md](benchmarks/optimizer-kernels/REVIEW-remaining-optimizers.md).
+Seeded runs of jSO, CR-FM-NES, PGPE, Dual Annealing, ArchiveDE, retry,
+coordinated retry, weighted retry and the Diversifier make the same calls
+and return the same results as before the change (1,758 runs replayed).
+
+- **Fixed:** CR-FM-NES with an odd population panicked in `ask` with an
+  index out of bounds. Odd values are now rounded up to keep both halves
+  of the mirrored sample.
+- **Changed:** a retry with one worker runs on the calling thread instead
+  of a private one-thread pool. Rayon work started inside the retry
+  closure, such as `parallel_batch` with `workers <= 0`, therefore runs on
+  the caller's pool (the global pool from a plain thread) and no longer on
+  one thread. Pass an explicit inner worker count to keep it serial. The
+  delivery measured 1.6 to 1.7 times on retries of 2,048 cheap calls and
+  no change on longer ones.
+- **Changed:** weighted retry computes the default squared scalarization
+  with a product and a square root. About one value in 800 differs from
+  `powf` in the last bit, so a seeded weighted retry can in principle
+  leave its earlier trajectory; none of 48 replayed runs did. Weighted
+  retries of cheap objectives ran 1.7 to 2.6 times faster in the
+  delivery's runs.
+- CR-FM-NES and PGPE expose `optimize_batch_capped_until` for exact
+  evaluation caps. The final partial population can improve the returned
+  result without updating the search distribution. On a budget of whole
+  populations the capped loop asks for the points of the ordinary one.
+- `diversify_batch_capped` applies a final partial batch to the archive
+  within an exact call cap. `advanced_retry_until` accepts a cooperative
+  stop predicate for coordinated retries.
 - `moretry_with_accounting` counts post-run evaluations separately.
   `moretry_observed` accepts the objective vector already observed at the
-  returned point.
-
-### Fixed
-
-- CR-FM-NES rounds odd populations up to keep both halves of mirrored sampling.
-
-### Performance
-
+  returned point; a vector of the wrong width or with a non-finite value
+  is rejected like a reevaluated one.
 - jSO borrows pending rows during serial optimization and moves surviving
   rows when shrinking its population. ArchiveDE moves selected parent rows.
 - CR-FM-NES moves its unsorted population into the snapshot and uses row
   references while ranking. PGPE prepares score terms once per mirrored
   pair. Dual Annealing reuses its decoded trial buffer.
-- One-worker retry runs on the calling thread. Weighted retry specializes
-  squared scalarization. The Diversifier reuses decoded rows from the emitter's
-  flat ask buffer across generations and restarts.
-- Surrogate/2 avoids scoring an acquisition pool twice for fitted LogEI.
-
-## [0.5.0] - 2026-11-27
+- The Diversifier reuses decoded rows from the emitter's flat ask buffer
+  across generations and restarts.
+- Surrogate/2 avoids scoring an acquisition pool twice for fitted LogEI
+  (1.26 to 1.36 times faster in the delivery's runs).
 
 Faster kernels in BiteOpt, DE, MODE, MAP-Elites and active CMA-ES; the
 front tools (`BordaIndex`, `GridIndex`, `ArchiveDe`, `ParetoArchiveND`) and
