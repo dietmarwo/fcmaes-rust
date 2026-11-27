@@ -201,6 +201,8 @@ pub struct Mode {
     pop_x: Vec<Vec<f64>>,
     pop_y: Vec<Vec<f64>>,
     v_x: Vec<Vec<f64>>, // NSGA variation buffer
+    spare_x: Vec<Vec<f64>>,
+    spare_y: Vec<Vec<f64>>,
     vp: usize,
 
     iterations: i32,
@@ -290,6 +292,8 @@ impl Mode {
             pop_x: vec![],
             pop_y: vec![],
             v_x: vec![],
+            spare_x: vec![],
+            spare_y: vec![],
             vp: 0,
             iterations: 0,
             stop: 0,
@@ -314,6 +318,8 @@ impl Mode {
             .collect();
         self.pop_y = vec![vec![BIG; self.nobj_ncon]; n];
         self.v_x = self.pop_x[0..self.popsize].to_vec();
+        self.spare_x.resize_with(self.popsize, Vec::new);
+        self.spare_y.resize_with(self.popsize, Vec::new);
         self.vp = 0;
         self.pending = false;
     }
@@ -476,38 +482,110 @@ impl Mode {
                 break;
             }
         }
-        let xp = self.pop_x[p].clone();
-        let x1 = &self.pop_x[r1];
-        let x2 = &self.pop_x[r2];
-        let x3 = &self.pop_x[r3];
-        let mut x: Vec<f64> = (0..self.dim)
-            .map(|j| x3[j] + (x1[j] - x2[j]) * self.f)
-            .collect();
+        let mut x = std::mem::take(&mut self.pop_x[self.popsize + p]);
         let r = self.rng.int_below(self.dim as i64) as usize;
-        for j in 0..self.dim {
-            if j != r && self.rng.uniform01() > self.cr {
-                x[j] = xp[j];
-            }
+        for (j, value) in x.iter_mut().enumerate() {
+            *value = if j != r && self.rng.uniform01() > self.cr {
+                self.pop_x[p][j]
+            } else {
+                self.pop_x[r3][j] + (self.pop_x[r1][j] - self.pop_x[r2][j]) * self.f
+            };
         }
         self.modify(&mut x);
-        self.fitfun.closest_feasible(&x)
+        for (j, value) in x.iter_mut().enumerate() {
+            *value = self.fitfun.closest_feasible_i(j, *value);
+        }
+        x
     }
 
     // ---- pareto ranking ----
 
-    /// Non-dominated sorting (Deb et al. 2002). Returns one level per point,
-    /// higher = better: the first front gets the highest level, the second
-    /// front one less, and so on. Dominated points are thus ranked by how far
-    /// they are from the front, which gives convergence pressure when the
-    /// first front is small.
-    fn pareto_levels(objs: &[Vec<f64>]) -> Vec<f64> {
+    fn pareto_one<T: AsRef<[f64]>>(objs: &[T]) -> Vec<f64> {
+        let mut order: Vec<_> = (0..objs.len()).collect();
+        order.sort_unstable_by(|&a, &b| objs[a].as_ref()[0].total_cmp(&objs[b].as_ref()[0]));
+        let mut ranks = vec![0.0; order.len()];
+        let mut level = 0.0;
+        for (position, &row) in order.iter().enumerate() {
+            if position > 0 && objs[row].as_ref()[0] != objs[order[position - 1]].as_ref()[0] {
+                level += 1.0;
+            }
+            ranks[row] = level;
+        }
+        ranks.into_iter().map(|rank| level - rank).collect()
+    }
+
+    fn pareto_two<T: AsRef<[f64]>>(objs: &[T]) -> Vec<f64> {
+        fn numeric_cmp(a: f64, b: f64) -> std::cmp::Ordering {
+            if a == b {
+                std::cmp::Ordering::Equal
+            } else {
+                a.total_cmp(&b)
+            }
+        }
+        let mut cols: Vec<_> = objs.iter().map(|y| y.as_ref()[1]).collect();
+        cols.sort_unstable_by(|&a, &b| numeric_cmp(a, b));
+        cols.dedup_by(|a, b| a == b);
+        let mut ordered: Vec<usize> = (0..objs.len()).collect();
+        ordered.sort_unstable_by(|&a, &b| {
+            let (a, b) = (objs[a].as_ref(), objs[b].as_ref());
+            numeric_cmp(a[0], b[0]).then_with(|| numeric_cmp(a[1], b[1]))
+        });
+        // The Fenwick tree stores the maximum predecessor depth in a
+        // prefix of y coordinates. Identical objective rows form one node.
+        let mut tree = vec![0; cols.len() + 1];
+        let mut depth = vec![0; objs.len()];
+        let mut max_depth = 0;
+        let mut start = 0;
+        while start < ordered.len() {
+            let value = objs[ordered[start]].as_ref();
+            let mut end = start + 1;
+            while end < ordered.len() && objs[ordered[end]].as_ref() == value {
+                end += 1;
+            }
+            let slot = cols
+                .binary_search_by(|&y| numeric_cmp(y, value[1]))
+                .unwrap()
+                + 1;
+            let mut prefix = slot;
+            let mut previous = 0;
+            while prefix != 0 {
+                previous = previous.max(tree[prefix]);
+                prefix &= prefix - 1;
+            }
+            let level = previous + 1;
+            for &i in &ordered[start..end] {
+                depth[i] = level;
+            }
+            let mut slot = slot;
+            while slot < tree.len() {
+                tree[slot] = tree[slot].max(level);
+                slot += slot & slot.wrapping_neg();
+            }
+            max_depth = max_depth.max(level);
+            start = end;
+        }
+        depth
+            .into_iter()
+            .map(|level| (max_depth - level) as f64)
+            .collect()
+    }
+
+    // Higher ranks are better. The deepest front always has rank zero.
+    fn pareto_levels<T: AsRef<[f64]>>(objs: &[T]) -> Vec<f64> {
+        if let Some(first) = objs.first() {
+            match first.as_ref().len() {
+                1 => return Self::pareto_one(objs),
+                2 if objs.len() >= 32 => return Self::pareto_two(objs),
+                _ => {}
+            }
+        }
         let n = objs.len();
         let mut dominated_by: Vec<Vec<usize>> = vec![Vec::new(); n];
         let mut count = vec![0usize; n];
         for p in 0..n {
             for q in (p + 1)..n {
                 let (mut p_le, mut q_le, mut p_lt, mut q_lt) = (true, true, false, false);
-                for (a, b) in objs[p].iter().zip(objs[q].iter()) {
+                for (a, b) in objs[p].as_ref().iter().zip(objs[q].as_ref()) {
                     if a > b {
                         p_le = false;
                     }
@@ -550,7 +628,7 @@ impl Mode {
         rank.iter().map(|&r| (level - 1 - r) as f64).collect()
     }
 
-    fn objranks(objs: &[Vec<f64>]) -> Vec<f64> {
+    fn objranks(objs: &[&[f64]]) -> Vec<f64> {
         let n = objs.len();
         let nobj = objs[0].len();
         let mut rank_sum = vec![0.0; n];
@@ -564,63 +642,51 @@ impl Mode {
         rank_sum
     }
 
-    fn ranks(cons: &[Vec<f64>], eps: &[f64]) -> Vec<f64> {
+    fn ranks(cons: &[&[f64]], ncon: usize) -> Vec<f64> {
         let n = cons.len();
-        let ncon = eps.len();
-        let mut rank = vec![vec![0.0; ncon]; n];
-        let mut alpha = vec![0.0; n];
-        for j in 0..ncon {
-            let col: Vec<f64> = cons.iter().map(|c| c[j]).collect();
-            let order = sort_index(&col);
-            for (pos, &idx) in order.iter().enumerate() {
-                if cons[idx][j] <= eps[j] {
-                    rank[idx][j] = 0.0;
-                } else {
-                    rank[idx][j] = pos as f64;
-                    alpha[idx] += 1.0;
-                }
-            }
-        }
+        let alpha: Vec<f64> = cons
+            .iter()
+            .map(|row| row.iter().filter(|&&value| value > 0.0).count() as f64)
+            .collect();
         let mut csum = vec![0.0; n];
-        for i in 0..n {
-            for j in 0..ncon {
-                csum[i] += rank[i][j] * alpha[i] / ncon as f64;
+        let mut col = vec![0.0; n];
+        let mut order: Vec<_> = (0..n).collect();
+        for j in 0..ncon {
+            for i in 0..n {
+                col[i] = cons[i][j].max(0.0);
+                order[i] = i;
+            }
+            order.sort_by(|&a, &b| col[a].total_cmp(&col[b]));
+            for (pos, &idx) in order.iter().enumerate() {
+                if col[idx] > 0.0 {
+                    csum[idx] += pos as f64 * alpha[idx] / ncon as f64;
+                }
             }
         }
         csum
     }
 
-    fn pareto(&self, ys: &[Vec<f64>]) -> Vec<f64> {
+    fn pareto(&self, ys: &[&[f64]]) -> Vec<f64> {
         if self.ncon == 0 {
             return Self::pareto_levels(ys);
         }
         let popn = ys.len();
-        let objs: Vec<Vec<f64>> = ys.iter().map(|y| y[0..self.nobj].to_vec()).collect();
-        let cons: Vec<Vec<f64>> = ys
-            .iter()
-            .map(|y| {
-                y[self.nobj..self.nobj_ncon]
-                    .iter()
-                    .map(|&c| c.max(0.0))
-                    .collect()
-            })
-            .collect();
+        let objs: Vec<_> = ys.iter().map(|y| &y[..self.nobj]).collect();
+        let cons: Vec<_> = ys.iter().map(|y| &y[self.nobj..]).collect();
 
         // Feasibility first: a point counts as feasible only if it violates no
         // constraint. An adaptive tolerance (eps, derived from the mean violation of
         // the previous generation) let slightly infeasible points displace all
         // strictly feasible ones once the population converged onto active
         // constraints, so the final population could contain no feasible point.
-        let eps = vec![0.0; self.ncon];
-
         let feasible: Vec<bool> = cons
             .iter()
-            .map(|c| c.iter().zip(&eps).all(|(&cv, &ev)| cv <= ev))
+            .map(|c| c.iter().all(|&value| value <= 0.0))
             .collect();
         let has_feasible = feasible.iter().any(|&f| f);
         let has_infeasible = feasible.iter().any(|&f| !f);
 
-        let mut csum = Self::ranks(&cons, &eps);
+        let mut csum = Self::ranks(&cons, self.ncon);
         if has_feasible {
             let orank = Self::objranks(&objs);
             for i in 0..popn {
@@ -639,7 +705,7 @@ impl Mode {
         }
         let mut domination = vec![0.0; popn];
         if has_feasible {
-            let feas_objs: Vec<Vec<f64>> = fiv.iter().map(|&i| objs[i].clone()).collect();
+            let feas_objs: Vec<_> = fiv.iter().map(|&i| objs[i]).collect();
             let ypar = Self::pareto_levels(&feas_objs);
             for (k, &i) in fiv.iter().enumerate() {
                 domination[i] += ypar[k];
@@ -656,7 +722,7 @@ impl Mode {
         domination
     }
 
-    fn crowd_dist(sub: &[Vec<f64>], nobj: usize) -> Vec<f64> {
+    fn crowd_dist<T: AsRef<[f64]>>(sub: &[T], nobj: usize) -> Vec<f64> {
         let n = sub.len();
         if n == 0 {
             return Vec::new();
@@ -666,7 +732,7 @@ impl Mode {
         }
         let mut distance = vec![0.0; n];
         for objective in 0..nobj {
-            let values: Vec<f64> = sub.iter().map(|y| y[objective]).collect();
+            let values: Vec<f64> = sub.iter().map(|y| y.as_ref()[objective]).collect();
             let order = sort_index(&values);
             let lo = values[order[0]];
             let hi = values[order[n - 1]];
@@ -692,53 +758,46 @@ impl Mode {
 
     fn pop_update(&mut self) {
         let n = 2 * self.popsize;
-        let mut x0 = self.pop_x[0..n].to_vec();
-        let mut y0 = self.pop_y[0..n].to_vec();
+        let mut indices: Vec<_> = (0..n).collect();
         if self.nobj == 1 {
-            let col: Vec<f64> = y0.iter().map(|y| y[0]).collect();
-            let mut yi = sort_index(&col);
-            yi.reverse();
-            x0 = yi.iter().map(|&i| x0[i].clone()).collect();
-            y0 = yi.iter().map(|&i| y0[i].clone()).collect();
+            indices.sort_by(|&a, &b| self.pop_y[a][0].total_cmp(&self.pop_y[b][0]));
+            indices.reverse();
         }
-        let domination = self.pareto(&y0);
-        let maxdom = domination.iter().cloned().fold(f64::MIN, f64::max) as i32;
-        let mut newx: Vec<Vec<f64>> = Vec::with_capacity(self.popsize);
-        let mut newy: Vec<Vec<f64>> = Vec::with_capacity(self.popsize);
-        for dom in (0..=maxdom).rev() {
-            let level: Vec<usize> = (0..n).filter(|&i| domination[i] as i32 == dom).collect();
+        let ys: Vec<_> = indices.iter().map(|&i| self.pop_y[i].as_slice()).collect();
+        let domination = self.pareto(&ys);
+        let maxdom = domination.iter().copied().fold(f64::MIN, f64::max) as i32;
+        let mut selected = Vec::with_capacity(self.popsize);
+        let mut levels = vec![Vec::new(); maxdom as usize + 1];
+        for (i, &rank) in domination.iter().enumerate() {
+            levels[rank as usize].push(i);
+        }
+        for level in levels.into_iter().rev() {
             if level.is_empty() {
                 continue;
             }
-            if newx.len() + level.len() <= self.popsize {
-                for &i in &level {
-                    newx.push(x0[i].clone());
-                    newy.push(y0[i].clone());
-                }
+            if selected.len() + level.len() <= self.popsize {
+                selected.extend(level);
             } else {
-                if level.len() > 1 {
-                    let domy: Vec<Vec<f64>> = level.iter().map(|&i| y0[i].clone()).collect();
-                    let cd = Self::crowd_dist(&domy, self.nobj);
-                    let mut si = sort_index(&cd);
-                    si.reverse();
-                    for &k in &si {
-                        if newx.len() >= self.popsize {
-                            break;
-                        }
-                        let i = level[k];
-                        newx.push(x0[i].clone());
-                        newy.push(y0[i].clone());
-                    }
-                } else {
-                    newx.push(x0[level[0]].clone());
-                    newy.push(y0[level[0]].clone());
-                }
+                let domy: Vec<_> = level.iter().map(|&i| ys[i]).collect();
+                let cd = Self::crowd_dist(&domy, self.nobj);
+                let mut si = sort_index(&cd);
+                si.reverse();
+                selected.extend(
+                    si.into_iter()
+                        .take(self.popsize - selected.len())
+                        .map(|k| level[k]),
+                );
                 break;
             }
         }
+        for (slot, rank_index) in selected.into_iter().enumerate() {
+            let i = indices[rank_index];
+            self.spare_x[slot].clone_from(&self.pop_x[i]);
+            self.spare_y[slot].clone_from(&self.pop_y[i]);
+        }
         for i in 0..self.popsize {
-            self.pop_x[i] = newx[i].clone();
-            self.pop_y[i] = newy[i].clone();
+            std::mem::swap(&mut self.pop_x[i], &mut self.spare_x[i]);
+            std::mem::swap(&mut self.pop_y[i], &mut self.spare_y[i]);
         }
         if self.nsga_update {
             let cur = self.pop_x[0..self.popsize].to_vec();
@@ -807,14 +866,13 @@ impl Mode {
         if ys.len() != self.popsize {
             return Err("MODE tell batch length must equal popsize");
         }
-        for (p, row) in ys.iter().enumerate() {
-            if row.len() != self.nobj_ncon {
-                return Err("MODE tell row width must equal nobj + ncon");
+        if ys.iter().any(|row| row.len() != self.nobj_ncon) {
+            return Err("MODE tell row width must equal nobj + ncon");
+        }
+        for (target, source) in self.pop_y[self.popsize..].iter_mut().zip(ys) {
+            for (value, &sample) in target.iter_mut().zip(source) {
+                *value = if sample.is_finite() { sample } else { BIG };
             }
-            self.pop_y[self.popsize + p] = row
-                .iter()
-                .map(|&value| if value.is_finite() { value } else { BIG })
-                .collect();
         }
         self.pop_update();
         self.pending = false;
@@ -917,6 +975,37 @@ impl Mode {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn sweep_ranks_every_two_objective_front_like_the_pairwise_oracle() {
+        let mut rng = Rng::new(551);
+        for case in 0..4 {
+            let mut points = vec![
+                vec![0.0, -0.0],
+                vec![-0.0, 0.0],
+                vec![0.0, 1.0],
+                vec![1.0, 0.0],
+                vec![BIG, BIG],
+            ];
+            for i in 0..513 {
+                let x = rng.int_below(23) as f64;
+                let y = rng.int_below(17) as f64;
+                points.push(match case {
+                    0 => vec![x, y],
+                    1 => vec![i as f64, i as f64],
+                    2 => vec![i as f64, -(i as f64)],
+                    _ => vec![(7.0 + x).sin(), x + y],
+                });
+            }
+            let truth = crate::indicators::nondominated_sort(&points).unwrap();
+            let ranks = Mode::pareto_levels(&points);
+            for (level, front) in truth.iter().enumerate() {
+                for &i in front {
+                    assert_eq!(ranks[i], (truth.len() - 1 - level) as f64);
+                }
+            }
+        }
+    }
 
     // Two-objective test: minimize (sum x^2, sum (x-2)^2) — a convex Pareto
     // front between 0 and 2 in each coordinate.

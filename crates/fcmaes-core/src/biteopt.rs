@@ -686,9 +686,9 @@ impl BitePop {
             self.cur_pop_pos += 1;
         }
         // shift [p..ri) right by one, insert at p
-        for k in (p + 1..=ri).rev() {
-            self.params.swap(k, k - 1);
-            self.costs[k] = self.costs[k - 1];
+        if p < ri {
+            self.params[p..=ri].rotate_right(1);
+            self.costs.copy_within(p..ri, p + 1);
         }
         self.costs[p] = cost;
         if self.params[p] != up {
@@ -1349,6 +1349,8 @@ pub struct BiteOpt {
     // ask/tell (delayed-feedback batching)
     init_queue: VecDeque<Vec<i64>>,
     asked: Vec<Candidate>,
+    // One reusable frame for each row of the largest batch generated so far.
+    free_rows: Vec<Candidate>,
 
     max_evaluations: u64,
     stopfitness: f64,
@@ -1416,6 +1418,7 @@ impl BiteOpt {
             stall_count: 0,
             init_queue: VecDeque::new(),
             asked: Vec::new(),
+            free_rows: Vec::new(),
             max_evaluations: if p.max_evaluations > 0 {
                 p.max_evaluations
             } else {
@@ -2365,6 +2368,9 @@ impl BiteOpt {
             requested
         };
         for _ in 0..n {
+            if let Some(candidate) = self.free_rows.pop() {
+                self.recycle_candidate(candidate);
+            }
             let cand = self.gen_one(None);
             self.asked.push(cand);
         }
@@ -2376,13 +2382,14 @@ impl BiteOpt {
         if self.asked.is_empty() || costs.len() != self.asked.len() {
             return -1;
         }
-        let asked = std::mem::take(&mut self.asked);
-        for (cand, &cost) in asked.into_iter().zip(costs) {
+        let mut asked = std::mem::take(&mut self.asked);
+        for (cand, &cost) in asked.drain(..).zip(costs) {
             self.apply_one(&cand, cost, false);
             self.iterations += 1;
             self.evaluations += 1;
-            self.recycle_candidate(cand);
+            self.free_rows.push(cand);
         }
+        self.asked = asked;
         self.update_stop();
         self.stop
     }
@@ -2773,6 +2780,21 @@ pub fn optimize_bite(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn bulk_insert_preserves_equal_cost_order_and_reuses_the_evicted_slot() {
+        let mut pop = BitePop::new(2, 4);
+        for (y, x) in [(2.0, [2, 2]), (1.0, [1, 1]), (1.0, [3, 3]), (3.0, [4, 4])] {
+            pop.update_pop(y, &x, false);
+        }
+        assert_eq!(pop.ordered(0), &[3, 3]);
+        assert_eq!(pop.ordered(1), &[1, 1]);
+        assert_eq!(pop.update_pop(3.0, &[99, 99], false), 4);
+        assert_eq!(pop.update_pop(1.5, &[5, 5], false), 2);
+        assert_eq!(pop.costs, &[1.0, 1.0, 1.5, 2.0]);
+        assert_eq!(pop.ordered(2), &[5, 5]);
+        assert_eq!(pop.ordered(3), &[2, 2]);
+    }
 
     fn sphere(x: &[f64]) -> f64 {
         x.iter().map(|v| v * v).sum()

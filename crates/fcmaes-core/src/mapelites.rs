@@ -106,33 +106,91 @@ fn dist2(a: &[f64], b: &[f64]) -> f64 {
     a.iter().zip(b).map(|(x, y)| (x - y) * (x - y)).sum()
 }
 
-/// Uniform two-dimensional grid with exactly `k` centers. Rows differ by at
-/// most one column when `k` is not a square.
-fn grid_centers_2d(k: usize) -> Vec<Vec<f64>> {
-    let rows = (k as f64).sqrt().floor().max(1.0) as usize;
-    let base_columns = k / rows;
-    let extra_columns = k % rows;
-    let mut centers = Vec::with_capacity(k);
-    for row in 0..rows {
-        let columns = base_columns + usize::from(row < extra_columns);
-        for column in 0..columns {
-            centers.push(vec![
-                (column as f64 + 0.5) / columns as f64,
-                (row as f64 + 0.5) / rows as f64,
-            ]);
+#[derive(Clone, Debug)]
+struct CenterTree {
+    order: Vec<usize>,
+}
+impl CenterTree {
+    fn new(rows: &[f64], dim: usize) -> Self {
+        let mut tree = Self {
+            order: (0..rows.len() / dim).collect(),
+        };
+        Self::split(&mut tree.order, rows, dim, 0);
+        tree
+    }
+
+    fn split(indices: &mut [usize], rows: &[f64], dim: usize, axis: usize) {
+        if indices.len() < 2 {
+            return;
+        }
+        let middle = indices.len() / 2;
+        let (left, _, right) = indices.select_nth_unstable_by(middle, |&a, &b| {
+            rows[a * dim + axis]
+                .total_cmp(&rows[b * dim + axis])
+                .then(a.cmp(&b))
+        });
+        let next_axis = (axis + 1) % dim;
+        Self::split(left, rows, dim, next_axis);
+        Self::split(right, rows, dim, next_axis);
+    }
+
+    fn nearest(&self, rows: &[f64], point: &[f64]) -> usize {
+        let mut best = (f64::MAX, 0);
+        Self::visit(&self.order, rows, point, 0, &mut best);
+        best.1
+    }
+
+    fn visit(indices: &[usize], rows: &[f64], point: &[f64], axis: usize, best: &mut (f64, usize)) {
+        if indices.is_empty() {
+            return;
+        }
+        let dim = point.len();
+        let middle = indices.len() / 2;
+        let i = indices[middle];
+        let center = &rows[i * dim..(i + 1) * dim];
+        let d = dist2(point, center);
+        if d < best.0 || (d == best.0 && i < best.1) {
+            *best = (d, i);
+        }
+        let delta = point[axis] - center[axis];
+        let left = &indices[..middle];
+        let right = &indices[middle + 1..];
+        let (near, far) = if delta < 0.0 {
+            (left, right)
+        } else {
+            (right, left)
+        };
+        let next_axis = if axis + 1 == dim { 0 } else { axis + 1 };
+        Self::visit(near, rows, point, next_axis, best);
+        if delta * delta <= best.0 {
+            Self::visit(far, rows, point, next_axis, best);
         }
     }
-    centers
 }
 
-fn grid_index_2d(k: usize, descriptor: &[f64]) -> usize {
-    let rows = (k as f64).sqrt().floor().max(1.0) as usize;
-    let base_columns = k / rows;
-    let extra_columns = k % rows;
-    let y = descriptor[1].clamp(0.0, 1.0 - f64::EPSILON);
+fn nearest_center(point: &[f64], centers: &[Vec<f64>]) -> usize {
+    let mut best = 0;
+    let mut best_distance = f64::MAX;
+    for (index, center) in centers.iter().enumerate() {
+        let distance = dist2(point, center);
+        if distance < best_distance {
+            best_distance = distance;
+            best = index;
+        }
+    }
+    best
+}
+
+fn grid_index(layout: GridLayout, x: f64, y: f64) -> usize {
+    let GridLayout {
+        rows,
+        base_columns,
+        extra_columns,
+    } = layout;
+    let y = y.clamp(0.0, 1.0 - f64::EPSILON);
     let row = (y * rows as f64) as usize;
     let columns = base_columns + usize::from(row < extra_columns);
-    let x = descriptor[0].clamp(0.0, 1.0 - f64::EPSILON);
+    let x = x.clamp(0.0, 1.0 - f64::EPSILON);
     let column = (x * columns as f64) as usize;
     row * base_columns + row.min(extra_columns) + column
 }
@@ -170,12 +228,17 @@ fn cvt_centers(k: usize, dim: usize, samples_per_niche: usize, rng: &mut Rng) ->
         }
         centers.push(samples[idx].clone());
         let c = centers.last().unwrap();
-        d2.par_iter_mut().zip(&samples).for_each(|(distance, s)| {
+        let update = |(distance, s): (&mut f64, &Vec<f64>)| {
             let candidate = dist2(s, c);
             if candidate < *distance {
                 *distance = candidate;
             }
-        });
+        };
+        if samples.len() < 4096 || rayon::current_num_threads() == 1 {
+            d2.iter_mut().zip(&samples).for_each(update);
+        } else {
+            d2.par_iter_mut().zip(&samples).for_each(update);
+        }
     }
 
     // A few Lloyd iterations. Assignment is the dominant O(samples * k)
@@ -184,21 +247,23 @@ fn cvt_centers(k: usize, dim: usize, samples_per_niche: usize, rng: &mut Rng) ->
     // number of threads or on work stealing.
     let chunk_size = LLOYD_CHUNK.max(n.div_ceil(LLOYD_PARTIALS));
     for _ in 0..10 {
+        // Rebuild for the old centers. Assignment is independent of the
+        // fixed-order reduction of the new centers.
+        let index = (dim == 2 && k >= 256).then(|| {
+            let rows = centers.iter().flatten().copied().collect::<Vec<_>>();
+            let tree = CenterTree::new(&rows, dim);
+            (rows, tree)
+        });
         let partials: Vec<(Vec<f64>, Vec<usize>)> = samples
             .par_chunks(chunk_size)
             .map(|chunk| {
                 let mut sums = vec![0.0; k * dim];
                 let mut counts = vec![0usize; k];
                 for s in chunk {
-                    let mut best = 0;
-                    let mut best_distance = f64::MAX;
-                    for (index, center) in centers.iter().enumerate() {
-                        let distance = dist2(s, center);
-                        if distance < best_distance {
-                            best_distance = distance;
-                            best = index;
-                        }
-                    }
+                    let best = match &index {
+                        Some((rows, tree)) => tree.nearest(rows, s),
+                        None => nearest_center(s, &centers),
+                    };
                     counts[best] += 1;
                     for j in 0..dim {
                         sums[best * dim + j] += s[j];
@@ -280,14 +345,50 @@ pub struct Archive {
     capacity: usize,
     desc_lb: Vec<f64>,
     desc_scale: Vec<f64>,
-    centers: Vec<Vec<f64>>, // normalized [0,1]^qd_dim
-    grid_2d: bool,
+    geometry: Geometry,
     xs: Vec<Vec<f64>>,
     ds: Vec<Vec<f64>>,
     ys: Vec<f64>,
     counts: Vec<u64>,
     occupied: usize,
     si: Vec<usize>, // niche indices sorted ascending by fitness
+    rank_changes: Option<RankChanges>,
+}
+
+#[derive(Clone, Debug)]
+enum Geometry {
+    Grid(GridLayout),
+    Cvt(std::sync::Arc<CvtGeometry>),
+}
+
+#[derive(Debug)]
+struct CvtGeometry {
+    centers: Vec<f64>,
+    tree: Option<CenterTree>,
+}
+
+#[derive(Clone, Debug)]
+struct RankChanges {
+    indices: Vec<usize>,
+    marked: Vec<bool>,
+    merged: Vec<usize>,
+}
+
+impl RankChanges {
+    fn new(capacity: usize) -> Self {
+        Self {
+            indices: Vec::new(),
+            marked: vec![false; capacity],
+            merged: Vec::new(),
+        }
+    }
+
+    fn record(&mut self, index: usize) {
+        if !self.marked[index] {
+            self.marked[index] = true;
+            self.indices.push(index);
+        }
+    }
 }
 
 impl Archive {
@@ -361,11 +462,20 @@ impl Archive {
         let qd_dim = qd_lb.len();
         let desc_lb = qd_lb.to_vec();
         let desc_scale: Vec<f64> = qd_ub.iter().zip(qd_lb).map(|(u, l)| u - l).collect();
-        let grid_2d = samples_per_niche == 0 && qd_dim == 2;
-        let centers = if grid_2d {
-            grid_centers_2d(capacity)
+        let geometry = if samples_per_niche == 0 && qd_dim == 2 {
+            let rows = (capacity as f64).sqrt().floor().max(1.0) as usize;
+            Geometry::Grid(GridLayout {
+                rows,
+                base_columns: capacity / rows,
+                extra_columns: capacity % rows,
+            })
         } else {
-            cvt_centers(capacity, qd_dim, samples_per_niche.max(1), rng)
+            let centers = cvt_centers(capacity, qd_dim, samples_per_niche.max(1), rng)
+                .into_iter()
+                .flatten()
+                .collect::<Vec<_>>();
+            let tree = (qd_dim == 2 && capacity >= 256).then(|| CenterTree::new(&centers, qd_dim));
+            Geometry::Cvt(std::sync::Arc::new(CvtGeometry { centers, tree }))
         };
         Archive {
             dim,
@@ -373,14 +483,14 @@ impl Archive {
             capacity,
             desc_lb,
             desc_scale,
-            centers,
-            grid_2d,
+            geometry,
             xs: vec![vec![0.0; dim]; capacity],
             ds: vec![vec![0.0; qd_dim]; capacity],
             ys: vec![f64::INFINITY; capacity],
             counts: vec![0; capacity],
             occupied: 0,
             si: (0..capacity).collect(),
+            rank_changes: (capacity >= 512).then(|| RankChanges::new(capacity)),
         }
     }
 
@@ -407,15 +517,10 @@ impl Archive {
     /// two. Use [`capacity`](Self::capacity) as the coverage denominator and
     /// this layout when mapping a niche index to a rendered row.
     pub fn grid_layout(&self) -> Option<GridLayout> {
-        if !self.grid_2d {
-            return None;
+        match self.geometry {
+            Geometry::Grid(layout) => Some(layout),
+            Geometry::Cvt(_) => None,
         }
-        let rows = (self.capacity as f64).sqrt().floor().max(1.0) as usize;
-        Some(GridLayout {
-            rows,
-            base_columns: self.capacity / rows,
-            extra_columns: self.capacity % rows,
-        })
     }
 
     /// Shape of a regular two-dimensional archive.
@@ -468,14 +573,34 @@ impl Archive {
     /// Panics if `d.len()` differs from the archive's descriptor dimension.
     pub fn index_of_niche(&self, d: &[f64]) -> usize {
         assert_eq!(d.len(), self.qd_dim, "descriptor length must equal qd_dim");
-        let e = self.encode_d(d);
-        if self.grid_2d {
-            return grid_index_2d(self.capacity, &e);
+        let cvt = match &self.geometry {
+            Geometry::Grid(layout) => {
+                let x = (d[0] - self.desc_lb[0]) / self.desc_scale[0];
+                let y = (d[1] - self.desc_lb[1]) / self.desc_scale[1];
+                return grid_index(*layout, x, y);
+            }
+            Geometry::Cvt(geometry) => geometry,
+        };
+        let encoded = self.encode_d(d);
+        if let Some(tree) = &cvt.tree
+            && encoded.iter().all(|value| value.is_finite())
+        {
+            return tree.nearest(&cvt.centers, &encoded);
         }
         let mut best = 0;
         let mut bd = f64::MAX;
-        for (i, c) in self.centers.iter().enumerate() {
-            let dist = dist2(&e, c);
+        for (i, c) in cvt.centers.chunks_exact(self.qd_dim).enumerate() {
+            let dist = match *encoded.as_slice() {
+                [a, b] => (a - c[0]) * (a - c[0]) + (b - c[1]) * (b - c[1]),
+                [a, b, d, f] => {
+                    let s0 = a - c[0];
+                    let s1 = b - c[1];
+                    let s2 = d - c[2];
+                    let s3 = f - c[3];
+                    ((s0 * s0 + s1 * s1) + s2 * s2) + s3 * s3
+                }
+                _ => dist2(&encoded, c),
+            };
             if dist < bd {
                 bd = dist;
                 best = i;
@@ -498,6 +623,9 @@ impl Archive {
         if y.is_finite() && d.iter().all(|v| v.is_finite()) && y < self.ys[i] {
             if self.ys[i].is_infinite() {
                 self.occupied += 1;
+            }
+            if let Some(changes) = &mut self.rank_changes {
+                changes.record(i);
             }
             self.ys[i] = y;
             self.xs[i].copy_from_slice(x);
@@ -574,9 +702,53 @@ impl Archive {
 
     /// Re-sort niche indices ascending by fitness.
     pub fn argsort(&mut self) {
-        let mut si: Vec<usize> = (0..self.capacity).collect();
-        si.sort_by(|&a, &b| self.ys[a].total_cmp(&self.ys[b]));
-        self.si = si;
+        let Some(changes) = &mut self.rank_changes else {
+            self.si.clear();
+            self.si.extend(0..self.capacity);
+            self.si.sort_by(|&a, &b| self.ys[a].total_cmp(&self.ys[b]));
+            return;
+        };
+        if changes.indices.is_empty() {
+            return;
+        }
+        let compare = |&a: &usize, &b: &usize| self.ys[a].total_cmp(&self.ys[b]).then(a.cmp(&b));
+        if changes.indices.len() <= 64 {
+            // The relative order of niches whose qualities did not change
+            // is still valid. Merge those niches with the changed subset.
+            changes.indices.sort_unstable_by(compare);
+            changes.merged.clear();
+            let mut changed = changes.indices.iter().peekable();
+            for &index in &self.si {
+                if changes.marked[index] {
+                    continue;
+                }
+                while let Some(&&next) = changed.peek() {
+                    if !compare(&next, &index).is_lt() {
+                        break;
+                    }
+                    changes.merged.push(next);
+                    changed.next();
+                }
+                changes.merged.push(index);
+            }
+            changes.merged.extend(changed.copied());
+            std::mem::swap(&mut self.si, &mut changes.merged);
+        } else {
+            self.si.clear();
+            if self.occupied < self.capacity - self.capacity / 4 {
+                self.si
+                    .extend((0..self.capacity).filter(|&i| self.ys[i].is_finite()));
+                self.si.sort_unstable_by(compare);
+                self.si
+                    .extend((0..self.capacity).filter(|&i| !self.ys[i].is_finite()));
+            } else {
+                self.si.extend(0..self.capacity);
+                self.si.sort_unstable_by(compare);
+            }
+        }
+        for index in changes.indices.drain(..) {
+            changes.marked[index] = false;
+        }
     }
 
     /// Sample `chunk` solutions from the best `best_n` niches (by fitness).
@@ -616,25 +788,16 @@ impl Archive {
     /// archive, sum reciprocal fitness; otherwise sum the negated negative
     /// fitness values. Higher is better in both cases.
     pub fn qd_score(&self) -> f64 {
-        let finite: Vec<f64> = self
-            .ys
-            .iter()
-            .copied()
-            .filter(|value| value.is_finite())
-            .collect();
-        if finite.is_empty() {
-            return 0.0;
-        }
-        if finite.iter().copied().fold(f64::INFINITY, f64::min) > 0.0 {
-            finite
+        if self.best_y() > 0.0 {
+            self.ys
                 .iter()
-                .filter(|&&value| value != 0.0)
-                .map(|&value| value.recip())
+                .filter(|value| value.is_finite())
+                .map(|value| value.recip())
                 .sum()
         } else {
-            finite
+            self.ys
                 .iter()
-                .filter(|&&value| value < 0.0)
+                .filter(|&&value| value < 0.0 && value.is_finite())
                 .map(|&value| -value)
                 .sum()
         }
@@ -691,17 +854,18 @@ pub fn variation(
         let p2 = &pop[half + p];
         for i in 0..d {
             let mu = rng.uniform01();
-            let mut beta = if mu <= 0.5 {
-                (2.0 * mu).powf(1.0 / (dis_c + 1.0))
+            let negative = rng.int_below(2) == 1;
+            let override_beta = rng.uniform01() < 0.5;
+            let beta = if override_beta {
+                1.0
             } else {
-                (2.0 * mu).powf(-1.0 / (dis_c + 1.0))
+                let spread = if mu <= 0.5 {
+                    (2.0 * mu).powf(1.0 / (dis_c + 1.0))
+                } else {
+                    (2.0 * mu).powf(-1.0 / (dis_c + 1.0))
+                };
+                if negative { -spread } else { spread }
             };
-            if rng.int_below(2) == 1 {
-                beta = -beta;
-            }
-            if rng.uniform01() < 0.5 {
-                beta = 1.0;
-            }
             let mean = (p1[i] + p2[i]) * 0.5;
             let diff = (p1[i] - p2[i]) * 0.5;
             offspring[p][i] = mean + beta * diff;
@@ -1049,6 +1213,46 @@ pub fn diversify_batch(
 mod tests {
     use super::*;
 
+    #[test]
+    fn nearest_center_keeps_original_id_on_ties_and_matches_scan() {
+        let mut centers = vec![vec![0.25, 0.5], vec![0.75, 0.5], vec![0.25, 0.5]];
+        let mut rng = Rng::new(7);
+        centers.extend((0..509).map(|_| vec![rng.uniform01(), -rng.uniform01()]));
+        let rows: Vec<_> = centers.iter().flatten().copied().collect();
+        let tree = CenterTree::new(&rows, 2);
+        assert_eq!(tree.nearest(&rows, &[0.5, 0.5]), 0);
+        assert_eq!(tree.nearest(&rows, &[0.25, 0.5]), 0);
+        for _ in 0..2000 {
+            let x = [2.0 * rng.uniform01() - 0.5, 2.0 * rng.uniform01() - 0.5];
+            assert_eq!(tree.nearest(&rows, &x), nearest_center(&x, &centers));
+        }
+    }
+
+    #[test]
+    fn ranked_niches_match_a_fresh_sort_after_sparse_and_dense_updates() {
+        let mut rng = Rng::new(7);
+        let mut archive = Archive::new(2, &[0.0, 0.0], &[1.0, 1.0], 521, 0, &mut rng);
+        for wave in 0..12 {
+            let count = if wave % 3 == 0 { 175 } else { 31 };
+            for _ in 0..count {
+                let index = rng.int_below(521) as usize;
+                let score = if index.is_multiple_of(7) {
+                    -0.0
+                } else {
+                    rng.int_below(11) as f64
+                };
+                archive.set(index, score, &[0.5, 0.5], &[0.0, 1.0]);
+                archive.set(index, score, &[0.5, 0.5], &[0.0, 0.0]);
+            }
+            let mut expected: Vec<_> = (0..521).collect();
+            expected.sort_by(|&a, &b| archive.ys()[a].total_cmp(&archive.ys()[b]));
+            archive.argsort();
+            assert_eq!(archive.si, expected);
+            archive.argsort();
+            assert_eq!(archive.si, expected);
+        }
+    }
+
     // A QD problem: minimize sphere; behavior = first two coordinates.
     fn qd(x: &[f64]) -> (f64, Vec<f64>) {
         let f = x.iter().map(|v| v * v).sum();
@@ -1084,27 +1288,38 @@ mod tests {
         let mut rng = Rng::new(7);
         let archive = Archive::new(2, &[0.0; 3], &[1.0; 3], 300, 40, &mut rng);
         let copy = archive.clone();
-        assert_eq!(copy.centers, serial);
+        let Geometry::Cvt(ref geometry) = copy.geometry else {
+            panic!("expected a CVT archive");
+        };
+        assert_eq!(
+            geometry.centers,
+            serial.into_iter().flatten().collect::<Vec<_>>()
+        );
         assert_eq!(copy.capacity(), 300);
     }
 
     #[test]
-    fn grid_centers_are_fast_exact_and_cover_the_box() {
-        for capacity in [1, 10, 64, 1_000] {
-            let centers = grid_centers_2d(capacity);
-            assert_eq!(centers.len(), capacity);
-            assert!(
-                centers
-                    .iter()
-                    .flatten()
-                    .all(|value| (0.0..=1.0).contains(value))
-            );
-        }
+    fn arithmetic_grid_covers_every_niche() {
         let mut rng = Rng::new(1);
-        let archive = Archive::new(2, &[0.0, 0.0], &[1.0, 1.0], 100, 0, &mut rng);
-        assert_eq!(archive.centers.len(), 100);
-        assert_eq!(archive.index_of_niche(&[0.0, 0.0]), 0);
-        assert_eq!(archive.index_of_niche(&[1.0, 1.0]), 99);
+        for capacity in [1, 10, 64, 100, 1_000, 1_025] {
+            let archive = Archive::new(2, &[0.0, 0.0], &[1.0, 1.0], capacity, 0, &mut rng);
+            let layout = archive.grid_layout().unwrap();
+            let mut expected = 0;
+            for row in 0..layout.rows {
+                let columns = layout.columns_in_row(row).unwrap();
+                for column in 0..columns {
+                    let descriptor = [
+                        (column as f64 + 0.5) / columns as f64,
+                        (row as f64 + 0.5) / layout.rows as f64,
+                    ];
+                    assert_eq!(archive.index_of_niche(&descriptor), expected);
+                    expected += 1;
+                }
+            }
+            assert_eq!(expected, layout.cells());
+            assert_eq!(archive.index_of_niche(&[0.0, 0.0]), 0);
+            assert_eq!(archive.index_of_niche(&[1.0, 1.0]), capacity - 1);
+        }
     }
 
     #[test]

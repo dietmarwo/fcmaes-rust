@@ -19,6 +19,13 @@ phase, with breaking changes called out explicitly.
 
 ### Changed
 
+- Reduce population maintenance in BiteOpt and data movement in DE.
+- Rank one- and two-objective MODE populations with exact specialized
+  algorithms and reuse survivor buffers.
+- Speed up MAP-Elites ranking and grid indexing, and reuse immutable CVT
+  geometry across archive clones. Large two-dimensional CVT archives use
+  exact nearest-center search during construction and updates.
+
 - The existing incremental 2D hypervolume archive uses short sorted pages.
   The batch 2D hypervolume and Pareto filters share skyline logic, and GD and
   IGD share exact nearest-neighbor search selected by dimension and input size.
@@ -43,6 +50,9 @@ of the existing optimizers give the results of 0.3.0, except where an entry
 under Fixed says otherwise.
 
 ### Fixed
+
+- Report DE's best finite observation even when the improvement replaced the
+  current best slot. This also fixes target stopping for flat objectives.
 
 - `fcmaes.retry/1` jobs with jSO, CMA-ES (also with `ipop`/`bipop`
   restarts), CR-FM-NES or PGPE kept evaluating the rest of the population

@@ -42,9 +42,10 @@ use crate::rng::Rng;
 pub struct DeResult {
     /// The cooperative stop predicate fired; every dispatched point is counted.
     pub stopped: bool,
-    /// Best decoded decision vector found.
+    /// Best evaluated decision vector. For external ask/tell, this is the
+    /// corresponding row from `ask`.
     pub x: Vec<f64>,
-    /// Objective value at [`x`](Self::x).
+    /// Best finite value observed, or `f64::MAX` until there is one.
     pub y: f64,
     /// Objective evaluations actually made; the serial
     /// [`optimize`](De::optimize) can exceed [`DeParams::max_evaluations`]
@@ -229,7 +230,7 @@ impl De {
             pop_iter: vec![],
             best_i: 0,
             best_x: vec![],
-            best_y: f64::MAX,
+            best_y: f64::INFINITY,
             iterations: 0,
             stop: 0,
             pos: 0,
@@ -437,34 +438,49 @@ impl De {
         }
     }
 
-    fn tell_one(&mut self, y: f64, x: &[f64], p: usize) -> i32 {
+    fn record_best(&mut self, y: f64, x: &[f64], decode: bool) -> bool {
+        if y.is_finite() && y < self.best_y {
+            self.best_y = y;
+            if decode {
+                self.best_x.copy_from_slice(&self.fitfun.decode_clamped(x));
+            } else {
+                self.best_x.copy_from_slice(x);
+            }
+            if self.stopfitness.is_finite() && y < self.stopfitness {
+                self.stop = 1;
+                return true;
+            }
+        }
+        false
+    }
+
+    fn tell_one(&mut self, y: f64, x: Vec<f64>, p: usize, decode: bool) -> i32 {
+        self.record_best(y, &x, decode);
         if y.is_finite() && y < self.pop_y[p] {
             if self.iterations > 1 {
                 let xb = self.pop_x[self.best_i].clone();
                 let xi = self.pop_x0[p].clone();
-                let improved = self.next_improve(&xb, x, &xi);
+                let improved = self.next_improve(&xb, &x, &xi);
                 self.improves_p.push_back(p);
                 self.improves_x.push_back(improved);
             }
-            self.pop_x0[p] = self.pop_x[p].clone();
-            self.pop_x[p] = x.to_vec();
+            self.pop_x0[p] = std::mem::replace(&mut self.pop_x[p], x);
             self.pop_y[p] = y;
             self.pop_iter[p] = self.iterations;
             if y < self.pop_y[self.best_i] {
                 self.best_i = p;
-                if y < self.best_y {
-                    self.best_y = y;
-                    self.best_x = x.to_vec();
-                    if self.stopfitness.is_finite() && self.best_y < self.stopfitness {
-                        self.stop = 1;
-                    }
-                }
             }
         } else if self.keep * self.rng.uniform01() < (self.iterations - self.pop_iter[p]) as f64 {
             self.pop_x[p] = self.sample();
             self.pop_y[p] = f64::MAX;
         }
         self.stop
+    }
+
+    fn evaluate(&mut self, x: &[f64], obj: &impl Objective) -> f64 {
+        let y = obj.eval_scalar(&self.fitfun.decode_clamped(x));
+        self.fitfun.incr_evaluations(1);
+        y
     }
 
     /// Run the serial generational loop against an in-process objective.
@@ -479,7 +495,6 @@ impl De {
     /// Serial DE with a cooperative stop before each evaluation, including
     /// temporal-locality trials. The usual generational budget is unchanged.
     pub fn optimize_until(&mut self, obj: &impl Objective, stop: &dyn Fn() -> bool) -> DeResult {
-        let mut evaluated_best = (Vec::new(), f64::INFINITY);
         self.iterations = 1;
         self.fitfun.reset_evaluations();
         while self.fitfun.evaluations() < self.max_evaluations && !self.fitfun.terminate() {
@@ -491,10 +506,6 @@ impl De {
                 if stop() {
                     let mut result = self.make_result(self.fitfun.evaluations());
                     result.stopped = true;
-                    if evaluated_best.1 < result.y {
-                        result.x = evaluated_best.0;
-                        result.y = evaluated_best.1;
-                    }
                     return result;
                 }
                 let xp = self.pop_x[p].clone();
@@ -513,44 +524,39 @@ impl De {
                     }
                 }
                 self.modify(&mut x);
-                let mut y = self.fitfun.eval_encoded_scalar(&x, obj);
-                if y.is_finite() && y < evaluated_best.1 {
-                    evaluated_best = (x.clone(), y);
+                let mut y = self.evaluate(&x, obj);
+                let mut was_stopped = false;
+                let accepted = y.is_finite() && y < self.pop_y[p];
+                if accepted {
+                    // Temporal locality: an extra trial along the last move.
+                    let trial = self.next_improve(&xb, &x, &xp);
+                    was_stopped = stop();
+                    if !was_stopped {
+                        let score = self.evaluate(&trial, obj);
+                        if score.is_finite() && score < y {
+                            y = score;
+                            x = trial;
+                        }
+                    }
                 }
-                if y.is_finite() && y < self.pop_y[p] {
-                    // temporal locality: an extra trial along the last move
-                    let x2t = self.next_improve(&xb, &x, &xp);
-                    let y2 = if stop() {
-                        f64::INFINITY
-                    } else {
-                        self.fitfun.eval_encoded_scalar(&x2t, obj)
-                    };
-                    if y2.is_finite() && y2 < evaluated_best.1 {
-                        evaluated_best = (x2t.clone(), y2);
-                    }
-                    if y2.is_finite() && y2 < y {
-                        y = y2;
-                        x = x2t;
-                    }
-                    self.pop_x[p] = x.clone();
+                let hit_target = self.record_best(y, &x, true);
+                if accepted {
+                    self.pop_x[p] = x;
                     self.pop_y[p] = y;
                     self.pop_iter[p] = self.iterations;
                     if y < self.pop_y[self.best_i] {
                         self.best_i = p;
-                        if y < self.best_y {
-                            self.best_y = y;
-                            self.best_x = x.clone();
-                            if self.stopfitness.is_finite() && self.best_y < self.stopfitness {
-                                self.stop = 1;
-                                return self.make_result(self.fitfun.evaluations());
-                            }
-                        }
                     }
                 } else if self.keep * self.rng.uniform01()
                     < (self.iterations - self.pop_iter[p]) as f64
                 {
                     self.pop_x[p] = self.sample();
                     self.pop_y[p] = f64::MAX;
+                }
+                if was_stopped || hit_target {
+                    let mut result = self.make_result(self.fitfun.evaluations());
+                    result.stopped = was_stopped;
+                    return result;
                 }
             }
             self.iterations += 1;
@@ -594,66 +600,61 @@ impl De {
         workers: usize,
         stop: &(dyn Fn() -> bool + Sync),
     ) -> DeResult {
-        use std::collections::BTreeMap;
         use std::sync::mpsc;
-        type Evaluated = (u64, std::thread::Result<f64>);
+        type Evaluation = (usize, usize, Vec<f64>, std::thread::Result<f64>);
 
-        let workers = workers.max(1) as u64;
         let budget = self.max_evaluations;
-        let (sender, receiver) = mpsc::channel::<Evaluated>();
-        let mut asked: VecDeque<(u64, usize, Vec<f64>)> = VecDeque::new();
-        let mut finished: BTreeMap<u64, f64> = BTreeMap::new();
+        let window = budget.min(workers.max(1) as u64) as usize;
+        // Workers own their candidate until they return it. The normal
+        // (already feasible, unnormalized) objective can borrow that row.
+        let fitness = self.fitfun.clone();
+        let (sender, receiver) = mpsc::channel::<Evaluation>();
+        let mut finished: Vec<Option<(usize, Vec<f64>, f64)>> = vec![None; window];
         let (mut dispatched, mut told) = (0u64, 0u64);
         rayon::in_place_scope(|scope| {
-            let dispatch = |de: &mut Self,
-                            asked: &mut VecDeque<(u64, usize, Vec<f64>)>,
-                            dispatched: &mut u64| {
+            let dispatch = |de: &mut Self, dispatched: &mut u64| {
                 let (p, x) = de.ask_one();
-                let row = de.fitfun.decode_clamped(&x).into_owned();
-                let (id, sender) = (*dispatched, sender.clone());
+                let slot = (*dispatched % window as u64) as usize;
+                let sender = sender.clone();
+                let fitness = &fitness;
                 scope.spawn(move |_| {
                     let y = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-                        obj.eval_scalar(&row)
+                        obj.eval_scalar(&fitness.decode_clamped(&x))
                     }));
-                    let _ = sender.send((id, y));
+                    let _ = sender.send((slot, p, x, y));
                 });
-                asked.push_back((id, p, x));
                 *dispatched += 1;
             };
-            while dispatched < budget.min(workers) && !stop() {
-                dispatch(self, &mut asked, &mut dispatched);
+
+            while dispatched < window as u64 && !stop() {
+                dispatch(self, &mut dispatched);
             }
-            while let Some(&(oldest, _, _)) = asked.front() {
-                // Wait for the oldest candidate, running queued evaluations
-                // on this thread meanwhile.
-                let y = loop {
-                    if let Some(y) = finished.remove(&oldest) {
-                        break y;
+            while told < dispatched {
+                let oldest = (told % window as u64) as usize;
+                let (p, x, y) = loop {
+                    if let Some(result) = finished[oldest].take() {
+                        break result;
                     }
-                    let (id, result) = match receiver.try_recv() {
-                        Ok(r) => r,
+                    // Let this worker run a queued objective if the caller
+                    // occupied a slot in the same pool.
+                    let (slot, p, x, result) = match receiver.try_recv() {
+                        Ok(result) => result,
                         Err(_) => match rayon::yield_now() {
                             Some(rayon::Yield::Executed) => continue,
                             _ => receiver.recv().expect("an evaluation is in flight"),
                         },
                     };
-                    match result {
-                        Ok(y) => {
-                            finished.insert(id, y);
-                        }
+                    let y = match result {
+                        Ok(y) => y,
                         Err(panic) => std::panic::resume_unwind(panic),
-                    }
+                    };
+                    debug_assert!(finished[slot].is_none());
+                    finished[slot] = Some((p, x, y));
                 };
-                let (_, p, x) = asked.pop_front().expect("the oldest candidate");
-                let y = if y.is_finite() {
-                    y
-                } else {
-                    crate::fitness::NAN_REPLACEMENT
-                };
-                self.tell_one(y, &x, p);
+                self.tell_one(y, x, p, true);
                 told += 1;
                 if self.stop == 0 && dispatched < budget && !self.fitfun.terminate() && !stop() {
-                    dispatch(self, &mut asked, &mut dispatched);
+                    dispatch(self, &mut dispatched);
                 }
             }
         });
@@ -667,7 +668,7 @@ impl De {
         DeResult {
             stopped: false,
             x: self.best_x.clone(),
-            y: self.best_y,
+            y: self.best_y.min(f64::MAX),
             evaluations,
             iterations: self.iterations,
             stop: self.stop,
@@ -718,8 +719,8 @@ impl De {
         }
         self.pending = false;
         for (i, &y) in ys.iter().enumerate() {
-            let x = self.asked_x[i].clone();
-            self.tell_one(y, &x, self.asked_p[i]);
+            let x = std::mem::take(&mut self.asked_x[i]);
+            self.tell_one(y, x, self.asked_p[i], false);
         }
         self.external_evaluations += ys.len() as u64;
         Ok(self.stop)
@@ -739,6 +740,72 @@ impl De {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn every_driver_records_the_first_finite_result_even_on_a_plateau() {
+        let costs = |_: &[f64]| 7.0;
+        let mut serial = de(5);
+        serial.stopfitness = 8.0;
+        let direct = serial.optimize(&costs);
+        assert_eq!((direct.y, direct.stop), (7.0, 1));
+        assert_eq!(costs(&direct.x), direct.y);
+
+        let mut batch = de(5);
+        batch.stopfitness = 8.0;
+        let rows = batch.ask();
+        assert_eq!(batch.tell(&vec![7.0; rows.len()]), 1);
+        assert_eq!(batch.result().x, rows[0]);
+        assert_eq!(batch.result().y, 7.0);
+
+        let mut delayed = de(5);
+        delayed.stopfitness = 8.0;
+        let run = delayed.optimize_delayed(&costs, 8);
+        assert_eq!((run.y, run.evaluations, run.stop), (7.0, 8, 1));
+        assert_eq!(costs(&run.x), run.y);
+    }
+
+    #[test]
+    fn failed_callbacks_cannot_replace_a_finite_incumbent() {
+        let failed = |_: &[f64]| f64::NAN;
+        let mut serial = de(9);
+        serial.max_evaluations = 31;
+        serial.stopfitness = f64::MAX;
+        let run = serial.optimize(&failed);
+        assert_eq!(run.y, f64::MAX);
+        assert_eq!(run.stop, 0);
+
+        let mut delayed = de(9);
+        delayed.max_evaluations = 31;
+        delayed.stopfitness = f64::MAX;
+        let run = delayed.optimize_delayed(&failed, 8);
+        assert_eq!((run.y, run.evaluations, run.stop), (f64::MAX, 31, 0));
+
+        let mut batch = de(9);
+        let rows = batch.ask();
+        let mut costs = vec![f64::INFINITY; rows.len()];
+        costs[0] = f64::MAX;
+        batch.tell(&costs);
+        assert_eq!(batch.result().x, rows[0]);
+        let _ = batch.ask();
+        batch.tell(&vec![f64::NEG_INFINITY; rows.len()]);
+        assert_eq!(batch.result().x, rows[0]);
+    }
+
+    #[test]
+    fn cancellation_before_the_locality_trial_returns_the_observed_point() {
+        use std::sync::atomic::{AtomicUsize, Ordering};
+        let calls = AtomicUsize::new(0);
+        let objective = |x: &[f64]| {
+            calls.fetch_add(1, Ordering::Relaxed);
+            sphere(x)
+        };
+        let mut optimizer = de(2);
+        optimizer.fitfun.set_normalize(true);
+        let r = optimizer.optimize_until(&objective, &|| calls.load(Ordering::Relaxed) == 1);
+        assert!(r.stopped);
+        assert_eq!((r.evaluations, calls.load(Ordering::Relaxed)), (1, 1));
+        assert_eq!(r.y, sphere(&r.x));
+    }
 
     fn sphere(x: &[f64]) -> f64 {
         x.iter().map(|v| v * v).sum()
@@ -792,7 +859,7 @@ mod tests {
         }
         let mut told = 0;
         while let Some((p, x)) = asked.pop_front() {
-            de.tell_one(rosen(&x), &x, p);
+            de.tell_one(rosen(&x), x, p, true);
             told += 1;
             if de.stop == 0 && dispatched < 20_000 {
                 asked.push_back(de.ask_one());
@@ -882,7 +949,7 @@ mod tests {
             assert_eq!(xs, batch.iter().map(|(_, x)| x.clone()).collect::<Vec<_>>());
             let ys: Vec<f64> = xs.iter().map(|x| rosen(x)).collect();
             for ((p, x), &y) in batch.iter().zip(&ys) {
-                reference.tell_one(y, x, *p);
+                reference.tell_one(y, x.clone(), *p, false);
             }
             assert_eq!(driven.tell(&ys), reference.stop);
         }
