@@ -259,7 +259,7 @@ struct RetryStore {
     completed_runs: usize,
     improvements: Vec<RetryImprovement>,
     statistic_num: usize,
-    started: Instant,
+    started: Option<Instant>,
 }
 
 impl RetryStore {
@@ -274,7 +274,7 @@ impl RetryStore {
             completed_runs: 0,
             improvements: Vec::with_capacity(statistic_num),
             statistic_num,
-            started: Instant::now(),
+            started: (statistic_num > 0).then(Instant::now),
         }
     }
 
@@ -289,9 +289,9 @@ impl RetryStore {
         if improved {
             self.best_y = result.y;
             self.best_x.clone_from(&result.x);
-            if self.statistic_num > 0 {
+            if let Some(started) = self.started {
                 let sample = RetryImprovement {
-                    elapsed_seconds: self.started.elapsed().as_secs_f64(),
+                    elapsed_seconds: started.elapsed().as_secs_f64(),
                     evaluations: self.evaluations,
                     value: result.y,
                 };
@@ -429,6 +429,10 @@ pub(crate) fn run_parallel<F>(workers: usize, task: F)
 where
     F: Fn(usize) + Sync + Send,
 {
+    if workers == 1 {
+        task(0);
+        return;
+    }
     rayon::ThreadPoolBuilder::new()
         .num_threads(workers)
         .thread_name(|index| format!("fcmaes-retry-{index}"))
@@ -610,6 +614,22 @@ where
     O: Fn(&[f64]) -> f64 + Sync,
     F: Fn(&O, &RetryContext) -> RetryRunResult + Sync + Send,
 {
+    advanced_retry_until(objective, bounds, config, optimize, &|| false)
+}
+
+/// Run coordinated retries until an external stop is requested.
+/// Pass the same predicate into the inner optimizer to stop an active retry.
+pub fn advanced_retry_until<O, F>(
+    objective: &O,
+    bounds: &RetryBounds,
+    config: &AdvancedRetryConfig,
+    optimize: F,
+    stop: &(dyn Fn() -> bool + Sync),
+) -> RetryResult
+where
+    O: Fn(&[f64]) -> f64 + Sync,
+    F: Fn(&O, &RetryContext) -> RetryRunResult + Sync + Send,
+{
     if config.retry.num_retries == 0 {
         return RetryStore::new(
             bounds.dim(),
@@ -630,7 +650,7 @@ where
     run_parallel(workers, |worker_id| {
         let mut worker_rng = spawned_worker_rng(config.retry.seed, worker_id);
         loop {
-            if stopped.load(AtomicOrdering::Relaxed) {
+            if stopped.load(AtomicOrdering::Relaxed) || stop() {
                 break;
             }
             let run_id = next_run.fetch_add(1, AtomicOrdering::Relaxed);

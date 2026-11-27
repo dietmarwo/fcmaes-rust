@@ -205,6 +205,7 @@ impl Solver for LSrtde {
         let mut nc = 0usize;
         let mut sr = self.initial_success_rate;
 
+        let mut v = vec![0.; dim];
         while !ev.exhausted() {
             // Lines 10-11: sort the newest population; rank = sorted position.
             sort_population(&mut new_pop, &mut new_fit);
@@ -248,13 +249,11 @@ impl Solver for LSrtde {
                 } else {
                     current
                 };
-                let v: Vec<f64> = (0..dim)
-                    .map(|j| {
-                        base[j]
-                            + f * (top_pop[pbest][j] - subtracted[j])
-                            + f * (new_pop[r2][j] - top_pop[r3][j])
-                    })
-                    .collect();
+                for (j, x) in v.iter_mut().enumerate() {
+                    *x = base[j]
+                        + f * (top_pop[pbest][j] - subtracted[j])
+                        + f * (new_pop[r2][j] - top_pop[r3][j]);
+                }
                 let mut u = vec![0.0; dim];
                 let taken = binomial_crossover(&mut rng, &v, current, cr, &mut u);
                 let cr_actual = taken as f64 / dim as f64;
@@ -290,7 +289,10 @@ impl Solver for LSrtde {
                 let order = sorted_indices(&new_fit);
                 let mut keep: Vec<usize> = order[..n_next].to_vec();
                 keep.sort_unstable();
-                new_pop = keep.iter().map(|&j| new_pop[j].clone()).collect();
+                new_pop = keep
+                    .iter()
+                    .map(|&j| std::mem::take(&mut new_pop[j]))
+                    .collect();
                 new_fit = keep.iter().map(|&j| new_fit[j]).collect();
                 nc %= n_next;
             }

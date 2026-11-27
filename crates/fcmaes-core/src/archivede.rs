@@ -77,6 +77,16 @@ pub struct ArchiveDe<X: Row, Y: Row> {
     archive: ParetoArchiveND<Y, X>,
 }
 
+// Selection returns distinct indices in survivor order.
+fn move_survivors<X>(parents: &mut Vec<X>, selected: &[usize]) {
+    let mut rows: Vec<_> = parents.drain(..).map(Some).collect();
+    parents.extend(
+        selected
+            .iter()
+            .map(|&index| rows[index].take().expect("survivor indices are unique")),
+    );
+}
+
 fn select<Y: Row>(pool: &[Y], np: usize, tiered: bool) -> Vec<usize> {
     let n = pool.len();
     let width = pool[0].as_ref().len();
@@ -335,7 +345,7 @@ impl<X: Row, Y: Row> ArchiveDe<X, Y> {
         }
         if !initial {
             let keep = select(&self.values, self.params.population, self.params.tiered);
-            self.parents = keep.iter().map(|&i| self.parents[i].clone()).collect();
+            move_survivors(&mut self.parents, &keep);
             self.values = keep.iter().map(|&i| self.values[i].clone()).collect();
         }
         self.evaluations += values.len() as u64;

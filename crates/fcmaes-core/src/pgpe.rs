@@ -318,19 +318,22 @@ impl Pgpe {
     fn reinforce(&self, pop_y: &DVector<f64>) -> (DVector<f64>, DVector<f64>) {
         let n = self.popsize / 2;
         let mean_all = pop_y.mean();
+        let utilities: Vec<_> = pop_y
+            .as_slice()
+            .as_chunks::<2>()
+            .0
+            .iter()
+            .map(|pair| (pair[0] - pair[1], 0.5 * (pair[0] + pair[1]) - mean_all))
+            .collect();
         let mut grad_center = DVector::zeros(self.dim);
         let mut grad_stdev = DVector::zeros(self.dim);
         for i in 0..self.dim {
             let mut gc = 0.0;
             let mut gs = 0.0;
-            for p in 0..n {
-                let fit1 = pop_y[2 * p];
-                let fit2 = pop_y[2 * p + 1];
-                let score = fit1 - fit2;
-                let avg = 0.5 * (fit1 + fit2);
+            for (p, &(difference, deviation)) in utilities.iter().enumerate() {
                 let sn = self.scaled_noises[p][i];
-                gc += sn * score * 0.5;
-                gs += (avg - mean_all) * (sn * sn - self.stdev[i] * self.stdev[i]) / self.stdev[i];
+                gc += sn * difference * 0.5;
+                gs += deviation * (sn * sn - self.stdev[i] * self.stdev[i]) / self.stdev[i];
             }
             grad_center[i] = gc / n as f64;
             grad_stdev[i] = gs / n as f64;
@@ -426,6 +429,67 @@ impl Pgpe {
             self.tell(&ys);
         }
         self.make_result(self.fitfun.evaluations())
+    }
+
+    /// Run batch optimization within the configured hard evaluation budget.
+    /// The result reports the best finite observation from this invocation.
+    /// A final incomplete generation is evaluated without updating the distribution,
+    /// and its observations are eligible for the returned best result.
+    ///
+    /// # Errors
+    /// Returns an error if the callback returns a different number of values than points.
+    pub fn optimize_batch_capped_until<F>(
+        &mut self,
+        mut eval_batch: F,
+        stop: &dyn Fn() -> bool,
+    ) -> Result<PgpeResult, &'static str>
+    where
+        F: FnMut(&[Vec<f64>]) -> Vec<f64>,
+    {
+        self.fitfun.reset_evaluations();
+        self.iterations = 0;
+        self.pending = false;
+        let mut incumbent = self.make_result(0);
+        incumbent.y = f64::INFINITY;
+        while self.fitfun.evaluations() < self.max_evaluations
+            && !self.fitfun.terminate()
+            && self.stop == 0
+        {
+            if stop() {
+                break;
+            }
+            let rows = self.ask_pop_internal();
+            let count = (self.max_evaluations - self.fitfun.evaluations()).min(self.popsize as u64)
+                as usize;
+            let values = eval_batch(&rows[..count]);
+            if values.len() != count {
+                return Err("batch must return one score per candidate");
+            }
+            self.fitfun.incr_evaluations(count as u64);
+            for (x, &y) in rows.iter().zip(&values) {
+                if y.is_finite() && y < incumbent.y {
+                    incumbent.x.clone_from(x);
+                    incumbent.y = y;
+                }
+            }
+            if count < self.popsize {
+                if incumbent.y < self.stopfitness {
+                    self.stop = 1;
+                }
+                break;
+            }
+            let mut values = values;
+            for y in &mut values {
+                if !y.is_finite() {
+                    *y = crate::fitness::NAN_REPLACEMENT;
+                }
+            }
+            self.tell(&values);
+        }
+        incumbent.evaluations = self.fitfun.evaluations();
+        incumbent.iterations = self.iterations;
+        incumbent.stop = self.stop;
+        Ok(incumbent)
     }
 
     // ---- ask/tell interface (mirrors PgpeState::Impl) ----

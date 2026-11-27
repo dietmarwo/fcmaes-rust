@@ -383,22 +383,44 @@ impl Jso {
     }
 
     /// Generate the next batch without the call-order check.
-    fn next_batch(&mut self) -> Vec<Vec<f64>> {
+    fn prepare_batch(&mut self) {
         if self.stop != 0 || self.remaining() == 0 {
-            return Vec::new();
+            self.pending = None;
+            return;
         }
         let remaining = usize::try_from(self.remaining()).unwrap_or(usize::MAX);
         if !self.initialized {
             let start = self.fit.len();
             let len = (self.pop.len() - start).min(remaining);
             self.pending = Some(Pending::Init { start, len });
-            return self.pop[start..start + len].to_vec();
+            return;
         }
         let mut trials = self.generate_trials();
         trials.truncate(remaining);
-        let rows = trials.iter().map(|(u, _, _)| u.clone()).collect();
         self.pending = Some(Pending::Generation(trials));
-        rows
+    }
+
+    fn next_batch(&mut self) -> Vec<Vec<f64>> {
+        self.prepare_batch();
+        match &self.pending {
+            Some(Pending::Init { start, len }) => self.pop[*start..*start + *len].to_vec(),
+            Some(Pending::Generation(trials)) => {
+                trials.iter().map(|(row, _, _)| row.clone()).collect()
+            }
+            None => Vec::new(),
+        }
+    }
+
+    fn pending_rows_inner(&self) -> impl Iterator<Item = &[f64]> {
+        let (initial, trials) = match &self.pending {
+            Some(Pending::Init { start, len }) => (&self.pop[*start..*start + *len], &[][..]),
+            Some(Pending::Generation(trials)) => (&[][..], trials.as_slice()),
+            None => (&[][..], &[][..]),
+        };
+        initial
+            .iter()
+            .map(Vec::as_slice)
+            .chain(trials.iter().map(|(x, _, _)| x.as_slice()))
     }
 
     /// One trial per member of the current population.
@@ -542,7 +564,10 @@ impl Jso {
                 if n_next < self.pop.len() {
                     let order = sorted_indices(&self.fit);
                     let keep = &order[..n_next];
-                    self.pop = keep.iter().map(|&j| self.pop[j].clone()).collect();
+                    self.pop = keep
+                        .iter()
+                        .map(|&j| std::mem::take(&mut self.pop[j]))
+                        .collect();
                     self.fit = keep.iter().map(|&j| self.fit[j]).collect();
                 }
                 let capacity = (self.archive_rate * self.pop.len() as f64).round() as usize;
@@ -569,14 +594,15 @@ impl Jso {
     /// A generation cut by the stop is completed with the trials evaluated
     /// so far, as at the end of the budget.
     pub fn optimize_until(&mut self, obj: &impl Objective, stop: &dyn Fn() -> bool) -> JsoResult {
+        let mut ys = Vec::new();
         loop {
-            let rows = self.next_batch();
-            if rows.is_empty() {
+            self.prepare_batch();
+            if self.pending.is_none() {
                 return self.make_result(false);
             }
-            let mut ys = Vec::with_capacity(rows.len());
+            ys.clear();
             let mut stopped = false;
-            for x in &rows {
+            for x in self.pending_rows_inner() {
                 if stop() {
                     stopped = true;
                     break;

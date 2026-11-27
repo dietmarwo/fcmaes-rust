@@ -6,6 +6,34 @@ phase, with breaking changes called out explicitly.
 
 ## [Unreleased]
 
+### Added
+
+- CR-FM-NES and PGPE expose `optimize_batch_capped_until` for exact evaluation
+  caps. The final partial population can improve the returned result without
+  updating the search distribution.
+- `diversify_batch_capped` applies a final partial batch to the archive within
+  an exact call cap. `advanced_retry_until` accepts a cooperative stop
+  predicate for coordinated retries.
+- `moretry_with_accounting` counts post-run evaluations separately.
+  `moretry_observed` accepts the objective vector already observed at the
+  returned point.
+
+### Fixed
+
+- CR-FM-NES rounds odd populations up to keep both halves of mirrored sampling.
+
+### Performance
+
+- jSO borrows pending rows during serial optimization and moves surviving
+  rows when shrinking its population. ArchiveDE moves selected parent rows.
+- CR-FM-NES moves its unsorted population into the snapshot and uses row
+  references while ranking. PGPE prepares score terms once per mirrored
+  pair. Dual Annealing reuses its decoded trial buffer.
+- One-worker retry runs on the calling thread. Weighted retry specializes
+  squared scalarization. The Diversifier reuses decoded rows from the emitter's
+  flat ask buffer across generations and restarts.
+- Surrogate/2 avoids scoring an acquisition pool twice for fitted LogEI.
+
 ## [0.5.0] - 2026-11-27
 
 Faster kernels in BiteOpt, DE, MODE, MAP-Elites and active CMA-ES; the

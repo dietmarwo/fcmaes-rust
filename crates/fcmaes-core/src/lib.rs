@@ -46,12 +46,13 @@ pub use indicators::{
 pub use jso::{Jso, JsoParams, JsoResult};
 pub use mapelites::{
     Archive, DiversifierParams, GridLayout, MapElitesParams, QdBatchFitness, QdFitness, diversify,
-    diversify_batch, map_elites, map_elites_batch, map_elites_batch_with_progress,
+    diversify_batch, diversify_batch_capped, map_elites, map_elites_batch,
+    map_elites_batch_with_progress,
 };
 pub use mode::{Mode, ModeParams, ModeResult};
 pub use moretry::{
     MoRetryConfig, MoRetryEntry, MoRetryResult, MultiObjective, WeightedObjective, moretry,
-    pareto_indices, scalarize,
+    moretry_observed, moretry_with_accounting, pareto_indices, scalarize,
 };
 pub use pareto::{
     BatchUpdateError as ParetoBatchError, Bounds as ParetoBounds2D, Entry as ParetoEntry,
@@ -61,7 +62,8 @@ pub use pgpe::{Pgpe, PgpeParams, PgpeResult};
 pub use rankindex::{BordaIndex, BordaResult, GridIndex, GridResult};
 pub use retry::{
     AdvancedRetryConfig, RetryBounds, RetryConfig, RetryContext, RetryEntry, RetryImprovement,
-    RetryResult, RetryRunResult, advanced_retry, retry, retry_run_seed, retry_until,
+    RetryResult, RetryRunResult, advanced_retry, advanced_retry_until, retry, retry_run_seed,
+    retry_until,
 };
 pub use rng::Rng;
 

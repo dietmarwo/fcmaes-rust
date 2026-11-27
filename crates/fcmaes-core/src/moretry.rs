@@ -117,10 +117,19 @@ pub fn scalarize(values: &[f64], weights: &[f64], ncon: usize, value_exp: f64) -
         .map(|(index, (&value, &weight))| {
             // Only violations enter the norm.
             let value = if index >= nobj { value.max(0.0) } else { value };
-            (value * weight).powf(value_exp)
+            let v = value * weight;
+            if value_exp == 2.0 {
+                v * v
+            } else {
+                v.powf(value_exp)
+            }
         })
         .sum::<f64>();
-    let mut scalar = powered.powf(value_exp.recip());
+    let mut scalar = if value_exp == 2.0 {
+        powered.sqrt()
+    } else {
+        powered.powf(value_exp.recip())
+    };
     for index in nobj..values.len() {
         if values[index] > 0.0 {
             scalar += weights[index];
@@ -379,20 +388,66 @@ where
     O: MultiObjective,
     F: for<'a> Fn(&WeightedObjective<'a, O>, &RetryContext) -> RetryRunResult + Sync + Send,
 {
+    moretry_with_accounting(objective, bounds, config, optimize).map(|(result, _)| result)
+}
+
+/// Run weighted retries and report post-run original-vector reevaluations.
+/// The returned count is additional to the optimizers' reported inner
+/// evaluations in the first element of the tuple.
+///
+/// # Errors
+/// Returns an error if the configuration is invalid.
+pub fn moretry_with_accounting<O, F>(
+    objective: &O,
+    bounds: &RetryBounds,
+    config: &MoRetryConfig,
+    optimize: F,
+) -> Result<(MoRetryResult, u64), &'static str>
+where
+    O: MultiObjective,
+    F: for<'a> Fn(&WeightedObjective<'a, O>, &RetryContext) -> RetryRunResult + Sync + Send,
+{
+    moretry_observed(objective, bounds, config, |objective, context| {
+        (optimize(objective, context), None)
+    })
+}
+
+/// Run weighted retries and accept an original vector measured by the optimizer at its returned point.
+/// Supply None to reevaluate. The tuple's second field counts reevaluations
+/// made by this coordinator in addition to the inner result's reported calls.
+///
+/// # Errors
+/// Returns an error if the configuration is invalid.
+pub fn moretry_observed<O, F>(
+    objective: &O,
+    bounds: &RetryBounds,
+    config: &MoRetryConfig,
+    optimize: F,
+) -> Result<(MoRetryResult, u64), &'static str>
+where
+    O: MultiObjective,
+    F: for<'a> Fn(&WeightedObjective<'a, O>, &RetryContext) -> (RetryRunResult, Option<Vec<f64>>)
+        + Sync
+        + Send,
+{
     config.validate()?;
     let width = config.weight_lower.len();
     if config.retry.num_retries == 0 {
-        return Ok(MoStore::new(
-            bounds.dim(),
-            width,
-            config.retry.capacity,
-            config.retry.statistic_num,
-        )
-        .into_result());
+        return Ok((
+            MoStore::new(
+                bounds.dim(),
+                width,
+                config.retry.capacity,
+                config.retry.statistic_num,
+            )
+            .into_result(),
+            0,
+        ));
     }
 
     let workers = worker_count(config.retry.workers).min(config.retry.num_retries);
     let next_run = AtomicUsize::new(0);
+    let post_calls = std::sync::atomic::AtomicU64::new(0);
     let stopped = AtomicBool::new(false);
     let store = Mutex::new(MoStore::new(
         bounds.dim(),
@@ -430,11 +485,14 @@ where
                 ncon: config.ncon,
                 value_exp: config.value_exp,
             };
-            let result = optimize(&weighted, &context);
-            let values = if result.x.len() == bounds.dim() {
-                objective.eval(&result.x)
-            } else {
+            let (result, observed) = optimize(&weighted, &context);
+            let values = if result.x.len() != bounds.dim() {
                 Vec::new()
+            } else if let Some(values) = observed {
+                values
+            } else {
+                post_calls.fetch_add(1, AtomicOrdering::Relaxed);
+                objective.eval(&result.x)
             };
             let mut shared = lock_store(&store);
             shared.add(result, values, weights, config);
@@ -444,10 +502,13 @@ where
         }
     });
 
-    Ok(store
-        .into_inner()
-        .unwrap_or_else(std::sync::PoisonError::into_inner)
-        .into_result())
+    Ok((
+        store
+            .into_inner()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .into_result(),
+        post_calls.into_inner(),
+    ))
 }
 
 /// Indices of non-dominated rows considering the first `nobj` values.
