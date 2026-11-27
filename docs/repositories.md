@@ -7,7 +7,8 @@ and population-epidemiology entries as of 8 November 2026, the BO-craft and
 inlet-craft entries as of 19 November 2026. Versions were checked against
 PyPI, crates.io and the repositories' tags on 20 November 2026, including
 that day's releases fast-cma-es 2.2.0, fcmaes-rust 0.4.0 and
-optimization-jobs 0.5.0.
+optimization-jobs 0.5.0. fcmaes-rust 0.5.0 is the release prepared on
+27 November 2026.
 
 Together they connect Python and Rust optimizers, durable job execution,
 experiment campaigns, simulators and bounded domain models. Native
@@ -93,7 +94,7 @@ tutorial is the origin of hydro-craft.
 [github.com/dietmarwo/fcmaes-rust](https://github.com/dietmarwo/fcmaes-rust)
 
 Black-box, multi-objective and quality-diversity optimizers in the crate
-`fcmaes-core` (0.4.0), which does not compile, link or call the original
+`fcmaes-core` (0.5.0), which does not compile, link or call the original
 C++ code and has no job-layer dependency. Python bindings are on PyPI as
 `fcmaes-rust`; they fit best when the objective itself is in Rust. The
 optional, source-built `fcmaes-job-worker` serves optimization-jobs and

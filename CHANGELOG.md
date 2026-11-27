@@ -6,6 +6,17 @@ phase, with breaking changes called out explicitly.
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-11-27
+
+Faster kernels in BiteOpt, DE, MODE, MAP-Elites and active CMA-ES; the
+front tools (`BordaIndex`, `GridIndex`, `ArchiveDe`, `ParetoArchiveND`) and
+`Cmaes::ask_flat`; a fix for the best value DE reports. No public item of
+0.4.0 changed its signature. Seeded runs give the results of 0.4.0 except
+in three places, each described below: active CMA-ES with the automatic
+`update_gap` at dimension 64 to about 160 (and `tell_x` from dimension 64),
+serial and delayed DE on objectives that return non-finite values, and the
+best value DE reports.
+
 ### Added
 
 - `Cmaes::ask_flat` exposes a borrowed decoded candidate batch in Rust. Python
