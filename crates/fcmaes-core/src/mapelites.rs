@@ -788,7 +788,7 @@ impl Archive {
     /// archive, sum reciprocal fitness; otherwise sum the negated negative
     /// fitness values. Higher is better in both cases.
     pub fn qd_score(&self) -> f64 {
-        if self.best_y() > 0.0 {
+        let score: f64 = if self.best_y() > 0.0 {
             self.ys
                 .iter()
                 .filter(|value| value.is_finite())
@@ -800,7 +800,10 @@ impl Archive {
                 .filter(|&&value| value < 0.0 && value.is_finite())
                 .map(|&value| -value)
                 .sum()
-        }
+        };
+        // A sum without terms is -0.0; report 0.0 for an archive without
+        // elites, as before, and for one whose rule has no term.
+        score + 0.0
     }
 
     /// Per-niche quality values; empty niches contain infinity.
@@ -1212,6 +1215,18 @@ pub fn diversify_batch(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn qd_score_without_terms_is_positive_zero() {
+        let mut rng = Rng::new(3);
+        let mut archive = Archive::new(2, &[0.0, 0.0], &[1.0, 1.0], 9, 0, &mut rng);
+        assert_eq!(archive.qd_score().to_bits(), 0.0f64.to_bits());
+        // A zero quality selects the negative-only rule, which then has no term.
+        archive.set(4, 0.0, &[0.5, 0.5], &[0.0, 0.0]);
+        assert_eq!(archive.qd_score().to_bits(), 0.0f64.to_bits());
+        archive.set(5, -2.5, &[0.5, 0.9], &[0.0, 0.0]);
+        assert_eq!(archive.qd_score(), 2.5);
+    }
 
     #[test]
     fn nearest_center_keeps_original_id_on_ties_and_matches_scan() {
