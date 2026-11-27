@@ -161,8 +161,8 @@ C/C++ compiler. Building the Python package from its source distribution does
 require Rust. Do not tell a Python user to install the historical `fcmaes`
 package when they asked specifically for this Rust implementation.
 
-The workspace version is 0.4.0; the previous release was published as `fcmaes-core` 0.3.0
-(crates.io) and `fcmaes-rust` 0.3.0 (PyPI) on 16 November 2026. Check the
+The workspace version is 0.5.0; the previous release was published as `fcmaes-core` 0.4.0
+(crates.io) and `fcmaes-rust` 0.4.0 (PyPI) on 20 November 2026. Check the
 registries for the latest published version before relying on it. This repository's job-layer crates (`fcmaes-job-worker`,
 `fcmaes-runner`, `fcmaes-native-worker`) and the experimental
 `fcmaes-surrogate` 0.1.0 are source-only (`publish = false`) and are part
@@ -174,8 +174,12 @@ fixes (sequence arguments, `ValueError` instead of panics, logged callback
 failures) and the Dual Annealing start-point fix need 0.2.1. Cooperative
 stops of running retries need 0.3.0. jSO, the CR-FM-NES → BiteOpt sequence
 (`crfmnes_bite`), the CMA-ES option `repair_z` and the checked ask/tell
-`try_` methods need 0.4.0. Changes after the latest release need a git
-dependency on `main`.
+`try_` methods need 0.4.0. The front tools (`BordaIndex`, `GridIndex`,
+`ArchiveDe`, `ParetoArchiveND`, `igd`), `Cmaes::ask_flat`, the faster
+kernels and DE's corrected best value need 0.5.0; with 0.5.0 seeded runs of
+active CMA-ES at dimension 64 to about 160 and of DE on objectives with
+non-finite values differ from 0.4.0. Changes after the latest release need
+a git dependency on `main`.
 
 **MODE warning.** `fcmaes-core` and `fcmaes-rust` 0.1.5 and earlier predate
 the October 2026 MODE fixes (#1: the SBX expanding branch, polynomial

@@ -250,7 +250,7 @@ dependencies = [
 
 [[package]]
 name = "fcmaes-core"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "libm",
  "nalgebra",
@@ -262,13 +262,13 @@ dependencies = [
 
 [[package]]
 name = "fcmaes-gtop"
-version = "0.4.0"
+version = "0.5.0"
 
 [[package]]
 name = "fcmaes-job-worker"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
- "fcmaes-core 0.4.0",
+ "fcmaes-core 0.5.0",
  "fcmaes-native-worker",
  "fcmaes-surrogate",
  "optimization-job-api",
@@ -282,7 +282,7 @@ dependencies = [
 name = "fcmaes-native-worker"
 version = "0.1.0"
 dependencies = [
- "fcmaes-core 0.4.0",
+ "fcmaes-core 0.5.0",
  "fcmaes-gtop",
  "optimization-job-api",
  "serde_json",
@@ -292,7 +292,7 @@ dependencies = [
 name = "fcmaes-surrogate"
 version = "0.1.0"
 dependencies = [
- "fcmaes-core 0.4.0",
+ "fcmaes-core 0.5.0",
  "libm",
  "rayon",
  "serde",
