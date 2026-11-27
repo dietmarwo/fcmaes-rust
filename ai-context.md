@@ -10,7 +10,7 @@ Since `67bd698`, the job crates `optimization-job-api` and
 `optimization-runner` (0.5.0 since the pin move to their 0.5.0 release)
 come from
 [optimization-jobs](https://github.com/dietmarwo/optimization-jobs) (#11; the
-in-repo `fcmaes-job-api` crate is gone), now at the pinned revision `2bfa8e4` (the merge of the optimization-jobs 0.5.0 release; tag `v0.5.0` is on `df7c55d`, whose shared files are the same: command jobs may declare a JSON-lines progress file, read with `jobs progress` while they run, and the guide behind `get_guide` lists BO-craft and the releases of 20 November 2026; job and worker protocols are as in 0.4.0), which adds
+in-repo `fcmaes-job-api` crate is gone), now at the pinned revision `ded566f` (optimization-jobs main after #50: the guide behind `get_guide` names the releases of 27 November 2026; the job crates are still 0.5.0, and the job and worker protocols are unchanged), which adds
 `node capabilities`, `jobs execution JOB_ID`, opt-in trusted local command
 jobs with verified binary file transfer, and explicitly placed jobs on SSH
 nodes, all through the CLI. The pins up to `v0.3.0`
@@ -172,8 +172,8 @@ C/C++ compiler. Building the Python package from its source distribution does
 require Rust. Do not tell a Python user to install the historical `fcmaes`
 package when they asked specifically for this Rust implementation.
 
-The workspace version is 0.5.0; the previous release was published as `fcmaes-core` 0.4.0
-(crates.io) and `fcmaes-rust` 0.4.0 (PyPI) on 20 November 2026. Check the
+The workspace version is 0.5.0, published as `fcmaes-core` 0.5.0 (crates.io)
+and `fcmaes-rust` 0.5.0 (PyPI) on 27 November 2026. Check the
 registries for the latest published version before relying on it. This repository's job-layer crates (`fcmaes-job-worker`,
 `fcmaes-runner`, `fcmaes-native-worker`) and the experimental
 `fcmaes-surrogate` 0.1.0 are source-only (`publish = false`) and are part
