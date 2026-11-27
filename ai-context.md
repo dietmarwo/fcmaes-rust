@@ -50,6 +50,13 @@ server. In this file:
 | Checking a solution | [Validation checklist](#validation-and-reporting-checklist), [failure diagnosis](#failure-diagnosis) |
 | Validated numerics / computer-assisted proofs | [Reference verifier and replay](tutorials/validated-numerics/README.md); [bounded Rust–Julia search](tutorials/validated-numerics/SEARCH.md); [all-arm certificate audit](tutorials/validated-numerics/AUDIT.md): fixed-target inverse tuning, frozen baselines, independent certification and strict artifact acceptance |
 
+For Rust CMA-ES ask/tell integrations, `ask_flat()` borrows the decoded
+batch as contiguous candidate rows. Pass the resulting scores in row order
+to `tell()`. Automatic CMA-ES covariance refresh can reuse the basis from
+the preceding generation once at dimension 64 or higher, so seeded
+high-dimensional trajectories can differ from earlier releases. See
+[active CMA-ES](docs/optimizers.md#active-cma-es).
+
 ## Experimental surrogate chooser rule
 
 `fcmaes.surrogate/1` is exact-GP Bayesian optimization inside the fcmaes job
@@ -969,6 +976,16 @@ it does not normalize objective or constraint values. Scale objective and
 constraint terms explicitly when their magnitudes differ materially.
 
 ### Differential Evolution
+
+DE tracks the best finite objective value across both primary and
+temporal-locality trials. A flat finite objective returns its first evaluated
+point and can meet a stop target. Serial DE charges every actual callback,
+including the last generation. Delayed DE retains a hard evaluation budget.
+A non-finite value is a failed trial in every DE driver: it never becomes the
+reported best and never enters the population. Up to 0.4.0 `optimize` and
+`optimize_delayed` stored it as 1e99, which a slot without a result accepted,
+so seeded runs of these two drivers differ from 0.4.0 on objectives that
+return NaN or infinity. On finite objectives the evaluated points are the same.
 
 `DeParams` defaults are:
 

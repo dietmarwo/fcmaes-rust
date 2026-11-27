@@ -123,6 +123,14 @@ the problem dimension.
 `ask` returns `popsize` rows; `tell` takes exactly one value per row and
 rejects any other length (`try_tell` returns the error instead of panicking).
 
+The result is the best finite value observed and the point it was evaluated
+at, in every driver; it is `f64::MAX` until a finite value arrives. A NaN or
+infinite value is a failed trial: it is not reported and does not replace a
+population member. Since 0.5.0 this holds for `optimize` and
+`optimize_delayed` as it did for `tell`; before, these two stored such a
+value as 1e99, so their seeded runs on objectives with non-finite values
+differ from 0.4.0.
+
 ## jSO
 
 `Jso` implements jSO (Brest, Maučec and Bošković, CEC 2017): differential
@@ -186,6 +194,27 @@ Key `CmaesParams` defaults:
 | `stop_fitness` | negative infinity |
 | `stop_tol_hist_fun` / `update_gap` | -1 / -1, automatic |
 | `repair_z` | `false` |
+
+With automatic `update_gap` at dimension 64 or higher, a basis computed
+in the previous generation can be reused for one eligible refresh when the
+covariance diagonal is finite and positive. Covariance adaptation keeps
+its own cadence. An explicit nonnegative gap uses the full refresh on
+each eligible generation. High-dimensional trajectories can therefore
+differ from earlier releases for the same seed. In the review's runs to a
+target of 1e-8 at dimension 64 and 100 (sphere, Rosenbrock, a rotated
+ellipsoid of condition 1e6 and a rotated cigar) the number of evaluations
+stayed within 2% and the wall time fell by a factor of 1.6 to 1.8; see
+[the measurements](../benchmarks/optimizer-kernels/REVIEW.md). Below
+dimension 64, and at any dimension with an explicit gap in `optimize`,
+`ask` and `tell`, seeded runs equal those of 0.4.0. `tell_x` at dimension
+64 or higher computes the standard coordinates from the stored basis and
+scales and falls back to the inverse when the reconstruction check fails;
+its seeded runs differ from 0.4.0 there with any gap.
+
+Rust clients evaluating batches can use `ask_flat()`. The borrowed slice
+contains `popsize` consecutive candidates of length `dim`, with the same
+ordering and pending-batch rules as `ask()`. End the borrow before calling
+`tell()` or drawing the next batch.
 
 `repair_z` matters only when samples reach the bounds. A sample that was
 moved into the bounds enters the update with the `z` of the unmoved sample

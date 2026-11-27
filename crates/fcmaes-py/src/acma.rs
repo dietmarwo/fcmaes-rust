@@ -2,7 +2,8 @@
 //! `ACMA` ask/tell class, backed by `fcmaes_core::Cmaes`.
 
 use fcmaes_core::{Cmaes, CmaesParams, Fitness};
-use numpy::PyArray2;
+use numpy::ndarray::Array2;
+use numpy::{IntoPyArray, PyArray2};
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3::types::PyTuple;
@@ -244,8 +245,11 @@ impl ACMA {
 
     /// Return the next decoded offspring population, shape ``(popsize, dim)``.
     fn ask<'py>(&mut self, py: Python<'py>) -> Bound<'py, PyArray2<f64>> {
-        let pop = self.inner.ask();
-        rows_to_pyarray(py, &pop)
+        let shape = (self.inner.popsize(), self.inner.dim());
+        let pop = self.inner.ask_flat().to_vec();
+        Array2::from_shape_vec(shape, pop)
+            .expect("CMA-ES population matches its shape")
+            .into_pyarray(py)
     }
 
     /// Update the distribution with values for the most recent :meth:`ask`.
