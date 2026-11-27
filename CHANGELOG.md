@@ -8,6 +8,9 @@ phase, with breaking changes called out explicitly.
 
 ### Added
 
+- `Cmaes::ask_flat` exposes a borrowed decoded candidate batch in Rust. Python
+  `ACMA.ask()` builds its owned NumPy array directly from that contiguous batch.
+
 - Exact Borda and grid box indexes (`BordaIndex`, `GridIndex`),
   archive-gated differential evolution (`ArchiveDe`) and a
   duplicate-preserving N-dimensional Pareto archive (`ParetoArchiveND`) in
@@ -25,6 +28,10 @@ phase, with breaking changes called out explicitly.
 - Speed up MAP-Elites ranking and grid indexing, and reuse immutable CVT
   geometry across archive clones. Large two-dimensional CVT archives use
   exact nearest-center search during construction and updates.
+- Active CMA-ES initializes its identity covariance directly and moves sampled
+  batches into the update. With the automatic update gap at dimension 64 or
+  higher, a basis from the preceding generation can be reused once. A checked
+  factor-based transform accelerates large externally supplied populations.
 
 - The existing incremental 2D hypervolume archive uses short sorted pages.
   The batch 2D hypervolume and Pareto filters share skyline logic, and GD and

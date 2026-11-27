@@ -187,6 +187,18 @@ Key `CmaesParams` defaults:
 | `stop_tol_hist_fun` / `update_gap` | -1 / -1, automatic |
 | `repair_z` | `false` |
 
+With automatic `update_gap` at dimension 64 or higher, a basis computed
+in the previous generation can be reused for one eligible refresh when the
+covariance diagonal is finite and positive. Covariance adaptation keeps
+its own cadence. An explicit nonnegative gap uses the full refresh on
+each eligible generation. High-dimensional trajectories can therefore
+differ from earlier releases for the same seed.
+
+Rust clients evaluating batches can use `ask_flat()`. The borrowed slice
+contains `popsize` consecutive candidates of length `dim`, with the same
+ordering and pending-batch rules as `ask()`. End the borrow before calling
+`tell()` or drawing the next batch.
+
 `repair_z` matters only when samples reach the bounds. A sample that was
 moved into the bounds enters the update with the `z` of the unmoved sample
 (`false`, the default and the update of 0.3.0), or with the `z` of the point

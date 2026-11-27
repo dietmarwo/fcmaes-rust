@@ -50,6 +50,13 @@ server. In this file:
 | Checking a solution | [Validation checklist](#validation-and-reporting-checklist), [failure diagnosis](#failure-diagnosis) |
 | Validated numerics / computer-assisted proofs | [Reference verifier and replay](tutorials/validated-numerics/README.md); [bounded Rust–Julia search](tutorials/validated-numerics/SEARCH.md); [all-arm certificate audit](tutorials/validated-numerics/AUDIT.md): fixed-target inverse tuning, frozen baselines, independent certification and strict artifact acceptance |
 
+For Rust CMA-ES ask/tell integrations, `ask_flat()` borrows the decoded
+batch as contiguous candidate rows. Pass the resulting scores in row order
+to `tell()`. Automatic CMA-ES covariance refresh can reuse the basis from
+the preceding generation once at dimension 64 or higher, so seeded
+high-dimensional trajectories can differ from earlier releases. See
+[active CMA-ES](docs/optimizers.md#active-cma-es).
+
 ## Experimental surrogate chooser rule
 
 `fcmaes.surrogate/1` is exact-GP Bayesian optimization inside the fcmaes job

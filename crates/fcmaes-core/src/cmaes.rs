@@ -68,7 +68,11 @@ pub struct CmaesParams {
     pub stop_fitness: f64,
     /// Historical-fitness tolerance; a negative value selects the default.
     pub stop_tol_hist_fun: f64,
-    /// Generations between covariance eigendecompositions; negative selects the default.
+    /// Minimum generation gap for covariance updates. A negative value
+    /// selects the dimension-dependent default, including reuse of a basis
+    /// from the immediately preceding generation at dimension 64 or higher.
+    /// Eigen refresh eligibility also depends on the active covariance
+    /// learning rates.
     pub update_gap: i32,
     /// Seed for the optimizer's independent random stream.
     pub seed: u64,
@@ -180,11 +184,14 @@ pub struct Cmaes {
     fitness: DVector<f64>,
 
     iterations: i32,
+    allow_basis_reuse: bool,
+    last_basis_update: i32,
     last_update: i32,
     fitness_history: Vec<f64>,
     best_value: f64,
     best_x: Vec<f64>,
     stop: i32,
+    #[cfg(test)]
     told: usize,
     compute_arz: bool,
     /// Columns of the asked population that were moved into the bounds; their
@@ -268,14 +275,8 @@ impl Cmaes {
         let diag_d = &input_sigma / sigma;
         let diag_c = diag_d.component_mul(&diag_d);
         let b = DMatrix::identity(dim, dim);
-        // BD = B * diag(diag_d): column j of B scaled by diag_d[j].
-        let mut bd = b.clone();
-        for j in 0..dim {
-            for i in 0..dim {
-                bd[(i, j)] *= diag_d[j];
-            }
-        }
-        let c = &b * b.transpose();
+        let bd = DMatrix::from_fn(dim, dim, |i, j| b[(i, j)] * diag_d[j]);
+        let c = DMatrix::identity(dim, dim);
 
         let history_size = 10 + (30.0 * dimf / popsize as f64) as usize;
         let best_value = f64::MAX;
@@ -322,11 +323,14 @@ impl Cmaes {
             arx: DMatrix::zeros(dim, popsize),
             fitness: DVector::from_element(popsize, 0.0),
             iterations: 1,
+            allow_basis_reuse: dim >= 64 && p.update_gap < 0,
+            last_basis_update: i32::MIN,
             last_update: 0,
             fitness_history,
             best_value,
             best_x: guess.to_vec(),
             stop: 0,
+            #[cfg(test)]
             told: 0,
             compute_arz: true,
             repaired: vec![false; popsize],
@@ -382,37 +386,72 @@ impl Cmaes {
         xs
     }
 
-    fn tell_one(&mut self, y: f64, x: &DVector<f64>) -> i32 {
+    #[cfg(test)]
+    fn tell_one(&mut self, y: f64, x: &DVector<f64>) {
         self.fitness[self.told] = if y.is_finite() { y } else { f64::MAX };
         self.arx.set_column(self.told, x);
         self.told += 1;
-        if self.told >= self.popsize {
-            let feasible = self.fitfun.closest_feasible_normed(self.xmean.as_slice());
-            self.xmean = DVector::from_vec(feasible);
-            if self.compute_arz {
-                // arz = BD^{-1} * ((arx - xmean) / sigma)
-                let mut diff = self.arx.clone();
-                for k in 0..self.popsize {
-                    for i in 0..self.dim {
-                        diff[(i, k)] = (diff[(i, k)] - self.xmean[i]) / self.sigma;
-                    }
-                }
-                self.arz = match self.bd.clone().try_inverse() {
-                    Some(inv) => inv * diff,
-                    None => self.normal_matrix(self.dim, self.popsize),
-                };
-            } else if self.repair_z {
-                // REPAIR-Z: the one call of the repaired-sample update,
-                // selected by `CmaesParams::repair_z: true`. Skipping it
-                // (`false`, the default) keeps the z of the unrepaired
-                // samples, the update of 0.3.0.
-                self.repair_arz();
-            }
-            self.update_cma();
+        if self.told == self.popsize {
+            self.finish_generation();
             self.told = 0;
-            self.iterations += 1;
         }
-        self.stop
+    }
+
+    fn tell_generation(&mut self, ys: &[f64]) {
+        for (slot, &y) in self.fitness.iter_mut().zip(ys) {
+            *slot = if y.is_finite() { y } else { f64::MAX };
+        }
+        self.finish_generation();
+    }
+
+    fn finish_generation(&mut self) {
+        let feasible = self.fitfun.closest_feasible_normed(self.xmean.as_slice());
+        self.xmean = DVector::from_vec(feasible);
+        if self.compute_arz {
+            // arz = BD^{-1} * ((arx - xmean) / sigma)
+            let mut diff = self.arx.clone();
+            for k in 0..self.popsize {
+                for i in 0..self.dim {
+                    diff[(i, k)] = (diff[(i, k)] - self.xmean[i]) / self.sigma;
+                }
+            }
+            self.arz = self
+                .external_standard_coordinates(&diff)
+                .or_else(|| self.bd.clone().try_inverse().map(|inv| inv * diff))
+                .unwrap_or_else(|| self.normal_matrix(self.dim, self.popsize));
+        } else if self.repair_z {
+            // REPAIR-Z: the one call of the repaired-sample update,
+            // selected by `CmaesParams::repair_z: true`. Skipping it
+            // (`false`, the default) keeps the z of the unrepaired
+            // samples, the update of 0.3.0.
+            self.repair_arz();
+        }
+        self.update_cma();
+        self.iterations += 1;
+    }
+
+    // BD is built from an orthogonal eigenbasis and column scales. Check the
+    // reconstruction before using the transpose as the inverse basis.
+    fn external_standard_coordinates(&self, steps: &DMatrix<f64>) -> Option<DMatrix<f64>> {
+        if self.dim < 64
+            || self
+                .diag_d
+                .iter()
+                .any(|v| !v.is_finite() || *v < f64::MIN_POSITIVE)
+        {
+            return None;
+        }
+        let mut z = self.b.tr_mul(steps);
+        for mut col in z.column_iter_mut() {
+            col.component_div_assign(&self.diag_d);
+        }
+        if steps.iter().any(|v| !v.is_finite()) || z.iter().any(|v| !v.is_finite()) {
+            return None;
+        }
+        let scale = steps.amax();
+        let residual = (&self.bd * &z - steps).amax();
+        let tolerance = 128.0 * self.dim as f64 * f64::EPSILON * scale;
+        (residual.is_finite() && residual <= tolerance).then_some(z)
     }
 
     /// Makes `arz` agree with the evaluated points: a sample moved into the
@@ -429,7 +468,7 @@ impl Cmaes {
     /// narrows the bounds around good solutions. A sample moved onto the
     /// bound at the mean gets `z = 0`; the guard in `update_covariance`
     /// keeps that zero norm out of the negative update. It has one call
-    /// site, in `tell_one`.
+    /// site, in `finish_generation`.
     fn repair_arz(&mut self) {
         for k in 0..self.popsize {
             if !self.repaired[k] {
@@ -554,6 +593,19 @@ impl Cmaes {
     fn update_bd(&mut self, negccov: f64) {
         let denom = self.ccov1 + self.ccovmu + negccov;
         if denom > 0.0 && (self.iterations as f64) % (1.0 / denom / self.dim as f64 / 10.0) < 1.0 {
+            // Keep covariance adaptation at its original cadence. A basis
+            // computed for the immediately preceding generation can be
+            // reused once in the larger, automatic-gap problems.
+            if self.allow_basis_reuse
+                && self.last_basis_update == self.iterations - 1
+                && (0..self.dim).all(|i| {
+                    let variance = self.c[(i, i)];
+                    variance.is_finite() && variance > 0.0
+                })
+            {
+                return;
+            }
+            self.last_basis_update = self.iterations;
             // enforce symmetry
             let mut sym = self.c.clone();
             for i in 0..self.dim {
@@ -738,12 +790,9 @@ impl Cmaes {
             let ys = self
                 .fitfun
                 .eval_population_scalar_flat(xs.as_slice(), self.dim, obj, workers);
-            self.told = 0;
-            for (k, &y) in ys.iter().enumerate() {
-                if self.stop != 0 {
-                    break;
-                }
-                self.tell_one(y, &col(&xs, k));
+            if self.stop == 0 {
+                self.arx = xs;
+                self.tell_generation(&ys);
             }
             if self.stop != 0 {
                 break;
@@ -795,12 +844,20 @@ impl Cmaes {
     /// that draws a new batch that replaces the pending one; the replaced
     /// batch can no longer be told.
     pub fn ask(&mut self) -> Vec<Vec<f64>> {
+        self.ask_flat();
+        self.population()
+    }
+
+    /// Ask for a decoded population stored as `popsize` contiguous candidates,
+    /// each with `dim` coordinates.
+    ///
+    /// As with [`ask`](Self::ask), this draws a new population and replaces
+    /// any previous pending batch. The slice borrows optimizer storage.
+    pub fn ask_flat(&mut self) -> &[f64] {
         self.asked_x = self.ask_all();
         self.population_decoded = self.decode_population(&self.asked_x);
         self.pending = true;
-        (0..self.popsize)
-            .map(|p| col(&self.population_decoded, p).as_slice().to_vec())
-            .collect()
+        self.population_decoded.as_slice()
     }
 
     /// Tell one fitness value per row of the population returned by
@@ -830,11 +887,8 @@ impl Cmaes {
             return Err(CMA_BATCH_LENGTH);
         }
         self.pending = false;
-        self.told = 0;
-        let asked = self.asked_x.clone();
-        for (p, &y) in ys.iter().enumerate() {
-            self.tell_one(y, &col(&asked, p));
-        }
+        std::mem::swap(&mut self.arx, &mut self.asked_x);
+        self.tell_generation(ys);
         self.compute_arz = false;
         self.external_evaluations += ys.len() as u64;
         Ok(self.stop)
@@ -884,22 +938,20 @@ impl Cmaes {
         self.pending = false;
         self.asked_x = self.encode_population(&decoded);
         self.population_decoded = decoded;
-        self.told = 0;
         // The update takes the z of the supplied points, also after an ask
         // (whose z belong to the asked points).
         self.compute_arz = true;
-        let asked = self.asked_x.clone();
-        for (p, &y) in ys.iter().enumerate() {
-            self.tell_one(y, &col(&asked, p));
-        }
+        std::mem::swap(&mut self.arx, &mut self.asked_x);
+        self.tell_generation(ys);
         self.external_evaluations += ys.len() as u64;
         Ok(self.stop)
     }
 
     /// Current decoded population (rows = individuals).
     pub fn population(&self) -> Vec<Vec<f64>> {
-        (0..self.popsize)
-            .map(|p| col(&self.population_decoded, p).as_slice().to_vec())
+        self.population_decoded
+            .column_iter()
+            .map(|column| column.as_slice().to_vec())
             .collect()
     }
 
@@ -912,6 +964,92 @@ impl Cmaes {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn automatic_gap_reuses_a_fresh_basis_once_and_checks_the_diagonal() {
+        let dim = 64;
+        let mut es = Cmaes::new(
+            Fitness::new(dim, 1, vec![], vec![]),
+            &vec![0.4; dim],
+            &[0.3],
+            &CmaesParams::default(),
+        );
+        es.iterations = 1;
+        es.update_bd(0.0);
+        assert_eq!(es.last_basis_update, 1);
+        es.c[(1, 1)] = 2.0;
+        es.iterations = 2;
+        es.update_bd(0.0);
+        assert_eq!(es.last_basis_update, 1);
+        assert_eq!(es.diag_c[1], 1.0);
+        es.iterations = 3;
+        es.update_bd(0.0);
+        assert_eq!(es.last_basis_update, 3);
+        assert_eq!(es.diag_c[1], 2.0);
+        es.c[(2, 2)] = -0.01;
+        es.iterations = 4;
+        es.update_bd(0.0);
+        assert_eq!(es.last_basis_update, 4);
+        assert!(es.diag_d.iter().all(|v| v.is_finite() && *v > 0.0));
+
+        let mut manual = Cmaes::new(
+            Fitness::new(dim, 1, vec![], vec![]),
+            &vec![0.4; dim],
+            &[0.3],
+            &CmaesParams {
+                update_gap: 0,
+                ..Default::default()
+            },
+        );
+        manual.update_bd(0.0);
+        manual.iterations = 2;
+        manual.update_bd(0.0);
+        assert_eq!(manual.last_basis_update, 2);
+    }
+
+    #[test]
+    fn borrowed_batch_matches_owned_ask_and_replaces_pending_rows() {
+        let mut flat = cma(7);
+        let mut owned = cma(7);
+        for _ in 0..12 {
+            assert_eq!(
+                flat.ask_flat(),
+                owned.ask().into_iter().flatten().collect::<Vec<_>>()
+            );
+            let rows = owned.ask();
+            let scores: Vec<_> = rows.iter().map(|x| rosen(x)).collect();
+            assert_eq!(flat.ask_flat(), rows.concat());
+            assert_eq!(flat.population(), rows);
+            assert_eq!(flat.try_tell(&scores), owned.try_tell(&scores));
+            assert_eq!(summary(&flat.result()), summary(&owned.result()));
+        }
+    }
+
+    #[test]
+    fn large_external_population_inverse_checks_the_forward_transform() {
+        let dim = 64;
+        let mut es = Cmaes::new(
+            Fitness::new(dim, 1, vec![], vec![]),
+            &vec![0.3; dim],
+            &vec![0.2; dim],
+            &CmaesParams::default(),
+        );
+        // Rotate in the first two axes and give them unequal scales.
+        let (s, c) = 0.73_f64.sin_cos();
+        es.b[(0, 0)] = c;
+        es.b[(1, 0)] = s;
+        es.b[(0, 1)] = -s;
+        es.b[(1, 1)] = c;
+        es.diag_d[1] = 0.3;
+        es.bd = &es.b * DMatrix::from_diagonal(&es.diag_d);
+        let rhs = DMatrix::from_fn(dim, 4, |i, j| (i as f64 * 0.17 + j as f64).cos());
+        let z = es.external_standard_coordinates(&rhs).unwrap();
+        assert!((&es.bd * z - &rhs).amax() < 1e-12);
+        es.b[(0, 0)] += 0.1;
+        assert!(es.external_standard_coordinates(&rhs).is_none());
+        es.diag_d[0] = 0.0;
+        assert!(es.external_standard_coordinates(&rhs).is_none());
+    }
 
     fn run(name: &str, obj: impl Objective, dim: usize, lo: f64, hi: f64, seed: u64) -> f64 {
         let fit = Fitness::bounded(dim, 1, &vec![lo; dim], &vec![hi; dim]);
