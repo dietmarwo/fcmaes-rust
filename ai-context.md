@@ -981,6 +981,11 @@ DE tracks the best finite objective value across both primary and
 temporal-locality trials. A flat finite objective returns its first evaluated
 point and can meet a stop target. Serial DE charges every actual callback,
 including the last generation. Delayed DE retains a hard evaluation budget.
+A non-finite value is a failed trial in every DE driver: it never becomes the
+reported best and never enters the population. Up to 0.4.0 `optimize` and
+`optimize_delayed` stored it as 1e99, which a slot without a result accepted,
+so seeded runs of these two drivers differ from 0.4.0 on objectives that
+return NaN or infinity. On finite objectives the evaluated points are the same.
 
 `DeParams` defaults are:
 

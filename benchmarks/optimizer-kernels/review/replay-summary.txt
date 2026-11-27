@@ -1,0 +1,22 @@
+replay_digest, 0.4.0 base d7ff66a against the merged tree, RAYON_NUM_THREADS=1, 27 November 2026
+columns: optimizer, group, runs, runs with the same evaluated points, runs with the same result
+bite	all	480	480	480
+mode	all	600	600	600
+map	all	106	106	106
+de	finite objectives, ask	108	108	101
+de	finite objectives, direct	108	108	107
+de	finite objectives, window1	108	108	98
+de	finite objectives, window8	108	108	99
+de	objective with NaN and infinity, ask	36	36	33
+de	objective with NaN and infinity, direct	36	5	5
+de	objective with NaN and infinity, window1	36	4	5
+de	objective with NaN and infinity, window8	36	5	5
+cma	dimension 64 and 100, automatic gap, ask	64	0	0
+cma	dimension 64 and 100, automatic gap, direct	64	0	0
+cma	dimension 64 and 100, automatic gap, tellx	64	0	0
+cma	dimension 64 and 100, explicit gap, ask	48	48	48
+cma	dimension 64 and 100, explicit gap, direct	48	48	48
+cma	dimension 64 and 100, explicit gap, tellx	48	0	0
+cma	dimension below 64, ask	224	224	224
+cma	dimension below 64, direct	224	224	224
+cma	dimension below 64, tellx	224	224	224

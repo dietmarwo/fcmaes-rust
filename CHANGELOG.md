@@ -22,16 +22,42 @@ phase, with breaking changes called out explicitly.
 
 ### Changed
 
-- Reduce population maintenance in BiteOpt and data movement in DE.
-- Rank one- and two-objective MODE populations with exact specialized
-  algorithms and reuse survivor buffers.
-- Speed up MAP-Elites ranking and grid indexing, and reuse immutable CVT
-  geometry across archive clones. Large two-dimensional CVT archives use
-  exact nearest-center search during construction and updates.
-- Active CMA-ES initializes its identity covariance directly and moves sampled
-  batches into the update. With the automatic update gap at dimension 64 or
-  higher, a basis from the preceding generation can be reused once. A checked
-  factor-based transform accelerates large externally supplied populations.
+- Faster kernels in BiteOpt, DE, MODE and MAP-Elites with the same seeded
+  runs (#83; 25 of 80 screened changes). BiteOpt inserts into its sorted
+  population with one slice rotation and reuses candidate rows across
+  batches. DE moves accepted rows instead of copying them, and delayed DE
+  keeps its ordered window in a ring. MODE ranks one- and two-objective
+  populations exactly without the pairwise comparison and reuses its
+  survivor buffers. MAP-Elites repairs its fitness order from the changed
+  niches, indexes grids arithmetically, shares CVT geometry between archive
+  clones and searches 2D CVT archives of 256 or more niches with an exact
+  tree. Measured on the pinned probe, single thread: BiteOpt 1.3 to 1.5 times
+  faster at dimension 32 and 96; MODE 1.7 times at population 32 and 4.4 to
+  5.9 times at 256; MAP-Elites 4.8 times on a 4,096-cell grid and 4.1 times
+  on a 1,024-center CVT archive; DE ask/tell 1.1 times. In 1,186 seeded runs
+  of BiteOpt, MODE and MAP-Elites every evaluated point and result equals
+  that of 0.4.0. See the
+  [review](benchmarks/optimizer-kernels/REVIEW.md).
+- Active CMA-ES at dimension 64 or higher with the automatic `update_gap`
+  reuses the eigenbasis of the preceding generation once (#83; 6 of 30
+  screened changes). It also initializes the identity covariance directly
+  and moves sampled batches into the update. On 100-dimensional sphere and
+  ellipsoid the serial throughput rose 1.75 to 1.8 times. To a target of 1e-8
+  at dimension 64 to 128 the number of evaluations stayed within 2% and the
+  wall time fell 1.6 to 1.8 times. Seeded runs change in that range (up to
+  about dimension 160 with the default population; from 180 the refresh was
+  already sparse and nothing changes). Below dimension 64, and with an
+  explicit gap, `optimize`, `ask` and `tell` give the runs of 0.4.0.
+  `tell_x` at dimension 64 or higher computes the standard coordinates from
+  the stored basis and scales, with a checked fallback to the inverse; its
+  seeded runs change there with any gap.
+- Serial and delayed DE treat a NaN or infinite objective value as a failed
+  trial, as `De::tell` already did: it is not stored in the population.
+  Before, both stored it as 1e99, which a slot without a result accepted, and
+  the serial driver then spent a temporal-locality evaluation on it. Seeded
+  runs of `De::optimize` and `De::optimize_delayed` on objectives that return
+  non-finite values differ from 0.4.0. On finite objectives the evaluated
+  points are unchanged.
 
 - The existing incremental 2D hypervolume archive uses short sorted pages.
   The batch 2D hypervolume and Pareto filters share skyline logic, and GD and
@@ -58,8 +84,13 @@ under Fixed says otherwise.
 
 ### Fixed
 
-- Report DE's best finite observation even when the improvement replaced the
-  current best slot. This also fixes target stopping for flat objectives.
+- DE reports the best finite value it observed, in every driver. When an
+  improvement replaced the slot that already held the population best, the
+  new value was compared with itself and the reported best stayed behind:
+  a constant objective of 7 reported `f64::MAX` and never met a stop target
+  of 8, and one Cassini1 run reported 15.67816042 after its callback had
+  seen 15.67816013. In the review's 432 seeded runs on finite objectives
+  the reported best improved in 24 and never got worse.
 
 - `fcmaes.retry/1` jobs with jSO, CMA-ES (also with `ipop`/`bipop`
   restarts), CR-FM-NES or PGPE kept evaluating the rest of the population
